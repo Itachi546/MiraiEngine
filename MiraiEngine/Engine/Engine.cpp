@@ -3,6 +3,7 @@
 #include "Log.hpp"
 
 #include <chrono>
+using namespace std::chrono_literals;
 
 namespace mirai
 {
@@ -21,15 +22,20 @@ namespace mirai
             app->start();
 
         auto start = std::chrono::high_resolution_clock::now();
-        while (running)
+        while (running && !window->is_closed())
         {
+            window->update();
+
             if (app)
             {
                 app->update();
             }
 
+            std::this_thread::sleep_for(16ms);
+
             auto end = std::chrono::high_resolution_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
             start = end;
             elapsed_time_ms += dt_ms;
         }

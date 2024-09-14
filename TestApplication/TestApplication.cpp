@@ -19,11 +19,12 @@ class TestApplication : public App
 
     void update() override
     {
+        float time = Engine::get()->get_elapsed_seconds();
     }
 
     ~TestApplication()
     {
-        Log::Info("Destroying Test Application");
+        Log::Info("Destroying Test Application...");
     }
 };
 

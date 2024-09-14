@@ -27,6 +27,16 @@ namespace mirai
             this->running = false;
         }
 
+        float get_dt_seconds() const
+        {
+            return static_cast<float>(dt_ms) / 1000.0f;
+        }
+
+        float get_elapsed_seconds() const
+        {
+            return static_cast<float>(elapsed_time_ms) / 1000.0f;
+        }
+
         Engine(const Engine &) = delete;
         Engine operator=(const Engine &) = delete;
 

@@ -22,6 +22,10 @@ namespace mirai
 
         void set_title(const std::string &title);
 
+        void update();
+
+        bool is_closed();
+
         std::string_view get_title() const { return title; }
 
         float get_aspect_ratio() const { return static_cast<float>(width) / static_cast<float>(height); }
@@ -30,8 +34,8 @@ namespace mirai
         {
             if (fullscreen)
             {
-                *width = fullscreenWidth;
-                *height = fullscreenHeight;
+                *width = fullscreen_width;
+                *height = fullscreen_height;
             }
             else
             {
@@ -49,9 +53,9 @@ namespace mirai
       private:
         static Window *Instance;
 
-        GLFWwindow *glfwWindow;
+        GLFWwindow *glfw_window;
         int width, height;
-        int fullscreenWidth, fullscreenHeight;
+        int fullscreen_width, fullscreen_height;
         std::string title;
         bool fullscreen;
     };

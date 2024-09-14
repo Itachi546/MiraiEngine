@@ -12,32 +12,44 @@ namespace mirai
     {
         if (!glfwInit())
         {
-            Log::Info("Initializing GLFW ...");
             glfwInit();
         }
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        Log::Info("Creating GLFW Window ...");
-        glfwWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+        glfwSetErrorCallback([](int error_code, const char *description)
+                             { Log::Error("GLFWERROR:", error_code, " Description:", description); });
 
-        if (glfwWindow == nullptr)
-            ASSERT_MSG("Failed to create window");
+        Log::Info("Creating Window ...");
+        glfw_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 
-        glfwMakeContextCurrent(glfwWindow);
+        if (glfw_window == nullptr)
+            ASSERT_MSG("Failed to Create Window");
 
         auto monitor = glfwGetPrimaryMonitor();
         auto videoMode = glfwGetVideoMode(monitor);
-        fullscreenWidth = videoMode->width;
-        fullscreenHeight = videoMode->height;
+        fullscreen_width = videoMode->width;
+        fullscreen_height = videoMode->height;
 
+        glfwSetWindowCloseCallback(glfw_window, [](GLFWwindow *window)
+                                   { glfwSetWindowShouldClose(window, true); });
         Instance = this;
     }
 
     void Window::set_title(const std::string &title)
     {
         this->title = title;
-        glfwSetWindowTitle(glfwWindow, title.c_str());
+        glfwSetWindowTitle(glfw_window, title.c_str());
+    }
+
+    void Window::update()
+    {
+        glfwPollEvents();
+    }
+
+    bool Window::is_closed()
+    {
+        return glfwWindowShouldClose(glfw_window) == 1;
     }
 
     void Window::set_fullscreen(bool fullscreen)
@@ -48,32 +60,34 @@ namespace mirai
 
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode *videoMode = glfwGetVideoMode(monitor);
-        fullscreenWidth = videoMode->width;
-        fullscreenHeight = videoMode->height;
+        fullscreen_width = videoMode->width;
+        fullscreen_height = videoMode->height;
         if (fullscreen)
         {
-            glfwSetWindowMonitor(glfwWindow, monitor, 0, 0, fullscreenWidth, fullscreenHeight, GLFW_DONT_CARE);
+            glfwSetWindowMonitor(glfw_window, monitor, 0, 0, fullscreen_width, fullscreen_height, GLFW_DONT_CARE);
             Log::Info("Enabling Fullsceen");
         }
         else
         {
             Log::Info("Disabling Fullscreen");
-            int xpos = (fullscreenWidth - width) / 2;
-            int ypos = (fullscreenHeight - height) / 2;
-            glfwSetWindowMonitor(glfwWindow, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
+            int xpos = (fullscreen_width - width) / 2;
+            int ypos = (fullscreen_height - height) / 2;
+            glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
         }
     }
 
     void Window::set_size(int width, int height)
     {
         Log::Info("Resizing Window");
-        int xpos = (fullscreenWidth - width) / 2;
-        int ypos = (fullscreenHeight - height) / 2;
-        glfwSetWindowMonitor(glfwWindow, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
+        int xpos = (fullscreen_width - width) / 2;
+        int ypos = (fullscreen_height - height) / 2;
+        glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
     }
 
     Window::~Window()
     {
+        Log::Info("Destroying Window...");
         glfwTerminate();
     }
+
 } // namespace mirai
