@@ -1,0 +1,58 @@
+#pragma once
+
+#include <GLFW/glfw3.h>
+#include <string>
+
+#include "Common/CommonInclude.hpp"
+
+struct GLFWwindow;
+struct GLFWmonitor;
+
+namespace mirai
+{
+    class Window
+    {
+      public:
+        Window(const Window &window) = delete;
+        Window operator=(const Window &window) = delete;
+
+        Window(int width, int height, const std::string &title);
+
+        static Window *get() { return Instance; }
+
+        void set_title(const std::string &title);
+
+        std::string_view get_title() const { return title; }
+
+        float get_aspect_ratio() const { return static_cast<float>(width) / static_cast<float>(height); }
+
+        void get_size(int *width, int *height) const
+        {
+            if (fullscreen)
+            {
+                *width = fullscreenWidth;
+                *height = fullscreenHeight;
+            }
+            else
+            {
+                *width = this->width;
+                *height = this->height;
+            }
+        }
+
+        void set_fullscreen(bool fullscreen);
+
+        void set_size(int width, int height);
+
+        ~Window();
+
+      private:
+        static Window *Instance;
+
+        GLFWwindow *glfwWindow;
+        int width, height;
+        int fullscreenWidth, fullscreenHeight;
+        std::string title;
+        bool fullscreen;
+    };
+} // namespace mirai
