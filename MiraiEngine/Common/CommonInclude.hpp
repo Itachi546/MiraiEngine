@@ -8,4 +8,4 @@
 #define ASSERT(cond) assert(cond)
 #define ASSERT_MSG(message) assert(0 && message)
 
-#define MIRAI
+constexpr const uint32_t K_INVALID_RESOURCE_HANDLE = UINT32_MAX;

@@ -1,14 +1,54 @@
 #include "Window.hpp"
 #include "Engine/Log.hpp"
+#include "InputDevice.hpp"
 
 namespace mirai
 {
+    static void WindowKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+    {
+        Input::get()->set_modifiers(mods);
+        Input::get()->set_state(Key(key), action != GLFW_RELEASE);
+    }
+
+    static void WindowButtonCallback(GLFWwindow *window, int button, int action, int mods)
+    {
+        Input::get()->set_modifiers(mods);
+        Input::get()->set_state(Key(button), action != GLFW_RELEASE);
+    }
+
+    static void WindowSizeCallback(GLFWwindow *glfw_window, int width, int height)
+    {
+        Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
+        window->width = width;
+        window->height = height;
+    }
+
+    static void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y)
+    {
+        Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
+        glm::vec2 current_pos{static_cast<float>(x), static_cast<float>(y)};
+        window->mouse_pos_delta = current_pos - window->mouse_pos;
+        window->mouse_pos = current_pos;
+    }
+
+    static void WindowScrollCallback(GLFWwindow *glfw_window, double xoffset, double yoffset)
+    {
+        Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
+        glm::vec2 current_scroll{static_cast<float>(xoffset), static_cast<float>(yoffset)};
+        window->mouse_scroll_delta = current_scroll - window->mouse_scroll;
+        window->mouse_scroll = current_scroll;
+    }
+
     Window *Window::Instance = nullptr;
 
     Window::Window(int width, int height, const std::string &title) : width(width),
                                                                       height(height),
                                                                       title(title),
-                                                                      fullscreen(false)
+                                                                      fullscreen(false),
+                                                                      mouse_pos(0.0f, 0.0f),
+                                                                      mouse_pos_delta(0.0f, 0.0f),
+                                                                      mouse_scroll(0.0f, 0.0f),
+                                                                      mouse_scroll_delta(0.0f, 0.0f)
     {
         if (!glfwInit())
         {
@@ -31,8 +71,21 @@ namespace mirai
         fullscreen_width = videoMode->width;
         fullscreen_height = videoMode->height;
 
+        glfwSetWindowUserPointer(glfw_window, this);
+
         glfwSetWindowCloseCallback(glfw_window, [](GLFWwindow *window)
                                    { glfwSetWindowShouldClose(window, true); });
+
+        glfwSetKeyCallback(glfw_window, WindowKeyCallback);
+        glfwSetWindowSizeCallback(glfw_window, WindowSizeCallback);
+        glfwSetMouseButtonCallback(glfw_window, WindowButtonCallback);
+        glfwSetCursorPosCallback(glfw_window, WindowCursorPosCallback);
+        glfwSetScrollCallback(glfw_window, WindowScrollCallback);
+
+        double x, y;
+        glfwGetCursorPos(glfw_window, &x, &y);
+        mouse_pos = {static_cast<float>(x), static_cast<float>(y)};
+
         Instance = this;
     }
 

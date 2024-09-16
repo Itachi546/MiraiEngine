@@ -24,6 +24,16 @@ if(NOT TARGET glfw)
     set_target_properties(glfw PROPERTIES FOLDER "External")
 endif()
 
+find_package(glm QUIET)
+if(NOT TARGET glm)
+    set(GLM_ENABLE_CXX_17 ON CACHE BOOL "")
+    set(GLM_BUILD_TESTS OFF CACHE BOOL "")
+    set(GLM_BUILD_INSTALL OFF CACHE BOOL "")
+    
+    add_subdirectory(../External/glm glm)
+    set_target_properties(glfw PROPERTIES FOLDER "External")
+endif()
+
 set(MIRAI_LIBRARIES
     glfw
 )
@@ -38,12 +48,19 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${MIRAI_LIBRARIES})
+target_link_libraries(${TARGET_NAME} INTERFACE glm::glm)
+
+target_compile_definitions(${TARGET_NAME} PRIVATE 
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    GLM_FORCE_XYZW_ONLY
+)
 
 if(WIN32) 
     target_compile_definitions(${TARGET_NAME} PRIVATE 
     WIN32_LEAN_AND_MEAN
     NOMINMAX
-    MIRAI_PLATFORM_WINDOW)
+    MIRAI_PLATFORM_WINDOW
+    )
     target_compile_options(${TARGET_NAME} PRIVATE /W3)
     add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 else()

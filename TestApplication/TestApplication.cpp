@@ -2,6 +2,9 @@
 #include "Engine/App.hpp"
 #include "Engine/Log.hpp"
 #include "Device/Window.hpp"
+#include "Device/InputDevice.hpp"
+
+#include <glm/glm.hpp>
 
 using namespace mirai;
 
@@ -20,6 +23,8 @@ class TestApplication : public App
     void update() override
     {
         float time = Engine::get()->get_elapsed_seconds();
+        if (Input::get()->is_down(KB_ESCAPE))
+            Engine::get()->request_close();
     }
 
     ~TestApplication()
