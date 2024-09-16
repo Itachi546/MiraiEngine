@@ -31,11 +31,20 @@ if(NOT TARGET glm)
     set(GLM_BUILD_INSTALL OFF CACHE BOOL "")
     
     add_subdirectory(../External/glm glm)
+    set_target_properties(glm PROPERTIES FOLDER "External")
+endif()
+
+find_package(volk QUIET)
+if(NOT TARGET volk)
+    add_subdirectory(../External/volk volk)
     set_target_properties(glfw PROPERTIES FOLDER "External")
 endif()
 
+
+
 set(MIRAI_LIBRARIES
     glfw
+    volk::volk
 )
 
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS *.hpp)
