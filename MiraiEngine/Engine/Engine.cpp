@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 #include "Device/Window.hpp"
+#include "Graphics/Renderer.hpp"
 #include "Log.hpp"
 
 #include <chrono>
@@ -13,6 +14,7 @@ namespace mirai
     {
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(1360, 769, "MiraiEngine");
+        renderer = std::make_unique<Renderer>();
         Instance = this;
     }
 

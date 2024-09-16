@@ -3,6 +3,7 @@
 #include "Common/CommonInclude.hpp"
 
 #include <GLFW/glfw3.h>
+
 #include <glm/glm.hpp>
 #include <string>
 
@@ -67,6 +68,11 @@ namespace mirai
         glm::vec2 get_mouse_scroll_delta() const
         {
             return mouse_scroll_delta;
+        }
+
+        void *get_window_ptr()
+        {
+            return glfw_window;
         }
 
         ~Window();

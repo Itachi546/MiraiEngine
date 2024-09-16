@@ -3,9 +3,13 @@
 #include <cassert>
 #include <cstdint>
 
-#define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
+#if defined(_WIN32) || defined(_WIN64)
+#define MIRAI_PLATFORM_WINDOW
+#endif
+
+#define ARR_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 #define ASSERT(cond) assert(cond)
-#define ASSERT_MSG(message) assert(0 && message)
+#define ASSERT_MSG(cond, message) assert(cond &&message)
 
 constexpr const uint32_t K_INVALID_RESOURCE_HANDLE = UINT32_MAX;

@@ -7,6 +7,7 @@ namespace mirai
 {
 
     class Window;
+    class Renderer;
 
     class Engine
     {
@@ -46,8 +47,11 @@ namespace mirai
         uint64_t dt_ms;
         uint64_t elapsed_time_ms;
         static Engine *Instance;
+
         std::unique_ptr<App> app;
         std::unique_ptr<Window> window;
+        std::unique_ptr<Renderer> renderer;
+
         bool running;
     };
 } // namespace mirai

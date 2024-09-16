@@ -63,8 +63,7 @@ namespace mirai
         Log::Info("Creating Window ...");
         glfw_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 
-        if (glfw_window == nullptr)
-            ASSERT_MSG("Failed to Create Window");
+        ASSERT_MSG(glfw_window != nullptr, "Failed to Create Window");
 
         auto monitor = glfwGetPrimaryMonitor();
         auto videoMode = glfwGetVideoMode(monitor);

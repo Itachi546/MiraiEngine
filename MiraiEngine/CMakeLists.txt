@@ -37,7 +37,7 @@ endif()
 find_package(volk QUIET)
 if(NOT TARGET volk)
     add_subdirectory(../External/volk volk)
-    set_target_properties(glfw PROPERTIES FOLDER "External")
+    set_target_properties(volk PROPERTIES FOLDER "External")
 endif()
 
 
@@ -68,7 +68,6 @@ if(WIN32)
     target_compile_definitions(${TARGET_NAME} PRIVATE 
     WIN32_LEAN_AND_MEAN
     NOMINMAX
-    MIRAI_PLATFORM_WINDOW
     )
     target_compile_options(${TARGET_NAME} PRIVATE /W3)
     add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)

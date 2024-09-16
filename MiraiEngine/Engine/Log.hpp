@@ -40,6 +40,14 @@ namespace mirai
             Write(Color_Red, "[ERROR] ", args...);
         }
 
+        template <typename... Args>
+        static void Fatal(Args &&...args)
+        {
+            entries.push(LogEntry{LogLevel::Error, FormatLog(args...)});
+            Write(Color_Red, "[ERROR] ", args...);
+            exit(-1);
+        }
+
       private:
         static std::mutex WriteMutex;
 
