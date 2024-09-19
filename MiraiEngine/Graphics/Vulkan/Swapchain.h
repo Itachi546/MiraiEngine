@@ -29,11 +29,13 @@ namespace mirai
             return images[current_image_index];
         }
 
-        VkImageLayout get_current_image_layout() {
-            return image_layouts[current_image_index] ;
+        VkImageLayout get_current_image_layout()
+        {
+            return image_layouts[current_image_index];
         }
-        
-        void set_current_image_layout(VkImageLayout layout) {
+
+        void set_current_image_layout(VkImageLayout layout)
+        {
             image_layouts[current_image_index] = layout;
         }
     };
@@ -43,5 +45,7 @@ namespace mirai
     VkSurfaceKHR CreateSurface(VkInstance instance, VkPhysicalDevice physical_device, uint32_t graphics_queue_index);
 
     void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync);
+
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync);
 
 } // namespace mirai

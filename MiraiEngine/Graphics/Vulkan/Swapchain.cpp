@@ -51,6 +51,25 @@ namespace mirai
         return surface;
     }
 
+    static VkPresentModeKHR select_present_mode(VkPhysicalDevice physical_device, VkSurfaceKHR surface, bool vsync)
+    {
+        uint32_t present_mode_count = 0;
+        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr));
+        std::vector<VkPresentModeKHR> present_modes(present_mode_count);
+        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data()));
+
+        VkPresentModeKHR required_present_mode = vsync ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+        for (auto &present_mode : present_modes)
+        {
+            if (present_mode == required_present_mode)
+            {
+                return present_mode;
+            }
+        }
+        // Fallback to FIFO_KHR if not found
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
     static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface)
     {
         VkSwapchainCreateInfoKHR createInfo = {
@@ -76,6 +95,49 @@ namespace mirai
         swapchain->swapchain = vk_swapchain;
     }
 
+    static VkSurfaceFormatKHR select_surface_format(VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+    {
+        uint32_t format_count = 0;
+        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr));
+        std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
+        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, surface_formats.data()));
+
+        VkFormat required_format = VK_FORMAT_B8G8R8A8_UNORM;
+        VkColorSpaceKHR required_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+        for (auto &supported : surface_formats)
+        {
+            if (supported.format == required_format && supported.colorSpace == required_colorspace)
+                return supported;
+        }
+
+        Log::Error("Couldn't find required surface format for swapchain");
+        return surface_formats[0];
+    }
+
+    static void create_swapchain_image_views(VkDevice device, VulkanSwapchain *swapchain)
+    {
+        VkImageViewCreateInfo image_view_create_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = swapchain->surface_format.format,
+            .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .levelCount = 1,
+                .layerCount = 1,
+            },
+        };
+
+        swapchain->image_layouts.resize(swapchain->image_count);
+        for (uint32_t i = 0; i < swapchain->image_count; ++i)
+        {
+            swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+            image_view_create_info.image = swapchain->images[i];
+            VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
+        }
+    }
+
     void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync)
     {
         VkSurfaceCapabilitiesKHR surface_caps{};
@@ -87,47 +149,9 @@ namespace mirai
         swapchain->height = surface_caps.currentExtent.height;
         swapchain->image_count = std::min(std::max(2u, surface_caps.maxImageCount), 4u);
 
-        uint32_t format_count = 0;
-        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr));
-        std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
-        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, surface_formats.data()));
+        swapchain->surface_format = select_surface_format(physical_device, surface);
 
-        swapchain->surface_format.format = VK_FORMAT_B8G8R8A8_UNORM;
-        swapchain->surface_format.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-        bool found = false;
-        for (auto &supported : surface_formats)
-        {
-            if (supported.format == swapchain->surface_format.format && supported.colorSpace == swapchain->surface_format.colorSpace)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-            Log::Fatal("Couldn't find required surface format for swapchain");
-
-        uint32_t present_mode_count = 0;
-        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr));
-        std::vector<VkPresentModeKHR> present_modes(present_mode_count);
-        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data()));
-
-        swapchain->present_mode = vsync ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
-        found = false;
-        for (auto &present_mode : present_modes)
-        {
-            if (present_mode == swapchain->present_mode)
-            {
-                found = true;
-                break;
-            }
-        }
-        // Fallback to FIFO_KHR if not found
-        if (!found)
-        {
-            swapchain->present_mode = VK_PRESENT_MODE_FIFO_KHR;
-            Log::Warn("Fallbacking to FIFO_MODE_KHR");
-        }
+        swapchain->present_mode = select_present_mode(physical_device, surface, vsync);
 
         swapchain->composite_mode = (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                                         ? VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
@@ -149,24 +173,37 @@ namespace mirai
         swapchain->image_count = image_count;
         swapchain->current_image_index = 0;
 
-        VkImageViewCreateInfo image_view_create_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = swapchain->surface_format.format,
-            .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .levelCount = 1,
-                .layerCount = 1,
-            },
-        };
+        create_swapchain_image_views(device, swapchain);
+    }
 
-        swapchain->image_layouts.resize(image_count);
-        for (uint32_t i = 0; i < image_count; ++i)
-        {
-            swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
-            image_view_create_info.image = swapchain->images[i];
-            VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
-        }
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync)
+    {
+        VkSwapchainKHR old_swapchain = swapchain->swapchain;
+        for (auto &image_view : swapchain->image_views)
+            vkDestroyImageView(device, image_view, nullptr);
+
+        swapchain->image_views.clear();
+        swapchain->image_layouts.clear();
+
+        swapchain->surface_format = select_surface_format(physical_device, surface);
+
+        swapchain->present_mode = select_present_mode(physical_device, surface, vsync);
+
+        VkSurfaceTransformFlagBitsKHR old_transform = swapchain->current_transform;
+
+        create_swapchain(swapchain, device, surface);
+
+        uint32_t image_count = 0;
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+        swapchain->images.resize(image_count);
+        swapchain->image_views.resize(image_count);
+
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, swapchain->images.data()));
+        swapchain->image_count = image_count;
+        swapchain->current_image_index = 0;
+
+        create_swapchain_image_views(device, swapchain);
+
+        vkDestroySwapchainKHR(device, old_swapchain, nullptr);
     }
 } // namespace mirai

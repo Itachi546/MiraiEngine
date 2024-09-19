@@ -72,6 +72,7 @@ namespace mirai
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
         uint32_t current_frame = 0;
+        bool vsync = true;
 
         VkInstance instance;
         VkDevice device;

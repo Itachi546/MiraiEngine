@@ -86,7 +86,7 @@ namespace mirai
 
         swapchain = std::make_unique<VulkanSwapchain>();
         swapchain->swapchain = VK_NULL_HANDLE;
-        CreateSwapchain(swapchain.get(), physical_device, device, surface, true);
+        CreateSwapchain(swapchain.get(), physical_device, device, surface, vsync);
         for (uint32_t i = 0; i < swapchain->image_count; ++i)
         {
             std::string image_name = "swapchain_image_" + std::to_string(i);
@@ -176,6 +176,9 @@ namespace mirai
         bool resized = (width != surface_caps.currentExtent.width) || (height != surface_caps.currentExtent.height);
         if (resized)
         {
+            swapchain->width = surface_caps.currentExtent.width;
+            swapchain->height = surface_caps.currentExtent.height;
+            ResizeSwapchain(swapchain.get(), physical_device, device, surface, vsync);
             // @TODO Handle swapchain resize
         }
 
@@ -263,8 +266,12 @@ namespace mirai
     VulkanRenderingDevice::~VulkanRenderingDevice()
     {
         VK_CHECK(vkWaitForFences(device, K_MAX_FRAME_IN_FLIGHTS, in_flight_fences, VK_TRUE, UINT64_MAX));
+
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);
+
+        for (auto &command_pool : command_pools)
+            vkDestroyCommandPool(device, command_pool, nullptr);
 
         for (auto &semaphore : image_acquire_semaphore)
             vkDestroySemaphore(device, semaphore, nullptr);
