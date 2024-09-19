@@ -47,3 +47,5 @@ CMakeUserPresets.json
 /build
 
 .vscode
+
+*.md

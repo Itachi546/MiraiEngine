@@ -88,9 +88,9 @@ namespace mirai
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_count, queue_family_properties.data());
 
         queue_family_indices.resize(3);
-        queue_family_indices[QueueType_Graphics] = K_INVALID_QUEUE_ID;
-        queue_family_indices[QueueType_Transfer] = K_INVALID_QUEUE_ID;
-        queue_family_indices[QueueType_Compute] = K_INVALID_QUEUE_ID;
+        queue_family_indices[QUEUE_TYPE_GRAPHICS] = K_INVALID_QUEUE_ID;
+        queue_family_indices[QUEUE_TYPE_TRANSFER] = K_INVALID_QUEUE_ID;
+        queue_family_indices[QUEUE_TYPE_COMPUTE] = K_INVALID_QUEUE_ID;
 
         for (uint32_t i = 0; i < queue_count; ++i)
         {
@@ -101,16 +101,16 @@ namespace mirai
             // Search for main queue that should be able to do all work (graphics, compute and transfer)
             if ((queue_family_property.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
-                queue_family_indices[QueueType_Graphics] = i;
+                queue_family_indices[QUEUE_TYPE_GRAPHICS] = i;
             }
             // Search for transfer queue
             if ((queue_family_property.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0 && (queue_family_property.queueFlags & VK_QUEUE_TRANSFER_BIT))
             {
-                queue_family_indices[QueueType_Transfer] = i;
+                queue_family_indices[QUEUE_TYPE_TRANSFER] = i;
             }
         }
 
-        ASSERT_MSG(queue_family_indices[QueueType_Graphics] != K_INVALID_QUEUE_ID, "Graphics Queue is not supported...");
+        ASSERT_MSG(queue_family_indices[QUEUE_TYPE_GRAPHICS] != K_INVALID_QUEUE_ID, "Graphics Queue is not supported...");
     }
 
     VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions)

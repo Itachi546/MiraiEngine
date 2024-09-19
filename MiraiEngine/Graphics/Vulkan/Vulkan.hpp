@@ -8,13 +8,13 @@
 
 #define VULKAN_1_3
 #define VK_NO_PROTOTYPES
-#include <volk/volk.h>
+#include <volk.h>
 /*
 #define VMA_IMPLEMENTATION
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vma/vk_mem_alloc.h>
 */
-#include "Graphics/RenderingDevice.h"
+#include "Graphics/RenderingDevice.hpp"
 #include "Engine/Log.hpp"
 
 namespace mirai
@@ -32,5 +32,26 @@ namespace mirai
     } while (0)
 
 #define VK_LOAD_FUNCTION(instance, pFuncName) (vkGetInstanceProcAddr(instance, pFuncName))
+
+    constexpr const VkFormat RD_FORMAT_TO_VK_FORMAT[Format::FORMAT_MAX] = {
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
+        VK_FORMAT_R8G8B8_UNORM,
+        VK_FORMAT_R8G8_UNORM,
+        VK_FORMAT_R8_UNORM,
+        VK_FORMAT_R16_SFLOAT,
+        VK_FORMAT_R16G16_SFLOAT,
+        VK_FORMAT_R16G16B16_SFLOAT,
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        VK_FORMAT_R32G32_SFLOAT,
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+    };
 
 } // namespace mirai

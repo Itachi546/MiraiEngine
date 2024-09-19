@@ -4,6 +4,7 @@
 #include "Log.hpp"
 
 #include <chrono>
+#include <filesystem>
 using namespace std::chrono_literals;
 
 namespace mirai
@@ -12,6 +13,7 @@ namespace mirai
 
     Engine::Engine() : running(true), dt_ms(16), elapsed_time_ms(0)
     {
+        Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(1360, 769, "MiraiEngine");
         renderer = std::make_unique<Renderer>();
@@ -29,9 +31,11 @@ namespace mirai
             window->update();
 
             if (app)
-            {
                 app->update();
-            }
+
+            renderer->update();
+
+            renderer->render();
 
             std::this_thread::sleep_for(16ms);
 

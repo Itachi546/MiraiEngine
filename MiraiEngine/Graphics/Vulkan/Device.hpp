@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Vulkan.hpp"
-#include "Graphics/RenderingDevice.h"
 
 #include <vector>
 

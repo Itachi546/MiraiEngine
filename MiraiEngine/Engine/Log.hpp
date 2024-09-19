@@ -38,6 +38,7 @@ namespace mirai
         {
             entries.push(LogEntry{LogLevel::Error, FormatLog(args...)});
             Write(Color_Red, "[ERROR] ", args...);
+            assert(0);
         }
 
         template <typename... Args>

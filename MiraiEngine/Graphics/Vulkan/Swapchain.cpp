@@ -129,25 +129,25 @@ namespace mirai
             Log::Warn("Fallbacking to FIFO_MODE_KHR");
         }
 
-        swapchain->composite_mode =
-            (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
-                ? VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
-            : (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
-                ? VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
-            : (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
-                ? VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR
-                : VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+        swapchain->composite_mode = (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+                                        ? VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+                                    : (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+                                        ? VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR
+                                    : (surface_caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+                                        ? VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR
+                                        : VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
         swapchain->current_transform = surface_caps.currentTransform;
         create_swapchain(swapchain, device, surface);
 
-        uint32_t imageCount = 0;
-        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &imageCount, nullptr));
-        swapchain->images.resize(imageCount);
-        swapchain->image_views.resize(imageCount);
+        uint32_t image_count = 0;
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+        swapchain->images.resize(image_count);
+        swapchain->image_views.resize(image_count);
 
-        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &imageCount, swapchain->images.data()));
-        swapchain->image_count = imageCount;
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, swapchain->images.data()));
+        swapchain->image_count = image_count;
+        swapchain->current_image_index = 0;
 
         VkImageViewCreateInfo image_view_create_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -161,8 +161,10 @@ namespace mirai
             },
         };
 
-        for (uint32_t i = 0; i < imageCount; ++i)
+        swapchain->image_layouts.resize(image_count);
+        for (uint32_t i = 0; i < image_count; ++i)
         {
+            swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
             image_view_create_info.image = swapchain->images[i];
             VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
         }

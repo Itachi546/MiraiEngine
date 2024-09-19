@@ -3,10 +3,34 @@
 #include "Engine/Log.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
-
-#include <glm/glm.hpp>
+#include "Common/Color.hpp"
+#include "Graphics/ScenePass.hpp"
+#include "Graphics/Renderer.hpp"
 
 using namespace mirai;
+const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
+
+class MainScenePass : public ScenePass
+{
+  public:
+    MainScenePass(const RenderPass &render_pass) : ScenePass(render_pass)
+    {
+        Log::Info("Main Scene Created...");
+    }
+
+    void update() override
+    {
+    }
+
+    void render(CommandBuffer *cb) override
+    {
+    }
+
+    ~MainScenePass()
+    {
+        Log::Info("Main Scene Destroyed ...");
+    }
+};
 
 class TestApplication : public App
 {
@@ -18,6 +42,21 @@ class TestApplication : public App
 
     void start() override
     {
+        std::vector<Attachment> attachments = {
+            Attachment{0, "swapchain_image", ATTACHMENT_TYPE_SWAPCHAIN, FORMAT_UNDEFINED, Color_Black},
+        };
+
+        int width, height;
+        Window::get()->get_size(&width, &height);
+
+        RenderPass main_render_pass = {
+            .color_attachments = attachments,
+            .depth_attachments = {},
+            .width = uint32_t(width),
+            .height = uint32_t(height),
+        };
+
+        Renderer::get()->add_scene_pass(std::make_unique<MainScenePass>(main_render_pass));
     }
 
     void update() override

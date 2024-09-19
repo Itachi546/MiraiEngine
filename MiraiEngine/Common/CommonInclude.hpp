@@ -7,8 +7,6 @@
 #define MIRAI_PLATFORM_WINDOW
 #endif
 
-#define ARR_SIZE(a) (sizeof(a) / sizeof(a[0]))
-
 #define ASSERT(cond) assert(cond)
 #define ASSERT_MSG(cond, message) assert(cond &&message)
 
