@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.5.0)
-set(TARGET_NAME TestApplication)
 
-add_executable(${TARGET_NAME} TestApplication.cpp)
+add_executable(TestApplication TestApplication.cpp)
 
-target_link_libraries(${TARGET_NAME} MiraiEngine_Windows)
+target_link_libraries(TestApplication MiraiEngine_Windows)
 add_subdirectory(Shaders/)
 
-add_dependencies(${TARGET_NAME} Shaders)
+add_dependencies(TestApplication Shaders)
 
-set_property(TARGET ${TARGET_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_property(TARGET TestApplication PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+message(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_custom_command(TARGET ${TARGET_NAME} 
+add_custom_command(TARGET TestApplication
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_BINARY_DIR}/SPIRV

@@ -11,6 +11,11 @@ vec2 positions[6] = vec2[](
 
 layout(location = 0) out vec2 uv;
 
+layout(set = 0, binding = 0) readonly buffer Positions
+{
+    vec3 vPosition[];
+};
+
 void main()
 {
     vec2 position = positions[gl_VertexIndex];

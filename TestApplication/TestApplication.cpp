@@ -62,9 +62,29 @@ class TestApplication : public App
 
         Renderer::get()->add_scene_pass(std::make_unique<MainScenePass>(main_render_pass));
 
-        ShaderID shader = rendering_utils::create_shader_module_from_file("SPIRV/main.vert.spv");
+        ShaderID shaders[] = {
+            rendering_utils::create_shader_module_from_file("SPIRV/main.vert.spv"),
+            rendering_utils::create_shader_module_from_file("SPIRV/main.frag.spv"),
+        };
 
-        RenderingDevice::get()->destroy_shaders(&shader, 1);
+        RasterizationState rs = RasterizationState::create();
+        DepthState ds = DepthState::create();
+        BlendState bs = BlendState::create();
+        Format format = FORMAT_B8G8R8A8_UNORM;
+
+        PipelineDescription pipeline_description;
+        pipeline_description.shader_count = 2;
+        pipeline_description.shaders = shaders;
+        pipeline_description.rasterization_state = &rs;
+        pipeline_description.depth_state = &ds;
+        pipeline_description.blend_state = &bs;
+        pipeline_description.color_attachment_count = 1;
+        pipeline_description.color_attachment_formats = &format;
+
+        PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, "test_pipline");
+
+        RenderingDevice::get()->destroy_shaders(shaders, 2);
+        RenderingDevice::get()->destroy_pipeline(&pipeline, 1);
     }
 
     void update() override
