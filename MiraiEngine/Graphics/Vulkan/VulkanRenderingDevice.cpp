@@ -64,7 +64,7 @@ namespace mirai
 
         uint32_t graphics_queue = queue_family_indices[QUEUE_TYPE_GRAPHICS];
         if (!PhysicalDeviceSupportPresentation(instance, physical_device, graphics_queue))
-            Log::Fatal("Selected Physical Device Doesn't Support Presentation!!!");
+            Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
         device = CreateDevice(instance, physical_device, queue_family_indices, device_extensions);
 

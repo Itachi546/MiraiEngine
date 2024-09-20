@@ -24,7 +24,7 @@ namespace mirai
 
             if (!available)
             {
-                Log::Error("Failed to find device extension: " + std::string(requested));
+                Log::Error("VULKAN::Failed to find device extension: " + std::string(requested));
                 return false;
             }
         }
@@ -37,7 +37,7 @@ namespace mirai
         uint32_t device_count = 0;
         VK_CHECK(vkEnumeratePhysicalDevices(instance, &device_count, nullptr));
         if (device_count == 0)
-            Log::Fatal("No Vulkan Supported GPU Found");
+            Log::Fatal("VULKAN::No Vulkan Supported GPU Found");
 
         std::vector<VkPhysicalDevice> physical_devices(device_count);
         gpus.resize(device_count);
@@ -52,7 +52,7 @@ namespace mirai
             gpus[i].vendor = properties.properties.vendorID;
             gpus[i].name = properties.properties.deviceName;
 
-            Log::Info("DeviceName: ", properties.properties.deviceName);
+            Log::Info("VULKAN::DeviceName: ", properties.properties.deviceName);
         }
 
 #if GPU_TYPE_INTEGRATED
@@ -65,14 +65,14 @@ namespace mirai
         {
             if (gpus[i].device_type == device_type)
             {
-                Log::Info("Selected Device: ", gpus[i].name);
+                Log::Info("VULKAN::Selected Device: ", gpus[i].name);
                 physical_device = physical_devices[i];
                 break;
             }
         }
 
         if (!is_device_extensions_available(physical_device, required_device_extensions))
-            Log::Fatal("Physical device doesn't support required extensions...");
+            Log::Fatal("VULKAN::Physical device doesn't support required extensions...");
 
         return physical_device;
     }
@@ -82,7 +82,7 @@ namespace mirai
         uint32_t queue_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_count, nullptr);
         if (queue_count == 0)
-            Log::Fatal("Queue count is zero");
+            Log::Fatal("VULKAN::Queue count is zero");
 
         std::vector<VkQueueFamilyProperties> queue_family_properties(queue_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_count, queue_family_properties.data());
@@ -122,10 +122,10 @@ namespace mirai
         bool bindless_supported = indexing_features.descriptorBindingPartiallyBound && indexing_features.runtimeDescriptorArray;
         if (!bindless_supported)
         {
-            Log::Fatal("Bindless resources is not supported ...");
+            Log::Fatal("VULKAN::Bindless resources is not supported ...");
         }
 
-        Log::Info("Bindless Resources: Supported");
+        Log::Info("VULKAN::Bindless Resources: Supported");
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
         device_features2.features.fragmentStoresAndAtomics = true;
