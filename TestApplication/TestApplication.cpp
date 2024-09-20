@@ -6,6 +6,10 @@
 #include "Common/Color.hpp"
 #include "Graphics/ScenePass.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
+
+#include <fstream>
+#include <filesystem>
 
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -57,6 +61,10 @@ class TestApplication : public App
         };
 
         Renderer::get()->add_scene_pass(std::make_unique<MainScenePass>(main_render_pass));
+
+        ShaderID shader = rendering_utils::create_shader_module_from_file("SPIRV/main.vert.spv");
+
+        RenderingDevice::get()->destroy_shaders(&shader, 1);
     }
 
     void update() override

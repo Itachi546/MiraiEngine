@@ -5,6 +5,7 @@ set(TARGET_NAME MiraiEngine_Windows)
 else()
     message(FATAL_ERROR "Unsupported platform")
 endif()
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
 if (MIRAI_DYNAMIC_LIBRARY)
 set(MIRAI_LIBRARY_TYPE SHARED)
@@ -41,19 +42,22 @@ if(NOT TARGET volk)
 endif()
 
 
-
 set(MIRAI_LIBRARIES
     glfw
     volk::volk
 )
 
-file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS *.hpp)
-file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS *.cpp)
+file(GLOB_RECURSE PROJECT_HEADER_FILES CONFIGURE_DEPENDS *.hpp)
+file(GLOB_RECURSE PROJECT_SOURCE_FILES CONFIGURE_DEPENDS *.cpp)
+
+set( HEADER_FILES ${PROJECT_HEADER_FILES})
+set( SOURCE_FILES ${PROJECT_SOURCE_FILES} "${CMAKE_SOURCE_DIR}/External/SPIRV-Reflect/spirv_reflect.c")
 
 add_library(${TARGET_NAME} ${MIRAI_LIBRARY_TYPE} ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(${TARGET_NAME} 
     PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ../External/SPIRV-Reflect
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${MIRAI_LIBRARIES})
@@ -70,7 +74,6 @@ if(WIN32)
     NOMINMAX
     )
     target_compile_options(${TARGET_NAME} PRIVATE /W3)
-    add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 else()
     message(FATAL_ERROR "Unsupported platform")
 endif()

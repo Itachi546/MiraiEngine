@@ -2,14 +2,49 @@
 
 #include "Common/CommonInclude.hpp"
 #include "Common/Color.hpp"
+#include <glm/glm.hpp>
+
 #include <string>
 #include <vector>
 #include <optional>
-
-#include <glm/glm.hpp>
+#include <memory>
 
 namespace mirai
 {
+
+    constexpr const uint32_t K_INVALID_QUEUE_ID = UINT32_MAX;
+    constexpr const uint32_t K_INVALID_ID = UINT32_MAX;
+
+    struct ID
+    {
+        uint32_t id = 0;
+        inline ID() = default;
+        ID(uint32_t _id) : id(_id) {}
+
+        bool is_valid() const { return id != K_INVALID_ID; }
+
+        size_t operator=(const ID &id) const { return id.id; }
+    };
+#define DEFINE_ID(m_name)                                                                    \
+    struct m_name##ID : public ID                                                            \
+    {                                                                                        \
+        inline operator bool() const { return id != 0; }                                     \
+        inline m_name##ID &operator=(m_name##ID p_other)                                     \
+        {                                                                                    \
+            id = p_other.id;                                                                 \
+            return *this;                                                                    \
+        }                                                                                    \
+        inline bool operator<(const m_name##ID &p_other) const { return id < p_other.id; }   \
+        inline bool operator==(const m_name##ID &p_other) const { return id == p_other.id; } \
+        inline bool operator!=(const m_name##ID &p_other) const { return id != p_other.id; } \
+        inline m_name##ID(const m_name##ID &p_other) : ID(p_other.id) {}                     \
+        inline explicit m_name##ID(uint32_t p_int) : ID(p_int) {}                            \
+        inline m_name##ID() = default;                                                       \
+    };
+
+    DEFINE_ID(Pipeline)
+    DEFINE_ID(Shader)
+
     enum class DeviceType
     {
         DEVICE_TYPE_OTHER = 0x0,
@@ -20,7 +55,6 @@ namespace mirai
         DEVICE_TYPE_MAX = 0x5
     };
 
-    constexpr const uint32_t K_INVALID_QUEUE_ID = UINT32_MAX;
     enum QueueType
     {
         QUEUE_TYPE_GRAPHICS = 0,
@@ -80,4 +114,58 @@ namespace mirai
         std::optional<Attachment> depth_attachments;
         uint32_t width, height;
     };
+
+    struct PipelineDescription
+    {
+    };
+
+    class CommandBuffer;
+
+    class RenderingDevice
+    {
+      public:
+        RenderingDevice()
+        {
+            Instance = this;
+        }
+
+        static RenderingDevice *get()
+        {
+            return Instance;
+        }
+
+        void set_validation(bool validation)
+        {
+            this->enable_validation = validation;
+        }
+
+        bool is_validation_enabled()
+        {
+            return this->enable_validation;
+        }
+
+        virtual void new_frame() = 0;
+
+        virtual void present() = 0;
+
+        virtual ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes) = 0;
+
+        virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
+
+        virtual void queue_command_buffer(CommandBuffer *command_buffer) = 0;
+
+        virtual void destroy_shaders(ShaderID *shader, uint32_t count) = 0;
+
+        virtual ~RenderingDevice() = default;
+
+      protected:
+        bool enable_validation;
+
+        static RenderingDevice *Instance;
+    };
+
+    namespace rendering_utils
+    {
+        ShaderID create_shader_module_from_file(const std::string &filename);
+    }
 }; // namespace mirai

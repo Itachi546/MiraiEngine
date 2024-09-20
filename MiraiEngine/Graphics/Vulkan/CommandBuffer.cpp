@@ -8,7 +8,7 @@ namespace mirai
 
     CommandBuffer::CommandBuffer()
     {
-        device = VulkanRenderingDevice::get();
+        device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
 
     void CommandBuffer::begin_render_pass(RenderPass *render_pass)

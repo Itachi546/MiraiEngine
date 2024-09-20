@@ -9,8 +9,6 @@
 namespace mirai
 {
 
-    VulkanRenderingDevice *VulkanRenderingDevice::Instance = nullptr;
-
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName)
     {
         if (!enable_validation)
@@ -26,10 +24,9 @@ namespace mirai
         VK_CHECK(vkSetDebugUtilsObjectNameEXT(device, &name_info));
     }
 
-    VulkanRenderingDevice::VulkanRenderingDevice()
+    VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
+                                                     resource_pool_shaders(32, "Shader")
     {
-        Instance = this;
-
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
@@ -158,6 +155,14 @@ namespace mirai
         return fence;
     }
 
+    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes)
+    {
+        uint32_t shader_id = resource_pool_shaders.obtain();
+        VulkanShader *shader = resource_pool_shaders.access(shader_id);
+        CreateShader(shader, device, code, code_size_in_bytes);
+        return ShaderID{shader_id};
+    }
+
     void VulkanRenderingDevice::new_frame()
     {
         vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
@@ -261,6 +266,16 @@ namespace mirai
 
         VK_CHECK(vkQueuePresentKHR(device_queues[QUEUE_TYPE_GRAPHICS], &present_info));
         current_frame = (current_frame + 1) % K_MAX_FRAME_IN_FLIGHTS;
+    }
+
+    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_id, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            VulkanShader *shader = resource_pool_shaders.access(shader_id[i]);
+            DestroyShader(shader, device);
+            resource_pool_shaders.release(shader_id[i]);
+        }
     }
 
     VulkanRenderingDevice::~VulkanRenderingDevice()

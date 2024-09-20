@@ -1,13 +1,18 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(TestApplication VERSION 0.0.1 LANGUAGES CXX C)
+set(TARGET_NAME TestApplication)
 
-add_executable(${PROJECT_NAME} TestApplication.cpp)
-message(CMAKE_LIB_DIRECTORY = "${CMAKE_BINARY_DIR}")
-target_link_libraries(${PROJECT_NAME} MiraiEngine_Windows)
+add_executable(${TARGET_NAME} TestApplication.cpp)
 
-# add_custom_command(TARGET ${PROJECT_NAME} 
-#   POST_BUILD
-#   COMMAND ${CMAKE_COMMAND} -E copy 
-#   ${CMAKE_BINARY_DIR}/glfw3.dll
-#   ${CMAKE_CURRENT_BINARY_DIR}/glfw3.dll
-# )
+target_link_libraries(${TARGET_NAME} MiraiEngine_Windows)
+add_subdirectory(Shaders/)
+
+add_dependencies(${TARGET_NAME} Shaders)
+
+set_property(TARGET ${TARGET_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_custom_command(TARGET ${TARGET_NAME} 
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  ${CMAKE_BINARY_DIR}/SPIRV
+  ${CMAKE_CURRENT_SOURCE_DIR}/SPIRV
+)

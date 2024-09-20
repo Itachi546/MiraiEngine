@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
 
+#include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
 

@@ -6,7 +6,7 @@
 
 namespace mirai
 {
-    class VulkanRenderingDevice;
+    class RenderingDevice;
     class CommandBuffer;
 
     class Renderer
@@ -35,7 +35,7 @@ namespace mirai
       private:
         static Renderer *Instance;
         std::vector<std::unique_ptr<ScenePass>> scene_passes;
-        std::unique_ptr<VulkanRenderingDevice> device;
+        std::unique_ptr<RenderingDevice> device;
 
         void render_scene_pass(CommandBuffer *cb, std::unique_ptr<ScenePass> &scene_pass);
     };
