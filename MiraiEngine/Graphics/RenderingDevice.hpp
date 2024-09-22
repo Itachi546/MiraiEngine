@@ -99,6 +99,19 @@ namespace mirai
         ATTACHMENT_TYPE_SWAPCHAIN
     };
 
+    enum AttachmentLoadOp
+    {
+        LOAD_OP_LOAD = 0,
+        LOAD_OP_CLEAR = 1,
+        LOAD_OP_DONT_CARE = 2,
+    };
+
+    enum AttachmentStoreOp
+    {
+        STORE_OP_STORE = 0,
+        STORE_OP_DONT_CARE = 0
+    };
+
     struct Attachment
     {
         uint32_t binding;
@@ -106,6 +119,9 @@ namespace mirai
         AttachmentType type;
         Format format;
         Color clear_color;
+
+        AttachmentLoadOp load_op;
+        AttachmentStoreOp store_op;
     };
 
     struct RenderPass
@@ -115,8 +131,110 @@ namespace mirai
         uint32_t width, height;
     };
 
+    enum Topology
+    {
+        TOPOLOGY_POINT_LIST = 0,
+        TOPOLOGY_LINE_LIST = 1,
+        TOPOLOGY_LINE_STRIP = 2,
+        TOPOLOGY_TRIANGLE_LIST = 3,
+        TOPOLOGY_TRIANGLE_STRIP = 4,
+        TOPOLOGY_TRIANGLE_FAN = 5,
+        TOPOLOGY_LINE_LIST_WITH_ADJACENCY = 6,
+        TOPOLOGY_LINE_STRIP_WITH_ADJACENCY = 7,
+        TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY = 8,
+        TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY = 9,
+        TOPOLOGY_PATCH_LIST = 10,
+        TOPOLOGY_MAX = 11
+    };
+
+    enum CullMode
+    {
+        CULL_MODE_NONE = 0,
+        CULL_MODE_FRONT,
+        CULL_MODE_BACK,
+        CULL_MODE_FRONT_AND_BACK,
+        CULL_MODE_MAX
+    };
+
+    enum FrontFace
+    {
+        FRONT_FACE_COUNTER_CLOCKWISE = 0,
+        FRONT_FACE_CLOCKWISE = 1,
+        FRONT_FACE_MAX
+    };
+
+    enum PolygonMode
+    {
+        POLYGON_MODE_FILL = 0,
+        POLYGON_MODE_LINE,
+        POLYGON_MODE_POINT,
+        POLYGON_MODE_MAX
+    };
+
+    struct RasterizationState
+    {
+        float line_width;
+        CullMode cull_mode;
+        PolygonMode polygon_mode;
+        FrontFace front_face;
+        bool conservative_mode;
+        bool enable_depth_clamp;
+
+        static RasterizationState create()
+        {
+            return RasterizationState{
+                .line_width = 1.0f,
+                .cull_mode = CULL_MODE_BACK,
+                .polygon_mode = POLYGON_MODE_FILL,
+                .front_face = FRONT_FACE_CLOCKWISE,
+                .conservative_mode = false,
+                .enable_depth_clamp = false,
+            };
+        }
+    };
+
+    struct DepthState
+    {
+        bool enable_depth_test;
+        bool enable_depth_write;
+        float max_depth_bounds, min_depth_bounds;
+
+        static DepthState create()
+        {
+            return DepthState{
+                .enable_depth_test = false,
+                .enable_depth_write = false,
+                .max_depth_bounds = 1.0f,
+                .min_depth_bounds = 0.0f,
+            };
+        }
+    };
+
+    struct BlendState
+    {
+        bool enable;
+
+        static BlendState create()
+        {
+            return BlendState{
+                .enable = false,
+            };
+        }
+    };
+
     struct PipelineDescription
     {
+        ShaderID *shaders;
+        uint32_t shader_count;
+
+        Topology topology = TOPOLOGY_TRIANGLE_LIST;
+        RasterizationState *rasterization_state;
+        DepthState *depth_state;
+
+        uint32_t color_attachment_count;
+        BlendState *blend_state;
+        Format *color_attachment_formats;
+        Format depth_attachment_format = FORMAT_UNDEFINED;
     };
 
     class CommandBuffer;
@@ -148,13 +266,16 @@ namespace mirai
 
         virtual void present() = 0;
 
-        virtual ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes) = 0;
+        virtual ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name = "") = 0;
+
+        virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 
         virtual void queue_command_buffer(CommandBuffer *command_buffer) = 0;
 
-        virtual void destroy_shaders(ShaderID *shader, uint32_t count) = 0;
+        virtual void destroy_shaders(ShaderID *shaders, uint32_t count) = 0;
+        virtual void destroy_pipeline(PipelineID *pipelines, uint32_t count) = 0;
 
         virtual ~RenderingDevice() = default;
 

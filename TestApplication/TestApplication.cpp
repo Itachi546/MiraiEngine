@@ -4,37 +4,14 @@
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Common/Color.hpp"
-#include "Graphics/ScenePass.hpp"
 #include "Graphics/Renderer.hpp"
-#include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
+#include "Graphics/Material.hpp"
 
 #include <fstream>
 #include <filesystem>
 
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
-
-class MainScenePass : public ScenePass
-{
-  public:
-    MainScenePass(const RenderPass &render_pass) : ScenePass(render_pass)
-    {
-        Log::Info("Main Scene Created...");
-    }
-
-    void update() override
-    {
-    }
-
-    void render(CommandBuffer *cb) override
-    {
-    }
-
-    ~MainScenePass()
-    {
-        Log::Info("Main Scene Destroyed ...");
-    }
-};
 
 class TestApplication : public App
 {
@@ -59,8 +36,6 @@ class TestApplication : public App
             .width = uint32_t(width),
             .height = uint32_t(height),
         };
-
-        Renderer::get()->add_scene_pass(std::make_unique<MainScenePass>(main_render_pass));
 
         ShaderID shaders[] = {
             rendering_utils::create_shader_module_from_file("SPIRV/main.vert.spv"),

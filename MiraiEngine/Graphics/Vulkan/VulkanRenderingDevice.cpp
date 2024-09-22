@@ -6,9 +6,11 @@
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
 
+#include <unordered_map>
+#include <algorithm>
+
 namespace mirai
 {
-
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName)
     {
         if (!enable_validation)
@@ -127,13 +129,14 @@ namespace mirai
 
         for (uint32_t i = 0; i < K_MAX_FRAME_IN_FLIGHTS; ++i)
         {
-            image_acquire_semaphore[i] = create_semaphore();
-            render_finished_semaphore[i] = create_semaphore();
-            in_flight_fences[i] = create_fence(true);
+            std::string index = std::to_string(i);
+            image_acquire_semaphore[i] = create_semaphore("image_acquire_semaphore" + index);
+            render_finished_semaphore[i] = create_semaphore("render_finished_semaphore" + index);
+            in_flight_fences[i] = create_fence("in_flight_fence" + index, true);
         }
     }
 
-    VkSemaphore VulkanRenderingDevice::create_semaphore()
+    VkSemaphore VulkanRenderingDevice::create_semaphore(const std::string &name)
     {
         VkSemaphoreCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -141,10 +144,12 @@ namespace mirai
 
         VkSemaphore semaphore = VK_NULL_HANDLE;
         VK_CHECK(vkCreateSemaphore(device, &create_info, nullptr, &semaphore));
+
+        set_debug_marker_object_name(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)semaphore, name.c_str());
         return semaphore;
     }
 
-    VkFence VulkanRenderingDevice::create_fence(bool signalled)
+    VkFence VulkanRenderingDevice::create_fence(const std::string &name, bool signalled)
     {
         VkFenceCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -152,16 +157,166 @@ namespace mirai
         };
         VkFence fence = VK_NULL_HANDLE;
         VK_CHECK(vkCreateFence(device, &create_info, nullptr, &fence));
+        set_debug_marker_object_name(VK_OBJECT_TYPE_FENCE, (uint64_t)fence, name.c_str());
         return fence;
     }
 
-    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes)
+    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name)
     {
         uint32_t shader_id = resource_pool_shaders.obtain();
         VulkanShader *shader = resource_pool_shaders.access(shader_id);
         CreateShader(shader, device, code, code_size_in_bytes);
+        set_debug_marker_object_name(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)shader->shader, debug_name.c_str());
         return ShaderID{shader_id};
     }
+
+    PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name)
+    {
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
+        std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> descriptor_sets;
+        std::vector<VkPushConstantRange> push_constants;
+        for (uint32_t i = 0; i < pipeline_description->shader_count; ++i)
+        {
+            VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);
+            shader_stage_create_infos[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shader_stage_create_infos[i].module = shader->shader;
+            shader_stage_create_infos[i].stage = shader->shader_stage;
+            shader_stage_create_infos[i].pName = "main";
+
+            if (shader->descriptor_sets.size() > 0)
+            {
+                for (auto &set : shader->descriptor_sets)
+                {
+                    auto found = descriptor_sets.find(set.set);
+                    if (found != descriptor_sets.end())
+                    {
+                        // Merge the bindings if the binding index is same
+                        MergeShaderBindings(found->second, set.bindings);
+                    }
+                    else
+                        descriptor_sets.insert(std::make_pair(set.set, set.bindings));
+                }
+            }
+
+            MergePushConstants(push_constants, shader->push_constants);
+        }
+
+        VkPipelineViewportStateCreateInfo viewport_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .scissorCount = 1,
+        };
+
+        VkPipelineRasterizationStateCreateInfo rasterization_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .depthClampEnable = pipeline_description->rasterization_state->enable_depth_clamp,
+            .polygonMode = (VkPolygonMode)pipeline_description->rasterization_state->polygon_mode,
+            .cullMode = (VkCullModeFlags)pipeline_description->rasterization_state->cull_mode,
+            .frontFace = (VkFrontFace)pipeline_description->rasterization_state->front_face,
+            .depthBiasEnable = false,
+            .lineWidth = pipeline_description->rasterization_state->line_width,
+        };
+
+        VkPipelineMultisampleStateCreateInfo multisample_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        };
+
+        VkPipelineDepthStencilStateCreateInfo depth_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = pipeline_description->depth_state->enable_depth_test,
+            .depthWriteEnable = pipeline_description->depth_state->enable_depth_write,
+            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+            .minDepthBounds = pipeline_description->depth_state->min_depth_bounds,
+            .maxDepthBounds = pipeline_description->depth_state->max_depth_bounds,
+        };
+
+        uint32_t attachment_count = pipeline_description->color_attachment_count;
+
+        std::vector<VkPipelineColorBlendAttachmentState> attachment_blend_states(attachment_count);
+        std::vector<VkFormat> color_attachment_formats(attachment_count);
+
+        for (uint32_t i = 0; i < attachment_count; ++i)
+        {
+            attachment_blend_states[i].blendEnable = pipeline_description->blend_state->enable;
+            attachment_blend_states[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+            color_attachment_formats[i] = RD_FORMAT_TO_VK_FORMAT[pipeline_description->color_attachment_formats[i]];
+        };
+
+        VkFormat depth_format = RD_FORMAT_TO_VK_FORMAT[pipeline_description->depth_attachment_format];
+        VkFormat stencil_format = depth_format == VK_FORMAT_D24_UNORM_S8_UINT ? depth_format : VK_FORMAT_UNDEFINED;
+
+        VkPipelineRenderingCreateInfo rendering_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+            .colorAttachmentCount = attachment_count,
+            .pColorAttachmentFormats = color_attachment_formats.data(),
+            .depthAttachmentFormat = depth_format,
+            .stencilAttachmentFormat = stencil_format,
+        };
+
+        VkPipelineVertexInputStateCreateInfo vertex_input_state = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+
+        VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = VkPrimitiveTopology(pipeline_description->topology),
+        };
+
+        VkPipelineColorBlendStateCreateInfo blend_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .attachmentCount = attachment_count,
+            .pAttachments = attachment_blend_states.data(),
+        };
+
+        VkDynamicState dynamic_states[] = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+        };
+
+        VkPipelineDynamicStateCreateInfo dynamic_state = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = 2,
+            .pDynamicStates = dynamic_states,
+        };
+
+        uint32_t pipeline_id = resource_pool_pipelines.obtain();
+        VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
+
+        for (const auto &[key, val] : descriptor_sets)
+            pipeline->set_layouts.push_back(CreateDescriptorSetLayout(device, val, key, 0));
+
+        VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = static_cast<uint32_t>(pipeline->set_layouts.size()),
+            .pSetLayouts = pipeline->set_layouts.data(),
+            .pushConstantRangeCount = static_cast<uint32_t>(push_constants.size()),
+            .pPushConstantRanges = push_constants.data(),
+        };
+
+        VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &pipeline->pipeline_layout));
+
+        VkGraphicsPipelineCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .pNext = &rendering_info,
+            .stageCount = pipeline_description->shader_count,
+            .pStages = shader_stage_create_infos.data(),
+            .pVertexInputState = &vertex_input_state,
+            .pInputAssemblyState = &input_assembly_state,
+            .pTessellationState = nullptr,
+            .pViewportState = &viewport_state,
+            .pRasterizationState = &rasterization_state,
+            .pMultisampleState = &multisample_state,
+            .pDepthStencilState = &depth_state,
+            .pColorBlendState = &blend_state,
+            .pDynamicState = &dynamic_state,
+            .layout = pipeline->pipeline_layout,
+        };
+
+        VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
+        set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
+
+        return PipelineID{pipeline_id};
+    };
 
     void VulkanRenderingDevice::new_frame()
     {
@@ -268,13 +423,30 @@ namespace mirai
         current_frame = (current_frame + 1) % K_MAX_FRAME_IN_FLIGHTS;
     }
 
-    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_id, uint32_t count)
+    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_ids, uint32_t count)
     {
         for (uint32_t i = 0; i < count; ++i)
         {
-            VulkanShader *shader = resource_pool_shaders.access(shader_id[i]);
+            VulkanShader *shader = resource_pool_shaders.access(shader_ids[i]);
             DestroyShader(shader, device);
-            resource_pool_shaders.release(shader_id[i]);
+            resource_pool_shaders.release(shader_ids[i]);
+        }
+    }
+
+    void VulkanRenderingDevice::destroy_pipeline(PipelineID *pipeline_ids, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
+
+            for (auto &set_layout : pipeline->set_layouts)
+                vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
+            vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
+            vkDestroyPipeline(device, pipeline->pipeline, nullptr);
+
+            pipeline->set_layouts.clear();
+            pipeline->pipeline = VK_NULL_HANDLE;
+            pipeline->pipeline_layout = VK_NULL_HANDLE;
         }
     }
 

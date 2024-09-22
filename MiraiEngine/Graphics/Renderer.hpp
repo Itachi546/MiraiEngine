@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <vector>
-#include "ScenePass.hpp"
 
 namespace mirai
 {
@@ -21,11 +20,6 @@ namespace mirai
             return Instance;
         }
 
-        void add_scene_pass(std::unique_ptr<ScenePass> scene_pass)
-        {
-            scene_passes.push_back(std::move(scene_pass));
-        }
-
         void update();
 
         void render();
@@ -34,9 +28,6 @@ namespace mirai
 
       private:
         static Renderer *Instance;
-        std::vector<std::unique_ptr<ScenePass>> scene_passes;
         std::unique_ptr<RenderingDevice> device;
-
-        void render_scene_pass(CommandBuffer *cb, std::unique_ptr<ScenePass> &scene_pass);
     };
 } // namespace mirai

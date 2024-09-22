@@ -2,7 +2,7 @@
 
 #include "Graphics/RenderingDevice.hpp"
 #include "Vulkan.hpp"
-#include "Pipeline.hpp"
+#include "Shader.hpp"
 #include "Common/ResourcePool.hpp"
 
 #include <vector>
@@ -27,7 +27,9 @@ namespace mirai
         VkQueue get_device_queue(QueueType queue_type) { return device_queues[queue_type]; }
         uint32_t get_queue_family_indices(QueueType queue_type) { return queue_family_indices[queue_type]; }
 
-        ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes) override;
+        ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name = "") override;
+
+        PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
 
         void new_frame() override;
 
@@ -42,20 +44,29 @@ namespace mirai
 
         void present() override;
 
-        void destroy_shaders(ShaderID *shader, uint32_t count) override;
+        void destroy_shaders(ShaderID *shaders, uint32_t count) override;
+
+        void destroy_pipeline(PipelineID *pipelines, uint32_t count) override;
 
         ~VulkanRenderingDevice();
 
       private:
         void set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName);
 
-        VkSemaphore create_semaphore();
+        VkSemaphore create_semaphore(const std::string &name);
 
-        VkFence create_fence(bool signalled = false);
+        VkFence create_fence(const std::string &name, bool signalled = false);
 
         std::vector<const char *> instance_extensions;
         std::vector<const char *> validation_layers;
         std::vector<const char *> device_extensions;
+
+        struct VulkanPipeline
+        {
+            VkPipeline pipeline;
+            std::vector<VkDescriptorSetLayout> set_layouts;
+            VkPipelineLayout pipeline_layout;
+        };
 
         ResourcePool<VulkanShader> resource_pool_shaders;
         ResourcePool<VulkanPipeline> resource_pool_pipelines;

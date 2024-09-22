@@ -16,10 +16,19 @@ layout(set = 0, binding = 0) readonly buffer Positions
     vec3 vPosition[];
 };
 
+layout(push_constant) uniform PushConstant
+{
+    mat4 VP;
+    mat4 P;
+    mat4 V;
+    vec4 camera_position;
+};
+
 void main()
 {
-    vec2 position = positions[gl_VertexIndex];
-    gl_Position = vec4(position, 0.0f, 1.0f);
+    mat4 m = VP * P * V;
+    vec2 position = mat2(m) * positions[gl_VertexIndex];
+    gl_Position = vec4(position + camera_position.xz, 0.0f, 1.0f);
 
     uv = position;
 }
