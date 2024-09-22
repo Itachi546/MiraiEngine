@@ -14,21 +14,16 @@ namespace mirai
         Instance = this;
     }
 
+    void Renderer::compile_passes()
+    {
+    }
+
     void Renderer::update()
     {
-        /*
         for (auto &scene_pass : scene_passes)
             scene_pass->update();
-            */
     }
-    /*
-    void Renderer::render_scene_pass(CommandBuffer *cb, std::unique_ptr<ScenePass> &scene_pass)
-    {
-        cb->begin_render_pass(scene_pass->get_render_pass());
-        scene_pass->update();
-        cb->end_render_pass();
-    }
-    */
+
     void Renderer::render()
     {
         device->new_frame();
@@ -36,10 +31,10 @@ namespace mirai
         CommandBuffer *cb = device->get_command_buffer();
 
         cb->begin();
-        /*
+
         for (auto &scene_pass : scene_passes)
-            render_scene_pass(cb, scene_pass);
-        */
+            scene_pass->render(cb, scene.get());
+
         device->queue_command_buffer(cb);
 
         device->present();

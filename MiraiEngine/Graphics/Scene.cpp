@@ -6,4 +6,8 @@ namespace mirai
     {
         component_manager = std::make_unique<ComponentManager>();
     }
+
+    void Scene::update()
+    {
+    }
 } // namespace mirai

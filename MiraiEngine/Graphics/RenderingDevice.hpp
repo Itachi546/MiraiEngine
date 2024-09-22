@@ -124,6 +124,9 @@ namespace mirai
         AttachmentStoreOp store_op;
     };
 
+    constexpr const char *COLOR_ATTACHMENT_OUTPUT = "main_color_attachment";
+    constexpr const char *DEPTH_ATTACHMENT_OUTPUT = "main_depth_attachment";
+
     struct RenderPass
     {
         std::vector<Attachment> color_attachments;

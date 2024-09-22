@@ -5,6 +5,7 @@
 namespace mirai
 {
     struct ComponentManager;
+    class CommandBuffer;
 
     class Scene
     {
@@ -16,6 +17,8 @@ namespace mirai
         void remove_entity(Entity entity) { ecs::destroy_entity(component_manager.get(), entity); }
 
         ComponentManager *get_component_manager() { return component_manager.get(); }
+
+        void update();
 
         virtual ~Scene() = default;
 

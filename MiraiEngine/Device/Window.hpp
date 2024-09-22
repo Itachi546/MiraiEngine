@@ -18,7 +18,7 @@ namespace mirai
         Window(const Window &window) = delete;
         Window operator=(const Window &window) = delete;
 
-        Window(int width, int height, const std::string &title);
+        Window(uint32_t width, uint32_t height, const std::string &title);
 
         static Window *get() { return Instance; }
 
@@ -32,7 +32,7 @@ namespace mirai
 
         float get_aspect_ratio() const { return static_cast<float>(width) / static_cast<float>(height); }
 
-        void get_size(int *width, int *height) const
+        void get_size(uint32_t *width, uint32_t *height) const
         {
             if (fullscreen)
             {
@@ -48,7 +48,7 @@ namespace mirai
 
         void set_fullscreen(bool fullscreen);
 
-        void set_size(int width, int height);
+        void set_size(uint32_t width, uint32_t height);
 
         glm::vec2 get_mouse_position() const
         {
@@ -85,8 +85,8 @@ namespace mirai
         static Window *Instance;
 
         GLFWwindow *glfw_window;
-        int width, height;
-        int fullscreen_width, fullscreen_height;
+        uint32_t width, height;
+        uint32_t fullscreen_width, fullscreen_height;
         std::string title;
         bool fullscreen;
 

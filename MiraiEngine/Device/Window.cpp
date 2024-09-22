@@ -19,8 +19,8 @@ namespace mirai
     static void WindowSizeCallback(GLFWwindow *glfw_window, int width, int height)
     {
         Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
-        window->width = width;
-        window->height = height;
+        window->width = static_cast<uint32_t>(width);
+        window->height = static_cast<uint32_t>(height);
     }
 
     static void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y)
@@ -41,14 +41,14 @@ namespace mirai
 
     Window *Window::Instance = nullptr;
 
-    Window::Window(int width, int height, const std::string &title) : width(width),
-                                                                      height(height),
-                                                                      title(title),
-                                                                      fullscreen(false),
-                                                                      mouse_pos(0.0f, 0.0f),
-                                                                      mouse_pos_delta(0.0f, 0.0f),
-                                                                      mouse_scroll(0.0f, 0.0f),
-                                                                      mouse_scroll_delta(0.0f, 0.0f)
+    Window::Window(uint32_t width, uint32_t height, const std::string &title) : width(width),
+                                                                                height(height),
+                                                                                title(title),
+                                                                                fullscreen(false),
+                                                                                mouse_pos(0.0f, 0.0f),
+                                                                                mouse_pos_delta(0.0f, 0.0f),
+                                                                                mouse_scroll(0.0f, 0.0f),
+                                                                                mouse_scroll_delta(0.0f, 0.0f)
     {
         if (!glfwInit())
         {
@@ -112,28 +112,29 @@ namespace mirai
 
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode *videoMode = glfwGetVideoMode(monitor);
-        fullscreen_width = videoMode->width;
-        fullscreen_height = videoMode->height;
+        fullscreen_width = (uint32_t)videoMode->width;
+        fullscreen_height = (uint32_t)videoMode->height;
         if (fullscreen)
         {
-            glfwSetWindowMonitor(glfw_window, monitor, 0, 0, fullscreen_width, fullscreen_height, GLFW_DONT_CARE);
+
+            glfwSetWindowMonitor(glfw_window, monitor, 0, 0, width, height, GLFW_DONT_CARE);
             Log::Info("Enabling Fullsceen");
         }
         else
         {
             Log::Info("Disabling Fullscreen");
-            int xpos = (fullscreen_width - width) / 2;
-            int ypos = (fullscreen_height - height) / 2;
-            glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
+            uint32_t xpos = (fullscreen_width - width) / 2;
+            uint32_t ypos = (fullscreen_height - height) / 2;
+            glfwSetWindowMonitor(glfw_window, nullptr, static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(width), static_cast<int>(height), GLFW_DONT_CARE);
         }
     }
 
-    void Window::set_size(int width, int height)
+    void Window::set_size(uint32_t width, uint32_t height)
     {
         Log::Info("Resizing Window");
-        int xpos = (fullscreen_width - width) / 2;
-        int ypos = (fullscreen_height - height) / 2;
-        glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, GLFW_DONT_CARE);
+        uint32_t xpos = (fullscreen_width - width) / 2;
+        uint32_t ypos = (fullscreen_height - height) / 2;
+        glfwSetWindowMonitor(glfw_window, nullptr, static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(width), static_cast<int>(height), GLFW_DONT_CARE);
     }
 
     Window::~Window()

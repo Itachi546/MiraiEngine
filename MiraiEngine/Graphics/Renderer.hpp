@@ -3,10 +3,13 @@
 #include <memory>
 #include <vector>
 
+#include "ScenePass/ScenePass.hpp"
+
 namespace mirai
 {
     class RenderingDevice;
     class CommandBuffer;
+    class Scene;
 
     class Renderer
     {
@@ -20,6 +23,23 @@ namespace mirai
             return Instance;
         }
 
+        void register_scene_pass(std::unique_ptr<ScenePass> scene_pass)
+        {
+            scene_passes.push_back(std::move(scene_pass));
+        }
+
+        void set_scene(std::unique_ptr<Scene> scene)
+        {
+            this->scene = std::move(scene);
+        }
+
+        Scene *get_scene()
+        {
+            return scene.get();
+        }
+
+        void compile_passes();
+
         void update();
 
         void render();
@@ -28,6 +48,9 @@ namespace mirai
 
       private:
         static Renderer *Instance;
+
+        std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
+        std::vector<std::unique_ptr<ScenePass>> scene_passes;
     };
 } // namespace mirai

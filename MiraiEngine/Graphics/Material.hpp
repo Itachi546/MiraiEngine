@@ -9,36 +9,60 @@ namespace mirai
       public:
         Material(const std::string &name);
 
-        void create_from_file(std::vector<std::string> &shader_files);
+        void create_from_file(const std::vector<std::string> &shader_files);
 
-        template <typename T>
-        void set_uniform(const std::string &name, const T &value, std::size_t size = 0)
+        void set_cull_mode(CullMode cull_mode)
         {
+            if (this->cull_mode == cull_mode)
+                return;
+
+            hash = 0;
+            this->cull_mode = cull_mode;
         }
 
-        void set_resource(const std::string &name, void *resource)
+        void set_front_face(FrontFace front_face)
         {
+            if (this->front_face == front_face)
+                return;
+
+            hash = 0;
+            this->front_face = front_face;
         }
 
-        void bind(CommandBuffer *command_buffer)
+        void set_depth_test(bool depth_test)
         {
-            // uniform_object->bind(command_buffer);
-            // uniform_set->bind(command_buffer);
+            if (this->enable_depth_test == depth_test)
+                return;
+            hash = 0;
+            this->enable_depth_test = depth_test;
         }
 
-      private:
+        void set_depth_write(bool depth_write)
+        {
+            if (this->enable_depth_write == depth_write)
+                return;
+
+            hash = 0;
+            this->enable_depth_write = depth_write;
+        }
+
+        uint64_t get_hash()
+        {
+            if (hash == 0)
+                calculate_hash();
+            return hash;
+        }
+
+      protected:
         std::string name;
-        PipelineID pipeline;
+        uint64_t hash;
 
-        struct UniformObject
-        {
-        };
+        CullMode cull_mode;
+        FrontFace front_face;
 
-        struct UniformSet
-        {
-        };
+        bool enable_depth_test;
+        bool enable_depth_write;
 
-        UniformObject uniform_object;
-        UniformSet uniform_set;
+        void calculate_hash();
     };
 } // namespace mirai

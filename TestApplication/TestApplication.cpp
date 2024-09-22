@@ -3,9 +3,11 @@
 #include "Engine/Log.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
-#include "Common/Color.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Graphics/Material.hpp"
+#include "ScenePass/ForwardPass.hpp"
+
+#include "FullScreenMaterial.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -23,43 +25,32 @@ class TestApplication : public App
 
     void start() override
     {
-        std::vector<Attachment> color_attachments = {
-            Attachment{0, "main_color_attachment", ATTACHMENT_TYPE_SWAPCHAIN, FORMAT_UNDEFINED, Color_Black},
-        };
-
-        int width, height;
+        uint32_t width, height;
         Window::get()->get_size(&width, &height);
+        Renderer::get()->register_scene_pass(std::make_unique<ForwardPass>(width, height));
 
-        RenderPass main_render_pass = {
-            .color_attachments = color_attachments,
-            .depth_attachments = {},
-            .width = uint32_t(width),
-            .height = uint32_t(height),
-        };
+        Scene *scene = Renderer::get()->get_scene();
 
-        ShaderID shaders[] = {
-            rendering_utils::create_shader_module_from_file("SPIRV/main.vert.spv"),
-            rendering_utils::create_shader_module_from_file("SPIRV/main.frag.spv"),
-        };
+        Material *mat = new FullScreenMaterial();
 
-        RasterizationState rs = RasterizationState::create();
-        DepthState ds = DepthState::create();
-        BlendState bs = BlendState::create();
-        Format format = FORMAT_B8G8R8A8_UNORM;
+        mat->set_cull_mode(CULL_MODE_FRONT);
+        /*
+        Log::Debug("Hash: ", mat->get_hash());
 
-        PipelineDescription pipeline_description;
-        pipeline_description.shader_count = 2;
-        pipeline_description.shaders = shaders;
-        pipeline_description.rasterization_state = &rs;
-        pipeline_description.depth_state = &ds;
-        pipeline_description.blend_state = &bs;
-        pipeline_description.color_attachment_count = 1;
-        pipeline_description.color_attachment_formats = &format;
+        Log::Debug("Hash: ", mat->get_hash());
 
-        PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, "test_pipline");
+        mat->set_cull_mode(CULL_MODE_NONE);
+        Log::Debug("Hash: ", mat->get_hash());
 
-        RenderingDevice::get()->destroy_shaders(shaders, 2);
-        RenderingDevice::get()->destroy_pipeline(&pipeline, 1);
+        mat->set_depth_test(true);
+        Log::Debug("Hash: ", mat->get_hash());
+        mat->set_depth_test(false);
+        Log::Debug("Hash: ", mat->get_hash());
+        */
+        Material *mat2 = new FullScreenMaterial();
+        Log::Debug("HashMat2: ", mat2->get_hash() == mat->get_hash());
+
+        delete mat;
     }
 
     void update() override
