@@ -44,6 +44,7 @@ namespace mirai
 
     DEFINE_ID(Pipeline)
     DEFINE_ID(Shader)
+    DEFINE_ID(Texture)
 
     enum class DeviceType
     {
@@ -238,6 +239,79 @@ namespace mirai
         BlendState *blend_state;
         Format *color_attachment_formats;
         Format depth_attachment_format = FORMAT_UNDEFINED;
+    };
+
+    enum TextureType
+    {
+        TEXTURE_TYPE_1D = 0,
+        TEXTURE_TYPE_2D = 1,
+        TEXTURE_TYPE_3D = 2
+    };
+
+    enum SamplerAddressMode
+    {
+        SAMPLER_ADDRESS_MODE_REPEAT = 0,
+        SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT = 1,
+        SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE = 2,
+        SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER = 3,
+        SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE = 4,
+    };
+
+    enum FilterMode
+    {
+        FILTER_NEAREST = 0,
+        FILTER_LINEAR = 1,
+    };
+
+    enum SamplerMipmapMode
+    {
+        SAMPLER_MIPMAP_NEAREST = 0,
+        SAMPLER_MIPMAP_LINEAR = 1,
+    };
+
+    struct SamplerDescription
+    {
+        SamplerAddressMode address_mode_u, address_mode_v, address_mode_w;
+        FilterMode min_filter, mag_filter;
+        SamplerMipmapMode mipmap_mode;
+        float lod_bias;
+        float max_anisotropy;
+        float min_lod;
+        float max_lod;
+        bool enable_anisotropy;
+    };
+
+    enum TextureUsageBits
+    {
+        TEXTURE_USAGE_TRANSFER_SRC_BIT = (1 << 0),
+        TEXTURE_USAGE_TRANSFER_DST_BIT = (1 << 1),
+        TEXTURE_USAGE_SAMPLED_BIT = (1 << 2),
+        TEXTURE_USAGE_COLOR_ATTACHMENT_BIT = (1 << 3),
+        TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT = (1 << 4),
+        TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT = (1 << 5),
+        TEXTURE_USAGE_INPUT_ATTACHMENT_BIT = (1 << 6),
+        TEXTURE_USAGE_STORAGE_BIT = (1 << 7),
+    };
+
+    enum BufferUsageBits
+    {
+        BUFFER_USAGE_TRANSFER_SRC_BIT = (1 << 0),
+        BUFFER_USAGE_TRANSFER_DST_BIT = (1 << 1),
+        BUFFER_USAGE_UNIFORM_BUFFER_BIT = (1 << 4),
+        BUFFER_USAGE_STORAGE_BUFFER_BIT = (1 << 5),
+        BUFFER_USAGE_INDEX_BUFFER_BIT = (1 << 6),
+        BUFFER_USAGE_VERTEX_BUFFER_BIT = (1 << 7),
+        BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8)
+    };
+
+    struct TextureDescription
+    {
+        uint32_t width, height, depth;
+        uint32_t mip_levels, array_layers;
+        TextureType texture_type;
+        Format format;
+        uint64_t usage_flags;
+        SamplerDescription *sampler_desc;
     };
 
     class CommandBuffer;

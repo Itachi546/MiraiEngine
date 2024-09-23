@@ -6,6 +6,10 @@
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
 
+#define VMA_IMPLEMENTATION
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include <vma/vk_mem_alloc.h>
+
 #include <unordered_map>
 #include <algorithm>
 
@@ -27,7 +31,8 @@ namespace mirai
     }
 
     VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
-                                                     resource_pool_shaders(32, "Shader")
+                                                     resource_pool_shaders(32, "Shader"),
+                                                     resource_pool_textures(1024, "Texture")
     {
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
@@ -69,6 +74,8 @@ namespace mirai
             Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
         device = CreateDevice(instance, physical_device, queue_family_indices, device_extensions);
+
+        vma_allocator = create_allocator();
 
         device_queues.resize(queue_family_indices.size());
         vkGetDeviceQueue(device, graphics_queue, 0, &device_queues[QUEUE_TYPE_GRAPHICS]);
@@ -149,6 +156,24 @@ namespace mirai
         return semaphore;
     }
 
+    VmaAllocator VulkanRenderingDevice::create_allocator()
+    {
+        VmaVulkanFunctions vulkan_functions = {};
+        vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+        vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+        VmaAllocatorCreateInfo create_info = {
+            .physicalDevice = physical_device,
+            .device = device,
+            .pVulkanFunctions = &vulkan_functions,
+            .instance = instance,
+            .vulkanApiVersion = VULKAN_API_VERSION};
+
+        VmaAllocator allocator = VK_NULL_HANDLE;
+        VK_CHECK(vmaCreateAllocator(&create_info, &allocator));
+        return allocator;
+    }
+
     VkFence VulkanRenderingDevice::create_fence(const std::string &name, bool signalled)
     {
         VkFenceCreateInfo create_info = {
@@ -159,6 +184,29 @@ namespace mirai
         VK_CHECK(vkCreateFence(device, &create_info, nullptr, &fence));
         set_debug_marker_object_name(VK_OBJECT_TYPE_FENCE, (uint64_t)fence, name.c_str());
         return fence;
+    }
+
+    VkSampler VulkanRenderingDevice::create_sampler(SamplerDescription *desc)
+    {
+        VkSamplerCreateInfo createInfo = {
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .pNext = nullptr,
+            .magFilter = VkFilter(desc->min_filter),
+            .minFilter = VkFilter(desc->mag_filter),
+            .mipmapMode = VkSamplerMipmapMode(desc->mipmap_mode),
+            .addressModeU = VkSamplerAddressMode(desc->address_mode_u),
+            .addressModeV = VkSamplerAddressMode(desc->address_mode_v),
+            .addressModeW = VkSamplerAddressMode(desc->address_mode_v),
+            .mipLodBias = desc->lod_bias,
+            .anisotropyEnable = desc->enable_anisotropy,
+            .maxAnisotropy = desc->max_anisotropy,
+            .minLod = desc->min_lod,
+            .maxLod = desc->max_lod,
+        };
+
+        VkSampler sampler = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateSampler(device, &createInfo, nullptr, &sampler));
+        return sampler;
     }
 
     ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name)
@@ -317,6 +365,91 @@ namespace mirai
         set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
 
         return PipelineID{pipeline_id};
+    }
+    TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name)
+    {
+        uint32_t textureID = resource_pool_textures.obtain();
+        VulkanTexture *texture = resource_pool_textures.access(textureID);
+        texture->width = texture_description->width;
+        texture->height = texture_description->height;
+        texture->depth = texture_description->depth;
+        texture->mip_levels = texture_description->mip_levels;
+        texture->array_layers = texture_description->array_layers;
+        texture->image_type = VkImageType(texture_description->texture_type);
+        texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        // @TODO cache sampler
+        if (texture_description->sampler_desc)
+            texture->sampler = create_sampler(texture_description->sampler_desc);
+        else
+            texture->sampler = VK_NULL_HANDLE;
+
+        VkImageUsageFlags usage = 0;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_TRANSFER_SRC_BIT))
+            usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_TRANSFER_DST_BIT))
+            usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_SAMPLED_BIT))
+            usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_COLOR_ATTACHMENT_BIT))
+            usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT))
+            usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_INPUT_ATTACHMENT_BIT))
+            usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+        if ((texture_description->usage_flags & TEXTURE_USAGE_STORAGE_BIT))
+            usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+
+        VkImageAspectFlags image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        if (texture_description->usage_flags & TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT)
+        {
+            image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+            if (texture_description->usage_flags & TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT)
+                image_aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+        texture->format = RD_FORMAT_TO_VK_FORMAT[texture_description->format];
+        texture->image_aspect = image_aspect;
+
+        VkImageCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = texture->image_type,
+            .format = texture->format,
+            .extent = {texture->width, texture->height, texture->depth},
+            .mipLevels = texture->mip_levels,
+            .arrayLayers = texture->array_layers,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = usage,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+
+        VmaAllocationCreateInfo allocation_create_info = {};
+        allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        allocation_create_info.flags = 0;
+
+        // Create Image
+        VmaAllocationInfo allocation_info = {};
+        VK_CHECK(vmaCreateImage(vma_allocator, &create_info, &allocation_create_info, &texture->image, &texture->allocation, &allocation_info));
+        set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)texture->image, debug_name.c_str());
+        total_memory_usage += texture->allocation->GetSize();
+
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = texture->image,
+            .viewType = VkImageViewType(texture->image_type),
+            .format = texture->format,
+            .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+            .subresourceRange = {
+                .aspectMask = texture->image_aspect,
+                .levelCount = texture->mip_levels,
+                .layerCount = texture->array_layers,
+            },
+        };
+        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_view));
+        set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_view, (debug_name + "_image_view").c_str());
+        return TextureID{textureID};
     };
 
     void VulkanRenderingDevice::new_frame()
@@ -480,6 +613,7 @@ namespace mirai
         swapchain = nullptr;
         vkDestroySurfaceKHR(instance, surface, nullptr);
 
+        vmaDestroyAllocator(vma_allocator);
         vkDestroyDevice(device, nullptr);
         if (debug_utils_messenger != VK_NULL_HANDLE)
             vkDestroyDebugUtilsMessengerEXT(instance, debug_utils_messenger, nullptr);

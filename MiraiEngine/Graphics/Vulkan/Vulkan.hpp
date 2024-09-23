@@ -9,15 +9,11 @@
 #define VULKAN_1_3
 #define VK_NO_PROTOTYPES
 #include <volk.h>
-/*
-#define VMA_IMPLEMENTATION
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
-#include <vma/vk_mem_alloc.h>
-*/
+
 #include "Graphics/RenderingDevice.hpp"
 #include "Engine/Log.hpp"
 
-namespace mirai
+    namespace mirai
 {
     constexpr const uint32_t VULKAN_API_VERSION VK_API_VERSION_1_3;
 
