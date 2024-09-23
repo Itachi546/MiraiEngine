@@ -172,7 +172,7 @@ namespace mirai
         template <typename T>
         inline std::shared_ptr<ComponentArray<T>> get_component_array()
         {
-            uint32_t comp_id = GetComponentTypeId<T>();
+            uint32_t comp_id = get_component_type_id<T>();
             ASSERT(comp_id < MAX_COMPONENTS);
             return std::static_pointer_cast<ComponentArray<T>>(component_array[comp_id]);
         }

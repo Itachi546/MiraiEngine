@@ -3,6 +3,7 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
+#include "Scene/MaterialCache.hpp"
 
 namespace mirai
 {
@@ -10,8 +11,10 @@ namespace mirai
 
     Renderer::Renderer()
     {
-        device = std::make_unique<VulkanRenderingDevice>();
         Instance = this;
+        device = std::make_unique<VulkanRenderingDevice>();
+        scene = std::make_unique<Scene>("default");
+        material_cache = std::make_unique<MaterialCache>();
     }
 
     void Renderer::compile_passes()
@@ -42,6 +45,7 @@ namespace mirai
 
     Renderer::~Renderer()
     {
+        device->wait();
     }
 
 } // namespace mirai

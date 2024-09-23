@@ -10,6 +10,7 @@ namespace mirai
     class RenderingDevice;
     class CommandBuffer;
     class Scene;
+    class MaterialCache;
 
     class Renderer
     {
@@ -52,5 +53,6 @@ namespace mirai
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
         std::vector<std::unique_ptr<ScenePass>> scene_passes;
+        std::unique_ptr<MaterialCache> material_cache;
     };
 } // namespace mirai

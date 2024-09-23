@@ -277,6 +277,8 @@ namespace mirai
 
         virtual void queue_command_buffer(CommandBuffer *command_buffer) = 0;
 
+        virtual void wait() = 0;
+
         virtual void destroy_shaders(ShaderID *shaders, uint32_t count) = 0;
         virtual void destroy_pipeline(PipelineID *pipelines, uint32_t count) = 0;
 

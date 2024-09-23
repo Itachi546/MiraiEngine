@@ -13,6 +13,14 @@ namespace mirai
     struct VulkanSwapchain;
     class CommandBuffer;
 
+    struct VulkanPipeline
+    {
+        VkPipeline pipeline;
+        VkPipelineBindPoint bind_point;
+        std::vector<VkDescriptorSetLayout> set_layouts;
+        VkPipelineLayout pipeline_layout;
+    };
+
     class VulkanRenderingDevice : public RenderingDevice
     {
       public:
@@ -42,11 +50,18 @@ namespace mirai
             queued_command_buffer.push_back(command_buffer);
         }
 
+        void wait();
+
         void present() override;
 
         void destroy_shaders(ShaderID *shaders, uint32_t count) override;
 
         void destroy_pipeline(PipelineID *pipelines, uint32_t count) override;
+
+        VulkanPipeline *access_pipeline(PipelineID pipeline)
+        {
+            return resource_pool_pipelines.access(pipeline);
+        }
 
         ~VulkanRenderingDevice();
 
@@ -60,13 +75,6 @@ namespace mirai
         std::vector<const char *> instance_extensions;
         std::vector<const char *> validation_layers;
         std::vector<const char *> device_extensions;
-
-        struct VulkanPipeline
-        {
-            VkPipeline pipeline;
-            std::vector<VkDescriptorSetLayout> set_layouts;
-            VkPipelineLayout pipeline_layout;
-        };
 
         ResourcePool<VulkanShader> resource_pool_shaders;
         ResourcePool<VulkanPipeline> resource_pool_pipelines;

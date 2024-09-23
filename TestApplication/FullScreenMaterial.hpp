@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/Material.hpp"
+#include "Scene/Material.hpp"
 
 class FullScreenMaterial : public mirai::Material
 {

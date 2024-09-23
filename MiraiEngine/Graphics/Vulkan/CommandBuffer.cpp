@@ -69,6 +69,24 @@ namespace mirai
         };
 
         vkCmdBeginRendering(command_buffer, &rendering_info);
+
+        VkViewport viewport{0, 0, static_cast<float>(render_pass->width), static_cast<float>(render_pass->height)};
+        vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+        VkRect2D scissor{{0, 0}, {render_pass->width, render_pass->height}};
+        vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+    }
+
+    void CommandBuffer::bind_pipeline(PipelineID pipeline_id)
+    {
+        ASSERT(pipeline_id.is_valid());
+        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
+        vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
+    }
+
+    void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
+    {
+        vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
     }
 
     void CommandBuffer::end_render_pass()

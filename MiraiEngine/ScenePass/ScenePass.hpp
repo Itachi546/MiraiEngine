@@ -2,13 +2,13 @@
 
 #include <memory>
 
-#include "Graphics/Scene.hpp"
+#include "Scene/Scene.hpp"
 
 namespace mirai
 {
     class CommandBuffer;
     struct RenderPass;
-
+    
     class ScenePass
     {
       public:

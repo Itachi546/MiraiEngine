@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderingDevice.hpp"
+#include "Graphics/RenderingDevice.hpp"
 
 namespace mirai
 {
@@ -46,6 +46,8 @@ namespace mirai
             this->enable_depth_write = depth_write;
         }
 
+        void bind(CommandBuffer *command_buffer, RenderPass *render_pass);
+
         uint64_t get_hash()
         {
             if (hash == 0)
@@ -64,5 +66,7 @@ namespace mirai
         bool enable_depth_write;
 
         void calculate_hash();
+
+        PipelineID create_pipeline(RenderPass* render_pass);
     };
 } // namespace mirai

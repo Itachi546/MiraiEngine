@@ -4,8 +4,9 @@
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Graphics/Renderer.hpp"
-#include "Graphics/Material.hpp"
+#include "Scene/Material.hpp"
 #include "ScenePass/ForwardPass.hpp"
+#include "Scene/Component.hpp"
 
 #include "FullScreenMaterial.hpp"
 
@@ -28,29 +29,17 @@ class TestApplication : public App
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
         Renderer::get()->register_scene_pass(std::make_unique<ForwardPass>(width, height));
+        Renderer::get()->compile_passes();
 
         Scene *scene = Renderer::get()->get_scene();
 
-        Material *mat = new FullScreenMaterial();
+        FullScreenMaterial material;
+        material.set_front_face(FRONT_FACE_CLOCKWISE);
 
-        mat->set_cull_mode(CULL_MODE_FRONT);
-        /*
-        Log::Debug("Hash: ", mat->get_hash());
-
-        Log::Debug("Hash: ", mat->get_hash());
-
-        mat->set_cull_mode(CULL_MODE_NONE);
-        Log::Debug("Hash: ", mat->get_hash());
-
-        mat->set_depth_test(true);
-        Log::Debug("Hash: ", mat->get_hash());
-        mat->set_depth_test(false);
-        Log::Debug("Hash: ", mat->get_hash());
-        */
-        Material *mat2 = new FullScreenMaterial();
-        Log::Debug("HashMat2: ", mat2->get_hash() == mat->get_hash());
-
-        delete mat;
+        Entity entity = ecs::create_entity();
+        scene->get_component_manager()->add_component<Material>(entity, material);
+        scene->get_component_manager()->add_component<NameComponent>(entity, "test");
+        scene->add_entity(entity);
     }
 
     void update() override

@@ -281,6 +281,7 @@ namespace mirai
 
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
+        pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         for (const auto &[key, val] : descriptor_sets)
             pipeline->set_layouts.push_back(CreateDescriptorSetLayout(device, val, key, 0));
@@ -351,6 +352,11 @@ namespace mirai
         ASSERT_MSG(thread_id < K_NUM_THREAD, "ThreadID exceed the number of threads");
         uint32_t index = current_frame * K_NUM_THREAD * K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
         return command_buffers[index].get();
+    }
+
+    void VulkanRenderingDevice::wait()
+    {
+        VK_CHECK(vkDeviceWaitIdle(device));
     }
 
     void VulkanRenderingDevice::present()
@@ -447,13 +453,14 @@ namespace mirai
             pipeline->set_layouts.clear();
             pipeline->pipeline = VK_NULL_HANDLE;
             pipeline->pipeline_layout = VK_NULL_HANDLE;
+
+            resource_pool_pipelines.release(pipeline_ids[i]);
         }
     }
 
     VulkanRenderingDevice::~VulkanRenderingDevice()
     {
-        VK_CHECK(vkWaitForFences(device, K_MAX_FRAME_IN_FLIGHTS, in_flight_fences, VK_TRUE, UINT64_MAX));
-
+        VK_CHECK(vkDeviceWaitIdle(device));
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);
 

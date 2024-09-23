@@ -51,3 +51,4 @@ CMakeUserPresets.json
 *.md
 
 TestApplication/SPIRV
+/renderdoc

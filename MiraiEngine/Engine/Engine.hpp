@@ -8,7 +8,6 @@ namespace mirai
 
     class Window;
     class Renderer;
-    class MaterialCache;
 
     class Engine
     {
@@ -52,7 +51,6 @@ namespace mirai
         std::unique_ptr<App> app;
         std::unique_ptr<Window> window;
         std::unique_ptr<Renderer> renderer;
-        std::unique_ptr<MaterialCache> material_cache;
 
         bool running;
     };
