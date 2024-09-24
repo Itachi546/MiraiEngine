@@ -4,6 +4,8 @@
 
 namespace mirai
 {
+    struct RenderPass;
+
     class Material
     {
       public:
@@ -67,6 +69,6 @@ namespace mirai
 
         void calculate_hash();
 
-        PipelineID create_pipeline(RenderPass* render_pass);
+        PipelineID create_pipeline(RenderPass *render_pass);
     };
 } // namespace mirai

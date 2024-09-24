@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
 #include "Scene/MaterialCache.hpp"
+#include "Scene/FrameGraph.hpp"
 
 namespace mirai
 {
@@ -15,6 +16,8 @@ namespace mirai
         device = std::make_unique<VulkanRenderingDevice>();
         scene = std::make_unique<Scene>("default");
         material_cache = std::make_unique<MaterialCache>();
+        frame_graph_builder = std::make_unique<FrameGraphBuilder>();
+        frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }
 
     void Renderer::compile_passes()
@@ -23,8 +26,6 @@ namespace mirai
 
     void Renderer::update()
     {
-        for (auto &scene_pass : scene_passes)
-            scene_pass->update();
     }
 
     void Renderer::render()
@@ -34,9 +35,6 @@ namespace mirai
         CommandBuffer *cb = device->get_command_buffer();
 
         cb->begin();
-
-        for (auto &scene_pass : scene_passes)
-            scene_pass->render(cb, scene.get());
 
         device->queue_command_buffer(cb);
 

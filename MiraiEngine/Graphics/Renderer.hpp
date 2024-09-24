@@ -3,14 +3,15 @@
 #include <memory>
 #include <vector>
 
-#include "ScenePass/ScenePass.hpp"
+#include "Scene/Scene.hpp"
 
 namespace mirai
 {
     class RenderingDevice;
     class CommandBuffer;
-    class Scene;
     class MaterialCache;
+    class FrameGraph;
+    class FrameGraphBuilder;
 
     class Renderer
     {
@@ -24,11 +25,6 @@ namespace mirai
             return Instance;
         }
 
-        void register_scene_pass(std::unique_ptr<ScenePass> scene_pass)
-        {
-            scene_passes.push_back(std::move(scene_pass));
-        }
-
         void set_scene(std::unique_ptr<Scene> scene)
         {
             this->scene = std::move(scene);
@@ -38,6 +34,8 @@ namespace mirai
         {
             return scene.get();
         }
+
+        FrameGraph *get_frame_graph() { return frame_graph.get(); }
 
         void compile_passes();
 
@@ -52,7 +50,8 @@ namespace mirai
 
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
-        std::vector<std::unique_ptr<ScenePass>> scene_passes;
         std::unique_ptr<MaterialCache> material_cache;
+        std::unique_ptr<FrameGraph> frame_graph;
+        std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
     };
 } // namespace mirai

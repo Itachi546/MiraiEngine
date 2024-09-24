@@ -2,7 +2,7 @@
 #include "VulkanRenderingDevice.hpp"
 #include "Swapchain.h"
 #include "VulkanUtils.hpp"
-
+#include "Scene/FrameGraph.hpp"
 namespace mirai
 {
 
@@ -11,9 +11,10 @@ namespace mirai
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
 
-    void CommandBuffer::begin_render_pass(RenderPass *render_pass)
+    void CommandBuffer::begin_render_pass(FrameGraphNode *node, FrameGraph *frame_graph)
     {
-        auto &attachments = render_pass->color_attachments;
+        /*
+        auto &attachments = render_pass->inputs;
 
         std::vector<VkRenderingAttachmentInfo> attachment_infos(attachments.size());
         std::vector<VkImageMemoryBarrier> image_barriers;
@@ -75,6 +76,7 @@ namespace mirai
 
         VkRect2D scissor{{0, 0}, {render_pass->width, render_pass->height}};
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+        */
     }
 
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id)

@@ -28,12 +28,12 @@ namespace mirai
         calculate_hash();
     }
 
-    void Material::bind(CommandBuffer *command_buffer, RenderPass *render_pass)
+    void Material::bind(CommandBuffer *command_buffer, RenderPass *node)
     {
         PipelineID pipeline = MaterialCache::get()->get_pipeline(hash);
         if (!pipeline.is_valid())
         {
-            pipeline = create_pipeline(render_pass);
+            pipeline = create_pipeline(node);
         }
 
         command_buffer->bind_pipeline(pipeline);
@@ -66,16 +66,16 @@ namespace mirai
         std::vector<Format> color_attachment_formats(color_attachment_count);
         for (uint32_t i = 0; i < color_attachment_count; ++i)
         {
-            if (render_pass->color_attachments[i].type == ATTACHMENT_TYPE_SWAPCHAIN)
+            if (render_pass->color_attachments[i].attachment_type == ATTACHMENT_TYPE_SWAPCHAIN)
                 color_attachment_formats[i] = FORMAT_B8G8R8A8_UNORM;
             else
                 color_attachment_formats[i] = render_pass->color_attachments[i].format;
         }
         pipeline_description.color_attachment_count = color_attachment_count;
         pipeline_description.color_attachment_formats = color_attachment_formats.data();
-
         DepthState ds = DepthState::create();
-        if (render_pass->depth_attachments.has_value())
+
+        if (render_pass->depth_attachment.has_value())
         {
             ds.enable_depth_write = enable_depth_write;
             ds.enable_depth_test = enable_depth_test;

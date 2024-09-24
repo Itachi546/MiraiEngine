@@ -6,13 +6,15 @@
 namespace mirai
 {
     class VulkanRenderingDevice;
+    struct FrameGraphNode;
+    class FrameGraph;
 
     class CommandBuffer
     {
       public:
         CommandBuffer();
 
-        void begin_render_pass(RenderPass *render_pass);
+        void begin_render_pass(FrameGraphNode *node, FrameGraph *frame_graph);
 
         void bind_pipeline(PipelineID pipeline);
 

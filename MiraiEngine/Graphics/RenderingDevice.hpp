@@ -93,48 +93,6 @@ namespace mirai
         FORMAT_MAX
     };
 
-    enum AttachmentType
-    {
-        ATTACHMENT_TYPE_IMAGE,
-        ATTACHMENT_TYPE_DEPTH,
-        ATTACHMENT_TYPE_SWAPCHAIN
-    };
-
-    enum AttachmentLoadOp
-    {
-        LOAD_OP_LOAD = 0,
-        LOAD_OP_CLEAR = 1,
-        LOAD_OP_DONT_CARE = 2,
-    };
-
-    enum AttachmentStoreOp
-    {
-        STORE_OP_STORE = 0,
-        STORE_OP_DONT_CARE = 0
-    };
-
-    struct Attachment
-    {
-        uint32_t binding;
-        std::string name;
-        AttachmentType type;
-        Format format;
-        Color clear_color;
-
-        AttachmentLoadOp load_op;
-        AttachmentStoreOp store_op;
-    };
-
-    constexpr const char *COLOR_ATTACHMENT_OUTPUT = "main_color_attachment";
-    constexpr const char *DEPTH_ATTACHMENT_OUTPUT = "main_depth_attachment";
-
-    struct RenderPass
-    {
-        std::vector<Attachment> color_attachments;
-        std::optional<Attachment> depth_attachments;
-        uint32_t width, height;
-    };
-
     enum Topology
     {
         TOPOLOGY_POINT_LIST = 0,
@@ -314,7 +272,44 @@ namespace mirai
         SamplerDescription *sampler_desc;
     };
 
+    enum AttachmentType
+    {
+        ATTACHMENT_TYPE_IMAGE,
+        ATTACHMENT_TYPE_DEPTH,
+        ATTACHMENT_TYPE_SWAPCHAIN
+    };
+
+    enum AttachmentLoadOp
+    {
+        LOAD_OP_LOAD = 0,
+        LOAD_OP_CLEAR = 1,
+        LOAD_OP_DONT_CARE = 2,
+    };
+
+    enum AttachmentStoreOp
+    {
+        STORE_OP_STORE = 0,
+        STORE_OP_DONT_CARE = 0
+    };
+
+    struct AttachmentInfo
+    {
+        AttachmentType attachment_type;
+        Format format;
+        AttachmentLoadOp load_op;
+    };
+
     class CommandBuffer;
+
+    struct RenderPass
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
+
+        std::vector<AttachmentInfo> color_attachments;
+        std::optional<AttachmentInfo> depth_attachment;
+    };
 
     class RenderingDevice
     {

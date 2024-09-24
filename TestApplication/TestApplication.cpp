@@ -5,8 +5,9 @@
 #include "Device/InputDevice.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/Material.hpp"
-#include "ScenePass/ForwardPass.hpp"
+#include "RenderPass/ForwardPass.hpp"
 #include "Scene/Component.hpp"
+#include "Scene/FrameGraph.hpp"
 
 #include "FullScreenMaterial.hpp"
 
@@ -28,14 +29,15 @@ class TestApplication : public App
     {
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
-        Renderer::get()->register_scene_pass(std::make_unique<ForwardPass>(width, height));
-        Renderer::get()->compile_passes();
-
         Scene *scene = Renderer::get()->get_scene();
 
+        // Create RenderPass
+        FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
+        // frame_graph->register_render_pass(std::make_unique<ForwardPass>(width, height));
+
+        // Create Entity
         FullScreenMaterial material;
         material.set_front_face(FRONT_FACE_CLOCKWISE);
-
         Entity entity = ecs::create_entity();
         scene->get_component_manager()->add_component<Material>(entity, material);
         scene->get_component_manager()->add_component<NameComponent>(entity, "test");
