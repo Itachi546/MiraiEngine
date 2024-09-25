@@ -16,7 +16,7 @@ namespace mirai
     class Renderer
     {
       public:
-        Renderer();
+        Renderer(bool enable_validation);
         Renderer(const Renderer &) = delete;
         Renderer operator=(const Renderer &) = delete;
 

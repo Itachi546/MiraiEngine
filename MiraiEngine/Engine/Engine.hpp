@@ -9,10 +9,16 @@ namespace mirai
     class Window;
     class Renderer;
 
+    struct EngineInitializationOptions
+    {
+        uint32_t width, height;
+        bool enable_validation;
+    };
+
     class Engine
     {
       public:
-        Engine();
+        Engine(const EngineInitializationOptions &options);
 
         static Engine *get()
         {

@@ -11,12 +11,12 @@ namespace mirai
 {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine() : running(true), dt_ms(16), elapsed_time_ms(0)
+    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0)
     {
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
-        window = std::make_unique<Window>(1360, 769, "MiraiEngine");
-        renderer = std::make_unique<Renderer>();
+        window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
+        renderer = std::make_unique<Renderer>(options.enable_validation);
         Instance = this;
     }
 

@@ -71,7 +71,13 @@ class TestApplication : public App
 
 int main()
 {
-    std::unique_ptr<Engine> engine = std::make_unique<Engine>();
+    EngineInitializationOptions options = {
+        .width = 1360,
+        .height = 769,
+        .enable_validation = true,
+    };
+
+    std::unique_ptr<Engine> engine = std::make_unique<Engine>(options);
     engine->set_app(std::make_unique<TestApplication>());
     engine->run();
     engine = nullptr;

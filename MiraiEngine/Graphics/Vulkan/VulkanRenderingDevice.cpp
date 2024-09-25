@@ -30,9 +30,10 @@ namespace mirai
         VK_CHECK(vkSetDebugUtilsObjectNameEXT(device, &name_info));
     }
 
-    VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
-                                                     resource_pool_shaders(32, "Shader"),
-                                                     resource_pool_textures(1024, "Texture")
+    VulkanRenderingDevice::VulkanRenderingDevice(bool enable_validation) : resource_pool_pipelines(128, "Pipeline"),
+                                                                           resource_pool_shaders(32, "Shader"),
+                                                                           resource_pool_textures(1024, "Texture"),
+                                                                           RenderingDevice(enable_validation)
     {
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,

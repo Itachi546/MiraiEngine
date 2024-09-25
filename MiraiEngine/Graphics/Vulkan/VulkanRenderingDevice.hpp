@@ -43,7 +43,7 @@ namespace mirai
     class VulkanRenderingDevice : public RenderingDevice
     {
       public:
-        VulkanRenderingDevice();
+        VulkanRenderingDevice(bool enable_validation);
 
         VkInstance get_vulkan_instance() const { return instance; }
         VkDevice get_vulkan_device() const { return device; }
@@ -132,6 +132,5 @@ namespace mirai
         std::unique_ptr<VulkanSwapchain> swapchain;
 
         VkDebugUtilsMessengerEXT debug_utils_messenger;
-        bool enable_validation;
     };
 } // namespace mirai

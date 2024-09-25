@@ -322,7 +322,7 @@ namespace mirai
     class RenderingDevice
     {
       public:
-        RenderingDevice()
+        RenderingDevice(bool enable_validation) : enable_validation(enable_validation)
         {
             Instance = this;
         }
@@ -330,16 +330,6 @@ namespace mirai
         static RenderingDevice *get()
         {
             return Instance;
-        }
-
-        void set_validation(bool validation)
-        {
-            this->enable_validation = validation;
-        }
-
-        bool is_validation_enabled()
-        {
-            return this->enable_validation;
         }
 
         virtual void new_frame() = 0;

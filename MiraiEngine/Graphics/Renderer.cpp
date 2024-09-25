@@ -10,10 +10,10 @@ namespace mirai
 {
     Renderer *Renderer::Instance = nullptr;
 
-    Renderer::Renderer()
+    Renderer::Renderer(bool enable_validation)
     {
         Instance = this;
-        device = std::make_unique<VulkanRenderingDevice>();
+        device = std::make_unique<VulkanRenderingDevice>(enable_validation);
         scene = std::make_unique<Scene>("default");
         material_cache = std::make_unique<MaterialCache>();
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
