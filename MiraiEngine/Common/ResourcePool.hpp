@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Common/CommonInclude.hpp"
 #include "Engine/Log.hpp"
 #include <vector>

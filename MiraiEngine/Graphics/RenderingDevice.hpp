@@ -93,6 +93,13 @@ namespace mirai
         FORMAT_MAX
     };
 
+    inline bool is_depth_format(Format format)
+    {
+        if (format == FORMAT_D16_UNORM || format == FORMAT_D32_SFLOAT || format == FORMAT_D32_SFLOAT_S8_UINT || format == FORMAT_D24_UNORM_S8_UINT)
+            return true;
+        return false;
+    }
+
     enum Topology
     {
         TOPOLOGY_POINT_LIST = 0,
@@ -297,6 +304,7 @@ namespace mirai
         AttachmentType attachment_type;
         Format format;
         AttachmentLoadOp load_op;
+        Color clear_color;
     };
 
     class CommandBuffer;

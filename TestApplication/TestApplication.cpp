@@ -33,7 +33,19 @@ class TestApplication : public App
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-        // frame_graph->register_render_pass(std::make_unique<ForwardPass>(width, height));
+
+        std::vector<FrameGraphResourceOutput> outputs = {
+            FrameGraphResourceOutput{"swapchain", FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN, width, height, FORMAT_B8G8R8A8_UNORM, LOAD_OP_CLEAR, {0.0f, 0.0f, 0.0f, 1.0f}},
+        };
+        FrameGraphNodeDescription node_description = {
+            .name = "forward_pass",
+            .enabled = true,
+            .inputs = {},
+            .outputs = outputs,
+            .renderer = std::make_shared<ForwardPass>(),
+        };
+        frame_graph->add_node(node_description);
+        frame_graph->compile();
 
         // Create Entity
         FullScreenMaterial material;

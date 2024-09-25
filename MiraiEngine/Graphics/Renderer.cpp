@@ -36,6 +36,8 @@ namespace mirai
 
         cb->begin();
 
+        frame_graph->render(cb, scene.get());
+
         device->queue_command_buffer(cb);
 
         device->present();

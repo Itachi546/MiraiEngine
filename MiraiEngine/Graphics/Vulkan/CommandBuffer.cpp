@@ -13,15 +13,15 @@ namespace mirai
 
     void CommandBuffer::begin_render_pass(FrameGraphNode *node, FrameGraph *frame_graph)
     {
-        /*
-        auto &attachments = render_pass->inputs;
+        RenderPass *render_pass = &node->render_pass;
 
+        auto &attachments = render_pass->color_attachments;
         std::vector<VkRenderingAttachmentInfo> attachment_infos(attachments.size());
         std::vector<VkImageMemoryBarrier> image_barriers;
 
         for (uint32_t i = 0; i < attachments.size(); ++i)
         {
-            Attachment &attachment = attachments[i];
+            AttachmentInfo &attachment = attachments[i];
 
             attachment_infos[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
             attachment_infos[i].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -29,7 +29,7 @@ namespace mirai
             attachment_infos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             attachment_infos[i].clearValue = {attachment.clear_color.r, attachment.clear_color.g, attachment.clear_color.b, attachment.clear_color.a};
 
-            if (attachment.type == ATTACHMENT_TYPE_SWAPCHAIN)
+            if (attachment.attachment_type == ATTACHMENT_TYPE_SWAPCHAIN)
             {
                 VulkanSwapchain *swapchain = device->get_swapchain();
 
@@ -76,7 +76,6 @@ namespace mirai
 
         VkRect2D scissor{{0, 0}, {render_pass->width, render_pass->height}};
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-        */
     }
 
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id)

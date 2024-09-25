@@ -13,6 +13,8 @@ namespace mirai
             float data[4];
         };
 
+        Color() = default;
+        
         Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a)
         {
         }
