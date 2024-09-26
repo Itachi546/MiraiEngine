@@ -19,7 +19,7 @@ namespace mirai
         const Entity entity = scene->get_entities()[0];
         ComponentManager *component_manager = scene->get_component_manager();
         Material *material = component_manager->get_component<Material>(entity);
-        material->bind(command_buffer, &node->render_pass);
+        material->bind(command_buffer, node, frame_graph);
 
         command_buffer->draw(6, 1, 0, 0);
 

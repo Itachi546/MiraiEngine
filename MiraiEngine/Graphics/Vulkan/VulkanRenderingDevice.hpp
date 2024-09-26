@@ -79,9 +79,16 @@ namespace mirai
 
         void destroy_pipeline(PipelineID *pipelines, uint32_t count) override;
 
+        void destroy_texture(TextureID *textures, uint32_t count) override;
+
         VulkanPipeline *access_pipeline(PipelineID pipeline)
         {
             return resource_pool_pipelines.access(pipeline);
+        }
+
+        VulkanTexture *access_texture(TextureID texture)
+        {
+            return resource_pool_textures.access(texture);
         }
 
         ~VulkanRenderingDevice();

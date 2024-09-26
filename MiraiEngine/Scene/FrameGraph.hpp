@@ -62,10 +62,12 @@ namespace mirai
     struct FrameGraphResource
     {
         FrameGraphResourceType resource_type;
+        Format format;
         TextureID texture;
         AttachmentLoadOp load_op;
         uint32_t width, height, depth;
         Color clear_colors;
+        bool is_depth_texture;
     };
 
     using FrameGraphResourceHandle = uint32_t;
@@ -77,8 +79,7 @@ namespace mirai
 
         std::vector<FrameGraphResourceHandle> inputs;
         std::vector<FrameGraphResourceHandle> outputs;
-        RenderPass render_pass;
-
+        uint32_t width, height;
         std::shared_ptr<FrameGraphRenderPass> renderer;
     };
     using FrameGraphNodeHandle = uint32_t;
@@ -96,15 +97,26 @@ namespace mirai
 
         FrameGraphNode *get_node(const std::string &name)
         {
-            auto found = resource_pool_maps.find(utils::djb2_hash_string(name));
+            auto found = nodes_maps.find(utils::djb2_hash_string(name));
             return resource_pool_nodes.access(found->second);
         }
+
+        FrameGraphResource *get_resource(FrameGraphResourceHandle handle)
+        {
+            return resource_pool_resources.access(handle);
+        }
+
+        FrameGraphResourceHandle create_resource(const FrameGraphResourceOutput *output);
 
         ~FrameGraphBuilder();
 
       private:
+        RenderingDevice *device;
         ResourcePool<FrameGraphNode> resource_pool_nodes;
-        std::unordered_map<uint32_t, uint32_t> resource_pool_maps;
+        std::unordered_map<uint32_t, uint32_t> nodes_maps;
+
+        ResourcePool<FrameGraphResource> resource_pool_resources;
+        std::unordered_map<uint32_t, uint32_t> resources_map;
     };
 
     class FrameGraph
@@ -124,6 +136,11 @@ namespace mirai
         FrameGraphNode *get_node(const std::string &name)
         {
             return builder->get_node(name);
+        }
+
+        FrameGraphResource *get_resource(FrameGraphResourceHandle handle)
+        {
+            return builder->get_resource(handle);
         }
 
       private:

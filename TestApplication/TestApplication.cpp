@@ -35,7 +35,24 @@ class TestApplication : public App
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
 
         std::vector<FrameGraphResourceOutput> outputs = {
-            FrameGraphResourceOutput{"swapchain", FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN, width, height, FORMAT_B8G8R8A8_UNORM, LOAD_OP_CLEAR, {0.0f, 0.0f, 0.0f, 1.0f}},
+            FrameGraphResourceOutput{
+                COLOR_ATTACHMENT_OUTPUT_NAME,
+                FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN,
+                width,
+                height,
+                FORMAT_B8G8R8A8_UNORM,
+                LOAD_OP_CLEAR,
+                {0.0f, 0.0f, 0.0f, 1.0f},
+            },
+            FrameGraphResourceOutput{
+                DEPTH_ATTACHMENT_OUTPUT_NAME,
+                FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                width,
+                height,
+                FORMAT_D32_SFLOAT_S8_UINT,
+                LOAD_OP_CLEAR, 
+                {1.0f, 0.0f, 0.0f, 1.0f},
+            },
         };
         FrameGraphNodeDescription node_description = {
             .name = "forward_pass",

@@ -294,7 +294,7 @@ namespace mirai
         };
 
         VkFormat depth_format = RD_FORMAT_TO_VK_FORMAT[pipeline_description->depth_attachment_format];
-        VkFormat stencil_format = depth_format == VK_FORMAT_D24_UNORM_S8_UINT ? depth_format : VK_FORMAT_UNDEFINED;
+        VkFormat stencil_format = is_stencil_format(pipeline_description->depth_attachment_format) ? depth_format : VK_FORMAT_UNDEFINED;
 
         VkPipelineRenderingCreateInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
@@ -405,7 +405,6 @@ namespace mirai
         if (texture_description->usage_flags & TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT)
         {
             image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-
             if (texture_description->usage_flags & TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT)
                 image_aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
@@ -584,11 +583,22 @@ namespace mirai
             vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
 
-            pipeline->set_layouts.clear();
-            pipeline->pipeline = VK_NULL_HANDLE;
-            pipeline->pipeline_layout = VK_NULL_HANDLE;
+            resource_pool_pipelines.release_zero_initialize(pipeline_ids[i]);
+        }
+    }
 
-            resource_pool_pipelines.release(pipeline_ids[i]);
+    void VulkanRenderingDevice::destroy_texture(TextureID *textures, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            VulkanTexture *texture = resource_pool_textures.access(textures[i]);
+
+            vkDestroyImageView(device, texture->image_view, nullptr);
+            vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
+            if (texture->sampler != VK_NULL_HANDLE)
+                vkDestroySampler(device, texture->sampler, nullptr);
+
+            resource_pool_textures.release_zero_initialize(textures[i]);
         }
     }
 

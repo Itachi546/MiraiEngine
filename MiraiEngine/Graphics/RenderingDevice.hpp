@@ -95,8 +95,26 @@ namespace mirai
 
     inline bool is_depth_format(Format format)
     {
-        if (format == FORMAT_D16_UNORM || format == FORMAT_D32_SFLOAT || format == FORMAT_D32_SFLOAT_S8_UINT || format == FORMAT_D24_UNORM_S8_UINT)
+        switch (format)
+        {
+        case FORMAT_D16_UNORM:
+        case FORMAT_D32_SFLOAT:
+        case FORMAT_D32_SFLOAT_S8_UINT:
+        case FORMAT_D24_UNORM_S8_UINT:
             return true;
+        }
+
+        return false;
+    }
+
+    inline bool is_stencil_format(Format format)
+    {
+        switch (format)
+        {
+        case FORMAT_D32_SFLOAT_S8_UINT:
+        case FORMAT_D24_UNORM_S8_UINT:
+            return true;
+        }
         return false;
     }
 
@@ -244,6 +262,23 @@ namespace mirai
         float min_lod;
         float max_lod;
         bool enable_anisotropy;
+
+        static SamplerDescription create()
+        {
+            return {
+                .address_mode_u = SAMPLER_ADDRESS_MODE_REPEAT,
+                .address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT,
+                .address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT,
+                .min_filter = FILTER_LINEAR,
+                .mag_filter = FILTER_LINEAR,
+                .mipmap_mode = SAMPLER_MIPMAP_LINEAR,
+                .lod_bias = 0,
+                .max_anisotropy = 16,
+                .min_lod = 0,
+                .max_lod = 16,
+                .enable_anisotropy = false,
+            };
+        }
     };
 
     enum TextureUsageBits
@@ -299,6 +334,8 @@ namespace mirai
         STORE_OP_DONT_CARE = 0
     };
 
+    class CommandBuffer;
+    /*
     struct AttachmentInfo
     {
         AttachmentType attachment_type;
@@ -307,7 +344,6 @@ namespace mirai
         Color clear_color;
     };
 
-    class CommandBuffer;
 
     struct RenderPass
     {
@@ -318,7 +354,7 @@ namespace mirai
         std::vector<AttachmentInfo> color_attachments;
         std::optional<AttachmentInfo> depth_attachment;
     };
-
+    */
     class RenderingDevice
     {
       public:
@@ -340,6 +376,8 @@ namespace mirai
 
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
+        virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
+
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 
         virtual void queue_command_buffer(CommandBuffer *command_buffer) = 0;
@@ -348,6 +386,7 @@ namespace mirai
 
         virtual void destroy_shaders(ShaderID *shaders, uint32_t count) = 0;
         virtual void destroy_pipeline(PipelineID *pipelines, uint32_t count) = 0;
+        virtual void destroy_texture(TextureID *textures, uint32_t count) = 0;
 
         virtual ~RenderingDevice() = default;
 

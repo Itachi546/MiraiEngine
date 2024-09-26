@@ -4,7 +4,8 @@
 
 namespace mirai
 {
-    struct RenderPass;
+    struct FrameGraphNode;
+    class FrameGraph;
 
     class Material
     {
@@ -48,7 +49,7 @@ namespace mirai
             this->enable_depth_write = depth_write;
         }
 
-        void bind(CommandBuffer *command_buffer, RenderPass *render_pass);
+        void bind(CommandBuffer *command_buffer, FrameGraphNode *node, FrameGraph *frame_graph);
 
         uint64_t get_hash()
         {
@@ -69,6 +70,6 @@ namespace mirai
 
         void calculate_hash();
 
-        PipelineID create_pipeline(RenderPass *render_pass);
+        PipelineID create_pipeline(FrameGraphNode *render_pass, FrameGraph *frame_graph);
     };
 } // namespace mirai

@@ -25,6 +25,7 @@ namespace mirai
         void begin();
 
       private:
+        void prepare_render_pass_resources(FrameGraphNode *node, FrameGraph *frame_graph);
         friend class VulkanRenderingDevice;
         VulkanRenderingDevice *device;
         VkCommandBuffer command_buffer;

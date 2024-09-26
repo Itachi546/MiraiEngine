@@ -1,6 +1,7 @@
 #include "Material.hpp"
 #include "Common/Hash.hpp"
 #include "MaterialCache.hpp"
+#include "FrameGraph.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 
 namespace mirai
@@ -28,12 +29,12 @@ namespace mirai
         calculate_hash();
     }
 
-    void Material::bind(CommandBuffer *command_buffer, RenderPass *node)
+    void Material::bind(CommandBuffer *command_buffer, FrameGraphNode *node, FrameGraph *frame_graph)
     {
         PipelineID pipeline = MaterialCache::get()->get_pipeline(hash);
         if (!pipeline.is_valid())
         {
-            pipeline = create_pipeline(node);
+            pipeline = create_pipeline(node, frame_graph);
         }
 
         command_buffer->bind_pipeline(pipeline);
@@ -45,7 +46,7 @@ namespace mirai
         utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write);
     }
 
-    PipelineID Material::create_pipeline(RenderPass *render_pass)
+    PipelineID Material::create_pipeline(FrameGraphNode *node, FrameGraph *frame_graph)
     {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
@@ -62,28 +63,32 @@ namespace mirai
         pipeline_description.rasterization_state = &rs;
         pipeline_description.blend_state = &bs;
 
-        uint32_t color_attachment_count = static_cast<uint32_t>(render_pass->color_attachments.size());
-        std::vector<Format> color_attachment_formats(color_attachment_count);
-        for (uint32_t i = 0; i < color_attachment_count; ++i)
-        {
-            if (render_pass->color_attachments[i].attachment_type == ATTACHMENT_TYPE_SWAPCHAIN)
-                color_attachment_formats[i] = FORMAT_B8G8R8A8_UNORM;
-            else
-                color_attachment_formats[i] = render_pass->color_attachments[i].format;
-        }
-        pipeline_description.color_attachment_count = color_attachment_count;
-        pipeline_description.color_attachment_formats = color_attachment_formats.data();
         DepthState ds = DepthState::create();
-
-        if (render_pass->depth_attachment.has_value())
-        {
-            ds.enable_depth_write = enable_depth_write;
-            ds.enable_depth_test = enable_depth_test;
-        }
         pipeline_description.depth_state = &ds;
 
-        PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
+        std::vector<Format> color_attachment_formats;
 
+        for (auto &resource_handle : node->outputs)
+        {
+            FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
+            if (resource->is_depth_texture)
+            {
+                ds.enable_depth_write = enable_depth_write;
+                ds.enable_depth_test = enable_depth_test;
+                pipeline_description.depth_attachment_format = resource->format;
+            }
+            else
+            {
+                if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
+                    color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);
+                else
+                    color_attachment_formats.push_back(resource->format);
+            }
+        }
+        pipeline_description.color_attachment_count = static_cast<uint32_t>(color_attachment_formats.size());
+        pipeline_description.color_attachment_formats = color_attachment_formats.data();
+
+        PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
         MaterialCache::get()->add_pipeline(hash, pipeline);
         return pipeline;
     }
