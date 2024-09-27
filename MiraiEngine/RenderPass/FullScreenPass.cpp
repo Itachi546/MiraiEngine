@@ -1,13 +1,36 @@
 #include "FullScreenPass.hpp"
+#include "Scene/Material.hpp"
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+
+#include <string>
 
 namespace mirai
 {
-    FullScreenPass::FullScreenPass()
+
+    FullScreenPass::FullScreenPass(const std::string &name) : FrameGraphRenderPass(name)
     {
+        material = std::make_shared<Material>("FullScreenTextureMaterial");
+        material->create_from_file(std::vector<std::string>{
+            "SPIRV/fullscreen.vert.spv",
+            "SPIRV/fullscreen.frag.spv",
+        });
+        material->set_front_face(FRONT_FACE_CLOCKWISE);
     }
 
-    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene* scene)
+    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene)
     {
+        FrameGraphNode *node = frame_graph->get_node(name);
+        ASSERT(node != nullptr);
+
+        command_buffer->begin_render_pass(node, frame_graph);
+
+        FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
+        material->set_resource("u_texture", input_texture->texture);
+        material->bind(command_buffer, node, frame_graph);
+
+        command_buffer->draw(6, 1, 0, 0);
+
+        command_buffer->end_render_pass();
     }
 
     FullScreenPass::~FullScreenPass()

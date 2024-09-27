@@ -33,25 +33,19 @@ namespace mirai
             return index;
         }
 
-        T *access(uint32_t index)
+        T *access(ID id)
         {
-            ASSERT(index < pool_size);
-            return &resources[index];
+            ASSERT(id.id < pool_size);
+            return &resources[id.id];
         }
 
-        void release(uint32_t index)
+        void release(ID id)
         {
-            ASSERT(index < pool_size);
-            free_list[--free_list_head] = index;
+            ASSERT(id.id < pool_size);
+            free_list[--free_list_head] = id.id;
             --used_indices;
         }
-
-        void release_zero_initialize(uint32_t index)
-        {
-            release(index);
-            std::memset(&resources[index], 0, sizeof(T));
-        }
-
+        
         void release_all()
         {
             for (uint32_t i = 0; i < pool_size; ++i)
@@ -67,6 +61,9 @@ namespace mirai
 
             delete[] resources;
             delete[] free_list;
+
+            resources = nullptr;
+            free_list = nullptr;
         }
 
         std::string name;

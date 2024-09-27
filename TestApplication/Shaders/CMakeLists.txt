@@ -1,13 +1,13 @@
 set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 set(SPIRV_OUTPUT_DIR "${CMAKE_BINARY_DIR}/SPIRV")
-file(GLOB_RECURSE GLSL_SOURCE_FILES
+file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
     "*.frag.glsl"
     "*.vert.glsl"
     "*.comp.glsl"
     "*.geom.glsl"
     )
 
-file(GLOB_RECURSE GLSL_INCLUDE_FILES
+file(GLOB_RECURSE GLSL_INCLUDE_FILES CONFIGURE_DEPENDS
     "*.glsl"
     "*.glsl"
     "*.glsl"

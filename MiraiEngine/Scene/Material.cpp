@@ -36,6 +36,8 @@ namespace mirai
         {
             pipeline = create_pipeline(node, frame_graph);
         }
+        for (auto &resource : resources)
+            RenderingDevice::get()->pipeline_set_resources(resource.name, pipeline, resource.resource_id);
 
         command_buffer->bind_pipeline(pipeline);
     }
@@ -64,27 +66,28 @@ namespace mirai
         pipeline_description.blend_state = &bs;
 
         DepthState ds = DepthState::create();
-        pipeline_description.depth_state = &ds;
-
         std::vector<Format> color_attachment_formats;
 
-        for (auto &resource_handle : node->outputs)
+        FrameGraphRenderingInfo* rendering_info = &node->rendering_info;
+        for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i)
         {
-            FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
-            if (resource->is_depth_texture)
+            FrameGraphAttachmentInfo* attachment = &rendering_info->attachment_info[i];
+            if (i == rendering_info->depth_attachment_index)
             {
                 ds.enable_depth_write = enable_depth_write;
                 ds.enable_depth_test = enable_depth_test;
-                pipeline_description.depth_attachment_format = resource->format;
+                pipeline_description.depth_attachment_format = attachment->format;
             }
             else
             {
+                FrameGraphResource* resource = frame_graph->get_resource(node->outputs[i]);
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
                     color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);
                 else
-                    color_attachment_formats.push_back(resource->format);
+                    color_attachment_formats.push_back(attachment->format);
             }
         }
+        pipeline_description.depth_state = &ds;
         pipeline_description.color_attachment_count = static_cast<uint32_t>(color_attachment_formats.size());
         pipeline_description.color_attachment_formats = color_attachment_formats.data();
 

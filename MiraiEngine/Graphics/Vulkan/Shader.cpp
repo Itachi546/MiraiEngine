@@ -1,6 +1,7 @@
 #include "Shader.hpp"
 
 #include "spirv_reflect.h"
+#include "Common/Hash.hpp"
 
 namespace mirai
 {
@@ -23,6 +24,7 @@ namespace mirai
             {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
                 VkReflectionDescriptorBinding &vk_binding = vk_set.bindings[b];
+                vk_binding.name = binding->name;
                 vk_binding.binding = binding->binding;
                 vk_binding.descriptor_type = VkDescriptorType(binding->descriptor_type);
                 vk_binding.shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
@@ -114,4 +116,101 @@ namespace mirai
         shader->shader = VK_NULL_HANDLE;
     }
 
+    void CreatePipelineBindings(const std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets,
+                                VkDevice device,
+                                VulkanPipeline *pipeline,
+                                VkDescriptorPool descriptor_pool,
+                                uint32_t total_sets,
+                                VulkanBindings *out_bindings)
+    {
+        for (auto [set, bindings] : descriptor_sets)
+        {
+            VkDescriptorSetAllocateInfo allocate_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = descriptor_pool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &pipeline->set_layouts[set],
+            };
+
+            VulkanDescriptorSet &descriptor_set = out_bindings->descriptor_sets.emplace_back(VulkanDescriptorSet{});
+            for (uint32_t i = 0; i < total_sets; ++i)
+            {
+                VkDescriptorSet vk_set = VK_NULL_HANDLE;
+                vkAllocateDescriptorSets(device, &allocate_info, &vk_set);
+                descriptor_set.descriptor_set.push_back(vk_set);
+            }
+
+            for (auto &binding : bindings)
+            {
+                VkWriteDescriptorSet write_set = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstBinding = binding.binding,
+                    .descriptorCount = 1,
+                    .descriptorType = binding.descriptor_type,
+                };
+
+                descriptor_set.bindings.push_back(VulkanBindingInfo{
+                    .binding = write_set,
+                    .resource_id = K_INVALID_ID,
+                });
+
+                VulkanBindingLookupInfo lookup_info = {
+                    .set_index = static_cast<uint32_t>(out_bindings->descriptor_sets.size() - 1),
+                    .binding_index = static_cast<uint32_t>(descriptor_set.bindings.size() - 1),
+                };
+                out_bindings->lookup_info.insert(std::make_pair(utils::djb2_hash_string(binding.name), std::move(lookup_info)));
+            }
+        }
+    }
+
+    void VulkanBindings::set_resource(const std::string &name, ID id)
+    {
+        auto found = lookup_info.find(utils::djb2_hash_string(name));
+        if (found == lookup_info.end())
+        {
+            Log::Warn("ResourceName::", name, " couldn't be found");
+            return;
+        }
+
+        auto [set_index, binding_index] = found->second;
+
+        descriptor_sets[set_index].bindings[binding_index].resource_id = id;
+
+        dirty = true;
+    }
+
+    void VulkanBindings::update_descriptor(VkDevice device, ResourcePool<VulkanTexture> &resource_pool_textures, uint32_t frame_id, uint32_t thread_id)
+    {
+        if (dirty && descriptor_sets.size() > 0)
+        {
+            std::vector<VkDescriptorImageInfo> image_infos;
+            std::vector<VkDescriptorBufferInfo> buffer_infos;
+            for (auto &descriptor_set : descriptor_sets)
+            {
+                std::vector<VkWriteDescriptorSet> write_sets;
+                for (auto &binding : descriptor_set.bindings)
+                {
+                    VkWriteDescriptorSet &write_set = write_sets.emplace_back(binding.binding);
+                    write_set.dstSet = descriptor_set.descriptor_set[frame_id * thread_id];
+                    if (write_set.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || write_set.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    {
+                        VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
+                        VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{
+                            .sampler = texture->sampler,
+                            .imageView = texture->image_view,
+                            .imageLayout = texture->current_layout,
+                        });
+                        write_set.pImageInfo = &image_info;
+                    }
+                    else if (write_set.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    {
+                        ASSERT_MSG(0, "TODO::");
+                    }
+
+                    vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_sets.size()), write_sets.data(), 0, nullptr);
+                }
+            }
+            dirty = false;
+        }
+    }
 } // namespace mirai

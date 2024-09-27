@@ -5,13 +5,14 @@
 
 namespace mirai
 {
-    ForwardPass::ForwardPass()
+    ForwardPass::ForwardPass(const std::string &name) : FrameGraphRenderPass(name)
     {
+    
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene)
     {
-        FrameGraphNode *node = frame_graph->get_node("forward_pass");
+        FrameGraphNode *node = frame_graph->get_node(name);
         ASSERT(node != nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);

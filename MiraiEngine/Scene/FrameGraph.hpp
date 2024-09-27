@@ -45,9 +45,14 @@ namespace mirai
     class FrameGraphRenderPass
     {
       public:
+        FrameGraphRenderPass(const std::string &name) : name(name) {}
+
         virtual void update() {}
 
         virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) = 0;
+
+      protected:
+        std::string name;
     };
 
     struct FrameGraphNodeDescription
@@ -59,15 +64,24 @@ namespace mirai
         std::shared_ptr<FrameGraphRenderPass> renderer;
     };
 
+    struct FrameGraphAttachmentInfo {
+        Color clear_color;
+        Format format;
+        AttachmentLoadOp load_op;
+    };
+
+    struct FrameGraphRenderingInfo 
+    {
+        std::vector<FrameGraphAttachmentInfo> attachment_info;
+        uint32_t depth_attachment_index = ~0u;
+        bool has_stencil_attachment = false;
+        uint32_t width, height;
+    };
+
     struct FrameGraphResource
     {
         FrameGraphResourceType resource_type;
-        Format format;
         TextureID texture;
-        AttachmentLoadOp load_op;
-        uint32_t width, height, depth;
-        Color clear_colors;
-        bool is_depth_texture;
     };
 
     using FrameGraphResourceHandle = uint32_t;
@@ -76,11 +90,11 @@ namespace mirai
     {
         std::string name;
         bool enabled;
-
+        
         std::vector<FrameGraphResourceHandle> inputs;
         std::vector<FrameGraphResourceHandle> outputs;
-        uint32_t width, height;
         std::shared_ptr<FrameGraphRenderPass> renderer;
+        FrameGraphRenderingInfo rendering_info;
     };
     using FrameGraphNodeHandle = uint32_t;
 
@@ -106,7 +120,15 @@ namespace mirai
             return resource_pool_resources.access(handle);
         }
 
-        FrameGraphResourceHandle create_resource(const FrameGraphResourceOutput *output);
+        FrameGraphResource* get_resource(const std::string& name) {
+            auto found = resources_map.find(utils::djb2_hash_string(name));
+            if(found != resources_map.end())
+                return resource_pool_resources.access(found->second);
+            return nullptr;
+        }
+
+        FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
+        FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput* input);
 
         ~FrameGraphBuilder();
 
@@ -141,6 +163,10 @@ namespace mirai
         FrameGraphResource *get_resource(FrameGraphResourceHandle handle)
         {
             return builder->get_resource(handle);
+        }
+
+        FrameGraphResource* get_resource(const std::string& name) {
+            return builder->get_resource(name);
         }
 
       private:

@@ -1,15 +1,21 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
+#include <memory>
+
 namespace mirai
 {
+    class Material;
     class FullScreenPass : public FrameGraphRenderPass
     {
       public:
-        FullScreenPass();
+        FullScreenPass(const std::string &name);
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) override;
 
         ~FullScreenPass();
+
+      private:
+        std::shared_ptr<Material> material;
     };
 } // namespace mirai

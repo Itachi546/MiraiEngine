@@ -13,7 +13,7 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Engine/Log.hpp"
 
-    namespace mirai
+namespace mirai
 {
     constexpr const uint32_t VULKAN_API_VERSION VK_API_VERSION_1_3;
 
@@ -49,5 +49,4 @@
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
     };
-
 } // namespace mirai

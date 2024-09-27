@@ -23,7 +23,7 @@ namespace mirai
 
         bool is_valid() const { return id != K_INVALID_ID; }
 
-        size_t operator=(const ID &id) const { return id.id; }
+        // size_t operator=(const ID &id) const { return id.id; }
     };
 #define DEFINE_ID(m_name)                                                                    \
     struct m_name##ID : public ID                                                            \
@@ -375,6 +375,8 @@ namespace mirai
         virtual ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name = "") = 0;
 
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
+
+        virtual void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
 

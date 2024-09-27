@@ -19,7 +19,7 @@ namespace mirai
             if (this->cull_mode == cull_mode)
                 return;
 
-            hash = 0;
+            calculate_hash();
             this->cull_mode = cull_mode;
         }
 
@@ -28,7 +28,7 @@ namespace mirai
             if (this->front_face == front_face)
                 return;
 
-            hash = 0;
+            calculate_hash();
             this->front_face = front_face;
         }
 
@@ -36,7 +36,7 @@ namespace mirai
         {
             if (this->enable_depth_test == depth_test)
                 return;
-            hash = 0;
+            calculate_hash();
             this->enable_depth_test = depth_test;
         }
 
@@ -45,16 +45,19 @@ namespace mirai
             if (this->enable_depth_write == depth_write)
                 return;
 
-            hash = 0;
+            calculate_hash();
             this->enable_depth_write = depth_write;
         }
 
         void bind(CommandBuffer *command_buffer, FrameGraphNode *node, FrameGraph *frame_graph);
 
+        void set_resource(const std::string &name, TextureID texture)
+        {
+            resources.push_back(Resource{name, texture});
+        }
+
         uint64_t get_hash()
         {
-            if (hash == 0)
-                calculate_hash();
             return hash;
         }
 
@@ -69,6 +72,13 @@ namespace mirai
         bool enable_depth_write;
 
         void calculate_hash();
+
+        struct Resource
+        {
+            std::string name;
+            ID resource_id;
+        };
+        std::vector<Resource> resources;
 
         PipelineID create_pipeline(FrameGraphNode *render_pass, FrameGraph *frame_graph);
     };

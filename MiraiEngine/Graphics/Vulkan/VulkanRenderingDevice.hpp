@@ -15,30 +15,6 @@ namespace mirai
 {
     struct VulkanSwapchain;
     class CommandBuffer;
-    struct VulkanPipeline
-    {
-        VkPipeline pipeline;
-        VkPipelineBindPoint bind_point;
-        std::vector<VkDescriptorSetLayout> set_layouts;
-        VkPipelineLayout pipeline_layout;
-    };
-
-    struct VulkanTexture
-    {
-        uint32_t width, height, depth;
-        uint32_t mip_levels, array_layers;
-
-        VkImageAspectFlags image_aspect;
-        VkFormat format;
-        VkImageType image_type;
-
-        VkImage image;
-        VkImageView image_view;
-        VmaAllocation allocation;
-
-        VkImageLayout current_layout;
-        VkSampler sampler;
-    };
 
     class VulkanRenderingDevice : public RenderingDevice
     {
@@ -71,6 +47,8 @@ namespace mirai
             queued_command_buffer.push_back(command_buffer);
         }
 
+        void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) override;
+
         void wait();
 
         void present() override;
@@ -94,6 +72,8 @@ namespace mirai
         ~VulkanRenderingDevice();
 
       private:
+        friend class CommandBuffer;
+
         void set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName);
 
         VkSemaphore create_semaphore(const std::string &name);
@@ -121,9 +101,11 @@ namespace mirai
 
         VkInstance instance;
         VkDevice device;
+
         VkPhysicalDevice physical_device;
         VmaAllocator vma_allocator;
         VkSurfaceKHR surface;
+        VkDescriptorPool descriptor_pool;
 
         std::vector<VkCommandPool> command_pools;
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;
