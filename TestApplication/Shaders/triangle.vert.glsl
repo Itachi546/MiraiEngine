@@ -5,7 +5,7 @@
 
 vec2 positions[3] = vec2[](
     vec2(0.0f, -1.0f),
-    vec2(-1.0f, 1.0f),
+    vec2(-1.0f, 0.5f),
     vec2(1.0f, 1.0f));
 
 uint colors[3] = uint[](

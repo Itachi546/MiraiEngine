@@ -2,6 +2,7 @@
 #include "Scene/Material.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Device/Window.hpp"
+#include "Device/InputDevice.hpp"
 
 #include <string>
 
@@ -27,14 +28,18 @@ namespace mirai
         Window::get()->get_size(&width, &height);
         set_size(width, height);
 
-        glm::vec2 inv_screen_size = glm::vec2(1.0f / width, 1.0f / height);
+        float push_constants[] = {(float)width, (float)height, static_cast<float>(enable_aa)};
 
         command_buffer->begin_render_pass(node, frame_graph);
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
         material->set_resource("u_texture", input_texture->texture);
         material->bind(command_buffer, node, frame_graph);
-        material->set_push_constant(command_buffer, SHADER_STAGE_FRAGMENT, 0, sizeof(float) * 2, &inv_screen_size);
+        material->set_push_constant(command_buffer,
+                                    SHADER_STAGE_FRAGMENT,
+                                    0,
+                                    static_cast<uint32_t>(sizeof(float) * 3),
+                                    push_constants);
 
         command_buffer->draw(6, 1, 0, 0);
 

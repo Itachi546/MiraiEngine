@@ -1,76 +1,122 @@
-#ifndef FXAA_GLSL
-#define FXAA_GLSL
+/**
+Basic FXAA implementation based on the code on geeks3d.com with the
+modification that the texture2DLod stuff was removed since it's
+unsupported by WebGL.
 
-#include "color.glsl"
+--
 
-const float EDGE_THRESHOLD_MIN = 0.0312;
-const float EDGE_THRESHOLD_MAX = 0.125;
+From:
+https://github.com/mitsuhiko/webgl-meincraft
 
-layout(push_constant) uniform PushConstants
+Copyright (c) 2011 by Armin Ronacher.
+
+Some rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * The names of the contributors may not be used to endorse or
+      promote products derived from this software without specific
+      prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#ifndef FXAA_REDUCE_MIN
+#define FXAA_REDUCE_MIN (1.0 / 128.0)
+#endif
+#ifndef FXAA_REDUCE_MUL
+#define FXAA_REDUCE_MUL (1.0 / 8.0)
+#endif
+#ifndef FXAA_SPAN_MAX
+#define FXAA_SPAN_MAX 8.0
+#endif
+
+// To save 9 dependent texture reads, you can compute
+// these in the vertex shader and use the optimized
+// frag.glsl function in your frag shader.
+
+// This is best suited for mobile devices, like iOS.
+
+void texcoords(vec2 fragCoord, vec2 resolution,
+               out vec2 v_rgbNW, out vec2 v_rgbNE,
+               out vec2 v_rgbSW, out vec2 v_rgbSE,
+               out vec2 v_rgbM)
 {
-    vec2 u_inv_screen_size;
-};
-
-vec4 calculate_fxaa(vec2 uv)
-{
-    float luma_up = rgb_to_luma(textureOffset(u_texture, uv, ivec2(0.0f, -1.0f)).rgb);
-    float luma_down = rgb_to_luma(textureOffset(u_texture, uv, ivec2(0.0f, 1.0f)).rgb);
-
-    float luma_left = rgb_to_luma(textureOffset(u_texture, uv, ivec2(-1.0f, 0.0f)).rgb);
-    float luma_right = rgb_to_luma(textureOffset(u_texture, uv, ivec2(1.0f, 0.0f)).rgb);
-
-    vec4 center_color = texture(u_texture, uv);
-    float luma_center = rgb_to_luma(center_color.rgb);
-
-    float luma_min = min(luma_up, min(luma_down, min(luma_left, min(luma_right, luma_center))));
-    float luma_max = max(luma_up, max(luma_down, max(luma_left, max(luma_right, luma_center))));
-
-    // if the contrast different is small or too low we ignore it
-    float luma_range = luma_max - luma_min;
-    if (luma_range < max(EDGE_THRESHOLD_MIN, luma_max * EDGE_THRESHOLD_MAX))
-        return center_color;
-
-    float luma_up_left = rgb_to_luma(textureOffset(u_texture, uv, ivec2(-1.0f, -1.0f)).rgb);
-    float luma_down_left = rgb_to_luma(textureOffset(u_texture, uv, ivec2(-1.0f, 1.0f)).rgb);
-
-    float luma_up_right = rgb_to_luma(textureOffset(u_texture, uv, ivec2(1.0f, -1.0f)).rgb);
-    float luma_down_right = rgb_to_luma(textureOffset(u_texture, uv, ivec2(1.0f, 1.0f)).rgb);
-
-    // Find the horizontal edges and vertical edges
-    // using following filter
-    // | 1 | 2 | 1 |
-    // | 2 |   | 2 |
-    // | 1 | 2 | 1 |
-    float luma_left_corners = luma_down_left + luma_up_left;
-    float luma_right_corners = luma_down_right + luma_up_right;
-
-    float luma_up_corners = luma_up_left + luma_up_right;
-    float luma_down_corners = luma_down_left + luma_down_right;
-
-    float luma_down_up = luma_down + luma_up;
-    float luma_left_right = luma_left + luma_right;
-
-    float edge_horizontal = abs(-2.0 * luma_left + luma_left_corners) +
-                            abs(-2.0 * luma_center + luma_down_up) * 2.0 +
-                            abs(-2.0 * luma_right + luma_right_corners);
-    float edge_vertical = abs(-2.0 * luma_up + luma_up_corners) +
-                          abs(-2.0 * luma_center + luma_left_right) * 2.0 +
-                          abs(-2.0 * luma_down + luma_down_corners);
-
-    bool is_horizontal = (edge_horizontal >= edge_vertical);
-
-    float luma1 = is_horizontal ? luma_down : luma_left;
-    float luma2 = is_horizontal ? luma_up : luma_right;
-
-    float gradient1 = luma1 - luma_center;
-    float gradient2 = luma2 - luma_center;
-
-    // Selecte steepest direction
-    bool is_1steepest = abs(gradient1) >= abs(gradient2);
-    float gradient_scaled = 0.25 * max(abs(gradient1), abs(gradient2));
-
-    // Search for end of edge
-    return vec4(u_inv_screen_size, 1.0f, 1.0f);
+    vec2 inverseVP = 1.0 / resolution.xy;
+    v_rgbNW = (fragCoord + vec2(-1.0, -1.0)) * inverseVP;
+    v_rgbNE = (fragCoord + vec2(1.0, -1.0)) * inverseVP;
+    v_rgbSW = (fragCoord + vec2(-1.0, 1.0)) * inverseVP;
+    v_rgbSE = (fragCoord + vec2(1.0, 1.0)) * inverseVP;
+    v_rgbM = vec2(fragCoord * inverseVP);
 }
 
-#endif
+// optimized version for mobile, where dependent
+// texture reads can be a bottleneck
+vec4 fxaa(sampler2D tex, vec2 fragCoord, vec2 resolution)
+{
+    vec4 color;
+    vec2 v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM;
+    texcoords(fragCoord, resolution, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
+
+    vec2 inverseVP = vec2(1.0 / resolution.x, 1.0 / resolution.y);
+    vec3 rgbNW = texture(tex, v_rgbNW).xyz;
+    vec3 rgbNE = texture(tex, v_rgbNE).xyz;
+    vec3 rgbSW = texture(tex, v_rgbSW).xyz;
+    vec3 rgbSE = texture(tex, v_rgbSE).xyz;
+    vec4 texColor = texture(tex, v_rgbM);
+    vec3 rgbM = texColor.xyz;
+    vec3 luma = vec3(0.299, 0.587, 0.114);
+    float lumaNW = dot(rgbNW, luma);
+    float lumaNE = dot(rgbNE, luma);
+    float lumaSW = dot(rgbSW, luma);
+    float lumaSE = dot(rgbSE, luma);
+    float lumaM = dot(rgbM, luma);
+    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+
+    vec2 dir;
+    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
+    dir.y = ((lumaNW + lumaSW) - (lumaNE + lumaSE));
+
+    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) *
+                              (0.25 * FXAA_REDUCE_MUL),
+                          FXAA_REDUCE_MIN);
+
+    float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+    dir = min(vec2(FXAA_SPAN_MAX, FXAA_SPAN_MAX),
+              max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),
+                  dir * rcpDirMin)) *
+          inverseVP;
+
+    vec3 rgbA = 0.5 * (texture(tex, fragCoord * inverseVP + dir * (1.0 / 3.0 - 0.5)).xyz +
+                       texture(tex, fragCoord * inverseVP + dir * (2.0 / 3.0 - 0.5)).xyz);
+    vec3 rgbB = rgbA * 0.5 + 0.25 * (texture(tex, fragCoord * inverseVP + dir * -0.5).xyz +
+                                     texture(tex, fragCoord * inverseVP + dir * 0.5).xyz);
+
+    float lumaB = dot(rgbB, luma);
+    if ((lumaB < lumaMin) || (lumaB > lumaMax))
+        color = vec4(rgbA, texColor.a);
+    else
+        color = vec4(rgbB, texColor.a);
+    return color;
+}

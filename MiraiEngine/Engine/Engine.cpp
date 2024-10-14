@@ -2,6 +2,7 @@
 #include "Device/Window.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Log.hpp"
+#include "Device/InputDevice.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -39,6 +40,7 @@ namespace mirai
 
             renderer->render();
 
+            Input::get()->update();
             auto end = std::chrono::high_resolution_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
