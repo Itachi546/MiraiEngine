@@ -31,17 +31,19 @@ namespace mirai
             }
         }
 
-        shader->push_constants.resize(reflection.push_constant_block_count);
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p)
         {
             SpvReflectBlockVariable &push_constant = reflection.push_constant_blocks[p];
 
-            VkPushConstantRange &vk_push_constant = shader->push_constants[p];
-            vk_push_constant.offset = push_constant.offset;
-            vk_push_constant.size = push_constant.size;
-            vk_push_constant.stageFlags = VkShaderStageFlagBits(reflection.shader_stage);
-        }
+            VkPushConstantRange vk_push_constant = {
+                .stageFlags = VkShaderStageFlags(reflection.shader_stage),
+                .offset = push_constant.offset,
+                .size = push_constant.size,
+            };
 
+            uint32_t hash = utils::djb2_hash_string(push_constant.type_description->type_name);
+            shader->push_constants.insert(std::make_pair(hash, std::move(vk_push_constant)));
+        }
         shader->shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
     }
 
@@ -70,16 +72,15 @@ namespace mirai
         }
     }
 
-    void MergePushConstants(std::vector<VkPushConstantRange> &dst, const std::vector<VkPushConstantRange> &src)
+    void MergePushConstants(std::unordered_map<uint32_t, VkPushConstantRange> &dst, const std::unordered_map<uint32_t, VkPushConstantRange> &src)
     {
-        for (const auto &push_constant : src)
+        for (const auto &[key, val] : src)
         {
-            auto found = std::find_if(dst.begin(), dst.end(), [&push_constant](const VkPushConstantRange &entry)
-                                      { return push_constant.size == entry.size && push_constant.offset == entry.offset; });
+            auto found = dst.find(key);
             if (found != dst.end())
-                found->stageFlags |= push_constant.stageFlags;
+                found->second.stageFlags |= val.stageFlags;
             else
-                dst.push_back(push_constant);
+                dst.insert(std::make_pair(key, val));
         }
     }
 

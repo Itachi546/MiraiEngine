@@ -50,11 +50,11 @@ namespace mirai
 
         if (is_depth_texture)
         {
-                depth_barriers.push_back(CreateImageMemoryBarrier(texture->image,
-                                                                  texture->image_aspect, 0,
-                                                                  access_mask,
-                                                                  texture->current_layout,
-                                                                  required_layout));
+            depth_barriers.push_back(CreateImageMemoryBarrier(texture->image,
+                                                              texture->image_aspect, 0,
+                                                              access_mask,
+                                                              texture->current_layout,
+                                                              required_layout));
             texture->current_layout = required_layout;
         }
         else
@@ -123,8 +123,8 @@ namespace mirai
             }
         }
 
-        uint32_t width = frame_graph_rendering_info.width;
-        uint32_t height = frame_graph_rendering_info.height;
+        uint32_t width = node->renderer->get_width();
+        uint32_t height = node->renderer->get_height();
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .renderArea = {0, 0, width, height},
@@ -170,6 +170,12 @@ namespace mirai
     void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
     {
         vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
+    }
+
+    void CommandBuffer::set_push_constant(PipelineID pipeline, uint32_t shader_stage, uint32_t offset, uint32_t size, void* data)
+    {
+        VulkanPipeline *vk_pipeline = device->access_pipeline(pipeline);
+        vkCmdPushConstants(command_buffer, vk_pipeline->pipeline_layout, VkShaderStageFlags(shader_stage), offset, size, data);
     }
 
     void CommandBuffer::end_render_pass()
@@ -223,7 +229,6 @@ namespace mirai
                                  static_cast<uint32_t>(depth_image_barriers.size()), depth_image_barriers.data());
             depth_image_barriers.clear();
         }
- 
 
         for (auto resource_handle : node->outputs)
         {

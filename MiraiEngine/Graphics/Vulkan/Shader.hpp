@@ -44,7 +44,7 @@ namespace mirai
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
         std::vector<VkReflectionDescriptorSet> descriptor_sets;
-        std::vector<VkPushConstantRange> push_constants;
+        std::unordered_map<uint32_t, VkPushConstantRange> push_constants;
     };
 
     struct VulkanBindingInfo
@@ -83,13 +83,14 @@ namespace mirai
         std::vector<VkDescriptorSetLayout> set_layouts;
         VkPipelineLayout pipeline_layout;
         VulkanBindings bindings;
+        std::unordered_map<uint32_t, VkPushConstantRange> push_constants;
     };
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size);
 
     VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const std::vector<VkReflectionDescriptorBinding> &descriptor_bindings, uint32_t set, VkDescriptorSetLayoutCreateFlags flags);
 
-    void MergePushConstants(std::vector<VkPushConstantRange> &dst, const std::vector<VkPushConstantRange> &src);
+    void MergePushConstants(std::unordered_map<uint32_t, VkPushConstantRange> &dst, const std::unordered_map<uint32_t, VkPushConstantRange> &src);
 
     void MergeShaderBindings(std::vector<VkReflectionDescriptorBinding> &dst, const std::vector<VkReflectionDescriptorBinding> src);
 

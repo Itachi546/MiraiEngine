@@ -75,6 +75,16 @@ namespace mirai
             return glfw_window;
         }
 
+        void set_minimized(bool state)
+        {
+            this->minimized = state;
+        }
+
+        bool is_minimized() const
+        {
+            return this->minimized;
+        }
+
         ~Window();
 
       private:
@@ -89,6 +99,7 @@ namespace mirai
         uint32_t fullscreen_width, fullscreen_height;
         std::string title;
         bool fullscreen;
+        bool minimized;
 
         glm::vec2 mouse_pos;
         glm::vec2 mouse_pos_delta;

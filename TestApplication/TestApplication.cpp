@@ -28,8 +28,8 @@ class TestApplication : public App
 
     void start() override
     {
-        uint32_t width, height;
-        Window::get()->get_size(&width, &height);
+        uint32_t width = 1920;
+        uint32_t height = 1080;
         Scene *scene = Renderer::get()->get_scene();
 
         // Create RenderPass
@@ -101,11 +101,15 @@ class TestApplication : public App
         frame_graph->compile();
 
         // Create Entity
-        FullScreenMaterial material;
-        material.set_front_face(FRONT_FACE_CLOCKWISE);
+        Material material("TriangleMaterial");
+        material.create_from_file({
+            "SPIRV/triangle.vert.spv",
+            "SPIRV/triangle.frag.spv",
+        });
+        material.set_cull_mode(CULL_MODE_NONE);
         material.set_depth_write(true);
         material.set_depth_test(true);
-        
+
         Entity entity = ecs::create_entity();
         scene->get_component_manager()->add_component<Material>(entity, material);
         scene->get_component_manager()->add_component<NameComponent>(entity, "test");

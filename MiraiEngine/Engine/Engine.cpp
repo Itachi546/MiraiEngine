@@ -29,6 +29,8 @@ namespace mirai
         while (running && !window->is_closed())
         {
             window->update();
+            if (window->is_minimized())
+                continue;
 
             if (app)
                 app->update();
@@ -36,8 +38,6 @@ namespace mirai
             renderer->update();
 
             renderer->render();
-
-            std::this_thread::sleep_for(16ms);
 
             auto end = std::chrono::high_resolution_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

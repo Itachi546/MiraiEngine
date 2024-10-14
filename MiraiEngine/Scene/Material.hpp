@@ -56,6 +56,8 @@ namespace mirai
             resources.push_back(Resource{name, texture});
         }
 
+        void set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data);
+
         uint64_t get_hash()
         {
             return hash;
@@ -78,6 +80,7 @@ namespace mirai
             std::string name;
             ID resource_id;
         };
+
         std::vector<Resource> resources;
 
         PipelineID create_pipeline(FrameGraphNode *render_pass, FrameGraph *frame_graph);

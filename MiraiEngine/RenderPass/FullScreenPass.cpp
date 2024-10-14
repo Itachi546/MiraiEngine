@@ -1,6 +1,7 @@
 #include "FullScreenPass.hpp"
 #include "Scene/Material.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Device/Window.hpp"
 
 #include <string>
 
@@ -22,11 +23,18 @@ namespace mirai
         FrameGraphNode *node = frame_graph->get_node(name);
         ASSERT(node != nullptr);
 
+        uint32_t width, height;
+        Window::get()->get_size(&width, &height);
+        set_size(width, height);
+
+        glm::vec2 inv_screen_size = glm::vec2(1.0f / width, 1.0f / height);
+
         command_buffer->begin_render_pass(node, frame_graph);
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
         material->set_resource("u_texture", input_texture->texture);
         material->bind(command_buffer, node, frame_graph);
+        material->set_push_constant(command_buffer, SHADER_STAGE_FRAGMENT, 0, sizeof(float) * 2, &inv_screen_size);
 
         command_buffer->draw(6, 1, 0, 0);
 

@@ -39,6 +39,15 @@ namespace mirai
         window->mouse_scroll = current_scroll;
     }
 
+    static void WindowIconifyCallback(GLFWwindow *glfw_window, int iconified)
+    {
+        Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
+        if (iconified == GLFW_TRUE)
+            window->set_minimized(true);
+        else
+            window->set_minimized(false);
+    }
+
     Window *Window::Instance = nullptr;
 
     Window::Window(uint32_t width, uint32_t height, const std::string &title) : width(width),
@@ -48,7 +57,8 @@ namespace mirai
                                                                                 mouse_pos(0.0f, 0.0f),
                                                                                 mouse_pos_delta(0.0f, 0.0f),
                                                                                 mouse_scroll(0.0f, 0.0f),
-                                                                                mouse_scroll_delta(0.0f, 0.0f)
+                                                                                mouse_scroll_delta(0.0f, 0.0f),
+                                                                                minimized(false)
     {
         if (!glfwInit())
         {
@@ -80,6 +90,7 @@ namespace mirai
         glfwSetMouseButtonCallback(glfw_window, WindowButtonCallback);
         glfwSetCursorPosCallback(glfw_window, WindowCursorPosCallback);
         glfwSetScrollCallback(glfw_window, WindowScrollCallback);
+        glfwSetWindowIconifyCallback(glfw_window, WindowIconifyCallback);
 
         double x, y;
         glfwGetCursorPos(glfw_window, &x, &y);

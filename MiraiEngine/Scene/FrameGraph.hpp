@@ -51,8 +51,18 @@ namespace mirai
 
         virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) = 0;
 
+        void set_size(uint32_t width, uint32_t height)
+        {
+            this->width = width;
+            this->height = height;
+        }
+        
+        uint32_t get_width() const { return width; }
+        uint32_t get_height() const { return height; }
+
       protected:
         std::string name;
+        uint32_t width, height;
     };
 
     struct FrameGraphNodeDescription
@@ -64,18 +74,18 @@ namespace mirai
         std::shared_ptr<FrameGraphRenderPass> renderer;
     };
 
-    struct FrameGraphAttachmentInfo {
+    struct FrameGraphAttachmentInfo
+    {
         Color clear_color;
         Format format;
         AttachmentLoadOp load_op;
     };
 
-    struct FrameGraphRenderingInfo 
+    struct FrameGraphRenderingInfo
     {
         std::vector<FrameGraphAttachmentInfo> attachment_info;
         uint32_t depth_attachment_index = ~0u;
         bool has_stencil_attachment = false;
-        uint32_t width, height;
     };
 
     struct FrameGraphResource
@@ -90,7 +100,7 @@ namespace mirai
     {
         std::string name;
         bool enabled;
-        
+
         std::vector<FrameGraphResourceHandle> inputs;
         std::vector<FrameGraphResourceHandle> outputs;
         std::shared_ptr<FrameGraphRenderPass> renderer;
@@ -120,15 +130,16 @@ namespace mirai
             return resource_pool_resources.access(handle);
         }
 
-        FrameGraphResource* get_resource(const std::string& name) {
+        FrameGraphResource *get_resource(const std::string &name)
+        {
             auto found = resources_map.find(utils::djb2_hash_string(name));
-            if(found != resources_map.end())
+            if (found != resources_map.end())
                 return resource_pool_resources.access(found->second);
             return nullptr;
         }
 
         FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
-        FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput* input);
+        FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput *input);
 
         ~FrameGraphBuilder();
 
@@ -165,7 +176,8 @@ namespace mirai
             return builder->get_resource(handle);
         }
 
-        FrameGraphResource* get_resource(const std::string& name) {
+        FrameGraphResource *get_resource(const std::string &name)
+        {
             return builder->get_resource(name);
         }
 

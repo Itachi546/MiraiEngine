@@ -42,6 +42,18 @@ namespace mirai
         command_buffer->bind_pipeline(pipeline);
     }
 
+    void Material::set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data)
+    {
+        PipelineID pipeline = MaterialCache::get()->get_pipeline(hash);
+#ifdef _DEBUG
+        if (!pipeline.is_valid())
+        {
+            Log::Error("Can't bind push constant before binding pipeline");
+        }
+#endif
+        command_buffer->set_push_constant(pipeline, shader_stage, offset, size, data);
+    }
+
     void Material::calculate_hash()
     {
         hash = 0;
@@ -68,10 +80,10 @@ namespace mirai
         DepthState ds = DepthState::create();
         std::vector<Format> color_attachment_formats;
 
-        FrameGraphRenderingInfo* rendering_info = &node->rendering_info;
+        FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
         for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i)
         {
-            FrameGraphAttachmentInfo* attachment = &rendering_info->attachment_info[i];
+            FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
             if (i == rendering_info->depth_attachment_index)
             {
                 ds.enable_depth_write = enable_depth_write;
@@ -80,7 +92,7 @@ namespace mirai
             }
             else
             {
-                FrameGraphResource* resource = frame_graph->get_resource(node->outputs[i]);
+                FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
                     color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);
                 else

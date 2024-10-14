@@ -22,7 +22,7 @@ namespace mirai
         Material *material = component_manager->get_component<Material>(entity);
         material->bind(command_buffer, node, frame_graph);
 
-        command_buffer->draw(6, 1, 0, 0);
+        command_buffer->draw(3, 1, 0, 0);
 
         command_buffer->end_render_pass();
     }

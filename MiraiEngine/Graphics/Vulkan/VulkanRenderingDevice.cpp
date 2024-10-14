@@ -5,6 +5,7 @@
 #include "Swapchain.h"
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
+#include "Common/Hash.hpp"
 
 #define VMA_IMPLEMENTATION
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
@@ -238,8 +239,8 @@ namespace mirai
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name)
     {
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
-        std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> descriptor_sets;
-        std::vector<VkPushConstantRange> push_constants;
+        std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> descriptor_sets_map;
+        std::unordered_map<uint32_t, VkPushConstantRange> push_constants_map;
         for (uint32_t i = 0; i < pipeline_description->shader_count; ++i)
         {
             VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);
@@ -252,18 +253,18 @@ namespace mirai
             {
                 for (auto &set : shader->descriptor_sets)
                 {
-                    auto found = descriptor_sets.find(set.set);
-                    if (found != descriptor_sets.end())
+                    auto found = descriptor_sets_map.find(set.set);
+                    if (found != descriptor_sets_map.end())
                     {
                         // Merge the bindings if the binding index is same
                         MergeShaderBindings(found->second, set.bindings);
                     }
                     else
-                        descriptor_sets.insert(std::make_pair(set.set, set.bindings));
+                        descriptor_sets_map.insert(std::make_pair(set.set, set.bindings));
                 }
             }
 
-            MergePushConstants(push_constants, shader->push_constants);
+            MergePushConstants(push_constants_map, shader->push_constants);
         }
 
         VkPipelineViewportStateCreateInfo viewport_state = {
@@ -347,9 +348,14 @@ namespace mirai
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        pipeline->push_constants = push_constants_map;
 
-        for (const auto &[key, val] : descriptor_sets)
+        for (const auto &[key, val] : descriptor_sets_map)
             pipeline->set_layouts.push_back(CreateDescriptorSetLayout(device, val, key, 0));
+
+        std::vector<VkPushConstantRange> push_constants;
+        for (const auto &entry : push_constants_map)
+            push_constants.push_back(entry.second);
 
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -381,7 +387,7 @@ namespace mirai
         VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
         set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
 
-        CreatePipelineBindings(descriptor_sets, device, pipeline, descriptor_pool, K_MAX_FRAME_IN_FLIGHTS * K_NUM_COMMAND_BUFFER_PER_THREAD, &pipeline->bindings);
+        CreatePipelineBindings(descriptor_sets_map, device, pipeline, descriptor_pool, K_MAX_FRAME_IN_FLIGHTS * K_NUM_COMMAND_BUFFER_PER_THREAD, &pipeline->bindings);
 
         return PipelineID{pipeline_id};
     }
@@ -598,7 +604,7 @@ namespace mirai
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bindings.set_resource(name, resource_id);
     }
-
+    
     void VulkanRenderingDevice::wait()
     {
         VK_CHECK(vkDeviceWaitIdle(device));
@@ -710,7 +716,7 @@ namespace mirai
             vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
             if (texture->sampler != VK_NULL_HANDLE)
                 vkDestroySampler(device, texture->sampler, nullptr);
-            texture->width  = texture->height = texture->depth = 0;
+            texture->width = texture->height = texture->depth = 0;
             texture->format = VK_FORMAT_UNDEFINED;
             texture->image_view = VK_NULL_HANDLE;
             texture->allocation = VK_NULL_HANDLE;

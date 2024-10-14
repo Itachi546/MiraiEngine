@@ -52,9 +52,8 @@ namespace mirai
                 node->outputs.push_back(create_node_output(output));
         }
 
-        rendering_info.width = width;
-        rendering_info.height = height;
         node->renderer = node_description.renderer;
+        node->renderer->set_size(width, height);
 
         nodes_maps.insert(std::make_pair(utils::djb2_hash_string(node->name), node_index));
 
