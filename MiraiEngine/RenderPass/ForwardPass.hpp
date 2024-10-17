@@ -6,9 +6,9 @@ namespace mirai
     class ForwardPass : public FrameGraphRenderPass
     {
       public:
-        ForwardPass(const std::string& name);
+        ForwardPass(const std::string &name);
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
         ~ForwardPass();
     };

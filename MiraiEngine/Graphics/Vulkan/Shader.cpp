@@ -176,13 +176,11 @@ namespace mirai
         auto [set_index, binding_index] = found->second;
 
         descriptor_sets[set_index].bindings[binding_index].resource_id = id;
-
-        dirty = true;
     }
 
     void VulkanBindings::update_descriptor(VkDevice device, ResourcePool<VulkanTexture> &resource_pool_textures, uint32_t frame_id, uint32_t thread_id)
     {
-        if (dirty && descriptor_sets.size() > 0)
+        if (descriptor_sets.size() > 0)
         {
             std::vector<VkDescriptorImageInfo> image_infos;
             std::vector<VkDescriptorBufferInfo> buffer_infos;
@@ -211,7 +209,6 @@ namespace mirai
                     vkUpdateDescriptorSets(device, static_cast<uint32_t>(write_sets.size()), write_sets.data(), 0, nullptr);
                 }
             }
-            dirty = false;
         }
     }
 } // namespace mirai

@@ -45,7 +45,7 @@ namespace mirai
             free_list[--free_list_head] = id.id;
             --used_indices;
         }
-        
+
         void release_all()
         {
             for (uint32_t i = 0; i < pool_size; ++i)

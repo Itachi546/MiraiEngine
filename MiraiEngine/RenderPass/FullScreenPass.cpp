@@ -19,9 +19,14 @@ namespace mirai
         material->set_front_face(FRONT_FACE_CLOCKWISE);
     }
 
-    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene)
+    void FullScreenPass::initialize(FrameGraph *frame_graph, const FrameGraphNode* node)
     {
-        FrameGraphNode *node = frame_graph->get_node(name);
+        FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
+        material->set_resource("u_texture", input_texture->texture);
+    }
+
+    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode* node, Scene *scene)
+    {
         ASSERT(node != nullptr);
 
         uint32_t width, height;
@@ -32,8 +37,6 @@ namespace mirai
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
-        material->set_resource("u_texture", input_texture->texture);
         material->bind(command_buffer, node, frame_graph);
         material->set_push_constant(command_buffer,
                                     SHADER_STAGE_FRAGMENT,

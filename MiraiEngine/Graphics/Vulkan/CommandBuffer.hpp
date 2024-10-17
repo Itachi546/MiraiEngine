@@ -14,7 +14,7 @@ namespace mirai
       public:
         CommandBuffer();
 
-        void begin_render_pass(FrameGraphNode *node, FrameGraph *frame_graph);
+        void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 
         void bind_pipeline(PipelineID pipeline);
 
@@ -27,7 +27,7 @@ namespace mirai
         void begin();
 
       private:
-        void prepare_render_pass_resources(FrameGraphNode *node, FrameGraph *frame_graph);
+        void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode* node);
         friend class VulkanRenderingDevice;
         VulkanRenderingDevice *device;
         VkCommandBuffer command_buffer;

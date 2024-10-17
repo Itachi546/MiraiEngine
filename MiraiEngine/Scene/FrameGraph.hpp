@@ -18,6 +18,9 @@ namespace mirai
     class CommandBuffer;
     class Scene;
     class FrameGraph;
+    struct FrameGraphNode;
+
+    using FrameGraphNodeHandle = uint32_t;
 
     enum FrameGraphResourceType
     {
@@ -47,16 +50,18 @@ namespace mirai
       public:
         FrameGraphRenderPass(const std::string &name) : name(name) {}
 
-        virtual void update() {}
+        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {}
 
-        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) = 0;
+        virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node) {}
+
+        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) = 0;
 
         void set_size(uint32_t width, uint32_t height)
         {
             this->width = width;
             this->height = height;
         }
-        
+
         uint32_t get_width() const { return width; }
         uint32_t get_height() const { return height; }
 
@@ -106,7 +111,6 @@ namespace mirai
         std::shared_ptr<FrameGraphRenderPass> renderer;
         FrameGraphRenderingInfo rendering_info;
     };
-    using FrameGraphNodeHandle = uint32_t;
 
     class FrameGraphBuilder
     {
@@ -169,6 +173,11 @@ namespace mirai
         FrameGraphNode *get_node(const std::string &name)
         {
             return builder->get_node(name);
+        }
+
+        FrameGraphNode *get_node(FrameGraphNodeHandle node)
+        {
+            return builder->get_node(node);
         }
 
         FrameGraphResource *get_resource(FrameGraphResourceHandle handle)

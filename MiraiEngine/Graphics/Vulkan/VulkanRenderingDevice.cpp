@@ -700,7 +700,6 @@ namespace mirai
             vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
             pipeline->bindings.descriptor_sets.clear();
-            pipeline->bindings.dirty = false;
             pipeline->bindings.lookup_info.clear();
             resource_pool_pipelines.release(pipeline_ids[i]);
         }

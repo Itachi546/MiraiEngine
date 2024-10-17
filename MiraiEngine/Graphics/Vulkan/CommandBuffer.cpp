@@ -74,9 +74,9 @@ namespace mirai
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
 
-    void CommandBuffer::begin_render_pass(FrameGraphNode *node, FrameGraph *frame_graph)
+    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph)
     {
-        prepare_render_pass_resources(node, frame_graph);
+        prepare_render_pass_resources(frame_graph, node);
 
         uint32_t attachment_count = static_cast<uint32_t>(node->outputs.size());
 
@@ -84,10 +84,10 @@ namespace mirai
         std::optional<VkRenderingAttachmentInfo> depth_attachment;
         bool has_stencil_attachment = false;
 
-        FrameGraphRenderingInfo &frame_graph_rendering_info = node->rendering_info;
+        const FrameGraphRenderingInfo &frame_graph_rendering_info = node->rendering_info;
         for (uint32_t i = 0; i < frame_graph_rendering_info.attachment_info.size(); ++i)
         {
-            FrameGraphAttachmentInfo *attachment = &frame_graph_rendering_info.attachment_info[i];
+            const FrameGraphAttachmentInfo *attachment = &frame_graph_rendering_info.attachment_info[i];
             FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
 
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
@@ -172,7 +172,7 @@ namespace mirai
         vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
     }
 
-    void CommandBuffer::set_push_constant(PipelineID pipeline, uint32_t shader_stage, uint32_t offset, uint32_t size, void* data)
+    void CommandBuffer::set_push_constant(PipelineID pipeline, uint32_t shader_stage, uint32_t offset, uint32_t size, void *data)
     {
         VulkanPipeline *vk_pipeline = device->access_pipeline(pipeline);
         vkCmdPushConstants(command_buffer, vk_pipeline->pipeline_layout, VkShaderStageFlags(shader_stage), offset, size, data);
@@ -193,7 +193,7 @@ namespace mirai
         VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
     }
 
-    void CommandBuffer::prepare_render_pass_resources(FrameGraphNode *node, FrameGraph *frame_graph)
+    void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
     {
 
         std::vector<VkImageMemoryBarrier> color_image_barriers;

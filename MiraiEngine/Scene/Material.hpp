@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RenderingDevice.hpp"
+#include <unordered_map>
 
 namespace mirai
 {
@@ -19,7 +20,7 @@ namespace mirai
             if (this->cull_mode == cull_mode)
                 return;
 
-            calculate_hash();
+            clear_pipeline_state();
             this->cull_mode = cull_mode;
         }
 
@@ -28,7 +29,7 @@ namespace mirai
             if (this->front_face == front_face)
                 return;
 
-            calculate_hash();
+            clear_pipeline_state();
             this->front_face = front_face;
         }
 
@@ -36,7 +37,8 @@ namespace mirai
         {
             if (this->enable_depth_test == depth_test)
                 return;
-            calculate_hash();
+
+            clear_pipeline_state();
             this->enable_depth_test = depth_test;
         }
 
@@ -45,16 +47,13 @@ namespace mirai
             if (this->enable_depth_write == depth_write)
                 return;
 
-            calculate_hash();
+            clear_pipeline_state();
             this->enable_depth_write = depth_write;
         }
 
-        void bind(CommandBuffer *command_buffer, FrameGraphNode *node, FrameGraph *frame_graph);
+        void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
 
-        void set_resource(const std::string &name, TextureID texture)
-        {
-            resources.push_back(Resource{name, texture});
-        }
+        void set_resource(const std::string &name, ID resource);
 
         void set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data);
 
@@ -66,6 +65,7 @@ namespace mirai
       protected:
         std::string name;
         uint64_t hash;
+        PipelineID pipeline;
 
         CullMode cull_mode;
         FrontFace front_face;
@@ -75,14 +75,22 @@ namespace mirai
 
         void calculate_hash();
 
+        void clear_pipeline_state()
+        {
+            pipeline.id = K_INVALID_ID;
+            calculate_hash();
+        }
+
         struct Resource
         {
             std::string name;
             ID resource_id;
+            bool dirty;
         };
 
-        std::vector<Resource> resources;
+        bool is_resource_updated;
+        std::unordered_map<uint32_t, Resource> resources;
 
-        PipelineID create_pipeline(FrameGraphNode *render_pass, FrameGraph *frame_graph);
+        PipelineID create_pipeline(const FrameGraphNode *render_pass, FrameGraph *frame_graph);
     };
 } // namespace mirai

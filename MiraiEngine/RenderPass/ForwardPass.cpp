@@ -10,9 +10,8 @@ namespace mirai
     
     }
 
-    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene)
+    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode* node, Scene *scene)
     {
-        FrameGraphNode *node = frame_graph->get_node(name);
         ASSERT(node != nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);

@@ -11,7 +11,9 @@ namespace mirai
                                                   front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
                                                   enable_depth_test(false),
                                                   enable_depth_write(false),
-                                                  hash(0)
+                                                  hash(0),
+                                                  is_resource_updated(true),
+                                                  pipeline{K_INVALID_ID}
     {
     }
 
@@ -29,15 +31,47 @@ namespace mirai
         calculate_hash();
     }
 
-    void Material::bind(CommandBuffer *command_buffer, FrameGraphNode *node, FrameGraph *frame_graph)
+    void Material::set_resource(const std::string &name, ID resource)
     {
-        PipelineID pipeline = MaterialCache::get()->get_pipeline(hash);
+        uint32_t hash = utils::djb2_hash_string(name);
+        auto found = resources.find(utils::djb2_hash_string(name));
+        if (found == resources.end())
+        {
+            resources[hash] = Resource{name, resource, true};
+            is_resource_updated = true;
+        }
+        else
+        {
+            if (found->second.resource_id.id == resource.id)
+                return;
+
+            found->second.resource_id = resource;
+            found->second.dirty = true;
+            is_resource_updated = true;
+        }
+    }
+
+    void Material::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph)
+    {
         if (!pipeline.is_valid())
         {
-            pipeline = create_pipeline(node, frame_graph);
+            pipeline = MaterialCache::get()->get_pipeline(hash);
+            if (!pipeline.is_valid())
+                pipeline = create_pipeline(node, frame_graph);
         }
-        for (auto &resource : resources)
-            RenderingDevice::get()->pipeline_set_resources(resource.name, pipeline, resource.resource_id);
+
+        if (is_resource_updated)
+        {
+            for (auto &resource : resources)
+            {
+                if (resource.second.dirty)
+                {
+                    RenderingDevice::get()->pipeline_set_resources(resource.second.name, pipeline, resource.second.resource_id);
+                    resource.second.dirty = false;
+                }
+            }
+            is_resource_updated = false;
+        }
 
         command_buffer->bind_pipeline(pipeline);
     }
@@ -60,7 +94,7 @@ namespace mirai
         utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write);
     }
 
-    PipelineID Material::create_pipeline(FrameGraphNode *node, FrameGraph *frame_graph)
+    PipelineID Material::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph)
     {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
@@ -80,10 +114,10 @@ namespace mirai
         DepthState ds = DepthState::create();
         std::vector<Format> color_attachment_formats;
 
-        FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
+        const FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
         for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i)
         {
-            FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
+            const FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
             if (i == rendering_info->depth_attachment_index)
             {
                 ds.enable_depth_write = enable_depth_write;

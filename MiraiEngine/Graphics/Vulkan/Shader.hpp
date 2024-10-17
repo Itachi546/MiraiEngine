@@ -69,7 +69,6 @@ namespace mirai
     {
         std::vector<VulkanDescriptorSet> descriptor_sets;
         std::unordered_map<uint32_t, VulkanBindingLookupInfo> lookup_info;
-        bool dirty = true;
 
         void set_resource(const std::string &name, ID resource_id);
 

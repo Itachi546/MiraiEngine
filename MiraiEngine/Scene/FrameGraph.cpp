@@ -37,7 +37,8 @@ namespace mirai
             const FrameGraphResourceOutput *output = &node_description.outputs[i];
             const FrameGraphResourceType &resource_type = output->resource_type;
 
-            if(is_depth_format(output->format)) {
+            if (is_depth_format(output->format))
+            {
                 rendering_info.depth_attachment_index = i;
                 rendering_info.has_stencil_attachment = is_stencil_format(output->format);
             }
@@ -143,7 +144,10 @@ namespace mirai
     {
         for (uint32_t i = 0; i < node_descriptions.size(); ++i)
         {
-            node_handles.push_back(builder->create_node(node_descriptions[i]));
+            FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
+            const FrameGraphNode *node = builder->get_node(node_handle);
+            node->renderer->initialize(this, node);
+            node_handles.push_back(node_handle);
         }
     }
 
@@ -151,8 +155,8 @@ namespace mirai
     {
         for (auto handle : node_handles)
         {
-            FrameGraphNode *node = builder->get_node(handle);
-            node->renderer->render(command_buffer, this, scene);
+            const FrameGraphNode *node = builder->get_node(handle);
+            node->renderer->render(command_buffer, this, node, scene);
         }
     }
 } // namespace mirai

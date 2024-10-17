@@ -6,12 +6,17 @@
 namespace mirai
 {
     class Material;
+    struct FrameGraphNode;
+    class FrameGraph;
+
     class FullScreenPass : public FrameGraphRenderPass
     {
       public:
         FullScreenPass(const std::string &name);
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, Scene *scene) override;
+        void initialize(FrameGraph* frame_graph, const FrameGraphNode* node) override;
+
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode* node, Scene *scene) override;
 
         void set_antialiasing(bool state)
         {
