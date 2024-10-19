@@ -58,7 +58,7 @@ namespace mirai
         std::vector<VkPresentModeKHR> present_modes(present_mode_count);
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data()));
 
-        VkPresentModeKHR required_present_mode = vsync ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+        VkPresentModeKHR required_present_mode = vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
         for (auto &present_mode : present_modes)
         {
             if (present_mode == required_present_mode)

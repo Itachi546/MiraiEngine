@@ -30,7 +30,7 @@ class TestApplication : public App
     {
         uint32_t width = 1920;
         uint32_t height = 1080;
-        Scene *scene = Renderer::get()->get_scene();
+        scene = Renderer::get()->get_scene();
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
@@ -110,15 +110,14 @@ class TestApplication : public App
         material.set_depth_write(true);
         material.set_depth_test(true);
 
-        Entity entity = ecs::create_entity();
-        scene->get_component_manager()->add_component<Material>(entity, material);
+        entity = ecs::create_entity();
+        scene->get_component_manager()->add_component<Material>(entity, std::move(material));
         scene->get_component_manager()->add_component<NameComponent>(entity, "test");
         scene->add_entity(entity);
     }
 
     void update() override
     {
-        float time = Engine::get()->get_elapsed_seconds();
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
     }
@@ -127,6 +126,10 @@ class TestApplication : public App
     {
         Log::Info("Destroying Test Application...");
     }
+
+    private:
+        Entity entity;
+        Scene* scene;
 };
 
 int main()
