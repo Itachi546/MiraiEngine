@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Scene/Material.hpp"
+#include "Scene/ShaderMaterial.hpp"
 
-class FullScreenMaterial : public mirai::Material
+class FullScreenMaterial : public mirai::ShaderMaterial
 {
   public:
-    FullScreenMaterial() : mirai::Material("FullScreenMaterial")
+    FullScreenMaterial() : mirai::ShaderMaterial("FullScreenMaterial")
     {
         create_from_file(std::vector<std::string>{
             "SPIRV/main.vert.spv",

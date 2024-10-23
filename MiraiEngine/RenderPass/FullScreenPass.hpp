@@ -5,7 +5,7 @@
 
 namespace mirai
 {
-    class Material;
+    class ShaderMaterial;
     struct FrameGraphNode;
     class FrameGraph;
 
@@ -26,7 +26,7 @@ namespace mirai
         ~FullScreenPass();
 
       private:
-        std::shared_ptr<Material> material;
+        std::shared_ptr<ShaderMaterial> material;
         bool enable_aa;
     };
 } // namespace mirai

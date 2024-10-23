@@ -1,21 +1,21 @@
-#include "MaterialCache.hpp"
+#include "ShaderMaterialCache.hpp"
 
 namespace mirai
 {
-    MaterialCache *MaterialCache::Instance = nullptr;
+    ShaderMaterialCache *ShaderMaterialCache::Instance = nullptr;
 
-    MaterialCache::MaterialCache()
+    ShaderMaterialCache::ShaderMaterialCache()
     {
         Instance = this;
     }
 
-    void MaterialCache::register_shader(uint32_t shader_hash, std::vector<ShaderID> shaders)
+    void ShaderMaterialCache::register_shader(uint32_t shader_hash, std::vector<ShaderID> shaders)
     {
         if (shader_caches.find(shader_hash) == shader_caches.end())
             shader_caches[shader_hash] = shaders;
     }
 
-    std::vector<ShaderID> MaterialCache::get_shaders(uint32_t hash)
+    std::vector<ShaderID> ShaderMaterialCache::get_shaders(uint32_t hash)
     {
         auto found = shader_caches.find(hash);
         if (found != shader_caches.end())
@@ -23,7 +23,7 @@ namespace mirai
         return {};
     }
 
-    PipelineID MaterialCache::get_pipeline(uint64_t hash)
+    PipelineID ShaderMaterialCache::get_pipeline(uint64_t hash)
     {
         auto found = pipeline_caches.find(hash);
         if (found != pipeline_caches.end())
@@ -31,12 +31,12 @@ namespace mirai
         return PipelineID{K_INVALID_ID};
     }
 
-    void MaterialCache::add_pipeline(uint64_t hash, PipelineID pipeline)
+    void ShaderMaterialCache::add_pipeline(uint64_t hash, PipelineID pipeline)
     {
         pipeline_caches[hash] = pipeline;
     }
 
-    MaterialCache::~MaterialCache()
+    ShaderMaterialCache::~ShaderMaterialCache()
     {
         for (auto &[key, val] : shader_caches)
         {

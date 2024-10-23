@@ -3,6 +3,7 @@
 #include "Scene/FrameGraph.hpp"
 namespace mirai
 {
+    class ShaderMaterial;
     class ForwardPass : public FrameGraphRenderPass
     {
       public:
@@ -11,5 +12,8 @@ namespace mirai
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
         ~ForwardPass();
+
+      private:
+        std::shared_ptr<ShaderMaterial> shader;
     };
 } // namespace mirai

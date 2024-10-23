@@ -1,5 +1,5 @@
 #include "FullScreenPass.hpp"
-#include "Scene/Material.hpp"
+#include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
@@ -11,7 +11,7 @@ namespace mirai
 
     FullScreenPass::FullScreenPass(const std::string &name) : FrameGraphRenderPass(name)
     {
-        material = std::make_shared<Material>("FullScreenTextureMaterial");
+        material = std::make_shared<ShaderMaterial>("FullScreenTextureMaterial");
         material->create_from_file(std::vector<std::string>{
             "SPIRV/fullscreen.vert.spv",
             "SPIRV/fullscreen.frag.spv",

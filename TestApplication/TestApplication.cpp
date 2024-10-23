@@ -4,12 +4,11 @@
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Graphics/Renderer.hpp"
-#include "Scene/Material.hpp"
 #include "RenderPass/ForwardPass.hpp"
 #include "RenderPass/FullScreenPass.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"
-
+#include "Scene/ShaderMaterial.hpp"
 #include "FullScreenMaterial.hpp"
 
 #include <fstream>
@@ -100,18 +99,7 @@ class TestApplication : public App
 
         frame_graph->compile();
 
-        // Create Entity
-        Material material("TriangleMaterial");
-        material.create_from_file({
-            "SPIRV/triangle.vert.spv",
-            "SPIRV/triangle.frag.spv",
-        });
-        material.set_cull_mode(CULL_MODE_NONE);
-        material.set_depth_write(true);
-        material.set_depth_test(true);
-
         entity = ecs::create_entity();
-        scene->get_component_manager()->add_component<Material>(entity, std::move(material));
         scene->get_component_manager()->add_component<NameComponent>(entity, "test");
         scene->add_entity(entity);
     }

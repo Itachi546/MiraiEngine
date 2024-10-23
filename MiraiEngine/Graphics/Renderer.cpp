@@ -3,7 +3,7 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
-#include "Scene/MaterialCache.hpp"
+#include "Scene/ShaderMaterialCache.hpp"
 #include "Scene/FrameGraph.hpp"
 
 namespace mirai
@@ -15,7 +15,7 @@ namespace mirai
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>(enable_validation);
         scene = std::make_unique<Scene>("default");
-        material_cache = std::make_unique<MaterialCache>();
+        material_cache = std::make_unique<ShaderMaterialCache>();
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }

@@ -35,6 +35,12 @@ if(NOT TARGET glm)
     set_target_properties(glm PROPERTIES FOLDER "External")
 endif()
 
+find_package(tinygltf QUIET)
+if(NOT TARGET tinygltf)
+    set(TINYGLTF_BUILD_BUILDER_EXAMPLE OFF CACHE BOOL "")
+    add_subdirectory(../External/tinygltf tinygltf)
+endif()
+
 find_package(volk QUIET)
 if(NOT TARGET volk)
     add_subdirectory(../External/volk volk)
@@ -45,6 +51,7 @@ endif()
 set(MIRAI_LIBRARIES
     glfw
     volk::volk
+    tinygltf
 )
 
 file(GLOB_RECURSE PROJECT_HEADER_FILES CONFIGURE_DEPENDS *.hpp)

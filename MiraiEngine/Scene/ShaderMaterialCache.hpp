@@ -7,12 +7,12 @@
 
 namespace mirai
 {
-    class MaterialCache
+    class ShaderMaterialCache
     {
       public:
-        MaterialCache();
+        ShaderMaterialCache();
 
-        static MaterialCache *get()
+        static ShaderMaterialCache *get()
         {
             return Instance;
         }
@@ -25,10 +25,10 @@ namespace mirai
 
         void add_pipeline(uint64_t hash, PipelineID pipeline);
 
-        ~MaterialCache();
+        ~ShaderMaterialCache();
 
       private:
-        static MaterialCache *Instance;
+        static ShaderMaterialCache *Instance;
 
         std::unordered_map<uint32_t, std::vector<ShaderID>> shader_caches;
         std::unordered_map<uint64_t, PipelineID> pipeline_caches;

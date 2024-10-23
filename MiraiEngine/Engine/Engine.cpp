@@ -26,7 +26,7 @@ namespace mirai
         if (app)
             app->start();
 
-        auto start = std::chrono::high_resolution_clock::now();
+        auto start = std::chrono::steady_clock::now();
         while (running && !window->is_closed())
         {
             window->update();
@@ -42,7 +42,7 @@ namespace mirai
 
             Input::get()->update();
             
-            auto end = std::chrono::high_resolution_clock::now();
+            auto end = std::chrono::steady_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             elapsed_time_ms += dt_ms;
             start = end;

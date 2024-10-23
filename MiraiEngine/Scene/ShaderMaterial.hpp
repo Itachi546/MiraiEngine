@@ -8,10 +8,12 @@ namespace mirai
     struct FrameGraphNode;
     class FrameGraph;
 
-    class Material
+    class ShaderMaterial
     {
       public:
-        Material(const std::string &name);
+        ShaderMaterial(const std::string &name);
+
+        virtual ~ShaderMaterial() = default;
 
         void create_from_file(const std::vector<std::string> &shader_files);
 

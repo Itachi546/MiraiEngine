@@ -26,5 +26,22 @@ namespace mirai
             return read_file_internal(filename, std::ios::binary);
         }
 
+        std::string get_file_extension(const std::string &filename)
+        {
+            size_t index = filename.find_last_of('.');
+            if (index != std::string::npos)
+            {
+                return filename.substr(index + 1);
+            }
+            return "";
+        }
+
+        std::string trim_file_extension(const std::string& filename) {
+            size_t index = filename.find_last_of('.');
+            if (index == std::string::npos)
+                return filename;
+            return filename.substr(0, index - 1); 
+        }
+
     } // namespace utils
 } // namespace mirai

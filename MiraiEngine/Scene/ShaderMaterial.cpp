@@ -1,12 +1,12 @@
-#include "Material.hpp"
+#include "ShaderMaterial.hpp"
 #include "Common/Hash.hpp"
-#include "MaterialCache.hpp"
+#include "ShaderMaterialCache.hpp"
 #include "FrameGraph.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 
 namespace mirai
 {
-    Material::Material(const std::string &name) : name(name),
+    ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
                                                   cull_mode(CullMode::CULL_MODE_BACK),
                                                   front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
                                                   enable_depth_test(false),
@@ -17,7 +17,7 @@ namespace mirai
     {
     }
 
-    void Material::create_from_file(const std::vector<std::string> &shader_files)
+    void ShaderMaterial::create_from_file(const std::vector<std::string> &shader_files)
     {
         uint32_t shader_count = static_cast<uint32_t>(shader_files.size());
         std::vector<ShaderID> shaders(shader_count);
@@ -26,12 +26,12 @@ namespace mirai
             shaders[i] = rendering_utils::create_shader_module_from_file(shader_files[i]);
 
         uint32_t shader_hash = utils::djb2_hash_string(name);
-        MaterialCache::get()->register_shader(shader_hash, std::move(shaders));
+        ShaderMaterialCache::get()->register_shader(shader_hash, std::move(shaders));
 
         calculate_hash();
     }
 
-    void Material::set_resource(const std::string &name, ID resource)
+    void ShaderMaterial::set_resource(const std::string &name, ID resource)
     {
         uint32_t hash = utils::djb2_hash_string(name);
         auto found = resources.find(utils::djb2_hash_string(name));
@@ -51,11 +51,11 @@ namespace mirai
         }
     }
 
-    void Material::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph)
+    void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph)
     {
         if (!pipeline.is_valid())
         {
-            pipeline = MaterialCache::get()->get_pipeline(hash);
+            pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
             if (!pipeline.is_valid())
                 pipeline = create_pipeline(node, frame_graph);
         }
@@ -76,9 +76,9 @@ namespace mirai
         command_buffer->bind_pipeline(pipeline);
     }
 
-    void Material::set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data)
+    void ShaderMaterial::set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data)
     {
-        PipelineID pipeline = MaterialCache::get()->get_pipeline(hash);
+        PipelineID pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
 #ifdef _DEBUG
         if (!pipeline.is_valid())
         {
@@ -88,13 +88,13 @@ namespace mirai
         command_buffer->set_push_constant(pipeline, shader_stage, offset, size, data);
     }
 
-    void Material::calculate_hash()
+    void ShaderMaterial::calculate_hash()
     {
         hash = 0;
         utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write);
     }
 
-    PipelineID Material::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph)
+    PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph)
     {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
@@ -103,7 +103,7 @@ namespace mirai
         BlendState bs = BlendState::create();
         PipelineDescription pipeline_description;
 
-        std::vector<ShaderID> shaders = MaterialCache::get()->get_shaders(utils::djb2_hash_string(name));
+        std::vector<ShaderID> shaders = ShaderMaterialCache::get()->get_shaders(utils::djb2_hash_string(name));
         ASSERT(shaders.size() > 0);
 
         pipeline_description.shader_count = static_cast<uint32_t>(shaders.size());
@@ -138,7 +138,7 @@ namespace mirai
         pipeline_description.color_attachment_formats = color_attachment_formats.data();
 
         PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
-        MaterialCache::get()->add_pipeline(hash, pipeline);
+        ShaderMaterialCache::get()->add_pipeline(hash, pipeline);
         return pipeline;
     }
 

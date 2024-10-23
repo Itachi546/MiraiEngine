@@ -45,6 +45,7 @@ namespace mirai
     DEFINE_ID(Pipeline)
     DEFINE_ID(Shader)
     DEFINE_ID(Texture)
+    DEFINE_ID(Buffer)
 
     enum class DeviceType
     {
