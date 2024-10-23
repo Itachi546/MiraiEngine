@@ -71,6 +71,11 @@ namespace mirai
         DeviceType device_type;
     };
 
+    enum Colorspace {
+        COLOR_SPACE_SRGB = 0,
+        COLOR_SPACE_LINEAR
+    };
+
     enum Format
     {
         FORMAT_B8G8R8A8_UNORM = 0,

@@ -12,7 +12,7 @@ namespace mirai
         component_manager->register_component<HierarchyComponent>();
         component_manager->register_component<MeshComponent>();
         component_manager->register_component<TransformComponent>();
-        component_manager->register_component<ObjectComponent>();
+        component_manager->register_component<MeshDataComponent>();
     }
 
     void Scene::update()

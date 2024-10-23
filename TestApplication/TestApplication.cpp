@@ -9,6 +9,7 @@
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/GLTFLoader.hpp"
 #include "FullScreenMaterial.hpp"
 
 #include <fstream>
@@ -20,7 +21,7 @@ const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 class TestApplication : public App
 {
   public:
-    TestApplication() : App("TestApplication")
+    TestApplication(const char *model_path) : App("TestApplication"), model_path(model_path)
     {
         Window::get()->set_title("TestApplication");
     }
@@ -102,6 +103,8 @@ class TestApplication : public App
         entity = ecs::create_entity();
         scene->get_component_manager()->add_component<NameComponent>(entity, "test");
         scene->add_entity(entity);
+        if (!model_path.empty())
+            ImportModel_GLTF(model_path, scene);
     }
 
     void update() override
@@ -115,12 +118,13 @@ class TestApplication : public App
         Log::Info("Destroying Test Application...");
     }
 
-    private:
-        Entity entity;
-        Scene* scene;
+  private:
+    Entity entity;
+    Scene *scene;
+    std::string model_path;
 };
 
-int main()
+int main(int argc, char **argv)
 {
     EngineInitializationOptions options = {
         .width = 1360,
@@ -128,8 +132,12 @@ int main()
         .enable_validation = true,
     };
 
+    const char *model_path = nullptr;
+    if (argc > 1)
+        model_path = argv[1];
+
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(options);
-    engine->set_app(std::make_unique<TestApplication>());
+    engine->set_app(std::make_unique<TestApplication>(model_path));
     engine->run();
     engine = nullptr;
 }

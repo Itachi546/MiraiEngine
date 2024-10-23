@@ -10,7 +10,7 @@
 
 namespace mirai
 {
-    constexpr uint32_t INVALID_ENTITY = 0;
+    constexpr uint32_t K_INVALID_ENTITY = 0;
     using ComponentType = std::uint8_t;
     const uint8_t MAX_COMPONENTS = 64;
 
@@ -18,7 +18,7 @@ namespace mirai
 
     inline bool is_valid(Entity entity)
     {
-        return entity != INVALID_ENTITY;
+        return entity != K_INVALID_ENTITY;
     }
     /*
      * This doesn't seem to work when the dll is made and
@@ -208,7 +208,7 @@ namespace mirai
         {
             uint32_t comp_id = get_component_type_id<T>();
             ASSERT(comp_id < MAX_COMPONENTS);
-            auto comp = get_base_component_array<T>(comp_id);
+            auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->add_component(entity);
         }
