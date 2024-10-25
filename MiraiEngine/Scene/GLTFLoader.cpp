@@ -185,7 +185,6 @@ namespace mirai
 
         child_hierarchy->set_parent(parent);
         parent_hierarchy->add_children(entity);
-        scene->add_entity(entity);
 
         // Add Mesh Component
         uint32_t mesh_id = node->mesh;
@@ -222,7 +221,7 @@ namespace mirai
         ComponentManager *comp_manager = scene->get_component_manager();
 
         Entity root_entity = ecs::create_entity();
-        comp_manager->add_component<NameComponent>(root_entity, utils::trim_file_extension(filename));
+        comp_manager->add_component<NameComponent>(root_entity, utils::get_filename(filename));
         comp_manager->add_component<TransformComponent>(root_entity);
         scene->add_entity(root_entity);
 
@@ -230,10 +229,9 @@ namespace mirai
         LoadMaterials(&gltf_model, load_state.materials);
 
         {
-            MeshDataComponent meshdata_component;
+            MeshDataComponent &meshdata_component = comp_manager->add_component<MeshDataComponent>(root_entity);
             LoadMeshes(&gltf_model, &meshdata_component, &load_state);
             meshdata_component.prepare_render_data();
-            comp_manager->add_component<MeshDataComponent>(root_entity, std::move(meshdata_component));
         }
 
         for (uint32_t i = 0; i < gltf_model.nodes.size(); ++i)

@@ -178,6 +178,16 @@ namespace mirai
         vkCmdPushConstants(command_buffer, vk_pipeline->pipeline_layout, VkShaderStageFlags(shader_stage), offset, size, data);
     }
 
+    void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region)
+    {
+        VulkanBuffer *src_buffer = device->access_buffer(src);
+        VulkanBuffer *dst_buffer = device->access_buffer(dst);
+
+        ASSERT((region.src_offset + region.size) <= src_buffer->size);
+        ASSERT((region.dst_offset + region.size) <= dst_buffer->size);
+        vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, 1, (const VkBufferCopy *)&region);
+    }
+
     void CommandBuffer::end_render_pass()
     {
         vkCmdEndRendering(command_buffer);

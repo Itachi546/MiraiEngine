@@ -128,7 +128,7 @@ namespace mirai
             FrameGraphResource *resource = resource_pool_resources.access(val);
             if (resource->resource_type != FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
             {
-                device->destroy_texture(&resource->texture, 1);
+                device->destroy_textures(&resource->texture, 1);
             }
         }
         resource_pool_resources.release_all();

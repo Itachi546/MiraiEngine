@@ -45,7 +45,7 @@ namespace mirai
 
         for (auto &[key, val] : pipeline_caches)
         {
-            RenderingDevice::get()->destroy_pipeline(&val, 1);
+            RenderingDevice::get()->destroy_pipelines(&val, 1);
         }
     }
 } // namespace mirai

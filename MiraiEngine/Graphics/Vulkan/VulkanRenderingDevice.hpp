@@ -34,6 +34,9 @@ namespace mirai
 
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
 
+        BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
+        uint8_t *map_buffer(BufferID buffer) override;
+
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name);
 
         void new_frame() override;
@@ -47,6 +50,8 @@ namespace mirai
             queued_command_buffer.push_back(command_buffer);
         }
 
+        void submit_command_buffer_immediate(CommandBuffer* command_buffer) override;
+
         void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) override;
 
         void wait();
@@ -55,9 +60,11 @@ namespace mirai
 
         void destroy_shaders(ShaderID *shaders, uint32_t count) override;
 
-        void destroy_pipeline(PipelineID *pipelines, uint32_t count) override;
+        void destroy_pipelines(PipelineID *pipelines, uint32_t count) override;
 
-        void destroy_texture(TextureID *textures, uint32_t count) override;
+        void destroy_buffers(BufferID *buffers, uint32_t count) override;
+
+        void destroy_textures(TextureID *textures, uint32_t count) override;
 
         VulkanPipeline *access_pipeline(PipelineID pipeline)
         {
@@ -67,6 +74,11 @@ namespace mirai
         VulkanTexture *access_texture(TextureID texture)
         {
             return resource_pool_textures.access(texture);
+        }
+
+        VulkanBuffer *access_buffer(BufferID buffer)
+        {
+            return resource_pool_buffers.access(buffer);
         }
 
         ~VulkanRenderingDevice();
@@ -91,10 +103,11 @@ namespace mirai
         ResourcePool<VulkanShader> resource_pool_shaders;
         ResourcePool<VulkanPipeline> resource_pool_pipelines;
         ResourcePool<VulkanTexture> resource_pool_textures;
+        ResourcePool<VulkanBuffer> resource_pool_buffers;
 
         static const uint32_t K_NUM_THREAD = 1;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
-        static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
+        static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 1;
         uint32_t current_frame = 0;
         uint64_t total_memory_usage = 0;
         bool vsync = true;

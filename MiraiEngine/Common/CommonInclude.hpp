@@ -8,6 +8,6 @@
 #endif
 
 #define ASSERT(cond) assert(cond)
-#define ASSERT_MSG(cond, message) assert(cond &&message)
+#define ASSERT_MSG(cond, message) assert(message && cond)
 
 constexpr const uint32_t K_INVALID_RESOURCE_HANDLE = UINT32_MAX;

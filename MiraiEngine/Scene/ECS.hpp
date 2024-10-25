@@ -36,6 +36,8 @@ namespace mirai
         virtual ~IComponentArray() = default;
 
         virtual bool remove_entity(Entity &handle) { return false; }
+
+        virtual std::size_t size() const = 0;
     };
 
     template <typename T>
@@ -130,7 +132,7 @@ namespace mirai
             return -1;
         }
 
-        std::size_t size()
+        std::size_t size() const
         {
             return components.size();
         }

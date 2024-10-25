@@ -39,6 +39,14 @@ namespace mirai
         VkSampler sampler;
     };
 
+    struct VulkanBuffer
+    {
+        VkBuffer buffer;
+        VmaAllocation allocation;
+        uint32_t size;
+        void *buffer_ptr;
+    };
+
     struct VulkanShader
     {
         VkShaderModule shader;

@@ -71,7 +71,8 @@ namespace mirai
         DeviceType device_type;
     };
 
-    enum Colorspace {
+    enum Colorspace
+    {
         COLOR_SPACE_SRGB = 0,
         COLOR_SPACE_LINEAR
     };
@@ -310,6 +311,19 @@ namespace mirai
         BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8)
     };
 
+    enum MemoryAllocationType
+    {
+        MEMORY_ALLOCATION_TYPE_CPU,
+        MEMORY_ALLOCATION_TYPE_GPU
+    };
+
+    struct BufferDescription
+    {
+        uint32_t size;
+        uint32_t usage_flags;
+        MemoryAllocationType allocation_type;
+    };
+
     struct TextureDescription
     {
         uint32_t width, height, depth;
@@ -396,17 +410,23 @@ namespace mirai
 
         virtual void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) = 0;
 
+        virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
+        virtual uint8_t *map_buffer(BufferID buffer) = 0;
+
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 
         virtual void queue_command_buffer(CommandBuffer *command_buffer) = 0;
 
+        virtual void submit_command_buffer_immediate(CommandBuffer *command_buffer) = 0;
+
         virtual void wait() = 0;
 
         virtual void destroy_shaders(ShaderID *shaders, uint32_t count) = 0;
-        virtual void destroy_pipeline(PipelineID *pipelines, uint32_t count) = 0;
-        virtual void destroy_texture(TextureID *textures, uint32_t count) = 0;
+        virtual void destroy_pipelines(PipelineID *pipelines, uint32_t count) = 0;
+        virtual void destroy_buffers(BufferID *buffers, uint32_t count) = 0;
+        virtual void destroy_textures(TextureID *textures, uint32_t count) = 0;
 
         virtual ~RenderingDevice() = default;
 

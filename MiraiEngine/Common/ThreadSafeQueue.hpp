@@ -17,7 +17,7 @@ class ThreadSafeQueue {
         ThreadSafeQueue& operator=(const ThreadSafeQueue& other) = delete;
 
         bool empty() const {
-            std::lock_guard<std::mutex> lk(other.mutex);
+            std::lock_guard<std::mutex> lk(mutex);
             return data.size();
         }
 

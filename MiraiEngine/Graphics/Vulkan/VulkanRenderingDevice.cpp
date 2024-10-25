@@ -34,6 +34,7 @@ namespace mirai
     VulkanRenderingDevice::VulkanRenderingDevice(bool enable_validation) : resource_pool_pipelines(128, "Pipeline"),
                                                                            resource_pool_shaders(32, "Shader"),
                                                                            resource_pool_textures(1024, "Texture"),
+                                                                           resource_pool_buffers(64, "Buffer"),
                                                                            RenderingDevice(enable_validation)
     {
         instance_extensions = {
@@ -133,6 +134,8 @@ namespace mirai
             command_buffer_allocate_info.commandPool = command_pool;
 
             auto &command_buffer = command_buffers.emplace_back(std::make_unique<CommandBuffer>());
+            command_buffer->queue_family_indices = graphics_queue;
+
             VK_CHECK(vkAllocateCommandBuffers(device, &command_buffer_allocate_info, &command_buffer->command_buffer));
         }
 
@@ -479,6 +482,72 @@ namespace mirai
     }
         */
 
+    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name)
+    {
+        ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
+        VkBufferCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = buffer_description->size,
+            .usage = buffer_description->usage_flags,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        };
+
+        VmaAllocationCreateInfo allocation_create_info = {};
+
+        switch (buffer_description->allocation_type)
+        {
+        case MEMORY_ALLOCATION_TYPE_CPU:
+        {
+            bool is_src = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_SRC_BIT) > 0;
+            bool is_dst = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_DST_BIT) > 0;
+
+            // This is a staging buffer
+            allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            if (is_dst && !is_src)
+                allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            break;
+        }
+        case MEMORY_ALLOCATION_TYPE_GPU:
+        {
+            allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+            break;
+        }
+        }
+
+        VkBuffer vk_buffer = VK_NULL_HANDLE;
+        VmaAllocation allocation = nullptr;
+        VmaAllocationInfo allocation_info = {};
+        VK_CHECK(vmaCreateBuffer(vma_allocator, &create_info, &allocation_create_info, &vk_buffer, &allocation, &allocation_info));
+        set_debug_marker_object_name(VK_OBJECT_TYPE_BUFFER, (uint64_t)vk_buffer, debug_name.c_str());
+
+        uint32_t buffer_id = resource_pool_buffers.obtain();
+        VulkanBuffer *buffer = resource_pool_buffers.access(buffer_id);
+        buffer->buffer = vk_buffer;
+        buffer->allocation = allocation;
+        buffer->size = buffer_description->size;
+        buffer->buffer_ptr = nullptr;
+
+        total_memory_usage += allocation->GetSize();
+        return BufferID{buffer_id};
+    }
+
+    uint8_t *VulkanRenderingDevice::map_buffer(BufferID buffer)
+    {
+        VulkanBuffer *vk_buffer = resource_pool_buffers.access(buffer.id);
+        if (vk_buffer->buffer_ptr == nullptr)
+            VK_CHECK(vmaMapMemory(vma_allocator, vk_buffer->allocation, &vk_buffer->buffer_ptr));
+        return reinterpret_cast<uint8_t *>(vk_buffer->buffer_ptr);
+    }
+    /*
+    void VulkanRenderingDevice::CopyBuffer(CommandBufferID commandBuffer, BufferID src, BufferID dst, BufferCopyRegion *region)
+    {
+        VulkanBuffer *vkSrc = _buffers.Access(src.id);
+        VulkanBuffer *vkDst = _buffers.Access(dst.id);
+        vkCmdCopyBuffer(_commandBuffers[commandBuffer.id], vkSrc->buffer, vkDst->buffer, 1, (const VkBufferCopy *)region);
+    }
+    */
     TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name)
     {
         uint32_t textureID = resource_pool_textures.obtain();
@@ -599,12 +668,31 @@ namespace mirai
         return command_buffers[index].get();
     }
 
+    void VulkanRenderingDevice::submit_command_buffer_immediate(CommandBuffer *command_buffer)
+    {
+        VkCommandBuffer vk_cmd_buffer = command_buffer->command_buffer;
+        VK_CHECK(vkEndCommandBuffer(vk_cmd_buffer));
+
+        VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        VkSubmitInfo submit_info = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 0,
+            .pWaitDstStageMask = &wait_stage_mask,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &vk_cmd_buffer,
+        };
+
+        VkQueue queue = device_queues[command_buffer->queue_family_indices];
+        VK_CHECK(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
+        vkQueueWaitIdle(queue);
+    }
+
     void VulkanRenderingDevice::pipeline_set_resources(const std::string &name, PipelineID pipeline_id, ID resource_id)
     {
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bindings.set_resource(name, resource_id);
     }
-    
+
     void VulkanRenderingDevice::wait()
     {
         VK_CHECK(vkDeviceWaitIdle(device));
@@ -690,7 +778,7 @@ namespace mirai
         }
     }
 
-    void VulkanRenderingDevice::destroy_pipeline(PipelineID *pipeline_ids, uint32_t count)
+    void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count)
     {
         for (uint32_t i = 0; i < count; ++i)
         {
@@ -705,7 +793,24 @@ namespace mirai
         }
     }
 
-    void VulkanRenderingDevice::destroy_texture(TextureID *textures, uint32_t count)
+    void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            VulkanBuffer *buffer = resource_pool_buffers.access(buffers[i]);
+            if (buffer->buffer_ptr)
+                vmaUnmapMemory(vma_allocator, buffer->allocation);
+
+            vmaDestroyBuffer(vma_allocator, buffer->buffer, buffer->allocation);
+            buffer->allocation = VK_NULL_HANDLE;
+            buffer->buffer = VK_NULL_HANDLE;
+            buffer->buffer_ptr = nullptr;
+            buffer->size = 0;
+            resource_pool_buffers.release(buffers[i]);
+        }
+    }
+
+    void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count)
     {
         for (uint32_t i = 0; i < count; ++i)
         {
@@ -742,15 +847,19 @@ namespace mirai
         for (auto &semaphore : render_finished_semaphore)
             vkDestroySemaphore(device, semaphore, nullptr);
         vkDestroySwapchainKHR(device, swapchain->swapchain, nullptr);
+
         for (auto &image_view : swapchain->image_views)
-        {
             vkDestroyImageView(device, image_view, nullptr);
-        }
 
         vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
 
         swapchain = nullptr;
         vkDestroySurfaceKHR(instance, surface, nullptr);
+
+        ASSERT_MSG(resource_pool_textures.used_indices == 0, "Texture Pool is not empty!!!");
+        ASSERT_MSG(resource_pool_pipelines.used_indices == 0, "Pipeline Pool is not empty!!!");
+        ASSERT_MSG(resource_pool_shaders.used_indices == 0, "Shader Pool is not empty!!!");
+        ASSERT_MSG(resource_pool_buffers.used_indices == 0, "Buffer Pool is not empty!!!");
 
         vmaDestroyAllocator(vma_allocator);
         vkDestroyDevice(device, nullptr);

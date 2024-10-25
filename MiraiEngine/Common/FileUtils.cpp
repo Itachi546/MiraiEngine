@@ -36,11 +36,20 @@ namespace mirai
             return "";
         }
 
-        std::string trim_file_extension(const std::string& filename) {
+        std::string trim_file_extension(const std::string &filename)
+        {
             size_t index = filename.find_last_of('.');
             if (index == std::string::npos)
                 return filename;
-            return filename.substr(0, index - 1); 
+            return filename.substr(0, index - 1);
+        }
+
+        std::string get_filename(const std::string &filename)
+        {
+            size_t index = filename.find_last_of('/');
+            if (index == std::string::npos)
+                return filename;
+            return filename.substr(index + 1);
         }
 
     } // namespace utils
