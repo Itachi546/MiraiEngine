@@ -7,13 +7,13 @@
 namespace mirai
 {
     ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
-                                                  cull_mode(CullMode::CULL_MODE_BACK),
-                                                  front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
-                                                  enable_depth_test(false),
-                                                  enable_depth_write(false),
-                                                  hash(0),
-                                                  is_resource_updated(true),
-                                                  pipeline{K_INVALID_ID}
+                                                              cull_mode(CullMode::CULL_MODE_BACK),
+                                                              front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
+                                                              enable_depth_test(false),
+                                                              enable_depth_write(false),
+                                                              hash(0),
+                                                              is_resource_updated(true),
+                                                              pipeline{K_INVALID_ID}
     {
     }
 
@@ -31,26 +31,6 @@ namespace mirai
         calculate_hash();
     }
 
-    void ShaderMaterial::set_resource(const std::string &name, ID resource)
-    {
-        uint32_t hash = utils::djb2_hash_string(name);
-        auto found = resources.find(utils::djb2_hash_string(name));
-        if (found == resources.end())
-        {
-            resources[hash] = Resource{name, resource, true};
-            is_resource_updated = true;
-        }
-        else
-        {
-            if (found->second.resource_id.id == resource.id)
-                return;
-
-            found->second.resource_id = resource;
-            found->second.dirty = true;
-            is_resource_updated = true;
-        }
-    }
-
     void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph)
     {
         if (!pipeline.is_valid())
@@ -60,32 +40,11 @@ namespace mirai
                 pipeline = create_pipeline(node, frame_graph);
         }
 
-        if (is_resource_updated)
-        {
-            for (auto &resource : resources)
-            {
-                if (resource.second.dirty)
-                {
-                    RenderingDevice::get()->pipeline_set_resources(resource.second.name, pipeline, resource.second.resource_id);
-                    resource.second.dirty = false;
-                }
-            }
-            is_resource_updated = false;
-        }
-
-        command_buffer->bind_pipeline(pipeline);
-    }
-
-    void ShaderMaterial::set_push_constant(CommandBuffer *command_buffer, ShaderStage shader_stage, uint32_t offset, uint32_t size, void *data)
-    {
-        PipelineID pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
-#ifdef _DEBUG
-        if (!pipeline.is_valid())
-        {
-            Log::Error("Can't bind push constant before binding pipeline");
-        }
-#endif
-        command_buffer->set_push_constant(pipeline, shader_stage, offset, size, data);
+        command_buffer->bind_pipeline(pipeline,
+                                      uniform_sets.data(),
+                                      static_cast<uint32_t>(uniform_sets.size()),
+                                      push_constants.data(),
+                                      static_cast<uint32_t>(push_constants.size()));
     }
 
     void ShaderMaterial::calculate_hash()

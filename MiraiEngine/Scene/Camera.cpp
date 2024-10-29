@@ -1,0 +1,48 @@
+#include "Camera.hpp"
+
+#include <glm/gtc/matrix_transform.hpp>
+#include "Device/Window.hpp"
+
+namespace mirai
+{
+    Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
+                       rotation(glm::fquat(1.0f, 0.0f, 0.0f, 0.0f)),
+                       fov(75.0f),
+                       aspect_ratio(4.0f / 3.0f),
+                       near_plane(0.5f),
+                       far_plane(1000.0f),
+                       projection_mode(PROJECTION_MODE_PERSPECTIVE),
+                       is_projection_dirty(true)
+    {
+        viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
+    }
+
+    void Camera::update()
+    {
+        view_matrix = glm::translate(glm::mat4(1.0f), -position) * glm::mat4_cast(rotation);
+
+        if (is_projection_dirty)
+        {
+            update_projection_matrix();
+        }
+
+        right = glm::vec3(view_matrix[0][0], view_matrix[1][0], view_matrix[2][0]);
+        up = glm::vec3(view_matrix[0][1], view_matrix[1][1], view_matrix[2][1]);
+        forward = glm::vec3(view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]);
+    }
+
+    void Camera::update_projection_matrix()
+    {
+        if (projection_mode == PROJECTION_MODE_PERSPECTIVE)
+        {
+            projection_matrix = viewport_matrix * glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);
+        }
+        else
+        {
+            float y_span = tan(glm::radians(fov)) * near_plane;
+            float x_span = y_span * aspect_ratio;
+            projection_matrix = glm::ortho(-x_span, x_span, y_span, -y_span, near_plane, far_plane);
+        }
+        is_projection_dirty = false;
+    }
+} // namespace mirai

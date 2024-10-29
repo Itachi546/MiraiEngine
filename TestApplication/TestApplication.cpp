@@ -11,6 +11,7 @@
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "FullScreenMaterial.hpp"
+#include "CameraController.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -100,28 +101,30 @@ class TestApplication : public App
 
         frame_graph->compile();
 
-        entity = ecs::create_entity();
-        scene->get_component_manager()->add_component<NameComponent>(entity, "test");
-        scene->add_entity(entity);
         if (!model_path.empty())
             ImportModel_GLTF(model_path, scene);
+
+        controller = new CameraController(scene->get_camera());
     }
 
     void update() override
     {
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
+
+        controller->update(Engine::get()->get_dt_seconds() * 1000.0f);
     }
 
     ~TestApplication()
     {
+        delete controller;
         Log::Info("Destroying Test Application...");
     }
 
   private:
-    Entity entity;
     Scene *scene;
     std::string model_path;
+    CameraController *controller;
 };
 
 int main(int argc, char **argv)
@@ -137,7 +140,9 @@ int main(int argc, char **argv)
         model_path = argv[1];
 
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(options);
+    Log::Info("Creating Test Application ...");
     engine->set_app(std::make_unique<TestApplication>(model_path));
+    Log::Info("Game Loop Begin ...");
     engine->run();
     engine = nullptr;
 }

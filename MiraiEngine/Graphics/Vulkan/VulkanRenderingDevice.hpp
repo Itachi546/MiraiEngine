@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 VK_DEFINE_HANDLE(VmaAllocator)
 VK_DEFINE_HANDLE(VmaAllocation)
@@ -34,6 +35,9 @@ namespace mirai
 
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
 
+        UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") override;
+        void update_uniform_set(UniformSetID uniform_set, UniformBinding* bindings, uint32_t binding_count) override;
+
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
 
@@ -50,9 +54,7 @@ namespace mirai
             queued_command_buffer.push_back(command_buffer);
         }
 
-        void submit_command_buffer_immediate(CommandBuffer* command_buffer) override;
-
-        void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) override;
+        void submit_command_buffer_immediate(CommandBuffer *command_buffer) override;
 
         void wait();
 
@@ -65,6 +67,8 @@ namespace mirai
         void destroy_buffers(BufferID *buffers, uint32_t count) override;
 
         void destroy_textures(TextureID *textures, uint32_t count) override;
+
+        void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) override;
 
         VulkanPipeline *access_pipeline(PipelineID pipeline)
         {
@@ -79,6 +83,11 @@ namespace mirai
         VulkanBuffer *access_buffer(BufferID buffer)
         {
             return resource_pool_buffers.access(buffer);
+        }
+
+        VulkanUniformSet *access_uniform_set(UniformSetID uniform_set)
+        {
+            return resource_pool_uniform_sets.access(uniform_set);
         }
 
         ~VulkanRenderingDevice();
@@ -104,6 +113,8 @@ namespace mirai
         ResourcePool<VulkanPipeline> resource_pool_pipelines;
         ResourcePool<VulkanTexture> resource_pool_textures;
         ResourcePool<VulkanBuffer> resource_pool_buffers;
+        ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
+        std::unordered_map<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
 
         static const uint32_t K_NUM_THREAD = 1;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;

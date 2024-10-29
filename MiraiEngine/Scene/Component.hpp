@@ -4,8 +4,7 @@
 #include "Graphics/RenderingDevice.hpp"
 #include <glm/glm.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace mirai
 {
@@ -50,7 +49,7 @@ namespace mirai
     struct BufferView
     {
         uint32_t offset;
-        uint32_t size;
+        uint32_t count;
     };
 
     struct Vertex
@@ -65,8 +64,30 @@ namespace mirai
 
     static_assert(sizeof(Vertex) % 16 == 0);
 
-    struct MeshDataComponent
+    struct MeshComponent
     {
+        enum FLAGS
+        {
+            EMPTY = 0,
+            RENDERABLE = 1 << 0,
+            DYNAMIC = 1 << 2,
+            CAST_SHADOW = 1 << 2,
+            RECEIVE_SHADOW = 1 << 3,
+            DEPTH_TEST = 1 << 4,
+            DEPTH_WRITE = 1 << 5
+        };
+
+        uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
+
+        struct MeshSubset
+        {
+            BufferView vertex_buffer;
+            BufferView index_buffer;
+            uint32_t vertex_count;
+            uint32_t material_index;
+        };
+        std::vector<MeshSubset> mesh_subsets;
+
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
 
@@ -100,7 +121,7 @@ namespace mirai
             std::memcpy(ib_ptr, indices.data(), index_buffer_size);
         }
 
-        ~MeshDataComponent()
+        void destroy_render_data()
         {
             std::vector<BufferID> buffers;
             if (vertex_buffer.is_valid())
@@ -114,36 +135,11 @@ namespace mirai
         }
     };
 
-    struct MeshComponent
-    {
-        enum FLAGS
-        {
-            EMPTY = 0,
-            RENDERABLE = 1 << 0,
-            DYNAMIC = 1 << 2,
-            CAST_SHADOW = 1 << 2,
-            RECEIVE_SHADOW = 1 << 3,
-            DEPTH_TEST = 1 << 4,
-            DEPTH_WRITE = 1 << 5
-        };
-
-        uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
-
-        uint32_t mesh_data_comp_index;
-        struct MeshSubset
-        {
-            BufferView vertex_buffer;
-            BufferView index_buffer;
-            uint32_t vertex_count;
-            uint32_t material_index;
-        };
-        std::vector<MeshSubset> mesh_subsets;
-    };
-
     struct TransformComponent
     {
         TransformComponent() : position(glm::vec3(0.0f)),
-                               rotation(glm::fquat()),
+                               rotation(glm::fquat(1.0f, 0.0f, 0.0f, 0.0f)),
+                               scale(glm::vec3(1.0f)),
                                local_transform(glm::mat4(1.0f)),
                                world_transform(glm::mat4(1.0f)),
                                dirty(true)
@@ -164,14 +160,14 @@ namespace mirai
             if (dirty)
             {
                 local_transform = glm::translate(glm::mat4(1.0f), position) *
-                                  glm::toMat4(rotation) *
+                                  glm::mat4_cast(rotation) *
                                   glm::scale(glm::mat4(1.0f), scale);
                 dirty = false;
             }
         }
     };
 
-    struct MaterialComponent
+    struct Material
     {
         std::string name;
 

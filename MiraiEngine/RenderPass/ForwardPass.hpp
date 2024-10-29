@@ -15,5 +15,18 @@ namespace mirai
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
+        BufferID draw_indirect_buffer;
+
+        struct DrawIndirectCommand
+        {
+            uint32_t index_count;
+            uint32_t instance_count;
+            uint32_t first_index;
+            uint32_t vertex_offset;
+            uint32_t first_instance;
+        };
+
+        UniformSetID uniform_set;
+        DrawIndirectCommand *draw_indirect_array;
     };
 } // namespace mirai

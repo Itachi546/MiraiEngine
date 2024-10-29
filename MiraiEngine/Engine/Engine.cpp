@@ -41,7 +41,7 @@ namespace mirai
             renderer->render();
 
             Input::get()->update();
-            
+
             auto end = std::chrono::steady_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             elapsed_time_ms += dt_ms;

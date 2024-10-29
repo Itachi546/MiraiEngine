@@ -46,6 +46,7 @@ namespace mirai
     DEFINE_ID(Shader)
     DEFINE_ID(Texture)
     DEFINE_ID(Buffer)
+    DEFINE_ID(UniformSet)
 
     enum class DeviceType
     {
@@ -366,6 +367,45 @@ namespace mirai
         SHADER_STAGE_ALL = 0x7FFFFFFF,
     };
 
+    enum BindingType
+    {
+        BINDING_TYPE_SAMPLER = 0,
+        BINDING_TYPE_COMBINED_IMAGE_SAMPLER = 1,
+        BINDING_TYPE_SAMPLED_IMAGE = 2,
+        BINDING_TYPE_STORAGE_IMAGE = 3,
+        BINDING_TYPE_UNIFORM_BUFFER = 6,
+        BINDING_TYPE_STORAGE_BUFFER = 7,
+    };
+
+    struct UniformLayout
+    {
+        uint32_t binding;
+        BindingType binding_type;
+        ShaderStage shader_stage;
+    };
+
+    struct UniformBinding
+    {
+        ID resource_id;
+        uint64_t offset = 0;
+        uint64_t range = UINT64_MAX;
+    };
+
+    struct BufferCopyRegion
+    {
+        uint64_t src_offset;
+        uint64_t dst_offset;
+        uint64_t size;
+    };
+
+    struct PushConstant
+    {
+        void *data;
+        ShaderStage shader_stage;
+        uint32_t size;
+        uint32_t offset;
+    };
+
     class CommandBuffer;
     /*
     struct AttachmentInfo
@@ -408,7 +448,8 @@ namespace mirai
 
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
-        virtual void pipeline_set_resources(const std::string &name, PipelineID pipeline, ID resource_id) = 0;
+        virtual UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") = 0;
+        virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;
 
         virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
@@ -427,6 +468,7 @@ namespace mirai
         virtual void destroy_pipelines(PipelineID *pipelines, uint32_t count) = 0;
         virtual void destroy_buffers(BufferID *buffers, uint32_t count) = 0;
         virtual void destroy_textures(TextureID *textures, uint32_t count) = 0;
+        virtual void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) = 0;
 
         virtual ~RenderingDevice() = default;
 

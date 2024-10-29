@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Common/Bitfield.hpp"
 #include <array>
 

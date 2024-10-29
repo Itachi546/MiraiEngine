@@ -3,12 +3,13 @@
 
 struct Vertex
 {
-    vec3 position;
+    float px, py, pz;
     uint normal;
 
     uint tangent;
     uint bitangent;
-    vec2 uv;
+
+    float tu, tv;
 };
 
 float unpack_u8_to_float(uint x)

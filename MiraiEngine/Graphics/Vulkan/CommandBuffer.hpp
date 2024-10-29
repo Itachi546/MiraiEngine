@@ -9,13 +9,6 @@ namespace mirai
     struct FrameGraphNode;
     class FrameGraph;
 
-    struct BufferCopyRegion
-    {
-        uint64_t src_offset;
-        uint64_t dst_offset;
-        uint64_t size;
-    };
-
     class CommandBuffer
     {
       public:
@@ -23,11 +16,13 @@ namespace mirai
 
         void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 
-        void bind_pipeline(PipelineID pipeline);
+        void bind_pipeline(PipelineID pipeline, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count);
 
         void draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 
-        void set_push_constant(PipelineID pipeline, uint32_t shader_stage, uint32_t offset, uint32_t size, void *data);
+        void draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+
+        void set_index_buffer(BufferID buffer);
 
         void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region);
 

@@ -24,7 +24,6 @@ namespace mirai
             {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
                 VkReflectionDescriptorBinding &vk_binding = vk_set.bindings[b];
-                vk_binding.name = binding->name;
                 vk_binding.binding = binding->binding;
                 vk_binding.descriptor_type = VkDescriptorType(binding->descriptor_type);
                 vk_binding.shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
@@ -84,10 +83,41 @@ namespace mirai
         }
     }
 
+    uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set)
+    {
+        uint64_t hash = 0;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            UniformLayout &uniform = uniforms[i];
+            uint64_t input = uint64_t(uniform.binding) << 60 |
+                             uint64_t(uniform.binding_type) << 40 |
+                             uint64_t(set) << 36 |
+                             uint64_t(uniform.shader_stage);
+            utils::hash_combine(hash, input);
+        }
+        return hash;
+    }
+
+    uint64_t GetDescriptorSetLayoutHash(const std::vector<VkReflectionDescriptorBinding> &bindings, uint32_t set)
+    {
+        uint64_t hash = 0;
+        for (uint32_t i = 0; i < bindings.size(); ++i)
+        {
+            const VkReflectionDescriptorBinding &binding = bindings[i];
+            uint64_t input = uint64_t(binding.binding) << 60 |
+                             uint64_t(binding.descriptor_type) << 40 |
+                             uint64_t(set) << 36 |
+                             uint64_t(binding.shader_stage);
+            utils::hash_combine(hash, input);
+        }
+        return hash;
+    }
+
     VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const std::vector<VkReflectionDescriptorBinding> &descriptor_bindings, uint32_t set, VkDescriptorSetLayoutCreateFlags flags)
     {
         uint32_t binding_count = static_cast<uint32_t>(descriptor_bindings.size());
         std::vector<VkDescriptorSetLayoutBinding> bindings(binding_count);
+
         for (uint32_t i = 0; i < binding_count; ++i)
         {
             bindings[i].binding = descriptor_bindings[i].binding;
@@ -117,6 +147,7 @@ namespace mirai
         shader->shader = VK_NULL_HANDLE;
     }
 
+    /*
     void CreatePipelineBindings(const std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets,
                                 VkDevice device,
                                 VulkanPipeline *pipeline,
@@ -211,4 +242,5 @@ namespace mirai
             }
         }
     }
+    */
 } // namespace mirai

@@ -73,6 +73,7 @@ target_link_libraries(${TARGET_NAME} INTERFACE glm::glm)
 target_compile_definitions(${TARGET_NAME} PRIVATE 
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_FORCE_XYZW_ONLY
+    GLM_FORCE_RADIANS
 )
 
 if(WIN32) 

@@ -137,33 +137,45 @@ namespace mirai
 
         vkCmdBeginRendering(command_buffer, &rendering_info);
 
-        VkViewport viewport{0, 0, static_cast<float>(width), static_cast<float>(height)};
+        VkViewport viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(width),
+            .height = static_cast<float>(height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+        };
         vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
         VkRect2D scissor{{0, 0}, {width, height}};
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void CommandBuffer::bind_pipeline(PipelineID pipeline_id)
+    void CommandBuffer::bind_pipeline(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count)
     {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
 
         uint32_t thread_id = 1;
-        pipeline->bindings.update_descriptor(device->get_vulkan_device(), device->resource_pool_textures, device->current_frame, thread_id);
 
-        uint32_t descriptor_set_id = device->current_frame * thread_id;
-        if (pipeline->bindings.descriptor_sets.size() > 0)
+        std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
+        for (uint32_t i = 0; i < uniform_set_count; ++i)
         {
-            std::vector<VkDescriptorSet> descriptor_sets;
-            for (auto &set : pipeline->bindings.descriptor_sets)
-                descriptor_sets.push_back(set.descriptor_set[descriptor_set_id]);
+            VulkanUniformSet *uniform_set = device->access_uniform_set(uniform_sets[i]);
             vkCmdBindDescriptorSets(command_buffer,
                                     pipeline->bind_point, pipeline->pipeline_layout,
-                                    0,
-                                    static_cast<uint32_t>(descriptor_sets.size()), descriptor_sets.data(),
+                                    uniform_set->set_id,
+                                    1, &uniform_set->descriptor_set,
                                     0, nullptr);
+        }
+
+        for (uint32_t i = 0; i < push_constant_count; ++i)
+        {
+            PushConstant *push_constant = &push_constants[i];
+            vkCmdPushConstants(command_buffer, pipeline->pipeline_layout,
+                               VkShaderStageFlags(push_constant->shader_stage),
+                               push_constant->offset, push_constant->size, push_constant->data);
         }
     }
 
@@ -172,10 +184,16 @@ namespace mirai
         vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
     }
 
-    void CommandBuffer::set_push_constant(PipelineID pipeline, uint32_t shader_stage, uint32_t offset, uint32_t size, void *data)
+    void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride)
     {
-        VulkanPipeline *vk_pipeline = device->access_pipeline(pipeline);
-        vkCmdPushConstants(command_buffer, vk_pipeline->pipeline_layout, VkShaderStageFlags(shader_stage), offset, size, data);
+        VulkanBuffer *indirect_buffer = device->access_buffer(buffer);
+        vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
+    }
+
+    void CommandBuffer::set_index_buffer(BufferID buffer)
+    {
+        VulkanBuffer *index_buffer = device->access_buffer(buffer);
+        vkCmdBindIndexBuffer(command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
     }
 
     void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region)

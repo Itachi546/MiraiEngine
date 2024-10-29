@@ -39,6 +39,12 @@ namespace mirai
             return &resources[id.id];
         }
 
+        T *access(uint32_t id)
+        {
+            ASSERT(id < pool_size);
+            return &resources[id];
+        }
+
         void release(ID id)
         {
             ASSERT(id.id < pool_size);

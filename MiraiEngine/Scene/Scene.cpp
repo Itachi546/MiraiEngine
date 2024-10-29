@@ -1,6 +1,9 @@
 #include "Scene.hpp"
 #include "ShaderMaterial.hpp"
 #include "Component.hpp"
+#include "Camera.hpp"
+#include "Device/Window.hpp"
+#include "Engine/Engine.hpp"
 
 #include <execution>
 #include <algorithm>
@@ -10,21 +13,70 @@ namespace mirai
     Scene::Scene(const std::string &name) : name(name)
     {
         component_manager = std::make_unique<ComponentManager>();
-        component_manager->register_component<MaterialComponent>();
         component_manager->register_component<NameComponent>();
         component_manager->register_component<HierarchyComponent>();
         component_manager->register_component<MeshComponent>();
         component_manager->register_component<TransformComponent>();
-        component_manager->register_component<MeshDataComponent>();
+
+        BufferDescription buffer_desc = {
+            .size = K_MAX_ENTITIES * sizeof(glm::mat4),
+            .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        RenderingDevice *device = RenderingDevice::get();
+        transform_buffer = device->create_buffer(&buffer_desc, "transform_buffer");
+        transform_array = (glm::mat4 *)(device->map_buffer(transform_buffer));
+
+        buffer_desc = {
+            .size = sizeof(FrameData),
+            .usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
+        frame_data_ptr = (FrameData *)device->map_buffer(per_frame_data_buffer);
+
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 1, "per_frame_uniform_set");
+
+        UniformBinding binding = {
+            .resource_id = per_frame_data_buffer,
+            .offset = 0,
+            .range = sizeof(FrameData),
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
+
+        camera = std::make_unique<Camera>();
     }
 
     void Scene::update()
     {
+        camera->update();
+
         update_transform_components();
+
+        update_draw_data();
+
+        uint32_t width, height;
+        Window::get()->get_size(&width, &height);
+        frame_data_ptr->elapsed_time = Engine::get()->get_elapsed_seconds();
+        frame_data_ptr->P = camera->get_projection_transform();
+        frame_data_ptr->V = camera->get_camera_transform();
+        frame_data_ptr->VP = frame_data_ptr->P * frame_data_ptr->V;
+        frame_data_ptr->window_size = glm::vec2((float)width, (float)height);
     }
 
     void Scene::remove_entity_tree(Entity entity)
     {
+        if (component_manager->has_component<MeshComponent>(entity))
+        {
+            component_manager->get_component<MeshComponent>(entity)->destroy_render_data();
+        }
         if (component_manager->has_component<HierarchyComponent>(entity))
         {
             HierarchyComponent *comp = component_manager->get_component<HierarchyComponent>(entity);
@@ -45,6 +97,42 @@ namespace mirai
                       { transform.update_local_transform(); });
     }
 
+    void Scene::update_draw_data()
+    {
+        if (!dirty)
+            return;
+        draw_infos.clear();
+        draw_infos.reserve(100);
+
+        auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
+        std::vector<Entity> &entities = mesh_component_ptr->entities;
+        uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
+
+        DrawData draw_data;
+        for (uint32_t i = 0; i < component_count; ++i)
+        {
+            const MeshComponent &mesh_component = mesh_component_ptr->components[i];
+            const Entity entity = mesh_component_ptr->entities[i];
+
+            const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+            transform_array[i] = transform->local_transform;
+
+            draw_data.vertex_buffer = mesh_component.vertex_buffer;
+            draw_data.index_buffer = mesh_component.index_buffer;
+
+            for (auto &mesh_subset : mesh_component.mesh_subsets)
+            {
+                draw_data.transform_index = i;
+                draw_data.material_index = mesh_subset.material_index;
+                draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
+                draw_data.vertex_count = mesh_subset.vertex_buffer.count;
+                draw_data.index_offset = mesh_subset.index_buffer.offset;
+                draw_data.index_count = mesh_subset.index_buffer.count;
+                draw_infos.push_back(draw_data);
+            }
+        }
+    }
+
     void Scene::remove_entity(Entity entity)
     {
         auto found = std::find(entities.begin(), entities.end(), entity);
@@ -56,6 +144,7 @@ namespace mirai
 
         remove_entity_tree(entity);
         entities.erase(found);
+        dirty = true;
     }
 
     void Scene::release_all_entities()
@@ -75,6 +164,9 @@ namespace mirai
                 ASSERT(comp_array->size() == 0);
         }
         ecs::destroy(component_manager.get());
+
+        BufferID buffers[] = {per_frame_data_buffer, transform_buffer};
+        RenderingDevice::get()->destroy_buffers(buffers, 2);
     }
 
 } // namespace mirai

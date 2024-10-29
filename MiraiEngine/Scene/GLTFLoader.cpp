@@ -14,13 +14,15 @@ namespace mirai
     struct LoadState
     {
         Scene *scene;
-        std::vector<MaterialComponent> materials;
         std::vector<MeshComponent> mesh_components;
+        uint32_t material_base_offset;
     };
 
-    static void LoadMaterials(const tinygltf::Model *model, std::vector<MaterialComponent> &materials)
+    static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state)
     {
         size_t material_count = model->materials.size();
+
+        std::vector<Material> &materials = load_state->scene->materials;
         materials.resize(material_count);
 
         auto LoadTexture = [](uint32_t texture_index, Colorspace color_space)
@@ -60,23 +62,23 @@ namespace mirai
         return (uint8_t *)(model->buffers[buffer_view.buffer].data.data() + accessor.byteOffset + buffer_view.byteOffset);
     }
 
-    void LoadMeshes(const tinygltf::Model *model, MeshDataComponent *meshdata_component, LoadState *load_state)
+    void LoadMeshes(const tinygltf::Model *model, LoadState *load_state)
     {
         size_t mesh_count = model->meshes.size();
-        std::vector<Vertex> &vertices = meshdata_component->vertices;
-        std::vector<uint32_t> &indices = meshdata_component->indices;
+        std::vector<MeshComponent> &mesh_components = load_state->mesh_components;
+        mesh_components.resize(mesh_count);
 
-        std::vector<MeshComponent> &out_mesh_components = load_state->mesh_components;
-        for (uint32_t i = 0; i < model->meshes.size(); ++i)
+        for (uint32_t i = 0; i < mesh_count; ++i)
         {
-            const tinygltf::Mesh &gltf_mesh = model->meshes[i];
-            MeshComponent &mesh_component = out_mesh_components.emplace_back(MeshComponent{});
-            mesh_component.mesh_data_comp_index = 0;
+            MeshComponent &mesh_component = mesh_components[i];
+            std::vector<uint32_t> &indices = mesh_component.indices;
+            std::vector<Vertex> &vertices = mesh_component.vertices;
 
+            const tinygltf::Mesh &gltf_mesh = model->meshes[i];
             for (const auto &primitive : gltf_mesh.primitives)
             {
-                uint32_t vertex_offset = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
-                uint32_t index_offset = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
+                uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
+                uint32_t index_offset = static_cast<uint32_t>(indices.size());
 
                 auto position_attributes = primitive.attributes.find("POSITION");
                 const tinygltf::Accessor position_accessor = model->accessors[position_attributes->second];
@@ -125,6 +127,9 @@ namespace mirai
 
                     glm::vec3 bitangent = glm::cross(normal, tangent);
                     vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
+
+                    if (uvs != nullptr)
+                        vertex.uv = glm::vec2{uvs[i * 2 + 0, i * 2 + 1]};
                 }
 
                 const tinygltf::Accessor &indices_accessor = model->accessors[primitive.indices];
@@ -143,14 +148,17 @@ namespace mirai
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets.emplace_back();
                 mesh_subset.vertex_buffer = {
                     .offset = vertex_offset,
-                    .size = (num_position / 3) * sizeof(Vertex),
+                    .count = (uint32_t)vertices.size() - vertex_offset,
                 };
                 mesh_subset.index_buffer = {
                     .offset = index_offset,
-                    .size = index_count * sizeof(uint32_t),
+                    .count = (uint32_t)indices.size() - index_offset,
                 };
                 mesh_subset.vertex_count = index_count;
+                mesh_subset.material_index = primitive.material + load_state->material_base_offset;
             }
+
+            mesh_component.prepare_render_data();
         }
     } // namespace mirai
 
@@ -159,7 +167,7 @@ namespace mirai
         Entity entity = ecs::create_entity();
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
-        ComponentManager *comp_manager = scene->get_component_manager();
+        auto &comp_manager = scene->component_manager;
 
         // NameComponent
         std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
@@ -191,7 +199,7 @@ namespace mirai
         if (mesh_id >= 0)
         {
             ASSERT(mesh_id < load_state->mesh_components.size());
-            comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+            comp_manager->add_component<MeshComponent>(entity, std::move(load_state->mesh_components[mesh_id]));
         }
 
         for (const auto &child : node->children)
@@ -218,21 +226,21 @@ namespace mirai
             return K_INVALID_ENTITY;
         }
 
-        ComponentManager *comp_manager = scene->get_component_manager();
+        auto &comp_manager = scene->component_manager;
 
         Entity root_entity = ecs::create_entity();
         comp_manager->add_component<NameComponent>(root_entity, utils::get_filename(filename));
         comp_manager->add_component<TransformComponent>(root_entity);
         scene->add_entity(root_entity);
 
-        LoadState load_state = {.scene = scene};
-        LoadMaterials(&gltf_model, load_state.materials);
+        LoadState load_state = {
+            .scene = scene,
+            .material_base_offset = static_cast<uint32_t>(scene->materials.size()),
+        };
 
-        {
-            MeshDataComponent &meshdata_component = comp_manager->add_component<MeshDataComponent>(root_entity);
-            LoadMeshes(&gltf_model, &meshdata_component, &load_state);
-            meshdata_component.prepare_render_data();
-        }
+        LoadMaterials(&gltf_model, &load_state);
+
+        LoadMeshes(&gltf_model, &load_state);
 
         for (uint32_t i = 0; i < gltf_model.nodes.size(); ++i)
             ParseNodes(&gltf_model, i, root_entity, &load_state);

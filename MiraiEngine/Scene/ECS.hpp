@@ -78,7 +78,7 @@ namespace mirai
                 return components[found->second];
 
             lookup_[entity] = components.size();
-            components.push_back(T(std::forward<Args>(args)...));
+            components.push_back(T{std::forward<Args>(args)...});
             entities.push_back(entity);
             return components.back();
         }

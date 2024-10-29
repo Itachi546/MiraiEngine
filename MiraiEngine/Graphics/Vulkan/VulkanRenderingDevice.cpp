@@ -35,6 +35,7 @@ namespace mirai
                                                                            resource_pool_shaders(32, "Shader"),
                                                                            resource_pool_textures(1024, "Texture"),
                                                                            resource_pool_buffers(64, "Buffer"),
+                                                                           resource_pool_uniform_sets(128, "UniformSet"),
                                                                            RenderingDevice(enable_validation)
     {
         instance_extensions = {
@@ -150,14 +151,15 @@ namespace mirai
         VkDescriptorPoolSize poolSizes[] = {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
         };
-        uint32_t maxSets = 288;
+        uint32_t maxSets = 160;
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .flags = 0,
             .maxSets = maxSets,
-            .poolSizeCount = 3,
+            .poolSizeCount = (uint32_t)std::size(poolSizes),
             .pPoolSizes = poolSizes,
         };
 
@@ -296,6 +298,7 @@ namespace mirai
             .depthTestEnable = pipeline_description->depth_state->enable_depth_test,
             .depthWriteEnable = pipeline_description->depth_state->enable_depth_write,
             .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+            .stencilTestEnable = false,
             .minDepthBounds = pipeline_description->depth_state->min_depth_bounds,
             .maxDepthBounds = pipeline_description->depth_state->max_depth_bounds,
         };
@@ -351,10 +354,21 @@ namespace mirai
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        pipeline->push_constants = push_constants_map;
 
         for (const auto &[key, val] : descriptor_sets_map)
-            pipeline->set_layouts.push_back(CreateDescriptorSetLayout(device, val, key, 0));
+        {
+            uint64_t hash = GetDescriptorSetLayoutHash(val, key);
+            auto found = descriptor_set_layouts_cache.find(hash);
+
+            if (found == descriptor_set_layouts_cache.end())
+            {
+                VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, val, key, 0);
+                pipeline->set_layouts.push_back(set_layout);
+                descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
+            }
+            else
+                pipeline->set_layouts.push_back(found->second);
+        }
 
         std::vector<VkPushConstantRange> push_constants;
         for (const auto &entry : push_constants_map)
@@ -390,63 +404,113 @@ namespace mirai
         VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
         set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
 
-        CreatePipelineBindings(descriptor_sets_map, device, pipeline, descriptor_pool, K_MAX_FRAME_IN_FLIGHTS * K_NUM_COMMAND_BUFFER_PER_THREAD, &pipeline->bindings);
-
         return PipelineID{pipeline_id};
     }
-    /*
-    VkDescriptorSet VulkanRenderingDevice::create_descriptor_set(const std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets, const std::string &name)
+
+    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name)
     {
-        /*
-        std::vector<VkWriteDescriptorSet> writeSets(uniformCount);
+        uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
+        auto found = descriptor_set_layouts_cache.find(hash);
 
-        // @TODO replace with custom allocator
-        std::vector<VkDescriptorImageInfo> imageInfos;
-        std::vector<VkDescriptorBufferInfo> bufferInfos;
-        imageInfos.reserve(16), bufferInfos.reserve(16);
-
-        for (uint32_t i = 0; i < uniformCount; ++i)
+        VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
+        if (found == descriptor_set_layouts_cache.end())
         {
-            BoundUniform *uniform = uniforms + i;
-            writeSets[i] = {};
-            writeSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeSets[i].dstBinding = uniform->binding;
-            writeSets[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-            writeSets[i].descriptorCount = 1;
-
-            switch (uniform->bindingType)
+            std::vector<VkReflectionDescriptorBinding> bindings(uniform_count);
+            for (uint32_t i = 0; i < uniform_count; ++i)
             {
-            case BINDING_TYPE_IMAGE:
-            {
-                VulkanTexture *texture = _textures.Access(uniform->resourceID.id);
-                VkDescriptorImageInfo &imageInfo = imageInfos.emplace_back(VkDescriptorImageInfo{});
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                imageInfo.imageView = texture->imageView;
+                bindings[i].binding = uniforms[i].binding;
+                bindings[i].descriptor_type = VkDescriptorType(uniforms[i].binding_type);
+                bindings[i].shader_stage = VkShaderStageFlags(uniforms[i].shader_stage);
+            }
+            // Create DescriptorSetLayout
+            set_layout = CreateDescriptorSetLayout(device, bindings, set, 0);
+            descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
+        }
+        else
+            set_layout = found->second;
+        VkDescriptorSetAllocateInfo allocate_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &set_layout,
+        };
 
-                writeSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                writeSets[i].pImageInfo = &imageInfo;
+        VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+        vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
+        if (debug_name.size() > 0)
+            set_debug_marker_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptor_set, debug_name.c_str());
+
+        uint32_t id = resource_pool_uniform_sets.obtain();
+        VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(id);
+        uniform_set->descriptor_pool = descriptor_pool;
+        uniform_set->descriptor_set = descriptor_set;
+        uniform_set->set_id = set;
+        uniform_set->uniform_layout.insert(uniform_set->uniform_layout.end(), uniforms, uniforms + uniform_count);
+        return UniformSetID{id};
+    }
+
+    void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count)
+    {
+        std::vector<VkWriteDescriptorSet> write_sets(binding_count);
+        // @TODO replace with custom allocator
+        std::vector<VkDescriptorImageInfo> image_infos;
+        std::vector<VkDescriptorBufferInfo> buffer_infos;
+        image_infos.reserve(16), buffer_infos.reserve(16);
+
+        VulkanUniformSet *vk_set = resource_pool_uniform_sets.access(uniform_set);
+        for (uint32_t i = 0; i < binding_count; ++i)
+        {
+            UniformLayout &layout = vk_set->uniform_layout[i];
+            UniformBinding &binding = bindings[i];
+            write_sets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write_sets[i].dstBinding = layout.binding;
+            write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+            write_sets[i].descriptorCount = 1;
+
+            switch (layout.binding_type)
+            {
+            case BINDING_TYPE_STORAGE_IMAGE:
+            {
+                VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
+                VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
+                image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                image_info.imageView = texture->image_view;
+
+                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                write_sets[i].pImageInfo = &image_info;
             }
             break;
             case BINDING_TYPE_UNIFORM_BUFFER:
             {
-                VulkanBuffer *buffer = _buffers.Access(uniform->resourceID.id);
-                VkDescriptorBufferInfo &bufferInfo = bufferInfos.emplace_back(VkDescriptorBufferInfo{});
-                bufferInfo.buffer = buffer->buffer;
-                bufferInfo.offset = uniform->offset;
-                bufferInfo.range = uniform->range;
-                writeSets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                writeSets[i].pBufferInfo = &bufferInfo;
+                VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
+                VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
+                buffer_info.buffer = buffer->buffer;
+                buffer_info.offset = binding.offset;
+                buffer_info.range = binding.range;
+                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                write_sets[i].pBufferInfo = &buffer_info;
             }
             break;
             case BINDING_TYPE_STORAGE_BUFFER:
             {
-                VulkanBuffer *buffer = _buffers.Access(uniform->resourceID.id);
-                VkDescriptorBufferInfo &bufferInfo = bufferInfos.emplace_back(VkDescriptorBufferInfo{});
-                bufferInfo.buffer = buffer->buffer;
-                bufferInfo.offset = uniform->offset;
-                bufferInfo.range = uniform->range;
-                writeSets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                writeSets[i].pBufferInfo = &bufferInfo;
+                VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
+                VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
+                buffer_info.buffer = buffer->buffer;
+                buffer_info.offset = binding.offset;
+                buffer_info.range = binding.range;
+                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write_sets[i].pBufferInfo = &buffer_info;
+            }
+            break;
+            case BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
+            {
+                VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
+                VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
+                image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                image_info.imageView = texture->image_view;
+                image_info.sampler = texture->sampler;
+                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                write_sets[i].pImageInfo = &image_info;
             }
             break;
             default:
@@ -455,32 +519,11 @@ namespace mirai
             }
         }
 
-        VulkanPipeline *vkPipeline = _pipeline.Access(pipeline.id);
-        VkDescriptorSetAllocateInfo allocateInfo{
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = _descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &vkPipeline->setLayout[set],
-        };
+        for (auto &writeSet : write_sets)
+            writeSet.dstSet = vk_set->descriptor_set;
 
-        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-        vkAllocateDescriptorSets(device, &allocateInfo, &descriptorSet);
-        SetDebugMarkerObjectName(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptorSet, name.c_str());
-
-        for (auto &writeSet : writeSets)
-            writeSet.dstSet = descriptorSet;
-
-        vkUpdateDescriptorSets(device, uniformCount, writeSets.data(), 0, nullptr);
-
-        uint64_t uniformSetID = _uniformSets.Obtain();
-        VulkanUniformSet *uniformSet = _uniformSets.Access(uniformSetID);
-        uniformSet->descriptorPool = _descriptorPool;
-        uniformSet->descriptorSet = descriptorSet;
-        uniformSet->set = set;
-
-        return UniformSetID{uniformSetID};
+        vkUpdateDescriptorSets(device, binding_count, write_sets.data(), 0, nullptr);
     }
-        */
 
     BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name)
     {
@@ -687,12 +730,6 @@ namespace mirai
         vkQueueWaitIdle(queue);
     }
 
-    void VulkanRenderingDevice::pipeline_set_resources(const std::string &name, PipelineID pipeline_id, ID resource_id)
-    {
-        VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
-        pipeline->bindings.set_resource(name, resource_id);
-    }
-
     void VulkanRenderingDevice::wait()
     {
         VK_CHECK(vkDeviceWaitIdle(device));
@@ -787,8 +824,6 @@ namespace mirai
                 vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
             vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
-            pipeline->bindings.descriptor_sets.clear();
-            pipeline->bindings.lookup_info.clear();
             resource_pool_pipelines.release(pipeline_ids[i]);
         }
     }
@@ -830,6 +865,19 @@ namespace mirai
             texture->array_layers = 0;
             texture->image = VK_NULL_HANDLE;
             resource_pool_textures.release(textures[i]);
+        }
+    }
+
+    void VulkanRenderingDevice::destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(uniform_sets[i]);
+            vkFreeDescriptorSets(device, uniform_set->descriptor_pool, 1, &uniform_set->descriptor_set);
+            uniform_set->descriptor_pool = VK_NULL_HANDLE;
+            uniform_set->descriptor_set = VK_NULL_HANDLE;
+            uniform_set->set_id = 0;
+            resource_pool_uniform_sets.release(uniform_sets[i]);
         }
     }
 

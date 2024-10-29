@@ -14,9 +14,9 @@ namespace mirai
       public:
         FullScreenPass(const std::string &name);
 
-        void initialize(FrameGraph* frame_graph, const FrameGraphNode* node) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode* node, Scene *scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
         void set_antialiasing(bool state)
         {
@@ -26,6 +26,7 @@ namespace mirai
         ~FullScreenPass();
 
       private:
+        UniformSetID uniform_set;
         std::shared_ptr<ShaderMaterial> material;
         bool enable_aa;
     };
