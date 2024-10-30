@@ -25,10 +25,6 @@ namespace mirai
 
     static void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y)
     {
-        Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
-        glm::vec2 current_pos{static_cast<float>(x), static_cast<float>(y)};
-        window->mouse_pos_delta = current_pos - window->mouse_pos;
-        window->mouse_pos = current_pos;
     }
 
     static void WindowScrollCallback(GLFWwindow *glfw_window, double xoffset, double yoffset)
@@ -88,7 +84,7 @@ namespace mirai
         glfwSetKeyCallback(glfw_window, WindowKeyCallback);
         glfwSetWindowSizeCallback(glfw_window, WindowSizeCallback);
         glfwSetMouseButtonCallback(glfw_window, WindowButtonCallback);
-        glfwSetCursorPosCallback(glfw_window, WindowCursorPosCallback);
+        // glfwSetCursorPosCallback(glfw_window, WindowCursorPosCallback);
         glfwSetScrollCallback(glfw_window, WindowScrollCallback);
         glfwSetWindowIconifyCallback(glfw_window, WindowIconifyCallback);
 
@@ -108,6 +104,12 @@ namespace mirai
     void Window::update()
     {
         glfwPollEvents();
+
+        double x, y;
+        glfwGetCursorPos(glfw_window, &x, &y);
+        glm::vec2 current_pos{static_cast<float>(x), static_cast<float>(y)};
+        mouse_pos_delta = current_pos - mouse_pos;
+        mouse_pos = current_pos;
     }
 
     bool Window::is_closed()

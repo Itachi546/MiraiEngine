@@ -1,7 +1,9 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/euler_angles.hpp>
 
 namespace mirai
 {
@@ -29,7 +31,7 @@ namespace mirai
         }
 
         glm::vec3 position;
-        glm::fquat rotation;
+        glm::vec3 rotation;
 
         void set_projection_mode(ProjectionMode projection_mode)
         {
@@ -39,25 +41,21 @@ namespace mirai
         void set_fov(float fov)
         {
             this->fov = fov;
-            is_projection_dirty = true;
         }
 
         void set_aspect_ratio(float aspect_ratio)
         {
             this->aspect_ratio = aspect_ratio;
-            is_projection_dirty = true;
         }
 
         void set_near_plane(float near_plane)
         {
             this->near_plane = near_plane;
-            is_projection_dirty = true;
         }
 
         void set_far_plane(float far_plane)
         {
             this->far_plane = far_plane;
-            is_projection_dirty = true;
         }
 
         float get_fov() const
@@ -101,7 +99,6 @@ namespace mirai
         glm::mat4 viewport_matrix;
 
         ProjectionMode projection_mode;
-        bool is_projection_dirty;
 
         glm::vec3 forward, right, up;
 

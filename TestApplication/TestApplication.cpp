@@ -11,7 +11,7 @@
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "FullScreenMaterial.hpp"
-#include "CameraController.hpp"
+#include "Utils/FirstPersonController.hpp"
 
 #include <fstream>
 #include <filesystem>
