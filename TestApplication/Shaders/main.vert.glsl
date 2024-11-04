@@ -23,11 +23,6 @@ layout(set = 0, binding = 0) readonly buffer VertexData
     Vertex vertices[];
 };
 
-layout(set = 0, binding = 1) readonly buffer Transform
-{
-    mat4 transforms[];
-};
-
 layout(set = 1, binding = 0) uniform PerFrameData
 {
     mat4 P;
@@ -41,10 +36,20 @@ layout(set = 1, binding = 0) uniform PerFrameData
     vec2 _padding;
 };
 
+layout(set = 2, binding = 0) readonly buffer Transform
+{
+    mat4 transforms[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+    uint transform_id;
+};
+
 void main()
 {
     Vertex vertex = vertices[gl_VertexIndex];
-    mat4 M = transforms[0];
+    mat4 M = transforms[transform_id];
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 worldPos = M * vec4(position, 1.0f);

@@ -21,6 +21,7 @@ namespace mirai
         uint32_t index_offset;
         uint32_t vertex_count;
         uint32_t index_count;
+        UniformSetID uniform_set;
     };
 
     class Scene

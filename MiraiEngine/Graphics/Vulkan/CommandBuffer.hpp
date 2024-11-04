@@ -18,7 +18,13 @@ namespace mirai
 
         void bind_pipeline(PipelineID pipeline, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count);
 
+        void set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count);
+
+        void set_push_constants(PipelineID pipeline, PushConstant *push_constants, uint32_t push_constant_count);
+
         void draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
+
+        void draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
         void draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 

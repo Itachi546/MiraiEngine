@@ -34,8 +34,8 @@ namespace mirai
     VulkanRenderingDevice::VulkanRenderingDevice(bool enable_validation) : resource_pool_pipelines(128, "Pipeline"),
                                                                            resource_pool_shaders(32, "Shader"),
                                                                            resource_pool_textures(1024, "Texture"),
-                                                                           resource_pool_buffers(64, "Buffer"),
-                                                                           resource_pool_uniform_sets(128, "UniformSet"),
+                                                                           resource_pool_buffers(4096, "Buffer"),
+                                                                           resource_pool_uniform_sets(2048, "UniformSet"),
                                                                            RenderingDevice(enable_validation)
     {
         instance_extensions = {
@@ -151,10 +151,10 @@ namespace mirai
         VkDescriptorPoolSize poolSizes[] = {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4096},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
         };
-        uint32_t maxSets = 160;
+        uint32_t maxSets = 4150;
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .flags = 0,

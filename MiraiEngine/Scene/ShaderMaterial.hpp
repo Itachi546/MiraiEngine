@@ -72,6 +72,10 @@ namespace mirai
             return hash;
         }
 
+        PipelineID get_pipeline_id() const {
+            return pipeline;
+        }
+
       protected:
         std::string name;
         uint64_t hash;

@@ -86,6 +86,7 @@ namespace mirai
             uint32_t vertex_count;
             uint32_t material_index;
         };
+        UniformSetID mesh_data_set;
         std::vector<MeshSubset> mesh_subsets;
 
         std::vector<Vertex> vertices;
@@ -119,6 +120,18 @@ namespace mirai
             index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
             uint8_t *ib_ptr = device->map_buffer(index_buffer);
             std::memcpy(ib_ptr, indices.data(), index_buffer_size);
+
+            UniformLayout mesh_data_layout = {
+                .binding = 0,
+                .binding_type = BINDING_TYPE_STORAGE_BUFFER,
+                .shader_stage = SHADER_STAGE_VERTEX,
+            };
+            mesh_data_set = device->create_uniform_set(&mesh_data_layout, 1, 0, "mesh_data_set");
+
+            UniformBinding mesh_data_binding = {
+                .resource_id = vertex_buffer,
+            };
+            device->update_uniform_set(mesh_data_set, &mesh_data_binding, 1);
         }
 
         void destroy_render_data()

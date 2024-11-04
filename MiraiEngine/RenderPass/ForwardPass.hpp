@@ -26,7 +26,7 @@ namespace mirai
             uint32_t first_instance;
         };
 
-        UniformSetID uniform_set;
+        UniformSetID mesh_instance_set;
         DrawIndirectCommand *draw_indirect_array;
     };
 } // namespace mirai

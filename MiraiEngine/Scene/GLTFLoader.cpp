@@ -195,7 +195,7 @@ namespace mirai
         parent_hierarchy->add_children(entity);
 
         // Add Mesh Component
-        uint32_t mesh_id = node->mesh;
+        int mesh_id = node->mesh;
         if (mesh_id >= 0)
         {
             ASSERT(mesh_id < load_state->mesh_components.size());
@@ -208,6 +208,7 @@ namespace mirai
 
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene)
     {
+        Log::Info("Loading Model ", filename);
         std::string file_extension = utils::get_file_extension(filename);
 
         bool ret = false;

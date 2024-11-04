@@ -2,9 +2,6 @@
 
 void CameraController::update(float dt)
 {
-    float aspect_ratio = Window::get()->get_aspect_ratio();
-    camera->set_aspect_ratio(aspect_ratio);
-
     Input *input = Input::get();
     float speed = walk_speed;
     if (input->is_down(KB_LEFT_SHIFT))

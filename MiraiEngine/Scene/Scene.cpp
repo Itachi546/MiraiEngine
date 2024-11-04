@@ -119,6 +119,7 @@ namespace mirai
 
             draw_data.vertex_buffer = mesh_component.vertex_buffer;
             draw_data.index_buffer = mesh_component.index_buffer;
+            draw_data.uniform_set = mesh_component.mesh_data_set;
 
             for (auto &mesh_subset : mesh_component.mesh_subsets)
             {
@@ -131,6 +132,9 @@ namespace mirai
                 draw_infos.push_back(draw_data);
             }
         }
+
+        std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs)
+                  { return lhs.vertex_buffer < rhs.vertex_buffer; });
     }
 
     void Scene::remove_entity(Entity entity)

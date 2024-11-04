@@ -43,11 +43,6 @@ namespace mirai
             this->fov = fov;
         }
 
-        void set_aspect_ratio(float aspect_ratio)
-        {
-            this->aspect_ratio = aspect_ratio;
-        }
-
         void set_near_plane(float near_plane)
         {
             this->near_plane = near_plane;

@@ -157,8 +157,13 @@ namespace mirai
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
 
-        uint32_t thread_id = 1;
+        set_uniform_sets(pipeline_id, uniform_sets, uniform_set_count);
+        set_push_constants(pipeline_id, push_constants, push_constant_count);
+    }
 
+    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count)
+    {
+        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
         for (uint32_t i = 0; i < uniform_set_count; ++i)
         {
@@ -169,7 +174,11 @@ namespace mirai
                                     1, &uniform_set->descriptor_set,
                                     0, nullptr);
         }
+    }
 
+    void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count)
+    {
+        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         for (uint32_t i = 0; i < push_constant_count; ++i)
         {
             PushConstant *push_constant = &push_constants[i];
@@ -182,6 +191,11 @@ namespace mirai
     void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
     {
         vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
+    }
+
+    void CommandBuffer::draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance)
+    {
+        vkCmdDrawIndexed(command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);
     }
 
     void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride)

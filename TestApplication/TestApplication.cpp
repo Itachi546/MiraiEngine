@@ -142,7 +142,6 @@ int main(int argc, char **argv)
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(options);
     Log::Info("Creating Test Application ...");
     engine->set_app(std::make_unique<TestApplication>(model_path));
-    Log::Info("Game Loop Begin ...");
     engine->run();
     engine = nullptr;
 }

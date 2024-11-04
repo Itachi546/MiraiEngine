@@ -24,11 +24,10 @@ namespace mirai
         draw_indirect_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "draw_indirect_buffer");
         draw_indirect_array = (DrawIndirectCommand *)RenderingDevice::get()->map_buffer(draw_indirect_buffer);
 
-        UniformLayout uniform_layouts[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-        };
-        uniform_set = RenderingDevice::get()->create_uniform_set(uniform_layouts, 2, 0, "vertex_binding");
+        UniformLayout mesh_data_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+        UniformLayout mesh_instance_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+
+        mesh_instance_set = RenderingDevice::get()->create_uniform_set(&mesh_instance_layout, 1, 2, "mesh_instance_set");
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene)
@@ -40,18 +39,37 @@ namespace mirai
         std::vector<DrawData> &draw_infos = scene->draw_infos;
         if (draw_infos.size() > 0)
         {
-            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, uniform_set};
+            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
             shader->bind(command_buffer, node, frame_graph);
-            
-            UniformBinding bindings[] = {
-                {.resource_id = draw_infos[0].vertex_buffer, .offset = 0},
+
+            UniformBinding per_shader_bindings[] = {
                 {.resource_id = scene->transform_buffer, .offset = 0},
             };
-            RenderingDevice::get()->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
+            RenderingDevice::get()->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
-            command_buffer->set_index_buffer(draw_infos[0].index_buffer);
+            UniformBinding per_draw_bindings = {.resource_id = BufferID{K_INVALID_ID}, .offset = 0};
+            PushConstant push_constant = {.data = nullptr, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t), .offset = 0};
 
+            PipelineID pipeline_id = shader->get_pipeline_id();
+            for (uint32_t i = 0; i < draw_infos.size(); ++i)
+            {
+                BufferID current_buffer = draw_infos[i].vertex_buffer;
+                if (current_buffer.id != per_draw_bindings.resource_id.id)
+                {
+                    per_draw_bindings.resource_id = current_buffer;
+                    command_buffer->set_uniform_sets(pipeline_id, &draw_infos[i].uniform_set, 1);
+                    command_buffer->set_index_buffer(draw_infos[i].index_buffer);
+                }
+                push_constant.data = &draw_infos[i].transform_index;
+                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+                command_buffer->draw_indexed(draw_infos[i].index_count,
+                                             1,
+                                             draw_infos[i].index_offset,
+                                             draw_infos[i].vertex_offset,
+                                             0);
+            }
+            /*
             for (uint32_t i = 0; i < draw_infos.size(); ++i)
             {
                 draw_indirect_array[i].first_index = draw_infos[i].index_offset;
@@ -60,8 +78,8 @@ namespace mirai
                 draw_indirect_array[i].vertex_offset = draw_infos[i].vertex_offset;
                 draw_indirect_array[i].first_instance = 0;
             }
-
             command_buffer->draw_indexed_indirect(draw_indirect_buffer, 0, (uint32_t)draw_infos.size(), sizeof(DrawIndirectCommand));
+            */
         }
         command_buffer->end_render_pass();
     }
