@@ -22,7 +22,7 @@ const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 class TestApplication : public App
 {
   public:
-    TestApplication(const char *model_path) : App("TestApplication"), model_path(model_path)
+    TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths)
     {
         Window::get()->set_title("TestApplication");
     }
@@ -101,8 +101,11 @@ class TestApplication : public App
 
         frame_graph->compile();
 
-        if (!model_path.empty())
-            ImportModel_GLTF(model_path, scene);
+        if (model_paths.size() > 0)
+        {
+            for (const auto &path : model_paths)
+                ImportModel_GLTF(path, scene);
+        }
 
         controller = new CameraController(scene->get_camera());
     }
@@ -123,7 +126,7 @@ class TestApplication : public App
 
   private:
     Scene *scene;
-    std::string model_path;
+    const std::vector<std::string> &model_paths;
     CameraController *controller;
 };
 
@@ -135,13 +138,17 @@ int main(int argc, char **argv)
         .enable_validation = true,
     };
 
-    const char *model_path = nullptr;
+    std::vector<std::string> model_paths;
     if (argc > 1)
-        model_path = argv[1];
-
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            model_paths.push_back(argv[i]);
+        }
+    }
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(options);
     Log::Info("Creating Test Application ...");
-    engine->set_app(std::make_unique<TestApplication>(model_path));
+    engine->set_app(std::make_unique<TestApplication>(model_paths));
     engine->run();
     engine = nullptr;
 }

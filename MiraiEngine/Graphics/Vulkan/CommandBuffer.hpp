@@ -28,6 +28,8 @@ namespace mirai
 
         void draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 
+        void set_vertex_buffer(BufferID buffer);
+
         void set_index_buffer(BufferID buffer);
 
         void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region);
@@ -36,11 +38,17 @@ namespace mirai
 
         void begin();
 
+        void wait();
+
       private:
         void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+        void prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+        void prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+
         friend class VulkanRenderingDevice;
         VulkanRenderingDevice *device;
         VkCommandBuffer command_buffer;
         uint32_t queue_family_indices;
+        VkFence fence;
     };
 } // namespace mirai

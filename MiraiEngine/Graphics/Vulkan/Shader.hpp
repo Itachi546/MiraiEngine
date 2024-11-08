@@ -36,6 +36,7 @@ namespace mirai
 
         VkImageLayout current_layout;
         VkSampler sampler;
+        VkAccessFlags access_flags;
     };
 
     struct VulkanBuffer

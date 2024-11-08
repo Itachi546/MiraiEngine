@@ -34,8 +34,8 @@ namespace mirai
     VulkanRenderingDevice::VulkanRenderingDevice(bool enable_validation) : resource_pool_pipelines(128, "Pipeline"),
                                                                            resource_pool_shaders(32, "Shader"),
                                                                            resource_pool_textures(1024, "Texture"),
-                                                                           resource_pool_buffers(4096, "Buffer"),
-                                                                           resource_pool_uniform_sets(2048, "UniformSet"),
+                                                                           resource_pool_buffers(256, "Buffer"),
+                                                                           resource_pool_uniform_sets(256, "UniformSet"),
                                                                            RenderingDevice(enable_validation)
     {
         instance_extensions = {
@@ -58,7 +58,6 @@ namespace mirai
         if (enable_validation)
         {
             instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            instance_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
         }
 
         instance = CreateInstance(validation_layers, instance_extensions, enable_validation);
@@ -138,6 +137,8 @@ namespace mirai
             command_buffer->queue_family_indices = graphics_queue;
 
             VK_CHECK(vkAllocateCommandBuffers(device, &command_buffer_allocate_info, &command_buffer->command_buffer));
+
+            command_buffer->fence = create_fence("command_buffer_fence");
         }
 
         for (uint32_t i = 0; i < K_MAX_FRAME_IN_FLIGHTS; ++i)
@@ -148,13 +149,18 @@ namespace mirai
             in_flight_fences[i] = create_fence("in_flight_fence" + index, true);
         }
 
+        descriptor_pools.push_back(create_descriptor_pool());
+    }
+
+    VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool()
+    {
         VkDescriptorPoolSize poolSizes[] = {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4096},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
         };
-        uint32_t maxSets = 4150;
+        uint32_t maxSets = 512;
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .flags = 0,
@@ -162,8 +168,9 @@ namespace mirai
             .poolSizeCount = (uint32_t)std::size(poolSizes),
             .pPoolSizes = poolSizes,
         };
-
+        VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
         VK_CHECK(vkCreateDescriptorPool(device, &descriptor_pool_create_info, nullptr, &descriptor_pool));
+        return descriptor_pool;
     }
 
     VkSemaphore VulkanRenderingDevice::create_semaphore(const std::string &name)
@@ -328,6 +335,33 @@ namespace mirai
         };
 
         VkPipelineVertexInputStateCreateInfo vertex_input_state = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+        VkVertexInputBindingDescription binding_description = {};
+        std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
+
+        VertexBindingDescription *vertex_binding_description = pipeline_description->vertex_description;
+        if (vertex_binding_description != nullptr)
+        {
+            attribute_descriptions.resize(vertex_binding_description->attribute_count);
+            binding_description = {
+                .binding = vertex_binding_description->binding,
+                .stride = vertex_binding_description->stride,
+                .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+            };
+
+            for (uint32_t attribute = 0; attribute < vertex_binding_description->attribute_count; ++attribute)
+            {
+                VertexAttributeDescription &attribute_desc = vertex_binding_description->attributes[attribute];
+                attribute_descriptions[attribute].binding = attribute_desc.binding;
+                attribute_descriptions[attribute].format = RD_FORMAT_TO_VK_FORMAT[attribute_desc.format];
+                attribute_descriptions[attribute].location = attribute_desc.format;
+                attribute_descriptions[attribute].offset = attribute_desc.offset;
+            }
+
+            vertex_input_state.pVertexBindingDescriptions = &binding_description;
+            vertex_input_state.pVertexAttributeDescriptions = attribute_descriptions.data();
+            vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
+            vertex_input_state.vertexBindingDescriptionCount = 1;
+        }
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -430,19 +464,25 @@ namespace mirai
             set_layout = found->second;
         VkDescriptorSetAllocateInfo allocate_info{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = descriptor_pool,
+            .descriptorPool = descriptor_pools.back(),
             .descriptorSetCount = 1,
             .pSetLayouts = &set_layout,
         };
 
         VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-        vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set);
+        if (!vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set))
+        {
+            descriptor_pools.push_back(create_descriptor_pool());
+            allocate_info.descriptorPool = descriptor_pools.back();
+            VK_CHECK(vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
+        }
+
         if (debug_name.size() > 0)
             set_debug_marker_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptor_set, debug_name.c_str());
 
         uint32_t id = resource_pool_uniform_sets.obtain();
         VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(id);
-        uniform_set->descriptor_pool = descriptor_pool;
+        uniform_set->descriptor_pool = descriptor_pools.back();
         uniform_set->descriptor_set = descriptor_set;
         uniform_set->set_id = set;
         uniform_set->uniform_layout.insert(uniform_set->uniform_layout.end(), uniforms, uniforms + uniform_count);
@@ -546,8 +586,7 @@ namespace mirai
 
             // This is a staging buffer
             allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-            if (is_dst && !is_src)
-                allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
             allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
             break;
@@ -602,6 +641,7 @@ namespace mirai
         texture->array_layers = texture_description->array_layers;
         texture->image_type = VkImageType(texture_description->texture_type);
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        texture->access_flags = 0;
 
         // @TODO cache sampler
         if (texture_description->sampler_desc)
@@ -678,7 +718,7 @@ namespace mirai
 
     void VulkanRenderingDevice::new_frame()
     {
-        vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+        VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
         vkResetFences(device, 1, &in_flight_fences[current_frame]);
 
         // Reset command pool
@@ -697,7 +737,6 @@ namespace mirai
             swapchain->width = surface_caps.currentExtent.width;
             swapchain->height = surface_caps.currentExtent.height;
             ResizeSwapchain(swapchain.get(), physical_device, device, surface, vsync);
-            // @TODO Handle swapchain resize
         }
 
         uint32_t &current_image_index = swapchain->current_image_index;
@@ -726,8 +765,7 @@ namespace mirai
         };
 
         VkQueue queue = device_queues[command_buffer->queue_family_indices];
-        VK_CHECK(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
-        vkQueueWaitIdle(queue);
+        VK_CHECK(vkQueueSubmit(queue, 1, &submit_info, command_buffer->fence));
     }
 
     void VulkanRenderingDevice::wait()
@@ -743,19 +781,24 @@ namespace mirai
         if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
         {
 
-            VkImageMemoryBarrier present_barrier = CreateImageMemoryBarrier(swapchain->get_current_image(),
-                                                                            VK_IMAGE_ASPECT_COLOR_BIT,
-                                                                            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                                            0,
-                                                                            current_layout,
-                                                                            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-            vkCmdPipelineBarrier(queued_command_buffer[0]->command_buffer,
-                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 1, &present_barrier);
+            VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->get_current_image(),
+                                                                              VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                                              VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                                                              VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+                                                                              VK_ACCESS_2_NONE,
+                                                                              current_layout,
+                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                                                              VK_IMAGE_ASPECT_COLOR_BIT);
+
+            VkDependencyInfo dependency_info = {
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+                .memoryBarrierCount = 0,
+                .bufferMemoryBarrierCount = 0,
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers = &present_barrier,
+            };
+            vkCmdPipelineBarrier2(queued_command_buffer[0]->command_buffer, &dependency_info);
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         }
 
@@ -769,7 +812,7 @@ namespace mirai
         VkSemaphoreSubmitInfo semaphore_wait_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = image_acquire_semaphore[current_frame],
-            .stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         };
 
         VkSemaphoreSubmitInfo semaphore_signal_info = {
@@ -864,6 +907,7 @@ namespace mirai
             texture->mip_levels = 0;
             texture->array_layers = 0;
             texture->image = VK_NULL_HANDLE;
+            texture->access_flags = 0;
             resource_pool_textures.release(textures[i]);
         }
     }
@@ -890,6 +934,9 @@ namespace mirai
         for (auto &command_pool : command_pools)
             vkDestroyCommandPool(device, command_pool, nullptr);
 
+        for (auto &command_buffer : command_buffers)
+            vkDestroyFence(device, command_buffer->fence, nullptr);
+
         for (auto &semaphore : image_acquire_semaphore)
             vkDestroySemaphore(device, semaphore, nullptr);
         for (auto &semaphore : render_finished_semaphore)
@@ -899,7 +946,8 @@ namespace mirai
         for (auto &image_view : swapchain->image_views)
             vkDestroyImageView(device, image_view, nullptr);
 
-        vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+        for (auto &descriptor_pool : descriptor_pools)
+            vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
 
         swapchain = nullptr;
         vkDestroySurfaceKHR(instance, surface, nullptr);

@@ -60,6 +60,8 @@ namespace mirai
 
         update_transform_components();
 
+        update_hierarchy_component();
+
         update_draw_data();
 
         uint32_t width, height;
@@ -97,13 +99,36 @@ namespace mirai
                       { transform.update_local_transform(); });
     }
 
+    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform)
+    {
+        TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+        if (transform->dirty)
+        {
+            transform->world_transform = parent_transform * transform->local_transform;
+            transform->dirty = false;
+
+            HierarchyComponent *hierarchy_component = component_manager->get_component<HierarchyComponent>(entity);
+            if (hierarchy_component != nullptr)
+            {
+                for (auto &child : hierarchy_component->childrens)
+                    update_hierarchy(child, transform->world_transform);
+            }
+        }
+    }
+
+    void Scene::update_hierarchy_component()
+    {
+        for (auto &entity : entities)
+            update_hierarchy(entity, glm::mat4(1.0f));
+    }
+
     void Scene::update_draw_data()
     {
         if (!dirty)
             return;
+
         draw_infos.clear();
         draw_infos.reserve(100);
-
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
@@ -115,18 +140,18 @@ namespace mirai
             const Entity entity = mesh_component_ptr->entities[i];
 
             const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-            transform_array[i] = transform->local_transform;
 
-            draw_data.vertex_buffer = mesh_component.vertex_buffer;
-            draw_data.index_buffer = mesh_component.index_buffer;
-            draw_data.uniform_set = mesh_component.mesh_data_set;
+            transform_array[i] = transform->world_transform;
 
+            GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
+            draw_data.vertex_buffer = gpu_mesh.vertex_buffer;
+            draw_data.index_buffer = gpu_mesh.index_buffer;
+            draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
             for (auto &mesh_subset : mesh_component.mesh_subsets)
             {
                 draw_data.transform_index = i;
                 draw_data.material_index = mesh_subset.material_index;
                 draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
-                draw_data.vertex_count = mesh_subset.vertex_buffer.count;
                 draw_data.index_offset = mesh_subset.index_buffer.offset;
                 draw_data.index_count = mesh_subset.index_buffer.count;
                 draw_infos.push_back(draw_data);
@@ -135,6 +160,8 @@ namespace mirai
 
         std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs)
                   { return lhs.vertex_buffer < rhs.vertex_buffer; });
+
+        dirty = false;
     }
 
     void Scene::remove_entity(Entity entity)
@@ -161,6 +188,12 @@ namespace mirai
     Scene::~Scene()
     {
         release_all_entities();
+
+        for (auto &gpu_mesh : gpu_meshes)
+        {
+            RenderingDevice::get()->destroy_buffers(&gpu_mesh.vertex_buffer, 1);
+            RenderingDevice::get()->destroy_buffers(&gpu_mesh.index_buffer, 1);
+        }
 
         for (auto &comp_array : component_manager->component_array)
         {

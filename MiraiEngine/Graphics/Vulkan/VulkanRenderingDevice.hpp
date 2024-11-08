@@ -36,7 +36,7 @@ namespace mirai
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
 
         UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") override;
-        void update_uniform_set(UniformSetID uniform_set, UniformBinding* bindings, uint32_t binding_count) override;
+        void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) override;
 
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
@@ -97,6 +97,8 @@ namespace mirai
 
         void set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName);
 
+        VkDescriptorPool create_descriptor_pool();
+
         VkSemaphore create_semaphore(const std::string &name);
 
         VmaAllocator create_allocator();
@@ -116,7 +118,7 @@ namespace mirai
         ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
         std::unordered_map<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
 
-        static const uint32_t K_NUM_THREAD = 1;
+        static const uint32_t K_NUM_THREAD = 2;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 1;
         uint32_t current_frame = 0;
@@ -129,7 +131,7 @@ namespace mirai
         VkPhysicalDevice physical_device;
         VmaAllocator vma_allocator;
         VkSurfaceKHR surface;
-        VkDescriptorPool descriptor_pool;
+        std::vector<VkDescriptorPool> descriptor_pools;
 
         std::vector<VkCommandPool> command_pools;
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;

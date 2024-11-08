@@ -217,6 +217,23 @@ namespace mirai
         }
     };
 
+    struct VertexAttributeDescription
+    {
+        uint32_t binding;
+        uint32_t location;
+        Format format;
+        uint32_t offset;
+    };
+
+    struct VertexBindingDescription
+    {
+        uint32_t stride;
+        uint32_t binding;
+
+        VertexAttributeDescription *attributes;
+        uint32_t attribute_count;
+    };
+
     struct PipelineDescription
     {
         ShaderID *shaders;
@@ -225,6 +242,8 @@ namespace mirai
         Topology topology = TOPOLOGY_TRIANGLE_LIST;
         RasterizationState *rasterization_state;
         DepthState *depth_state;
+
+        VertexBindingDescription *vertex_description = nullptr;
 
         uint32_t color_attachment_count;
         BlendState *blend_state;

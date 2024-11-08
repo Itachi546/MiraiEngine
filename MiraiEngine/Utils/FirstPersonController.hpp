@@ -12,7 +12,7 @@ class CameraController
     CameraController(Camera *camera)
     {
         this->camera = camera;
-        camera->position = glm::vec3(0.0f, 0.0f, 3.0f);
+        camera->position = glm::vec3(0.0f, 10.0f, 0.0f);
     }
 
     void set_walk_speed(float speed)

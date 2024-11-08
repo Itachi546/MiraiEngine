@@ -15,13 +15,29 @@ namespace mirai
     {
         uint32_t transform_index;
         uint32_t material_index;
+
         BufferID vertex_buffer;
         BufferID index_buffer;
+
         uint32_t vertex_offset;
         uint32_t index_offset;
-        uint32_t vertex_count;
+
         uint32_t index_count;
-        UniformSetID uniform_set;
+        UniformSetID vertex_binding_set;
+    };
+
+    struct GpuMesh
+    {
+        BufferID vertex_buffer;
+        BufferID index_buffer;
+
+        uint32_t vertex_buffer_size;
+        uint32_t index_buffer_size;
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+
+        UniformSetID vertex_binding_set;
     };
 
     class Scene
@@ -60,6 +76,7 @@ namespace mirai
         std::vector<DrawData> draw_infos;
 
         BufferID transform_buffer;
+        glm::mat4 *transform_array;
 
         struct FrameData
         {
@@ -78,18 +95,21 @@ namespace mirai
         BufferID per_frame_data_buffer;
         UniformSetID per_frame_uniform_set;
 
+        std::vector<GpuMesh> gpu_meshes;
+
       protected:
         std::string name;
 
-        uint32_t K_MAX_ENTITIES = 1'000;
+        uint32_t K_MAX_ENTITIES = 2'000;
         bool dirty = true;
 
         std::unique_ptr<Camera> camera;
-        glm::mat4 *transform_array;
         FrameData *frame_data_ptr;
 
         void remove_entity_tree(Entity entity);
         void update_transform_components();
+        void update_hierarchy_component();
+        void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
         void update_draw_data();
     };
 } // namespace mirai

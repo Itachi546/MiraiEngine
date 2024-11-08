@@ -42,7 +42,7 @@ namespace mirai
         Window::get()->get_size(&width, &height);
         set_size(width, height);
 
-        float push_constant_data[] = {(float)width, (float)height, static_cast<float>(enable_aa)};
+        float push_constant_data[4] = {(float)width, (float)height, static_cast<float>(enable_aa), 0.0f};
         PushConstant push_constants = {
             .data = push_constant_data,
             .shader_stage = SHADER_STAGE_FRAGMENT,

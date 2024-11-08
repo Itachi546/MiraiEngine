@@ -13,7 +13,7 @@ namespace mirai
         if (result.has_value())
         {
             std::string content = result.value();
-            return RenderingDevice::get()->create_shader((uint32_t *)(content.c_str()), static_cast<uint32_t>(content.length()));
+            return RenderingDevice::get()->create_shader((uint32_t *)(content.c_str()), static_cast<uint32_t>(content.length()), filename);
         }
         else
         {

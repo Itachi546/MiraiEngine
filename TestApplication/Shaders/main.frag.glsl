@@ -17,6 +17,6 @@ fs_in;
 
 void main()
 {
-    fragColor = vec4(normalize(fs_in.normal) * 0.5f + 0.5f, 1.0f);
-    // fragColor = vec4(fs_in.uv, 0.0f, 1.0f);
+    vec3 n = normalize(fs_in.normal);
+    fragColor = vec4(n * 0.5 + 0.5f, 1.0f);
 }

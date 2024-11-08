@@ -44,6 +44,7 @@ layout(set = 2, binding = 0) readonly buffer Transform
 layout(push_constant) uniform PushConstants
 {
     uint transform_id;
+    uint padding[3];
 };
 
 void main()

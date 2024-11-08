@@ -49,6 +49,7 @@ namespace mirai
         {
             ASSERT(id.id < pool_size);
             free_list[--free_list_head] = id.id;
+            ASSERT(free_list_head >= 0);
             --used_indices;
         }
 
@@ -75,7 +76,7 @@ namespace mirai
         std::string name;
         uint32_t pool_size;
 
-        uint32_t free_list_head;
+        int free_list_head;
         uint32_t used_indices;
         uint32_t *free_list;
         T *resources;

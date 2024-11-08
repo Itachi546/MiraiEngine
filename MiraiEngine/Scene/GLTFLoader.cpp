@@ -1,7 +1,8 @@
 #include "GLTFLoader.hpp"
 
-// #define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
+#define TINYGLTF_NO_EXTERNAL_IMAGE
 #include <tiny_gltf.h>
 #include "Scene.hpp"
 #include "Component.hpp"
@@ -9,6 +10,7 @@
 #include "Common/MathUtils.hpp"
 
 #include <glm/glm.hpp>
+
 namespace mirai
 {
     struct LoadState
@@ -16,6 +18,8 @@ namespace mirai
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
+        AsyncLoader *async_loader;
+        uint32_t gpu_mesh_id;
     };
 
     static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state)
@@ -68,13 +72,18 @@ namespace mirai
         std::vector<MeshComponent> &mesh_components = load_state->mesh_components;
         mesh_components.resize(mesh_count);
 
+        uint32_t gpu_mesh_index = static_cast<uint32_t>(load_state->scene->gpu_meshes.size());
+        GpuMesh &gpu_mesh = load_state->scene->gpu_meshes.emplace_back(GpuMesh{});
+
+        std::vector<Vertex> &vertices = gpu_mesh.vertices;
+        std::vector<uint32_t> &indices = gpu_mesh.indices;
+
         for (uint32_t i = 0; i < mesh_count; ++i)
         {
             MeshComponent &mesh_component = mesh_components[i];
-            std::vector<uint32_t> &indices = mesh_component.indices;
-            std::vector<Vertex> &vertices = mesh_component.vertices;
-
+            mesh_component.gpu_mesh_index = gpu_mesh_index;
             const tinygltf::Mesh &gltf_mesh = model->meshes[i];
+
             for (const auto &primitive : gltf_mesh.primitives)
             {
                 uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
@@ -103,9 +112,9 @@ namespace mirai
                 for (uint32_t i = 0; i < num_position; ++i)
                 {
                     Vertex &vertex = vertices.emplace_back();
-                    vertex.position.x = positions[i * 3];
-                    vertex.position.y = positions[i * 3 + 1];
-                    vertex.position.z = positions[i * 3 + 2];
+                    vertex.px = positions[i * 3];
+                    vertex.py = positions[i * 3 + 1];
+                    vertex.pz = positions[i * 3 + 2];
 
                     glm::vec3 normal;
                     if (normals != nullptr)
@@ -129,7 +138,10 @@ namespace mirai
                     vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
 
                     if (uvs != nullptr)
-                        vertex.uv = glm::vec2{uvs[i * 2 + 0, i * 2 + 1]};
+                    {
+                        vertex.tu = uvs[i * 2 + 0];
+                        vertex.tv = uvs[i * 2 + 1];
+                    }
                 }
 
                 const tinygltf::Accessor &indices_accessor = model->accessors[primitive.indices];
@@ -157,9 +169,56 @@ namespace mirai
                 mesh_subset.vertex_count = index_count;
                 mesh_subset.material_index = primitive.material + load_state->material_base_offset;
             }
-
-            mesh_component.prepare_render_data();
         }
+
+        // @TODO May cause issue later when multiple mesh are loaded in different thread
+        // Pushing to the vector may invalidates all the reference
+        RenderingDevice *device = RenderingDevice::get();
+        uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
+        BufferDescription buffer_desc = {
+            .size = vertex_buffer_size,
+            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+        };
+
+        BufferID vertex_buffer = device->create_buffer(&buffer_desc, "vertex_buffer");
+        load_state->async_loader->add_buffer_copy_task({
+            .dst = vertex_buffer,
+            .data = vertices.data(),
+            .offset_in_bytes = 0,
+            .size_in_bytes = vertex_buffer_size,
+        });
+
+        uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
+        BufferID index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
+        load_state->async_loader->add_buffer_copy_task({
+            .dst = index_buffer,
+            .data = indices.data(),
+            .offset_in_bytes = 0,
+            .size_in_bytes = index_buffer_size,
+        });
+
+        UniformLayout vertex_data_layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_STORAGE_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        UniformSetID vertex_binding_set = device->create_uniform_set(&vertex_data_layout, 1, 0, "mesh_data_set");
+
+        UniformBinding vertex_binding = {
+            .resource_id = vertex_buffer,
+            .offset = 0,
+        };
+
+        device->update_uniform_set(vertex_binding_set, &vertex_binding, 1);
+
+        gpu_mesh.vertex_buffer = vertex_buffer;
+        gpu_mesh.vertex_buffer_size = vertex_buffer_size;
+
+        gpu_mesh.index_buffer = index_buffer;
+        gpu_mesh.index_buffer_size = index_buffer_size;
+        gpu_mesh.vertex_binding_set = vertex_binding_set;
     } // namespace mirai
 
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state)
@@ -206,6 +265,14 @@ namespace mirai
             ParseNodes(model, child, entity, load_state);
     }
 
+    bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
+                       std::string *warn, int req_width, int req_height,
+                       const unsigned char *bytes, int size, void *user_data)
+    {
+        Log::Info("Image: ", image->uri);
+        return true;
+    }
+
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene)
     {
         Log::Info("Loading Model ", filename);
@@ -214,6 +281,7 @@ namespace mirai
         bool ret = false;
         std::string err, warn;
         tinygltf::TinyGLTF gltf_loader;
+        gltf_loader.SetImageLoader(LoadImageData, nullptr);
         tinygltf::Model gltf_model;
         if (file_extension == "GLB" || file_extension == "glb")
             ret = gltf_loader.LoadBinaryFromFile(&gltf_model, &err, &warn, filename);
@@ -239,13 +307,18 @@ namespace mirai
             .material_base_offset = static_cast<uint32_t>(scene->materials.size()),
         };
 
-        LoadMaterials(&gltf_model, &load_state);
+        AsyncLoader async_loader;
+        load_state.async_loader = &async_loader;
 
         LoadMeshes(&gltf_model, &load_state);
+        async_loader.start();
+
+        LoadMaterials(&gltf_model, &load_state);
 
         for (uint32_t i = 0; i < gltf_model.nodes.size(); ++i)
             ParseNodes(&gltf_model, i, root_entity, &load_state);
 
+        async_loader.wait();
         return root_entity;
     }
 } // namespace mirai

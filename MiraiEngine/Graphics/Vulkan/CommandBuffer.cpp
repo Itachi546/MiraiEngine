@@ -3,16 +3,25 @@
 #include "Swapchain.h"
 #include "VulkanUtils.hpp"
 #include "Scene/FrameGraph.hpp"
+#include "Common/MathUtils.hpp"
+
 namespace mirai
 {
-    VkImageLayout find_required_barrier_info(bool is_depth_texture, VkImageAspectFlags image_aspect, FrameGraphResourceType resource_type, VkAccessFlags &access_flag)
+    VkImageLayout find_required_barrier_info(bool is_depth_texture,
+                                             VkImageAspectFlags image_aspect,
+                                             FrameGraphResourceType resource_type,
+                                             VkAccessFlags &access_flags,
+                                             VkPipelineStageFlags2 &src_stage,
+                                             VkPipelineStageFlags2 &dst_stage)
     {
         VkImageLayout required_layout;
         bool is_attachment = resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT;
         if (!is_attachment)
         {
             required_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            access_flag = VK_ACCESS_SHADER_READ_BIT;
+            access_flags = VK_ACCESS_2_SHADER_READ_BIT;
+            src_stage = is_depth_texture ? VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dst_stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
         }
         else
         {
@@ -23,50 +32,42 @@ namespace mirai
                 else
                     required_layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 
-                access_flag = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                access_flags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                src_stage = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+                dst_stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
             }
             else
             {
                 required_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-                access_flag = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                access_flags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                src_stage = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+                dst_stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
         }
         return required_layout;
     }
 
     void create_image_barrier(VulkanRenderingDevice *device, FrameGraphResource *resource,
-                              std::vector<VkImageMemoryBarrier> &color_barriers,
-                              std::vector<VkImageMemoryBarrier> &depth_barriers)
+                              std::vector<VkImageMemoryBarrier2> &image_barriers)
     {
         VulkanTexture *texture = device->access_texture(resource->texture);
         bool is_depth_texture = (texture->image_aspect & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 
-        VkAccessFlags access_mask = 0;
-        VkImageLayout required_layout = find_required_barrier_info(is_depth_texture, texture->image_aspect, resource->resource_type, access_mask);
+        VkAccessFlags access_flags = 0;
+        VkPipelineStageFlags2 src_stage, dst_stage;
+        VkImageLayout required_layout = find_required_barrier_info(is_depth_texture, texture->image_aspect, resource->resource_type, access_flags, src_stage, dst_stage);
 
         if (texture->current_layout == required_layout)
             return;
 
-        if (is_depth_texture)
-        {
-            depth_barriers.push_back(CreateImageMemoryBarrier(texture->image,
-                                                              texture->image_aspect, 0,
-                                                              access_mask,
-                                                              texture->current_layout,
-                                                              required_layout));
-            texture->current_layout = required_layout;
-        }
-        else
-        {
-            color_barriers.push_back(CreateImageMemoryBarrier(texture->image,
-                                                              texture->image_aspect,
-                                                              0, access_mask,
-                                                              texture->current_layout,
-                                                              required_layout));
-
-            texture->current_layout = required_layout;
-        }
+        image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
+                                                           src_stage, texture->access_flags,
+                                                           dst_stage, access_flags,
+                                                           texture->current_layout,
+                                                           required_layout,
+                                                           texture->image_aspect));
+        texture->access_flags = access_flags;
+        texture->current_layout = required_layout;
     }
 
     CommandBuffer::CommandBuffer()
@@ -204,6 +205,14 @@ namespace mirai
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
+    void CommandBuffer::set_vertex_buffer(BufferID buffer)
+    {
+        VulkanBuffer *vertex_buffer = device->access_buffer(buffer);
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffer->buffer, &offset);
+    }
+
     void CommandBuffer::set_index_buffer(BufferID buffer)
     {
         VulkanBuffer *index_buffer = device->access_buffer(buffer);
@@ -227,6 +236,7 @@ namespace mirai
 
     void CommandBuffer::begin()
     {
+        // Log::Info("Memory Usage GPU: ", utils::bytes_to_mb((uint32_t)device->total_memory_usage));
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -235,43 +245,50 @@ namespace mirai
         VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
     }
 
+    void CommandBuffer::wait()
+    {
+        VK_CHECK(vkWaitForFences(device->device, 1, &fence, VK_TRUE, UINT64_MAX));
+        vkResetFences(device->device, 1, &fence);
+    }
+
     void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
     {
+        prepare_input_resources(frame_graph, node);
+        prepare_output_resources(frame_graph, node);
+    }
 
-        std::vector<VkImageMemoryBarrier> color_image_barriers;
-        std::vector<VkImageMemoryBarrier> depth_image_barriers;
-
+    void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
+    {
+        std::vector<VkImageMemoryBarrier2> image_barriers;
+        // Input Barrier
         for (auto resource_handle : node->inputs)
         {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
-            create_image_barrier(device, resource, color_image_barriers, depth_image_barriers);
-        }
-        if (color_image_barriers.size() > 0)
-        {
-            // @TODO setup barrier properly, esp top of pipe bit
-            vkCmdPipelineBarrier(command_buffer,
-                                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 static_cast<uint32_t>(color_image_barriers.size()), color_image_barriers.data());
-            color_image_barriers.clear();
+            create_image_barrier(device, resource, image_barriers);
         }
 
-        if (depth_image_barriers.size() > 0)
+        if (image_barriers.size() > 0)
         {
-            // @TODO setup barrier properly, esp top of pipe bit
-            vkCmdPipelineBarrier(command_buffer,
-                                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 static_cast<uint32_t>(depth_image_barriers.size()), depth_image_barriers.data());
-            depth_image_barriers.clear();
+            VkDependencyInfo dependency_info = {
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+                .memoryBarrierCount = 0,
+                .pMemoryBarriers = nullptr,
+                .bufferMemoryBarrierCount = 0,
+                .pBufferMemoryBarriers = nullptr,
+                .imageMemoryBarrierCount = static_cast<uint32_t>(image_barriers.size()),
+                .pImageMemoryBarriers = image_barriers.data(),
+            };
+            vkCmdPipelineBarrier2(command_buffer, &dependency_info);
+            image_barriers.clear();
         }
+    }
 
+    void CommandBuffer::prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
+    {
+        std::vector<VkImageMemoryBarrier2> image_barriers;
+
+        // Output Barrier
         for (auto resource_handle : node->outputs)
         {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
@@ -282,42 +299,34 @@ namespace mirai
                 VkImageLayout current_layout = swapchain->get_current_image_layout();
                 if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
                 {
-                    color_image_barriers.push_back(CreateImageMemoryBarrier(swapchain->get_current_image(),
-                                                                            VK_IMAGE_ASPECT_COLOR_BIT, 0,
-                                                                            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                                            current_layout,
-                                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+                    image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
+                                                                       VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                                                                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                                       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                                       current_layout,
+                                                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                       VK_IMAGE_ASPECT_COLOR_BIT));
                     swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
                 }
             }
             else
-            {
-                create_image_barrier(device, resource, color_image_barriers, depth_image_barriers);
-            }
+                create_image_barrier(device, resource, image_barriers);
         }
 
-        if (color_image_barriers.size() > 0)
+        if (image_barriers.size() > 0)
         {
-            // @TODO setup barrier properly, esp top of pipe bit
-            vkCmdPipelineBarrier(command_buffer,
-                                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 static_cast<uint32_t>(color_image_barriers.size()), color_image_barriers.data());
-        }
-
-        if (depth_image_barriers.size() > 0)
-        {
-            // @TODO setup barrier properly, esp top of pipe bit
-            vkCmdPipelineBarrier(command_buffer,
-                                 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 static_cast<uint32_t>(depth_image_barriers.size()), depth_image_barriers.data());
+            VkDependencyInfo dependency_info = {
+                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+                .memoryBarrierCount = 0,
+                .pMemoryBarriers = nullptr,
+                .bufferMemoryBarrierCount = 0,
+                .pBufferMemoryBarriers = nullptr,
+                .imageMemoryBarrierCount = static_cast<uint32_t>(image_barriers.size()),
+                .pImageMemoryBarriers = image_barriers.data(),
+            };
+            vkCmdPipelineBarrier2(command_buffer, &dependency_info);
+            image_barriers.clear();
         }
     }
 

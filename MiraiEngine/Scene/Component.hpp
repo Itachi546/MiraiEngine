@@ -2,6 +2,7 @@
 
 #include "ECS.hpp"
 #include "Graphics/RenderingDevice.hpp"
+#include "AsyncLoader.hpp"
 #include <glm/glm.hpp>
 
 #include <glm/gtc/quaternion.hpp>
@@ -46,6 +47,7 @@ namespace mirai
             this->parent = K_INVALID_ENTITY;
         }
     };
+
     struct BufferView
     {
         uint32_t offset;
@@ -54,12 +56,12 @@ namespace mirai
 
     struct Vertex
     {
-        glm::vec3 position;
+        float px, py, pz;
         uint32_t normal;
 
         uint32_t tangent;
         uint32_t bitangent;
-        glm::vec2 uv;
+        float tu, tv;
     };
 
     static_assert(sizeof(Vertex) % 16 == 0);
@@ -85,20 +87,13 @@ namespace mirai
             BufferView index_buffer;
             uint32_t vertex_count;
             uint32_t material_index;
+            UniformSetID vertex_binding_set;
         };
-        UniformSetID mesh_data_set;
+
+        uint32_t gpu_mesh_index;
         std::vector<MeshSubset> mesh_subsets;
-
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
-
-        BufferID vertex_buffer{K_INVALID_ID};
-        BufferID index_buffer{K_INVALID_ID};
-
-        uint32_t vertex_buffer_size;
-        uint32_t index_buffer_size;
-
-        void prepare_render_data()
+        /*
+        void prepare_render_data(AsyncLoader *async_loader)
         {
             // @TODO upload to buffer
             vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
@@ -107,19 +102,27 @@ namespace mirai
             BufferDescription buffer_desc = {
                 .size = vertex_buffer_size,
                 .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
             };
             // @TODO Redo this later
             RenderingDevice *device = RenderingDevice::get();
             vertex_buffer = device->create_buffer(&buffer_desc, "vertex_buffer");
-            uint8_t *vb_ptr = device->map_buffer(vertex_buffer);
-            std::memcpy(vb_ptr, vertices.data(), vertex_buffer_size);
+            async_loader->add_buffer_copy_task({
+                .dst = vertex_buffer,
+                .data = vertices.data(),
+                .offset_in_bytes = 0,
+                .size_in_bytes = vertex_buffer_size,
+            });
 
             buffer_desc.size = index_buffer_size;
             buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
             index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
-            uint8_t *ib_ptr = device->map_buffer(index_buffer);
-            std::memcpy(ib_ptr, indices.data(), index_buffer_size);
+            async_loader->add_buffer_copy_task({
+                .dst = index_buffer,
+                .data = indices.data(),
+                .offset_in_bytes = 0,
+                .size_in_bytes = index_buffer_size,
+            });
 
             UniformLayout mesh_data_layout = {
                 .binding = 0,
@@ -130,12 +133,15 @@ namespace mirai
 
             UniformBinding mesh_data_binding = {
                 .resource_id = vertex_buffer,
-            };
+                .offset = 0,
+                .range = vertex_buffer_size};
             device->update_uniform_set(mesh_data_set, &mesh_data_binding, 1);
         }
+        */
 
         void destroy_render_data()
         {
+            /*
             std::vector<BufferID> buffers;
             if (vertex_buffer.is_valid())
                 buffers.push_back(vertex_buffer);
@@ -143,8 +149,7 @@ namespace mirai
                 buffers.push_back(index_buffer);
             if (buffers.size() > 0)
                 RenderingDevice::get()->destroy_buffers(buffers.data(), 2);
-            vertex_buffer.id = K_INVALID_ID;
-            index_buffer.id = K_INVALID_ID;
+            */
         }
     };
 
@@ -175,7 +180,6 @@ namespace mirai
                 local_transform = glm::translate(glm::mat4(1.0f), position) *
                                   glm::mat4_cast(rotation) *
                                   glm::scale(glm::mat4(1.0f), scale);
-                dirty = false;
             }
         }
     };
