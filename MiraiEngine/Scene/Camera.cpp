@@ -9,7 +9,7 @@ namespace mirai
                        rotation(glm::vec3(0.0f)),
                        fov(60.0f),
                        aspect_ratio(4.0f / 3.0f),
-                       near_plane(0.5f),
+                       near_plane(0.1f),
                        far_plane(1000.0f),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE)
     {
@@ -39,7 +39,8 @@ namespace mirai
         }
         else
         {
-            float y_span = near_plane * tan(glm::radians(fov));
+            float cam_dist = glm::length(position + forward * near_plane);
+            float y_span = cam_dist * tan(glm::radians(fov * 0.5f));
             float x_span = y_span * aspect_ratio;
             projection_matrix = glm::ortho(-x_span, x_span, y_span, -y_span, near_plane, far_plane);
         }

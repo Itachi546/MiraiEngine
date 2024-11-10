@@ -8,6 +8,7 @@
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
 #include "Common/MathUtils.hpp"
+#include "Engine/Timer.hpp"
 
 #include <glm/glm.hpp>
 
@@ -275,7 +276,8 @@ namespace mirai
 
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene)
     {
-        Log::Info("Loading Model ", filename);
+        Timer load_timer;
+
         std::string file_extension = utils::get_file_extension(filename);
 
         bool ret = false;
@@ -298,7 +300,8 @@ namespace mirai
         auto &comp_manager = scene->component_manager;
 
         Entity root_entity = ecs::create_entity();
-        comp_manager->add_component<NameComponent>(root_entity, utils::get_filename(filename));
+        std::string root_entity_name = utils::get_filename(filename);
+        comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
         comp_manager->add_component<TransformComponent>(root_entity);
         scene->add_entity(root_entity);
 
@@ -317,6 +320,11 @@ namespace mirai
 
         for (uint32_t i = 0; i < gltf_model.nodes.size(); ++i)
             ParseNodes(&gltf_model, i, root_entity, &load_state);
+
+        GpuMesh &mesh = load_state.scene->gpu_meshes[load_state.gpu_mesh_id];
+        Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
+        Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
+        Log::Info("meshes: ", load_state.mesh_components.size());
 
         async_loader.wait();
         return root_entity;

@@ -39,7 +39,6 @@ namespace mirai
                         RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
 
                         command_buffer->wait();
-                        Log::Info("Copying Data", copy_task->size_in_bytes);
                     }
                     else
                         std::this_thread::sleep_for(10ms);
@@ -49,32 +48,6 @@ namespace mirai
 
     void AsyncLoader::wait()
     {
-        /*
-        CommandBuffer *command_buffer = RenderingDevice::get()->get_command_buffer(1);
-        void *staging_buffer_ptr = RenderingDevice::get()->map_buffer(staging_buffer);
-        while (!buffer_copy_tasks.empty())
-        {
-            std::shared_ptr<BufferCopyTask> copy_task = buffer_copy_tasks.try_pop();
-            if (copy_task != nullptr)
-            {
-                ASSERT(copy_task->size_in_bytes <= K_STAGING_BUFFER_SIZE);
-                std::memcpy(staging_buffer_ptr, copy_task->data, copy_task->size_in_bytes);
-
-                // Immediate Copy
-                command_buffer->begin();
-
-                command_buffer->copy_buffer(copy_task->dst, staging_buffer, {
-                                                                                .src_offset = 0,
-                                                                                .dst_offset = copy_task->offset_in_bytes,
-                                                                                .size = copy_task->size_in_bytes,
-                                                                            });
-                RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
-
-                command_buffer->wait();
-                Log::Info("Copying Data", copy_task->size_in_bytes);
-            }
-        }
-        */
         task_thread.join();
         RenderingDevice::get()->destroy_buffers(&staging_buffer, 1);
     }
