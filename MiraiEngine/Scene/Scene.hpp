@@ -5,14 +5,12 @@
 #include "Graphics/RenderingDevice.hpp"
 #include <string>
 
-namespace mirai
-{
+namespace mirai {
     struct ComponentManager;
     class CommandBuffer;
     class Camera;
 
-    struct DrawData
-    {
+    struct DrawData {
         uint32_t transform_index;
         uint32_t material_index;
 
@@ -26,8 +24,7 @@ namespace mirai
         UniformSetID vertex_binding_set;
     };
 
-    struct GpuMesh
-    {
+    struct GpuMesh {
         BufferID vertex_buffer;
         BufferID index_buffer;
 
@@ -40,13 +37,11 @@ namespace mirai
         UniformSetID vertex_binding_set;
     };
 
-    class Scene
-    {
+    class Scene {
       public:
         Scene(const std::string &name);
 
-        Camera *get_camera()
-        {
+        Camera *get_camera() {
             return camera.get();
         }
 
@@ -54,13 +49,11 @@ namespace mirai
 
         void update();
 
-        std::string get_name() const
-        {
+        std::string get_name() const {
             return name;
         }
 
-        void set_name(const std::string &name)
-        {
+        void set_name(const std::string &name) {
             this->name = name;
         }
 
@@ -78,8 +71,7 @@ namespace mirai
         BufferID transform_buffer;
         glm::mat4 *transform_array;
 
-        struct FrameData
-        {
+        struct FrameData {
             glm::mat4 P;
             glm::mat4 V;
             glm::mat4 VP;

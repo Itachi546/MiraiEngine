@@ -8,12 +8,10 @@
 #include <filesystem>
 using namespace std::chrono_literals;
 
-namespace mirai
-{
+namespace mirai {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0)
-    {
+    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
@@ -21,14 +19,12 @@ namespace mirai
         Instance = this;
     }
 
-    void Engine::run()
-    {
+    void Engine::run() {
         if (app)
             app->start();
 
         auto start = std::chrono::steady_clock::now();
-        while (running && !window->is_closed())
-        {
+        while (running && !window->is_closed()) {
             window->update();
             if (window->is_minimized())
                 continue;
@@ -49,8 +45,7 @@ namespace mirai
         }
     }
 
-    Engine::~Engine()
-    {
+    Engine::~Engine() {
         app = nullptr;
         window = nullptr;
     }

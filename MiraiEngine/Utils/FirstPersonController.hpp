@@ -6,37 +6,30 @@
 
 using namespace mirai;
 
-class CameraController
-{
+class CameraController {
   public:
-    CameraController(Camera *camera)
-    {
+    CameraController(Camera *camera) {
         this->camera = camera;
         camera->position = glm::vec3(0.0f, 10.0f, 0.0f);
     }
 
-    void set_walk_speed(float speed)
-    {
+    void set_walk_speed(float speed) {
         this->walk_speed = speed;
     }
 
-    void set_sensitivity(float sensitivity)
-    {
+    void set_sensitivity(float sensitivity) {
         this->sensitivity = sensitivity;
     }
 
-    float get_walk_speed() const
-    {
+    float get_walk_speed() const {
         return walk_speed;
     }
 
-    float get_sensitivity() const
-    {
+    float get_sensitivity() const {
         return sensitivity;
     }
 
-    void set_run_speed(float speed)
-    {
+    void set_run_speed(float speed) {
         this->run_speed = speed;
     }
 

@@ -1,17 +1,14 @@
-#pragma once 
+#pragma once
 
 #include <cstdint>
 
-namespace mirai
-{
+namespace mirai {
     template <typename T>
-    class BitField
-    {
+    class BitField {
         int64_t value = 0;
 
       public:
-        inline BitField<T> &set_flag(T flag)
-        {
+        inline BitField<T> &set_flag(T flag) {
             value |= (int64_t)flag;
             return *this;
         }

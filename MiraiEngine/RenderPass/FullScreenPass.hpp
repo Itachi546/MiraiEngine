@@ -3,14 +3,12 @@
 #include "Scene/FrameGraph.hpp"
 #include <memory>
 
-namespace mirai
-{
+namespace mirai {
     class ShaderMaterial;
     struct FrameGraphNode;
     class FrameGraph;
 
-    class FullScreenPass : public FrameGraphRenderPass
-    {
+    class FullScreenPass : public FrameGraphRenderPass {
       public:
         FullScreenPass(const std::string &name);
 
@@ -18,8 +16,7 @@ namespace mirai
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
-        void set_antialiasing(bool state)
-        {
+        void set_antialiasing(bool state) {
             this->enable_aa = state;
         }
 

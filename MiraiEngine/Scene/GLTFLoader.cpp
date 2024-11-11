@@ -12,10 +12,8 @@
 
 #include <glm/glm.hpp>
 
-namespace mirai
-{
-    struct LoadState
-    {
+namespace mirai {
+    struct LoadState {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
@@ -23,23 +21,20 @@ namespace mirai
         uint32_t gpu_mesh_id;
     };
 
-    static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state)
-    {
+    static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state) {
         size_t material_count = model->materials.size();
 
         std::vector<Material> &materials = load_state->scene->materials;
         materials.resize(material_count);
 
-        auto LoadTexture = [](uint32_t texture_index, Colorspace color_space)
-        {
+        auto LoadTexture = [](uint32_t texture_index, Colorspace color_space) {
             if (texture_index == 0)
                 return K_INVALID_ID;
             // @TODO need to implement
             return 0u;
         };
 
-        for (uint32_t i = 0; i < material_count; ++i)
-        {
+        for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
             std::string name = gltf_material->name;
             materials[i].name = name.size() > 0 ? std::move(name) : "Unnamed" + std::to_string(i);
@@ -61,14 +56,12 @@ namespace mirai
         }
     }
 
-    static uint8_t *GetBufferPtr(const tinygltf::Model *model, const tinygltf::Accessor accessor)
-    {
+    static uint8_t *GetBufferPtr(const tinygltf::Model *model, const tinygltf::Accessor accessor) {
         const tinygltf::BufferView &buffer_view = model->bufferViews[accessor.bufferView];
         return (uint8_t *)(model->buffers[buffer_view.buffer].data.data() + accessor.byteOffset + buffer_view.byteOffset);
     }
 
-    void LoadMeshes(const tinygltf::Model *model, LoadState *load_state)
-    {
+    void LoadMeshes(const tinygltf::Model *model, LoadState *load_state) {
         size_t mesh_count = model->meshes.size();
         std::vector<MeshComponent> &mesh_components = load_state->mesh_components;
         mesh_components.resize(mesh_count);
@@ -79,14 +72,12 @@ namespace mirai
         std::vector<Vertex> &vertices = gpu_mesh.vertices;
         std::vector<uint32_t> &indices = gpu_mesh.indices;
 
-        for (uint32_t i = 0; i < mesh_count; ++i)
-        {
+        for (uint32_t i = 0; i < mesh_count; ++i) {
             MeshComponent &mesh_component = mesh_components[i];
             mesh_component.gpu_mesh_index = gpu_mesh_index;
             const tinygltf::Mesh &gltf_mesh = model->meshes[i];
 
-            for (const auto &primitive : gltf_mesh.primitives)
-            {
+            for (const auto &primitive : gltf_mesh.primitives) {
                 uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
                 uint32_t index_offset = static_cast<uint32_t>(indices.size());
 
@@ -110,8 +101,7 @@ namespace mirai
                     uvs = (float *)GetBufferPtr(model, model->accessors[uv_attributes->second]);
 
                 uint32_t num_position = static_cast<uint32_t>(position_accessor.count);
-                for (uint32_t i = 0; i < num_position; ++i)
-                {
+                for (uint32_t i = 0; i < num_position; ++i) {
                     Vertex &vertex = vertices.emplace_back();
                     vertex.px = positions[i * 3];
                     vertex.py = positions[i * 3 + 1];
@@ -138,8 +128,7 @@ namespace mirai
                     glm::vec3 bitangent = glm::cross(normal, tangent);
                     vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
 
-                    if (uvs != nullptr)
-                    {
+                    if (uvs != nullptr) {
                         vertex.tu = uvs[i * 2 + 0];
                         vertex.tv = uvs[i * 2 + 1];
                     }
@@ -147,13 +136,10 @@ namespace mirai
 
                 const tinygltf::Accessor &indices_accessor = model->accessors[primitive.indices];
                 uint32_t index_count = static_cast<uint32_t>(indices_accessor.count);
-                if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
-                {
+                if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
                     uint32_t *indices_ptr = (uint32_t *)GetBufferPtr(model, indices_accessor);
                     indices.insert(indices.end(), indices_ptr, indices_ptr + index_count);
-                }
-                else if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-                {
+                } else if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                     uint16_t *indices_ptr = (uint16_t *)GetBufferPtr(model, indices_accessor);
                     indices.insert(indices.end(), indices_ptr, indices_ptr + index_count);
                 }
@@ -222,8 +208,7 @@ namespace mirai
         gpu_mesh.vertex_binding_set = vertex_binding_set;
     } // namespace mirai
 
-    void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state)
-    {
+    void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
         Entity entity = ecs::create_entity();
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
@@ -256,8 +241,7 @@ namespace mirai
 
         // Add Mesh Component
         int mesh_id = node->mesh;
-        if (mesh_id >= 0)
-        {
+        if (mesh_id >= 0) {
             ASSERT(mesh_id < load_state->mesh_components.size());
             comp_manager->add_component<MeshComponent>(entity, std::move(load_state->mesh_components[mesh_id]));
         }
@@ -268,14 +252,12 @@ namespace mirai
 
     bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
                        std::string *warn, int req_width, int req_height,
-                       const unsigned char *bytes, int size, void *user_data)
-    {
+                       const unsigned char *bytes, int size, void *user_data) {
         Log::Info("Image: ", image->uri);
         return true;
     }
 
-    Entity ImportModel_GLTF(const std::string &filename, Scene *scene)
-    {
+    Entity ImportModel_GLTF(const std::string &filename, Scene *scene) {
         Timer load_timer;
 
         std::string file_extension = utils::get_file_extension(filename);
@@ -290,8 +272,7 @@ namespace mirai
         else
             ret = gltf_loader.LoadASCIIFromFile(&gltf_model, &err, &warn, filename);
 
-        if (!ret)
-        {
+        if (!ret) {
             Log::Warn("GLTF ERROR:: ", err);
             Log::Error("Failed to load file: ", filename);
             return K_INVALID_ENTITY;

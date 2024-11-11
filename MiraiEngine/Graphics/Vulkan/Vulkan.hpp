@@ -13,16 +13,13 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Engine/Log.hpp"
 
-namespace mirai
-{
+namespace mirai {
     constexpr const uint32_t VULKAN_API_VERSION VK_API_VERSION_1_3;
 
 #define VK_CHECK(x)                                           \
-    do                                                        \
-    {                                                         \
+    do {                                                      \
         VkResult err = x;                                     \
-        if (err)                                              \
-        {                                                     \
+        if (err) {                                            \
             Log::Error("VulkanError::", std::to_string(err)); \
         }                                                     \
     } while (0)

@@ -1,7 +1,6 @@
 #include "FirstPersonController.hpp"
 
-void CameraController::update(float dt)
-{
+void CameraController::update(float dt) {
     Input *input = Input::get();
     float speed = walk_speed;
     if (input->is_down(KB_LEFT_SHIFT))
@@ -28,8 +27,7 @@ void CameraController::update(float dt)
     else if (input->is_down(KB_O))
         camera->set_projection_mode(PROJECTION_MODE_ORTHOGRAPHIC);
 
-    if (input->is_down(MB_LEFT))
-    {
+    if (input->is_down(MB_LEFT)) {
         glm::vec2 mouse_delta = Window::get()->get_mouse_delta() * sensitivity * dt;
         // mouse_delta.y = 0.0f;
         camera->rotation += glm::vec3(mouse_delta.y, mouse_delta.x, 0.0f);

@@ -5,86 +5,70 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
 
-namespace mirai
-{
-    enum ProjectionMode
-    {
+namespace mirai {
+    enum ProjectionMode {
         PROJECTION_MODE_ORTHOGRAPHIC,
         PROJECTION_MODE_PERSPECTIVE
     };
 
-    class Camera
-    {
+    class Camera {
       public:
         Camera();
 
         void update();
 
-        glm::mat4 get_camera_transform() const
-        {
+        glm::mat4 get_camera_transform() const {
             return view_matrix;
         }
 
-        glm::mat4 get_projection_transform() const
-        {
+        glm::mat4 get_projection_transform() const {
             return projection_matrix;
         }
 
         glm::vec3 position;
         glm::vec3 rotation;
 
-        void set_projection_mode(ProjectionMode projection_mode)
-        {
+        void set_projection_mode(ProjectionMode projection_mode) {
             this->projection_mode = projection_mode;
         }
 
-        void set_fov(float fov)
-        {
+        void set_fov(float fov) {
             this->fov = fov;
         }
 
-        void set_near_plane(float near_plane)
-        {
+        void set_near_plane(float near_plane) {
             this->near_plane = near_plane;
         }
 
-        void set_far_plane(float far_plane)
-        {
+        void set_far_plane(float far_plane) {
             this->far_plane = far_plane;
         }
 
-        float get_fov() const
-        {
+        float get_fov() const {
             return fov;
         }
 
-        float get_aspect_ratio() const
-        {
+        float get_aspect_ratio() const {
             return aspect_ratio;
         }
 
-        float get_near_plane() const
-        {
+        float get_near_plane() const {
             return near_plane;
         }
 
-        float get_far_plane() const
-        {
+        float get_far_plane() const {
             return far_plane;
         }
 
-        glm::vec3 get_right() const
-        {
+        glm::vec3 get_right() const {
             return right;
         }
 
-        glm::vec3 get_up() const
-        {
+        glm::vec3 get_up() const {
             return up;
         }
 
-        glm::vec3 get_forward() const
-        {
+        glm::vec3 get_forward() const {
             return forward;
         }
 

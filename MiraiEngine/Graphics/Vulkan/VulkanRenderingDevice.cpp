@@ -14,10 +14,8 @@
 #include <unordered_map>
 #include <algorithm>
 
-namespace mirai
-{
-    void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName)
-    {
+namespace mirai {
+    void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName) {
         if (!enable_validation)
             return;
 
@@ -36,8 +34,7 @@ namespace mirai
                                                                            resource_pool_textures(1024, "Texture"),
                                                                            resource_pool_buffers(256, "Buffer"),
                                                                            resource_pool_uniform_sets(256, "UniformSet"),
-                                                                           RenderingDevice(enable_validation)
-    {
+                                                                           RenderingDevice(enable_validation) {
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
@@ -55,8 +52,7 @@ namespace mirai
             "VK_LAYER_KHRONOS_synchronization2",
         };
 
-        if (enable_validation)
-        {
+        if (enable_validation) {
             instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
@@ -96,8 +92,7 @@ namespace mirai
         swapchain = std::make_unique<VulkanSwapchain>();
         swapchain->swapchain = VK_NULL_HANDLE;
         CreateSwapchain(swapchain.get(), physical_device, device, surface, vsync);
-        for (uint32_t i = 0; i < swapchain->image_count; ++i)
-        {
+        for (uint32_t i = 0; i < swapchain->image_count; ++i) {
             std::string image_name = "swapchain_image_" + std::to_string(i);
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)swapchain->images[i], image_name.c_str());
 
@@ -126,8 +121,7 @@ namespace mirai
             .commandBufferCount = 1,
         };
 
-        for (uint32_t i = 0; i < buffer_counts; ++i)
-        {
+        for (uint32_t i = 0; i < buffer_counts; ++i) {
             uint32_t command_pool_index = i / K_NUM_COMMAND_BUFFER_PER_THREAD;
             VkCommandPool command_pool = command_pools[command_pool_index];
 
@@ -141,8 +135,7 @@ namespace mirai
             command_buffer->fence = create_fence("command_buffer_fence");
         }
 
-        for (uint32_t i = 0; i < K_MAX_FRAME_IN_FLIGHTS; ++i)
-        {
+        for (uint32_t i = 0; i < K_MAX_FRAME_IN_FLIGHTS; ++i) {
             std::string index = std::to_string(i);
             image_acquire_semaphore[i] = create_semaphore("image_acquire_semaphore" + index);
             render_finished_semaphore[i] = create_semaphore("render_finished_semaphore" + index);
@@ -152,8 +145,7 @@ namespace mirai
         descriptor_pools.push_back(create_descriptor_pool());
     }
 
-    VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool()
-    {
+    VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool() {
         VkDescriptorPoolSize poolSizes[] = {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
@@ -173,8 +165,7 @@ namespace mirai
         return descriptor_pool;
     }
 
-    VkSemaphore VulkanRenderingDevice::create_semaphore(const std::string &name)
-    {
+    VkSemaphore VulkanRenderingDevice::create_semaphore(const std::string &name) {
         VkSemaphoreCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
@@ -186,8 +177,7 @@ namespace mirai
         return semaphore;
     }
 
-    VmaAllocator VulkanRenderingDevice::create_allocator()
-    {
+    VmaAllocator VulkanRenderingDevice::create_allocator() {
         VmaVulkanFunctions vulkan_functions = {};
         vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
         vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
@@ -204,8 +194,7 @@ namespace mirai
         return allocator;
     }
 
-    VkFence VulkanRenderingDevice::create_fence(const std::string &name, bool signalled)
-    {
+    VkFence VulkanRenderingDevice::create_fence(const std::string &name, bool signalled) {
         VkFenceCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = signalled ? VK_FENCE_CREATE_SIGNALED_BIT : VkFenceCreateFlags{0},
@@ -216,8 +205,7 @@ namespace mirai
         return fence;
     }
 
-    VkSampler VulkanRenderingDevice::create_sampler(SamplerDescription *desc)
-    {
+    VkSampler VulkanRenderingDevice::create_sampler(SamplerDescription *desc) {
         VkSamplerCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
             .pNext = nullptr,
@@ -239,8 +227,7 @@ namespace mirai
         return sampler;
     }
 
-    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name)
-    {
+    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name) {
         uint32_t shader_id = resource_pool_shaders.obtain();
         VulkanShader *shader = resource_pool_shaders.access(shader_id);
         CreateShader(shader, device, code, code_size_in_bytes);
@@ -248,30 +235,24 @@ namespace mirai
         return ShaderID{shader_id};
     }
 
-    PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name)
-    {
+    PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
         std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> descriptor_sets_map;
         std::unordered_map<uint32_t, VkPushConstantRange> push_constants_map;
-        for (uint32_t i = 0; i < pipeline_description->shader_count; ++i)
-        {
+        for (uint32_t i = 0; i < pipeline_description->shader_count; ++i) {
             VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);
             shader_stage_create_infos[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_create_infos[i].module = shader->shader;
             shader_stage_create_infos[i].stage = shader->shader_stage;
             shader_stage_create_infos[i].pName = "main";
 
-            if (shader->descriptor_sets.size() > 0)
-            {
-                for (auto &set : shader->descriptor_sets)
-                {
+            if (shader->descriptor_sets.size() > 0) {
+                for (auto &set : shader->descriptor_sets) {
                     auto found = descriptor_sets_map.find(set.set);
-                    if (found != descriptor_sets_map.end())
-                    {
+                    if (found != descriptor_sets_map.end()) {
                         // Merge the bindings if the binding index is same
                         MergeShaderBindings(found->second, set.bindings);
-                    }
-                    else
+                    } else
                         descriptor_sets_map.insert(std::make_pair(set.set, set.bindings));
                 }
             }
@@ -315,8 +296,7 @@ namespace mirai
         std::vector<VkPipelineColorBlendAttachmentState> attachment_blend_states(attachment_count);
         std::vector<VkFormat> color_attachment_formats(attachment_count);
 
-        for (uint32_t i = 0; i < attachment_count; ++i)
-        {
+        for (uint32_t i = 0; i < attachment_count; ++i) {
             attachment_blend_states[i].blendEnable = pipeline_description->blend_state->enable;
             attachment_blend_states[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
@@ -339,8 +319,7 @@ namespace mirai
         std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
 
         VertexBindingDescription *vertex_binding_description = pipeline_description->vertex_description;
-        if (vertex_binding_description != nullptr)
-        {
+        if (vertex_binding_description != nullptr) {
             attribute_descriptions.resize(vertex_binding_description->attribute_count);
             binding_description = {
                 .binding = vertex_binding_description->binding,
@@ -348,8 +327,7 @@ namespace mirai
                 .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
             };
 
-            for (uint32_t attribute = 0; attribute < vertex_binding_description->attribute_count; ++attribute)
-            {
+            for (uint32_t attribute = 0; attribute < vertex_binding_description->attribute_count; ++attribute) {
                 VertexAttributeDescription &attribute_desc = vertex_binding_description->attributes[attribute];
                 attribute_descriptions[attribute].binding = attribute_desc.binding;
                 attribute_descriptions[attribute].format = RD_FORMAT_TO_VK_FORMAT[attribute_desc.format];
@@ -389,18 +367,15 @@ namespace mirai
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-        for (const auto &[key, val] : descriptor_sets_map)
-        {
+        for (const auto &[key, val] : descriptor_sets_map) {
             uint64_t hash = GetDescriptorSetLayoutHash(val, key);
             auto found = descriptor_set_layouts_cache.find(hash);
 
-            if (found == descriptor_set_layouts_cache.end())
-            {
+            if (found == descriptor_set_layouts_cache.end()) {
                 VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, val, key, 0);
                 pipeline->set_layouts.push_back(set_layout);
                 descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
-            }
-            else
+            } else
                 pipeline->set_layouts.push_back(found->second);
         }
 
@@ -441,17 +416,14 @@ namespace mirai
         return PipelineID{pipeline_id};
     }
 
-    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name)
-    {
+    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name) {
         uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
         auto found = descriptor_set_layouts_cache.find(hash);
 
         VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
-        if (found == descriptor_set_layouts_cache.end())
-        {
+        if (found == descriptor_set_layouts_cache.end()) {
             std::vector<VkReflectionDescriptorBinding> bindings(uniform_count);
-            for (uint32_t i = 0; i < uniform_count; ++i)
-            {
+            for (uint32_t i = 0; i < uniform_count; ++i) {
                 bindings[i].binding = uniforms[i].binding;
                 bindings[i].descriptor_type = VkDescriptorType(uniforms[i].binding_type);
                 bindings[i].shader_stage = VkShaderStageFlags(uniforms[i].shader_stage);
@@ -459,8 +431,7 @@ namespace mirai
             // Create DescriptorSetLayout
             set_layout = CreateDescriptorSetLayout(device, bindings, set, 0);
             descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
-        }
-        else
+        } else
             set_layout = found->second;
         VkDescriptorSetAllocateInfo allocate_info{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -470,8 +441,7 @@ namespace mirai
         };
 
         VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-        if (!vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set))
-        {
+        if (!vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set)) {
             descriptor_pools.push_back(create_descriptor_pool());
             allocate_info.descriptorPool = descriptor_pools.back();
             VK_CHECK(vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
@@ -489,8 +459,7 @@ namespace mirai
         return UniformSetID{id};
     }
 
-    void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count)
-    {
+    void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) {
         std::vector<VkWriteDescriptorSet> write_sets(binding_count);
         // @TODO replace with custom allocator
         std::vector<VkDescriptorImageInfo> image_infos;
@@ -498,8 +467,7 @@ namespace mirai
         image_infos.reserve(16), buffer_infos.reserve(16);
 
         VulkanUniformSet *vk_set = resource_pool_uniform_sets.access(uniform_set);
-        for (uint32_t i = 0; i < binding_count; ++i)
-        {
+        for (uint32_t i = 0; i < binding_count; ++i) {
             UniformLayout &layout = vk_set->uniform_layout[i];
             UniformBinding &binding = bindings[i];
             write_sets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -507,10 +475,8 @@ namespace mirai
             write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
             write_sets[i].descriptorCount = 1;
 
-            switch (layout.binding_type)
-            {
-            case BINDING_TYPE_STORAGE_IMAGE:
-            {
+            switch (layout.binding_type) {
+            case BINDING_TYPE_STORAGE_IMAGE: {
                 VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -518,10 +484,8 @@ namespace mirai
 
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 write_sets[i].pImageInfo = &image_info;
-            }
-            break;
-            case BINDING_TYPE_UNIFORM_BUFFER:
-            {
+            } break;
+            case BINDING_TYPE_UNIFORM_BUFFER: {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
@@ -529,10 +493,8 @@ namespace mirai
                 buffer_info.range = binding.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
-            }
-            break;
-            case BINDING_TYPE_STORAGE_BUFFER:
-            {
+            } break;
+            case BINDING_TYPE_STORAGE_BUFFER: {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
@@ -540,10 +502,8 @@ namespace mirai
                 buffer_info.range = binding.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
-            }
-            break;
-            case BINDING_TYPE_COMBINED_IMAGE_SAMPLER:
-            {
+            } break;
+            case BINDING_TYPE_COMBINED_IMAGE_SAMPLER: {
                 VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -551,8 +511,7 @@ namespace mirai
                 image_info.sampler = texture->sampler;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write_sets[i].pImageInfo = &image_info;
-            }
-            break;
+            } break;
             default:
                 assert(0 && "Undefined Binding Type");
                 break;
@@ -565,8 +524,7 @@ namespace mirai
         vkUpdateDescriptorSets(device, binding_count, write_sets.data(), 0, nullptr);
     }
 
-    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name)
-    {
+    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name) {
         ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
         VkBufferCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -577,10 +535,8 @@ namespace mirai
 
         VmaAllocationCreateInfo allocation_create_info = {};
 
-        switch (buffer_description->allocation_type)
-        {
-        case MEMORY_ALLOCATION_TYPE_CPU:
-        {
+        switch (buffer_description->allocation_type) {
+        case MEMORY_ALLOCATION_TYPE_CPU: {
             bool is_src = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_SRC_BIT) > 0;
             bool is_dst = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_DST_BIT) > 0;
 
@@ -591,8 +547,7 @@ namespace mirai
             allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
             break;
         }
-        case MEMORY_ALLOCATION_TYPE_GPU:
-        {
+        case MEMORY_ALLOCATION_TYPE_GPU: {
             allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
             break;
         }
@@ -615,8 +570,7 @@ namespace mirai
         return BufferID{buffer_id};
     }
 
-    uint8_t *VulkanRenderingDevice::map_buffer(BufferID buffer)
-    {
+    uint8_t *VulkanRenderingDevice::map_buffer(BufferID buffer) {
         VulkanBuffer *vk_buffer = resource_pool_buffers.access(buffer.id);
         if (vk_buffer->buffer_ptr == nullptr)
             VK_CHECK(vmaMapMemory(vma_allocator, vk_buffer->allocation, &vk_buffer->buffer_ptr));
@@ -630,8 +584,7 @@ namespace mirai
         vkCmdCopyBuffer(_commandBuffers[commandBuffer.id], vkSrc->buffer, vkDst->buffer, 1, (const VkBufferCopy *)region);
     }
     */
-    TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name)
-    {
+    TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name) {
         uint32_t textureID = resource_pool_textures.obtain();
         VulkanTexture *texture = resource_pool_textures.access(textureID);
         texture->width = texture_description->width;
@@ -666,8 +619,7 @@ namespace mirai
             usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 
         VkImageAspectFlags image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-        if (texture_description->usage_flags & TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT)
-        {
+        if (texture_description->usage_flags & TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT) {
             image_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
             if (texture_description->usage_flags & TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT)
                 image_aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -716,8 +668,7 @@ namespace mirai
         return TextureID{textureID};
     };
 
-    void VulkanRenderingDevice::new_frame()
-    {
+    void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
         vkResetFences(device, 1, &in_flight_fences[current_frame]);
 
@@ -732,8 +683,7 @@ namespace mirai
         uint32_t height = swapchain->height;
 
         bool resized = (width != surface_caps.currentExtent.width) || (height != surface_caps.currentExtent.height);
-        if (resized)
-        {
+        if (resized) {
             swapchain->width = surface_caps.currentExtent.width;
             swapchain->height = surface_caps.currentExtent.height;
             ResizeSwapchain(swapchain.get(), physical_device, device, surface, vsync);
@@ -743,15 +693,13 @@ namespace mirai
         VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &current_image_index));
     }
 
-    CommandBuffer *VulkanRenderingDevice::get_command_buffer(uint32_t thread_id)
-    {
+    CommandBuffer *VulkanRenderingDevice::get_command_buffer(uint32_t thread_id) {
         ASSERT_MSG(thread_id < K_NUM_THREAD, "ThreadID exceed the number of threads");
         uint32_t index = current_frame * K_NUM_THREAD * K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
         return command_buffers[index].get();
     }
 
-    void VulkanRenderingDevice::submit_command_buffer_immediate(CommandBuffer *command_buffer)
-    {
+    void VulkanRenderingDevice::submit_command_buffer_immediate(CommandBuffer *command_buffer) {
         VkCommandBuffer vk_cmd_buffer = command_buffer->command_buffer;
         VK_CHECK(vkEndCommandBuffer(vk_cmd_buffer));
 
@@ -768,18 +716,15 @@ namespace mirai
         VK_CHECK(vkQueueSubmit(queue, 1, &submit_info, command_buffer->fence));
     }
 
-    void VulkanRenderingDevice::wait()
-    {
+    void VulkanRenderingDevice::wait() {
         VK_CHECK(vkDeviceWaitIdle(device));
     }
 
-    void VulkanRenderingDevice::present()
-    {
+    void VulkanRenderingDevice::present() {
         std::vector<VkCommandBufferSubmitInfo> command_buffer_submit_infos(queued_command_buffer.size());
 
         VkImageLayout current_layout = swapchain->get_current_image_layout();
-        if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-        {
+        if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
 
             VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -802,8 +747,7 @@ namespace mirai
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         }
 
-        for (uint32_t i = 0; i < queued_command_buffer.size(); ++i)
-        {
+        for (uint32_t i = 0; i < queued_command_buffer.size(); ++i) {
             VK_CHECK(vkEndCommandBuffer(queued_command_buffer[i]->command_buffer));
             command_buffer_submit_infos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
             command_buffer_submit_infos[i].commandBuffer = queued_command_buffer[i]->command_buffer;
@@ -848,20 +792,16 @@ namespace mirai
         current_frame = (current_frame + 1) % K_MAX_FRAME_IN_FLIGHTS;
     }
 
-    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_ids, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
+    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_ids, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
             VulkanShader *shader = resource_pool_shaders.access(shader_ids[i]);
             DestroyShader(shader, device);
             resource_pool_shaders.release(shader_ids[i]);
         }
     }
 
-    void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
+    void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
             VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
             for (auto &set_layout : pipeline->set_layouts)
                 vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
@@ -871,10 +811,8 @@ namespace mirai
         }
     }
 
-    void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
+    void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
             VulkanBuffer *buffer = resource_pool_buffers.access(buffers[i]);
             if (buffer->buffer_ptr)
                 vmaUnmapMemory(vma_allocator, buffer->allocation);
@@ -888,10 +826,8 @@ namespace mirai
         }
     }
 
-    void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
+    void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
             VulkanTexture *texture = resource_pool_textures.access(textures[i]);
 
             vkDestroyImageView(device, texture->image_view, nullptr);
@@ -912,10 +848,8 @@ namespace mirai
         }
     }
 
-    void VulkanRenderingDevice::destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
+    void VulkanRenderingDevice::destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
             VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(uniform_sets[i]);
             vkFreeDescriptorSets(device, uniform_set->descriptor_pool, 1, &uniform_set->descriptor_set);
             uniform_set->descriptor_pool = VK_NULL_HANDLE;
@@ -925,8 +859,7 @@ namespace mirai
         }
     }
 
-    VulkanRenderingDevice::~VulkanRenderingDevice()
-    {
+    VulkanRenderingDevice::~VulkanRenderingDevice() {
         VK_CHECK(vkDeviceWaitIdle(device));
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);

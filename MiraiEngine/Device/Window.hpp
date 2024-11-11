@@ -2,17 +2,14 @@
 
 #include "Common/CommonInclude.hpp"
 
-
 #include <glm/glm.hpp>
 #include <string>
 
 struct GLFWwindow;
 struct GLFWmonitor;
 
-namespace mirai
-{
-    class Window
-    {
+namespace mirai {
+    class Window {
       public:
         Window(const Window &window) = delete;
         Window operator=(const Window &window) = delete;
@@ -31,15 +28,11 @@ namespace mirai
 
         float get_aspect_ratio() const { return static_cast<float>(width) / static_cast<float>(height); }
 
-        void get_size(uint32_t *width, uint32_t *height) const
-        {
-            if (fullscreen)
-            {
+        void get_size(uint32_t *width, uint32_t *height) const {
+            if (fullscreen) {
                 *width = fullscreen_width;
                 *height = fullscreen_height;
-            }
-            else
-            {
+            } else {
                 *width = this->width;
                 *height = this->height;
             }
@@ -49,38 +42,31 @@ namespace mirai
 
         void set_size(uint32_t width, uint32_t height);
 
-        glm::vec2 get_mouse_position() const
-        {
+        glm::vec2 get_mouse_position() const {
             return mouse_pos;
         }
 
-        glm::vec2 get_mouse_delta() const
-        {
+        glm::vec2 get_mouse_delta() const {
             return mouse_pos_delta;
         }
 
-        glm::vec2 get_mouse_scroll() const
-        {
+        glm::vec2 get_mouse_scroll() const {
             return mouse_scroll;
         }
 
-        glm::vec2 get_mouse_scroll_delta() const
-        {
+        glm::vec2 get_mouse_scroll_delta() const {
             return mouse_scroll_delta;
         }
 
-        void *get_window_ptr()
-        {
+        void *get_window_ptr() {
             return glfw_window;
         }
 
-        void set_minimized(bool state)
-        {
+        void set_minimized(bool state) {
             this->minimized = state;
         }
 
-        bool is_minimized() const
-        {
+        bool is_minimized() const {
             return this->minimized;
         }
 

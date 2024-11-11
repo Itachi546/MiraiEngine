@@ -3,21 +3,18 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Device/Window.hpp"
 
-namespace mirai
-{
+namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
                        rotation(glm::vec3(0.0f)),
                        fov(60.0f),
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.1f),
                        far_plane(1000.0f),
-                       projection_mode(PROJECTION_MODE_PERSPECTIVE)
-    {
+                       projection_mode(PROJECTION_MODE_PERSPECTIVE) {
         viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
     }
 
-    void Camera::update()
-    {
+    void Camera::update() {
         aspect_ratio = Window::get()->get_aspect_ratio();
         glm::vec3 rotation_radians = glm::radians(rotation);
 
@@ -31,14 +28,10 @@ namespace mirai
         forward = glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]);
     }
 
-    void Camera::update_projection_matrix()
-    {
-        if (projection_mode == PROJECTION_MODE_PERSPECTIVE)
-        {
+    void Camera::update_projection_matrix() {
+        if (projection_mode == PROJECTION_MODE_PERSPECTIVE) {
             projection_matrix = viewport_matrix * glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);
-        }
-        else
-        {
+        } else {
             float cam_dist = glm::length(position + forward * near_plane);
             float y_span = cam_dist * tan(glm::radians(fov * 0.5f));
             float x_span = y_span * aspect_ratio;

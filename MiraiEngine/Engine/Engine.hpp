@@ -3,25 +3,21 @@
 #include <memory>
 #include "App.hpp"
 
-namespace mirai
-{
+namespace mirai {
 
     class Window;
     class Renderer;
 
-    struct EngineInitializationOptions
-    {
+    struct EngineInitializationOptions {
         uint32_t width, height;
         bool enable_validation;
     };
 
-    class Engine
-    {
+    class Engine {
       public:
         Engine(const EngineInitializationOptions &options);
 
-        static Engine *get()
-        {
+        static Engine *get() {
             return Instance;
         }
 
@@ -29,18 +25,15 @@ namespace mirai
 
         void run();
 
-        void request_close()
-        {
+        void request_close() {
             this->running = false;
         }
 
-        float get_dt_seconds() const
-        {
+        float get_dt_seconds() const {
             return static_cast<float>(dt_ms) / 1000.0f;
         }
 
-        float get_elapsed_seconds() const
-        {
+        float get_elapsed_seconds() const {
             return static_cast<float>(elapsed_time_ms) / 1000.0f;
         }
 

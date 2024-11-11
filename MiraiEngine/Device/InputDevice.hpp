@@ -3,10 +3,8 @@
 #include "Common/Bitfield.hpp"
 #include <array>
 
-namespace mirai
-{
-    enum Key
-    {
+namespace mirai {
+    enum Key {
         MB_1 = 0,
         MB_2 = 1,
         MB_3 = 2,
@@ -144,56 +142,46 @@ namespace mirai
         KB_MENU = 348
     };
 
-    struct KeyboardState
-    {
+    struct KeyboardState {
         bool isDown;
         bool wasDown;
     };
 
-    struct Input
-    {
+    struct Input {
 
-        static Input *get()
-        {
+        static Input *get() {
             static Input *input = new Input();
             return input;
         }
 
-        Input()
-        {
+        Input() {
             keys.fill(KeyboardState{false, false});
         }
 
-        KeyboardState *get(Key key)
-        {
+        KeyboardState *get(Key key) {
             return &keys[key];
         }
 
-        void set_state(Key key, bool state)
-        {
+        void set_state(Key key, bool state) {
             KeyboardState *keyPtr = &keys[key];
             keyPtr->isDown = state;
         }
 
-        void set_modifiers(int modifiers)
-        {
+        void set_modifiers(int modifiers) {
             this->modifiers = modifiers;
         }
 
-        bool was_down(Key key)
-        {
+        bool was_down(Key key) {
             KeyboardState *keyPtr = &keys[key];
             return keyPtr->isDown && !keyPtr->wasDown;
         }
 
-        bool was_up(Key key)
-        {
+        bool was_up(Key key) {
             KeyboardState *keyPtr = &keys[key];
             return keyPtr->wasDown && !keyPtr->isDown;
         }
 
-        bool is_down(Key key)
-        {
+        bool is_down(Key key) {
             KeyboardState *keyPtr = &keys[key];
             return keyPtr->isDown;
         }

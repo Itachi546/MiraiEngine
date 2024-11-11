@@ -7,12 +7,10 @@
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
 
-namespace mirai
-{
+namespace mirai {
     Renderer *Renderer::Instance = nullptr;
 
-    Renderer::Renderer(bool enable_validation)
-    {
+    Renderer::Renderer(bool enable_validation) {
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>(enable_validation);
         scene = std::make_unique<Scene>("default");
@@ -21,17 +19,14 @@ namespace mirai
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }
 
-    void Renderer::compile_passes()
-    {
+    void Renderer::compile_passes() {
     }
 
-    void Renderer::update()
-    {
+    void Renderer::update() {
         scene->update();
     }
 
-    void Renderer::render()
-    {
+    void Renderer::render() {
         device->new_frame();
 
         CommandBuffer *cb = device->get_command_buffer();
@@ -45,8 +40,7 @@ namespace mirai
         device->present();
     }
 
-    Renderer::~Renderer()
-    {
+    Renderer::~Renderer() {
         device->wait();
         scene.reset();
     }

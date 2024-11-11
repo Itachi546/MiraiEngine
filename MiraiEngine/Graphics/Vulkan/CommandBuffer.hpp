@@ -3,14 +3,12 @@
 #include "Vulkan.hpp"
 #include "../RenderingDevice.hpp"
 
-namespace mirai
-{
+namespace mirai {
     class VulkanRenderingDevice;
     struct FrameGraphNode;
     class FrameGraph;
 
-    class CommandBuffer
-    {
+    class CommandBuffer {
       public:
         CommandBuffer();
 

@@ -9,8 +9,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace mirai
-{
+namespace mirai {
 
     constexpr const char *COLOR_ATTACHMENT_OUTPUT_NAME = "main_color_attachment";
     constexpr const char *DEPTH_ATTACHMENT_OUTPUT_NAME = "main_depth_attachment";
@@ -22,15 +21,13 @@ namespace mirai
 
     using FrameGraphNodeHandle = uint32_t;
 
-    enum FrameGraphResourceType
-    {
+    enum FrameGraphResourceType {
         FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN,
         FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
         FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
     };
 
-    struct FrameGraphResourceOutput
-    {
+    struct FrameGraphResourceOutput {
         std::string name;
         FrameGraphResourceType resource_type;
         uint32_t width, height;
@@ -39,14 +36,12 @@ namespace mirai
         Color clear_color;
     };
 
-    struct FrameGraphResourceInput
-    {
+    struct FrameGraphResourceInput {
         std::string name;
         FrameGraphResourceType resource_type;
     };
 
-    class FrameGraphRenderPass
-    {
+    class FrameGraphRenderPass {
       public:
         FrameGraphRenderPass(const std::string &name) : name(name) {}
 
@@ -56,8 +51,7 @@ namespace mirai
 
         virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) = 0;
 
-        void set_size(uint32_t width, uint32_t height)
-        {
+        void set_size(uint32_t width, uint32_t height) {
             this->width = width;
             this->height = height;
         }
@@ -70,8 +64,7 @@ namespace mirai
         uint32_t width, height;
     };
 
-    struct FrameGraphNodeDescription
-    {
+    struct FrameGraphNodeDescription {
         std::string name;
         bool enabled;
         std::vector<FrameGraphResourceInput> inputs;
@@ -79,30 +72,26 @@ namespace mirai
         std::shared_ptr<FrameGraphRenderPass> renderer;
     };
 
-    struct FrameGraphAttachmentInfo
-    {
+    struct FrameGraphAttachmentInfo {
         Color clear_color;
         Format format;
         AttachmentLoadOp load_op;
     };
 
-    struct FrameGraphRenderingInfo
-    {
+    struct FrameGraphRenderingInfo {
         std::vector<FrameGraphAttachmentInfo> attachment_info;
         uint32_t depth_attachment_index = ~0u;
         bool has_stencil_attachment = false;
     };
 
-    struct FrameGraphResource
-    {
+    struct FrameGraphResource {
         FrameGraphResourceType resource_type;
         TextureID texture;
     };
 
     using FrameGraphResourceHandle = uint32_t;
 
-    struct FrameGraphNode
-    {
+    struct FrameGraphNode {
         std::string name;
         bool enabled;
 
@@ -112,30 +101,25 @@ namespace mirai
         FrameGraphRenderingInfo rendering_info;
     };
 
-    class FrameGraphBuilder
-    {
+    class FrameGraphBuilder {
       public:
         FrameGraphBuilder();
         FrameGraphNodeHandle create_node(const FrameGraphNodeDescription &node_description);
 
-        FrameGraphNode *get_node(FrameGraphNodeHandle handle)
-        {
+        FrameGraphNode *get_node(FrameGraphNodeHandle handle) {
             return resource_pool_nodes.access(handle);
         }
 
-        FrameGraphNode *get_node(const std::string &name)
-        {
+        FrameGraphNode *get_node(const std::string &name) {
             auto found = nodes_maps.find(utils::djb2_hash_string(name));
             return resource_pool_nodes.access(found->second);
         }
 
-        FrameGraphResource *get_resource(FrameGraphResourceHandle handle)
-        {
+        FrameGraphResource *get_resource(FrameGraphResourceHandle handle) {
             return resource_pool_resources.access(handle);
         }
 
-        FrameGraphResource *get_resource(const std::string &name)
-        {
+        FrameGraphResource *get_resource(const std::string &name) {
             auto found = resources_map.find(utils::djb2_hash_string(name));
             if (found != resources_map.end())
                 return resource_pool_resources.access(found->second);
@@ -156,8 +140,7 @@ namespace mirai
         std::unordered_map<uint32_t, uint32_t> resources_map;
     };
 
-    class FrameGraph
-    {
+    class FrameGraph {
       public:
         FrameGraph(FrameGraphBuilder *builder);
 
@@ -165,28 +148,23 @@ namespace mirai
 
         void render(CommandBuffer *command_buffer, Scene *scene);
 
-        void add_node(const FrameGraphNodeDescription &node)
-        {
+        void add_node(const FrameGraphNodeDescription &node) {
             node_descriptions.push_back(node);
         }
 
-        FrameGraphNode *get_node(const std::string &name)
-        {
+        FrameGraphNode *get_node(const std::string &name) {
             return builder->get_node(name);
         }
 
-        FrameGraphNode *get_node(FrameGraphNodeHandle node)
-        {
+        FrameGraphNode *get_node(FrameGraphNodeHandle node) {
             return builder->get_node(node);
         }
 
-        FrameGraphResource *get_resource(FrameGraphResourceHandle handle)
-        {
+        FrameGraphResource *get_resource(FrameGraphResourceHandle handle) {
             return builder->get_resource(handle);
         }
 
-        FrameGraphResource *get_resource(const std::string &name)
-        {
+        FrameGraphResource *get_resource(const std::string &name) {
             return builder->get_resource(name);
         }
 

@@ -2,8 +2,7 @@
 
 #include "Vulkan.hpp"
 
-namespace mirai
-{
+namespace mirai {
     VkImageMemoryBarrier CreateImageMemoryBarrier(VkImage image,
                                                   VkImageAspectFlags aspect,
                                                   VkAccessFlags src_access_mask,

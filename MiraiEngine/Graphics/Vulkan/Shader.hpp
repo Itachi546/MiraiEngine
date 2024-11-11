@@ -6,23 +6,19 @@
 #include <unordered_map>
 
 VK_DEFINE_HANDLE(VmaAllocation);
-namespace mirai
-{
-    struct VkReflectionDescriptorBinding
-    {
+namespace mirai {
+    struct VkReflectionDescriptorBinding {
         uint32_t binding;
         VkDescriptorType descriptor_type;
         VkShaderStageFlags shader_stage;
     };
 
-    struct VkReflectionDescriptorSet
-    {
+    struct VkReflectionDescriptorSet {
         uint32_t set;
         std::vector<VkReflectionDescriptorBinding> bindings;
     };
 
-    struct VulkanTexture
-    {
+    struct VulkanTexture {
         uint32_t width, height, depth;
         uint32_t mip_levels, array_layers;
 
@@ -39,30 +35,26 @@ namespace mirai
         VkAccessFlags access_flags;
     };
 
-    struct VulkanBuffer
-    {
+    struct VulkanBuffer {
         VkBuffer buffer;
         VmaAllocation allocation;
         uint32_t size;
         void *buffer_ptr;
     };
 
-    struct VulkanShader
-    {
+    struct VulkanShader {
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
         std::vector<VkReflectionDescriptorSet> descriptor_sets;
         std::unordered_map<uint32_t, VkPushConstantRange> push_constants;
     };
 
-    struct VulkanBindingInfo
-    {
+    struct VulkanBindingInfo {
         VkWriteDescriptorSet binding;
         ID resource_id;
     };
 
-    struct VulkanUniformSet
-    {
+    struct VulkanUniformSet {
         std::vector<UniformLayout> uniform_layout;
         uint32_t set_id;
         VkDescriptorSet descriptor_set;
@@ -90,8 +82,7 @@ namespace mirai
     };
     */
 
-    struct VulkanPipeline
-    {
+    struct VulkanPipeline {
         VkPipeline pipeline;
         VkPipelineBindPoint bind_point;
         std::vector<VkDescriptorSetLayout> set_layouts;

@@ -5,15 +5,12 @@
 
 #include "Graphics/RenderingDevice.hpp"
 
-namespace mirai
-{
-    class ShaderMaterialCache
-    {
+namespace mirai {
+    class ShaderMaterialCache {
       public:
         ShaderMaterialCache();
 
-        static ShaderMaterialCache *get()
-        {
+        static ShaderMaterialCache *get() {
             return Instance;
         }
 

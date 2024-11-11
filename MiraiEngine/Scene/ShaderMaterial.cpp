@@ -4,8 +4,7 @@
 #include "FrameGraph.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 
-namespace mirai
-{
+namespace mirai {
     ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
                                                               cull_mode(CullMode::CULL_MODE_BACK),
                                                               front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
@@ -13,12 +12,10 @@ namespace mirai
                                                               enable_depth_write(false),
                                                               hash(0),
                                                               is_resource_updated(true),
-                                                              pipeline{K_INVALID_ID}
-    {
+                                                              pipeline{K_INVALID_ID} {
     }
 
-    void ShaderMaterial::create_from_file(const std::vector<std::string> &shader_files)
-    {
+    void ShaderMaterial::create_from_file(const std::vector<std::string> &shader_files) {
         uint32_t shader_count = static_cast<uint32_t>(shader_files.size());
         std::vector<ShaderID> shaders(shader_count);
 
@@ -31,10 +28,8 @@ namespace mirai
         calculate_hash();
     }
 
-    void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph)
-    {
-        if (!pipeline.is_valid())
-        {
+    void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) {
+        if (!pipeline.is_valid()) {
             pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
             if (!pipeline.is_valid())
                 pipeline = create_pipeline(node, frame_graph);
@@ -47,14 +42,12 @@ namespace mirai
                                       static_cast<uint32_t>(push_constants.size()));
     }
 
-    void ShaderMaterial::calculate_hash()
-    {
+    void ShaderMaterial::calculate_hash() {
         hash = 0;
         utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write);
     }
 
-    PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph)
-    {
+    PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph) {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
         rs.front_face = front_face;
@@ -74,17 +67,13 @@ namespace mirai
         std::vector<Format> color_attachment_formats;
 
         const FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
-        for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i)
-        {
+        for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
-            if (i == rendering_info->depth_attachment_index)
-            {
+            if (i == rendering_info->depth_attachment_index) {
                 ds.enable_depth_write = enable_depth_write;
                 ds.enable_depth_test = enable_depth_test;
                 pipeline_description.depth_attachment_format = attachment->format;
-            }
-            else
-            {
+            } else {
                 FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
                     color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);

@@ -5,18 +5,15 @@
 #include <atomic>
 #include <thread>
 
-namespace mirai
-{
-    struct BufferCopyTask
-    {
+namespace mirai {
+    struct BufferCopyTask {
         BufferID dst;
         void *data;
         uint32_t offset_in_bytes;
         uint32_t size_in_bytes;
     };
 
-    class AsyncLoader
-    {
+    class AsyncLoader {
       public:
         AsyncLoader() = default;
 
@@ -24,8 +21,7 @@ namespace mirai
 
         void wait();
 
-        void add_buffer_copy_task(BufferCopyTask &&copy_task)
-        {
+        void add_buffer_copy_task(BufferCopyTask &&copy_task) {
             buffer_copy_tasks.push(copy_task);
         }
 

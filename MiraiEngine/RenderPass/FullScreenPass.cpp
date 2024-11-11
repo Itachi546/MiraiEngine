@@ -5,11 +5,9 @@
 #include "Device/InputDevice.hpp"
 #include <string>
 
-namespace mirai
-{
+namespace mirai {
 
-    FullScreenPass::FullScreenPass(const std::string &name) : FrameGraphRenderPass(name), enable_aa(true)
-    {
+    FullScreenPass::FullScreenPass(const std::string &name) : FrameGraphRenderPass(name), enable_aa(true) {
         material = std::make_shared<ShaderMaterial>("FullScreenTextureMaterial");
         material->create_from_file(std::vector<std::string>{
             "SPIRV/fullscreen.vert.spv",
@@ -18,8 +16,7 @@ namespace mirai
         material->set_cull_mode(CULL_MODE_BACK);
     }
 
-    void FullScreenPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node)
-    {
+    void FullScreenPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
 
         UniformLayout bounded_uniform = {
@@ -34,8 +31,7 @@ namespace mirai
         material->set_uniform_sets(&uniform_set, 1);
     }
 
-    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene)
-    {
+    void FullScreenPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
         uint32_t width, height;
@@ -60,8 +56,7 @@ namespace mirai
         command_buffer->end_render_pass();
     }
 
-    FullScreenPass::~FullScreenPass()
-    {
+    FullScreenPass::~FullScreenPass() {
     }
 
 } // namespace mirai

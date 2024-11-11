@@ -12,13 +12,11 @@
 VK_DEFINE_HANDLE(VmaAllocator)
 VK_DEFINE_HANDLE(VmaAllocation)
 
-namespace mirai
-{
+namespace mirai {
     struct VulkanSwapchain;
     class CommandBuffer;
 
-    class VulkanRenderingDevice : public RenderingDevice
-    {
+    class VulkanRenderingDevice : public RenderingDevice {
       public:
         VulkanRenderingDevice(bool enable_validation);
 
@@ -49,8 +47,7 @@ namespace mirai
 
         CommandBuffer *get_command_buffer(uint32_t thread_id = 0) override;
 
-        void queue_command_buffer(CommandBuffer *command_buffer) override
-        {
+        void queue_command_buffer(CommandBuffer *command_buffer) override {
             queued_command_buffer.push_back(command_buffer);
         }
 
@@ -70,23 +67,19 @@ namespace mirai
 
         void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) override;
 
-        VulkanPipeline *access_pipeline(PipelineID pipeline)
-        {
+        VulkanPipeline *access_pipeline(PipelineID pipeline) {
             return resource_pool_pipelines.access(pipeline);
         }
 
-        VulkanTexture *access_texture(TextureID texture)
-        {
+        VulkanTexture *access_texture(TextureID texture) {
             return resource_pool_textures.access(texture);
         }
 
-        VulkanBuffer *access_buffer(BufferID buffer)
-        {
+        VulkanBuffer *access_buffer(BufferID buffer) {
             return resource_pool_buffers.access(buffer);
         }
 
-        VulkanUniformSet *access_uniform_set(UniformSetID uniform_set)
-        {
+        VulkanUniformSet *access_uniform_set(UniformSetID uniform_set) {
             return resource_pool_uniform_sets.access(uniform_set);
         }
 

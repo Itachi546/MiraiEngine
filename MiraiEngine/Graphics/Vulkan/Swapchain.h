@@ -3,10 +3,8 @@
 #include "Vulkan.hpp"
 #include <vector>
 
-namespace mirai
-{
-    struct VulkanSwapchain
-    {
+namespace mirai {
+    struct VulkanSwapchain {
         VkSwapchainKHR swapchain;
         std::vector<VkImage> images;
         std::vector<VkImageView> image_views;
@@ -19,23 +17,19 @@ namespace mirai
         VkSurfaceTransformFlagBitsKHR current_transform;
         std::vector<VkImageLayout> image_layouts;
 
-        VkImageView get_current_image_view()
-        {
+        VkImageView get_current_image_view() {
             return image_views[current_image_index];
         }
 
-        VkImage get_current_image()
-        {
+        VkImage get_current_image() {
             return images[current_image_index];
         }
 
-        VkImageLayout get_current_image_layout()
-        {
+        VkImageLayout get_current_image_layout() {
             return image_layouts[current_image_index];
         }
 
-        void set_current_image_layout(VkImageLayout layout)
-        {
+        void set_current_image_layout(VkImageLayout layout) {
             image_layouts[current_image_index] = layout;
         }
     };

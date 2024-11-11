@@ -8,32 +8,27 @@
 
 #include <glm/glm.hpp>
 
-namespace mirai
-{
+namespace mirai {
     class CommandBuffer;
     class ShaderMaterialCache;
     class FrameGraph;
     class FrameGraphBuilder;
 
-    class Renderer
-    {
+    class Renderer {
       public:
         Renderer(bool enable_validation);
         Renderer(const Renderer &) = delete;
         Renderer operator=(const Renderer &) = delete;
 
-        static Renderer *get()
-        {
+        static Renderer *get() {
             return Instance;
         }
 
-        void set_scene(std::unique_ptr<Scene> scene)
-        {
+        void set_scene(std::unique_ptr<Scene> scene) {
             this->scene = std::move(scene);
         }
 
-        Scene *get_scene()
-        {
+        Scene *get_scene() {
             return scene.get();
         }
 
@@ -54,6 +49,5 @@ namespace mirai
         std::unique_ptr<ShaderMaterialCache> material_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
-
-   };
+    };
 } // namespace mirai

@@ -8,18 +8,15 @@
 #include <GLFW/glfw3native.h>
 #endif
 
-namespace mirai
-{
+namespace mirai {
 
-    bool PhysicalDeviceSupportPresentation(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t graphics_queue_index)
-    {
+    bool PhysicalDeviceSupportPresentation(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t graphics_queue_index) {
         static PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR vk_check_presentation_support = (PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR)VK_LOAD_FUNCTION(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
         return vk_check_presentation_support(physicalDevice, graphics_queue_index);
         return false;
     }
 
-    static VkSurfaceKHR create_win32_surface(VkInstance instance)
-    {
+    static VkSurfaceKHR create_win32_surface(VkInstance instance) {
         GLFWwindow *window = static_cast<GLFWwindow *>(Window::get()->get_window_ptr());
         HWND hwnd = glfwGetWin32Window(window);
 
@@ -35,8 +32,7 @@ namespace mirai
         return surface;
     }
 
-    VkSurfaceKHR CreateSurface(VkInstance instance, VkPhysicalDevice physical_device, uint32_t graphics_queue_index)
-    {
+    VkSurfaceKHR CreateSurface(VkInstance instance, VkPhysicalDevice physical_device, uint32_t graphics_queue_index) {
         VkSurfaceKHR surface = VK_NULL_HANDLE;
 #ifdef MIRAI_PLATFORM_WINDOW
         surface = create_win32_surface(instance);
@@ -45,25 +41,21 @@ namespace mirai
 #endif
         VkBool32 present_support = false;
         VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, graphics_queue_index, surface, &present_support));
-        if (!present_support)
-        {
+        if (!present_support) {
             Log::Fatal("Presentation is supported by the device");
         }
         return surface;
     }
 
-    static VkPresentModeKHR select_present_mode(VkPhysicalDevice physical_device, VkSurfaceKHR surface, bool vsync)
-    {
+    static VkPresentModeKHR select_present_mode(VkPhysicalDevice physical_device, VkSurfaceKHR surface, bool vsync) {
         uint32_t present_mode_count = 0;
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr));
         std::vector<VkPresentModeKHR> present_modes(present_mode_count);
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, present_modes.data()));
 
         VkPresentModeKHR required_present_mode = vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
-        for (auto &present_mode : present_modes)
-        {
-            if (present_mode == required_present_mode)
-            {
+        for (auto &present_mode : present_modes) {
+            if (present_mode == required_present_mode) {
                 return present_mode;
             }
         }
@@ -71,8 +63,7 @@ namespace mirai
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface)
-    {
+    static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface) {
         VkSwapchainCreateInfoKHR createInfo = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = surface,
@@ -96,8 +87,7 @@ namespace mirai
         swapchain->swapchain = vk_swapchain;
     }
 
-    static VkSurfaceFormatKHR select_surface_format(VkPhysicalDevice physical_device, VkSurfaceKHR surface)
-    {
+    static VkSurfaceFormatKHR select_surface_format(VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
         uint32_t format_count = 0;
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr));
         std::vector<VkSurfaceFormatKHR> surface_formats(format_count);
@@ -106,8 +96,7 @@ namespace mirai
         VkFormat required_format = VK_FORMAT_B8G8R8A8_UNORM;
         VkColorSpaceKHR required_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-        for (auto &supported : surface_formats)
-        {
+        for (auto &supported : surface_formats) {
             if (supported.format == required_format && supported.colorSpace == required_colorspace)
                 return supported;
         }
@@ -116,8 +105,7 @@ namespace mirai
         return surface_formats[0];
     }
 
-    static void create_swapchain_image_views(VkDevice device, VulkanSwapchain *swapchain)
-    {
+    static void create_swapchain_image_views(VkDevice device, VulkanSwapchain *swapchain) {
         VkImageViewCreateInfo image_view_create_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -131,16 +119,14 @@ namespace mirai
         };
 
         swapchain->image_layouts.resize(swapchain->image_count);
-        for (uint32_t i = 0; i < swapchain->image_count; ++i)
-        {
+        for (uint32_t i = 0; i < swapchain->image_count; ++i) {
             swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
             image_view_create_info.image = swapchain->images[i];
             VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
         }
     }
 
-    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync)
-    {
+    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync) {
         VkSurfaceCapabilitiesKHR surface_caps{};
         VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &surface_caps));
         if (surface_caps.currentExtent.width == 0 || surface_caps.currentExtent.height == 0)
@@ -177,8 +163,7 @@ namespace mirai
         create_swapchain_image_views(device, swapchain);
     }
 
-    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync)
-    {
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync) {
         VkSwapchainKHR old_swapchain = swapchain->swapchain;
         for (auto &image_view : swapchain->image_views)
             vkDestroyImageView(device, image_view, nullptr);

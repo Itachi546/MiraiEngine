@@ -3,13 +3,11 @@
 #include "Graphics/RenderingDevice.hpp"
 #include <unordered_map>
 
-namespace mirai
-{
+namespace mirai {
     struct FrameGraphNode;
     class FrameGraph;
 
-    class ShaderMaterial
-    {
+    class ShaderMaterial {
       public:
         ShaderMaterial(const std::string &name);
 
@@ -17,8 +15,7 @@ namespace mirai
 
         void create_from_file(const std::vector<std::string> &shader_files);
 
-        void set_cull_mode(CullMode cull_mode)
-        {
+        void set_cull_mode(CullMode cull_mode) {
             if (this->cull_mode == cull_mode)
                 return;
 
@@ -26,8 +23,7 @@ namespace mirai
             this->cull_mode = cull_mode;
         }
 
-        void set_front_face(FrontFace front_face)
-        {
+        void set_front_face(FrontFace front_face) {
             if (this->front_face == front_face)
                 return;
 
@@ -35,8 +31,7 @@ namespace mirai
             this->front_face = front_face;
         }
 
-        void set_depth_test(bool depth_test)
-        {
+        void set_depth_test(bool depth_test) {
             if (this->enable_depth_test == depth_test)
                 return;
 
@@ -44,8 +39,7 @@ namespace mirai
             this->enable_depth_test = depth_test;
         }
 
-        void set_depth_write(bool depth_write)
-        {
+        void set_depth_write(bool depth_write) {
             if (this->enable_depth_write == depth_write)
                 return;
 
@@ -55,20 +49,17 @@ namespace mirai
 
         void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
 
-        void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count)
-        {
+        void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
             this->uniform_sets.clear();
             this->uniform_sets.insert(this->uniform_sets.end(), uniform_sets, uniform_sets + count);
         }
 
-        void set_push_constant(PushConstant *push_constants, uint32_t count)
-        {
+        void set_push_constant(PushConstant *push_constants, uint32_t count) {
             this->push_constants.clear();
             this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
         }
 
-        uint64_t get_hash()
-        {
+        uint64_t get_hash() {
             return hash;
         }
 
@@ -89,14 +80,12 @@ namespace mirai
 
         void calculate_hash();
 
-        void clear_pipeline_state()
-        {
+        void clear_pipeline_state() {
             pipeline.id = K_INVALID_ID;
             calculate_hash();
         }
 
-        struct Resource
-        {
+        struct Resource {
             std::string name;
             ID resource_id;
             bool dirty;

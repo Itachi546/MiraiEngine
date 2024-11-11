@@ -2,29 +2,23 @@
 #include <string.h>
 
 #define GPU_TYPE_INTEGRATED 0
-namespace mirai
-{
-    bool is_device_extensions_available(VkPhysicalDevice physical_device, const std::vector<const char *> &requested_extensions)
-    {
+namespace mirai {
+    bool is_device_extensions_available(VkPhysicalDevice physical_device, const std::vector<const char *> &requested_extensions) {
         uint32_t extension_count = 0;
         VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr));
         std::vector<VkExtensionProperties> supported_extensions(extension_count);
         VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, supported_extensions.data()));
 
-        for (auto &requested : requested_extensions)
-        {
+        for (auto &requested : requested_extensions) {
             bool available = false;
-            for (auto &supported : supported_extensions)
-            {
-                if (strcmp(requested, supported.extensionName) == 0)
-                {
+            for (auto &supported : supported_extensions) {
+                if (strcmp(requested, supported.extensionName) == 0) {
                     available = true;
                     break;
                 }
             }
 
-            if (!available)
-            {
+            if (!available) {
                 Log::Error("VULKAN::Failed to find device extension: " + std::string(requested));
                 return false;
             }
@@ -33,8 +27,7 @@ namespace mirai
         return true;
     }
 
-    VkPhysicalDevice SelectPhysicalDevice(VkInstance instance, std::vector<GpuDevice> &gpus, const std::vector<const char *> &required_device_extensions)
-    {
+    VkPhysicalDevice SelectPhysicalDevice(VkInstance instance, std::vector<GpuDevice> &gpus, const std::vector<const char *> &required_device_extensions) {
         uint32_t device_count = 0;
         VK_CHECK(vkEnumeratePhysicalDevices(instance, &device_count, nullptr));
         if (device_count == 0)
@@ -45,8 +38,7 @@ namespace mirai
 
         VK_CHECK(vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data()));
 
-        for (uint32_t i = 0; i < device_count; ++i)
-        {
+        for (uint32_t i = 0; i < device_count; ++i) {
             VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
             vkGetPhysicalDeviceProperties2(physical_devices[i], &properties);
             gpus[i].device_type = static_cast<DeviceType>(properties.properties.deviceType);
@@ -62,10 +54,8 @@ namespace mirai
         DeviceType device_type = DeviceType::DEVICE_TYPE_DISCRETE_GPU;
 #endif
         VkPhysicalDevice physical_device = physical_devices[0];
-        for (uint32_t i = 0; i < physical_devices.size(); ++i)
-        {
-            if (gpus[i].device_type == device_type)
-            {
+        for (uint32_t i = 0; i < physical_devices.size(); ++i) {
+            if (gpus[i].device_type == device_type) {
                 Log::Info("VULKAN::Selected Device: ", gpus[i].name);
                 physical_device = physical_devices[i];
                 break;
@@ -78,8 +68,7 @@ namespace mirai
         return physical_device;
     }
 
-    void GetDeviceQueueFamilies(VkPhysicalDevice physical_device, std::vector<uint32_t> &queue_family_indices)
-    {
+    void GetDeviceQueueFamilies(VkPhysicalDevice physical_device, std::vector<uint32_t> &queue_family_indices) {
         uint32_t queue_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_count, nullptr);
         if (queue_count == 0)
@@ -93,20 +82,17 @@ namespace mirai
         queue_family_indices[QUEUE_TYPE_TRANSFER] = K_INVALID_QUEUE_ID;
         queue_family_indices[QUEUE_TYPE_COMPUTE] = K_INVALID_QUEUE_ID;
 
-        for (uint32_t i = 0; i < queue_count; ++i)
-        {
+        for (uint32_t i = 0; i < queue_count; ++i) {
             VkQueueFamilyProperties queue_family_property = queue_family_properties[i];
             if (queue_family_property.queueCount == 0)
                 continue;
 
             // Search for main queue that should be able to do all work (graphics, compute and transfer)
-            if ((queue_family_property.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
-            {
+            if ((queue_family_property.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) {
                 queue_family_indices[QUEUE_TYPE_GRAPHICS] = i;
             }
             // Search for transfer queue
-            if ((queue_family_property.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0 && (queue_family_property.queueFlags & VK_QUEUE_TRANSFER_BIT))
-            {
+            if ((queue_family_property.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0 && (queue_family_property.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
                 queue_family_indices[QUEUE_TYPE_TRANSFER] = i;
             }
         }
@@ -114,15 +100,13 @@ namespace mirai
         ASSERT_MSG(queue_family_indices[QUEUE_TYPE_GRAPHICS] != K_INVALID_QUEUE_ID, "Graphics Queue is not supported...");
     }
 
-    VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions)
-    {
+    VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions) {
         VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr};
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
         vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);
 
         bool bindless_supported = indexing_features.descriptorBindingPartiallyBound && indexing_features.runtimeDescriptorArray;
-        if (!bindless_supported)
-        {
+        if (!bindless_supported) {
             Log::Fatal("VULKAN::Bindless resources is not supported ...");
         }
 
@@ -163,10 +147,8 @@ namespace mirai
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
         float queue_priorities[] = {0.0f};
-        for (uint32_t i = 0; i < queue_family_indices.size(); ++i)
-        {
-            if (queue_family_indices[i] != K_INVALID_QUEUE_ID)
-            {
+        for (uint32_t i = 0; i < queue_family_indices.size(); ++i) {
+            if (queue_family_indices[i] != K_INVALID_QUEUE_ID) {
                 queue_create_infos.push_back(VkDeviceQueueCreateInfo{
                     .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                     .queueFamilyIndex = queue_family_indices[i],

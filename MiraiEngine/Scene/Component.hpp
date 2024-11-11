@@ -7,25 +7,20 @@
 
 #include <glm/gtc/quaternion.hpp>
 
-namespace mirai
-{
-    struct NameComponent
-    {
+namespace mirai {
+    struct NameComponent {
         std::string name;
     };
 
-    struct HierarchyComponent
-    {
+    struct HierarchyComponent {
         std::vector<Entity> childrens;
         Entity parent;
 
-        void set_parent(Entity parent)
-        {
+        void set_parent(Entity parent) {
             this->parent = parent;
         }
 
-        void add_children(Entity children)
-        {
+        void add_children(Entity children) {
             auto found = std::find(childrens.begin(), childrens.end(), children);
             if (found == childrens.end())
                 childrens.push_back(children);
@@ -33,29 +28,24 @@ namespace mirai
                 Log::Warn("Trying to add duplicate children");
         }
 
-        void remove_children(Entity children)
-        {
+        void remove_children(Entity children) {
             auto found = std::find(childrens.begin(), childrens.end(), children);
-            if (found != childrens.end())
-            {
+            if (found != childrens.end()) {
                 childrens.erase(found);
             }
         }
 
-        void clear_parent()
-        {
+        void clear_parent() {
             this->parent = K_INVALID_ENTITY;
         }
     };
 
-    struct BufferView
-    {
+    struct BufferView {
         uint32_t offset;
         uint32_t count;
     };
 
-    struct Vertex
-    {
+    struct Vertex {
         float px, py, pz;
         uint32_t normal;
 
@@ -66,10 +56,8 @@ namespace mirai
 
     static_assert(sizeof(Vertex) % 16 == 0);
 
-    struct MeshComponent
-    {
-        enum FLAGS
-        {
+    struct MeshComponent {
+        enum FLAGS {
             EMPTY = 0,
             RENDERABLE = 1 << 0,
             DYNAMIC = 1 << 2,
@@ -81,8 +69,7 @@ namespace mirai
 
         uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
 
-        struct MeshSubset
-        {
+        struct MeshSubset {
             BufferView vertex_buffer;
             BufferView index_buffer;
             uint32_t vertex_count;
@@ -139,8 +126,7 @@ namespace mirai
         }
         */
 
-        void destroy_render_data()
-        {
+        void destroy_render_data() {
             /*
             std::vector<BufferID> buffers;
             if (vertex_buffer.is_valid())
@@ -153,15 +139,13 @@ namespace mirai
         }
     };
 
-    struct TransformComponent
-    {
+    struct TransformComponent {
         TransformComponent() : position(glm::vec3(0.0f)),
                                rotation(glm::fquat(1.0f, 0.0f, 0.0f, 0.0f)),
                                scale(glm::vec3(1.0f)),
                                local_transform(glm::mat4(1.0f)),
                                world_transform(glm::mat4(1.0f)),
-                               dirty(true)
-        {
+                               dirty(true) {
         }
 
         glm::vec3 position;
@@ -173,10 +157,8 @@ namespace mirai
         glm::mat4 local_transform;
         glm::mat4 world_transform;
 
-        void update_local_transform()
-        {
-            if (dirty)
-            {
+        void update_local_transform() {
+            if (dirty) {
                 local_transform = glm::translate(glm::mat4(1.0f), position) *
                                   glm::mat4_cast(rotation) *
                                   glm::scale(glm::mat4(1.0f), scale);
@@ -184,8 +166,7 @@ namespace mirai
         }
     };
 
-    struct Material
-    {
+    struct Material {
         std::string name;
 
         glm::vec4 albedo;

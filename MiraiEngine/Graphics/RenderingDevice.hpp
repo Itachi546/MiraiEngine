@@ -9,14 +9,12 @@
 #include <optional>
 #include <memory>
 
-namespace mirai
-{
+namespace mirai {
 
     constexpr const uint32_t K_INVALID_QUEUE_ID = UINT32_MAX;
     constexpr const uint32_t K_INVALID_ID = UINT32_MAX;
 
-    struct ID
-    {
+    struct ID {
         uint32_t id = 0;
         inline ID() = default;
         ID(uint32_t _id) : id(_id) {}
@@ -26,11 +24,9 @@ namespace mirai
         // size_t operator=(const ID &id) const { return id.id; }
     };
 #define DEFINE_ID(m_name)                                                                    \
-    struct m_name##ID : public ID                                                            \
-    {                                                                                        \
+    struct m_name##ID : public ID {                                                          \
         inline operator bool() const { return id != 0; }                                     \
-        inline m_name##ID &operator=(m_name##ID p_other)                                     \
-        {                                                                                    \
+        inline m_name##ID &operator=(m_name##ID p_other) {                                   \
             id = p_other.id;                                                                 \
             return *this;                                                                    \
         }                                                                                    \
@@ -48,8 +44,7 @@ namespace mirai
     DEFINE_ID(Buffer)
     DEFINE_ID(UniformSet)
 
-    enum class DeviceType
-    {
+    enum class DeviceType {
         DEVICE_TYPE_OTHER = 0x0,
         DEVICE_TYPE_INTEGRATED_GPU = 0x1,
         DEVICE_TYPE_DISCRETE_GPU = 0x2,
@@ -58,28 +53,24 @@ namespace mirai
         DEVICE_TYPE_MAX = 0x5
     };
 
-    enum QueueType
-    {
+    enum QueueType {
         QUEUE_TYPE_GRAPHICS = 0,
         QUEUE_TYPE_COMPUTE = 1,
         QUEUE_TYPE_TRANSFER = 2,
     };
 
-    struct GpuDevice
-    {
+    struct GpuDevice {
         std::string name;
         uint32_t vendor;
         DeviceType device_type;
     };
 
-    enum Colorspace
-    {
+    enum Colorspace {
         COLOR_SPACE_SRGB = 0,
         COLOR_SPACE_LINEAR
     };
 
-    enum Format
-    {
+    enum Format {
         FORMAT_B8G8R8A8_UNORM = 0,
         FORMAT_R8G8B8A8_UNORM,
         FORMAT_R8G8B8A8_SRGB,
@@ -101,10 +92,8 @@ namespace mirai
         FORMAT_MAX
     };
 
-    inline bool is_depth_format(Format format)
-    {
-        switch (format)
-        {
+    inline bool is_depth_format(Format format) {
+        switch (format) {
         case FORMAT_D16_UNORM:
         case FORMAT_D32_SFLOAT:
         case FORMAT_D32_SFLOAT_S8_UINT:
@@ -117,10 +106,8 @@ namespace mirai
         return false;
     }
 
-    inline bool is_stencil_format(Format format)
-    {
-        switch (format)
-        {
+    inline bool is_stencil_format(Format format) {
+        switch (format) {
         case FORMAT_D32_SFLOAT_S8_UINT:
         case FORMAT_D24_UNORM_S8_UINT:
             return true;
@@ -130,8 +117,7 @@ namespace mirai
         return false;
     }
 
-    enum Topology
-    {
+    enum Topology {
         TOPOLOGY_POINT_LIST = 0,
         TOPOLOGY_LINE_LIST = 1,
         TOPOLOGY_LINE_STRIP = 2,
@@ -146,8 +132,7 @@ namespace mirai
         TOPOLOGY_MAX = 11
     };
 
-    enum CullMode
-    {
+    enum CullMode {
         CULL_MODE_NONE = 0,
         CULL_MODE_FRONT,
         CULL_MODE_BACK,
@@ -155,23 +140,20 @@ namespace mirai
         CULL_MODE_MAX
     };
 
-    enum FrontFace
-    {
+    enum FrontFace {
         FRONT_FACE_COUNTER_CLOCKWISE = 0,
         FRONT_FACE_CLOCKWISE = 1,
         FRONT_FACE_MAX
     };
 
-    enum PolygonMode
-    {
+    enum PolygonMode {
         POLYGON_MODE_FILL = 0,
         POLYGON_MODE_LINE,
         POLYGON_MODE_POINT,
         POLYGON_MODE_MAX
     };
 
-    struct RasterizationState
-    {
+    struct RasterizationState {
         float line_width;
         CullMode cull_mode;
         PolygonMode polygon_mode;
@@ -179,8 +161,7 @@ namespace mirai
         bool conservative_mode;
         bool enable_depth_clamp;
 
-        static RasterizationState create()
-        {
+        static RasterizationState create() {
             return RasterizationState{
                 .line_width = 1.0f,
                 .cull_mode = CULL_MODE_BACK,
@@ -192,14 +173,12 @@ namespace mirai
         }
     };
 
-    struct DepthState
-    {
+    struct DepthState {
         bool enable_depth_test;
         bool enable_depth_write;
         float max_depth_bounds, min_depth_bounds;
 
-        static DepthState create()
-        {
+        static DepthState create() {
             return DepthState{
                 .enable_depth_test = false,
                 .enable_depth_write = false,
@@ -209,28 +188,24 @@ namespace mirai
         }
     };
 
-    struct BlendState
-    {
+    struct BlendState {
         bool enable;
 
-        static BlendState create()
-        {
+        static BlendState create() {
             return BlendState{
                 .enable = false,
             };
         }
     };
 
-    struct VertexAttributeDescription
-    {
+    struct VertexAttributeDescription {
         uint32_t binding;
         uint32_t location;
         Format format;
         uint32_t offset;
     };
 
-    struct VertexBindingDescription
-    {
+    struct VertexBindingDescription {
         uint32_t stride;
         uint32_t binding;
 
@@ -238,8 +213,7 @@ namespace mirai
         uint32_t attribute_count;
     };
 
-    struct PipelineDescription
-    {
+    struct PipelineDescription {
         ShaderID *shaders;
         uint32_t shader_count;
 
@@ -255,15 +229,13 @@ namespace mirai
         Format depth_attachment_format = FORMAT_UNDEFINED;
     };
 
-    enum TextureType
-    {
+    enum TextureType {
         TEXTURE_TYPE_1D = 0,
         TEXTURE_TYPE_2D = 1,
         TEXTURE_TYPE_3D = 2
     };
 
-    enum SamplerAddressMode
-    {
+    enum SamplerAddressMode {
         SAMPLER_ADDRESS_MODE_REPEAT = 0,
         SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT = 1,
         SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE = 2,
@@ -271,20 +243,17 @@ namespace mirai
         SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE = 4,
     };
 
-    enum FilterMode
-    {
+    enum FilterMode {
         FILTER_NEAREST = 0,
         FILTER_LINEAR = 1,
     };
 
-    enum SamplerMipmapMode
-    {
+    enum SamplerMipmapMode {
         SAMPLER_MIPMAP_NEAREST = 0,
         SAMPLER_MIPMAP_LINEAR = 1,
     };
 
-    struct SamplerDescription
-    {
+    struct SamplerDescription {
         SamplerAddressMode address_mode_u, address_mode_v, address_mode_w;
         FilterMode min_filter, mag_filter;
         SamplerMipmapMode mipmap_mode;
@@ -294,8 +263,7 @@ namespace mirai
         float max_lod;
         bool enable_anisotropy;
 
-        static SamplerDescription create()
-        {
+        static SamplerDescription create() {
             return {
                 .address_mode_u = SAMPLER_ADDRESS_MODE_REPEAT,
                 .address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT,
@@ -312,8 +280,7 @@ namespace mirai
         }
     };
 
-    enum TextureUsageBits
-    {
+    enum TextureUsageBits {
         TEXTURE_USAGE_TRANSFER_SRC_BIT = (1 << 0),
         TEXTURE_USAGE_TRANSFER_DST_BIT = (1 << 1),
         TEXTURE_USAGE_SAMPLED_BIT = (1 << 2),
@@ -324,8 +291,7 @@ namespace mirai
         TEXTURE_USAGE_STORAGE_BIT = (1 << 7),
     };
 
-    enum BufferUsageBits
-    {
+    enum BufferUsageBits {
         BUFFER_USAGE_TRANSFER_SRC_BIT = (1 << 0),
         BUFFER_USAGE_TRANSFER_DST_BIT = (1 << 1),
         BUFFER_USAGE_UNIFORM_BUFFER_BIT = (1 << 4),
@@ -335,21 +301,18 @@ namespace mirai
         BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8)
     };
 
-    enum MemoryAllocationType
-    {
+    enum MemoryAllocationType {
         MEMORY_ALLOCATION_TYPE_CPU,
         MEMORY_ALLOCATION_TYPE_GPU
     };
 
-    struct BufferDescription
-    {
+    struct BufferDescription {
         uint32_t size;
         uint32_t usage_flags;
         MemoryAllocationType allocation_type;
     };
 
-    struct TextureDescription
-    {
+    struct TextureDescription {
         uint32_t width, height, depth;
         uint32_t mip_levels, array_layers;
         TextureType texture_type;
@@ -358,28 +321,24 @@ namespace mirai
         SamplerDescription *sampler_desc;
     };
 
-    enum AttachmentType
-    {
+    enum AttachmentType {
         ATTACHMENT_TYPE_IMAGE,
         ATTACHMENT_TYPE_DEPTH,
         ATTACHMENT_TYPE_SWAPCHAIN
     };
 
-    enum AttachmentLoadOp
-    {
+    enum AttachmentLoadOp {
         LOAD_OP_LOAD = 0,
         LOAD_OP_CLEAR = 1,
         LOAD_OP_DONT_CARE = 2,
     };
 
-    enum AttachmentStoreOp
-    {
+    enum AttachmentStoreOp {
         STORE_OP_STORE = 0,
         STORE_OP_DONT_CARE = 0
     };
 
-    enum ShaderStage
-    {
+    enum ShaderStage {
         SHADER_STAGE_VERTEX = 0x00000001,
         SHADER_STAGE_TESSELLATION_CONTROL = 0x00000002,
         SHADER_STAGE_TESSELLATION_EVALUATION = 0x00000004,
@@ -390,8 +349,7 @@ namespace mirai
         SHADER_STAGE_ALL = 0x7FFFFFFF,
     };
 
-    enum BindingType
-    {
+    enum BindingType {
         BINDING_TYPE_SAMPLER = 0,
         BINDING_TYPE_COMBINED_IMAGE_SAMPLER = 1,
         BINDING_TYPE_SAMPLED_IMAGE = 2,
@@ -400,29 +358,25 @@ namespace mirai
         BINDING_TYPE_STORAGE_BUFFER = 7,
     };
 
-    struct UniformLayout
-    {
+    struct UniformLayout {
         uint32_t binding;
         BindingType binding_type;
         ShaderStage shader_stage;
     };
 
-    struct UniformBinding
-    {
+    struct UniformBinding {
         ID resource_id;
         uint64_t offset = 0;
         uint64_t range = UINT64_MAX;
     };
 
-    struct BufferCopyRegion
-    {
+    struct BufferCopyRegion {
         uint64_t src_offset;
         uint64_t dst_offset;
         uint64_t size;
     };
 
-    struct PushConstant
-    {
+    struct PushConstant {
         void *data;
         ShaderStage shader_stage;
         uint32_t size;
@@ -450,16 +404,13 @@ namespace mirai
         std::optional<AttachmentInfo> depth_attachment;
     };
     */
-    class RenderingDevice
-    {
+    class RenderingDevice {
       public:
-        RenderingDevice(bool enable_validation) : enable_validation(enable_validation)
-        {
+        RenderingDevice(bool enable_validation) : enable_validation(enable_validation) {
             Instance = this;
         }
 
-        static RenderingDevice *get()
-        {
+        static RenderingDevice *get() {
             return Instance;
         }
 
@@ -501,8 +452,7 @@ namespace mirai
         static RenderingDevice *Instance;
     };
 
-    namespace rendering_utils
-    {
+    namespace rendering_utils {
         ShaderID create_shader_module_from_file(const std::string &filename);
     }
 }; // namespace mirai

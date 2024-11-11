@@ -1,7 +1,6 @@
 #include "VulkanUtils.hpp"
 
-namespace mirai
-{
+namespace mirai {
     VkImageMemoryBarrier CreateImageMemoryBarrier(VkImage image,
                                                   VkImageAspectFlags aspect,
                                                   VkAccessFlags src_access_mask,
@@ -13,8 +12,7 @@ namespace mirai
                                                   uint32_t base_mip_level,
                                                   uint32_t base_array_level,
                                                   uint32_t level_count,
-                                                  uint32_t layer_count)
-    {
+                                                  uint32_t layer_count) {
         return {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .srcAccessMask = src_access_mask,
@@ -42,13 +40,12 @@ namespace mirai
                                                     VkImageLayout old_layout,
                                                     VkImageLayout new_layout,
                                                     VkImageAspectFlags aspect,
-                                                    uint32_t src_queue_family ,
+                                                    uint32_t src_queue_family,
                                                     uint32_t dst_queue_family,
                                                     uint32_t base_mip_level,
                                                     uint32_t base_array_level,
                                                     uint32_t level_count,
-                                                    uint32_t layer_count)
-    {
+                                                    uint32_t layer_count) {
         return {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .srcStageMask = src_stage_mask,

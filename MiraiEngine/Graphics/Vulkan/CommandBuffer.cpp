@@ -5,28 +5,22 @@
 #include "Scene/FrameGraph.hpp"
 #include "Common/MathUtils.hpp"
 
-namespace mirai
-{
+namespace mirai {
     VkImageLayout find_required_barrier_info(bool is_depth_texture,
                                              VkImageAspectFlags image_aspect,
                                              FrameGraphResourceType resource_type,
                                              VkAccessFlags &access_flags,
                                              VkPipelineStageFlags2 &src_stage,
-                                             VkPipelineStageFlags2 &dst_stage)
-    {
+                                             VkPipelineStageFlags2 &dst_stage) {
         VkImageLayout required_layout;
         bool is_attachment = resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT;
-        if (!is_attachment)
-        {
+        if (!is_attachment) {
             required_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             access_flags = VK_ACCESS_2_SHADER_READ_BIT;
             src_stage = is_depth_texture ? VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             dst_stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        }
-        else
-        {
-            if (is_depth_texture)
-            {
+        } else {
+            if (is_depth_texture) {
                 if (image_aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
                     required_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 else
@@ -35,9 +29,7 @@ namespace mirai
                 access_flags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 src_stage = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
                 dst_stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-            }
-            else
-            {
+            } else {
                 required_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 access_flags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 src_stage = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
@@ -48,8 +40,7 @@ namespace mirai
     }
 
     void create_image_barrier(VulkanRenderingDevice *device, FrameGraphResource *resource,
-                              std::vector<VkImageMemoryBarrier2> &image_barriers)
-    {
+                              std::vector<VkImageMemoryBarrier2> &image_barriers) {
         VulkanTexture *texture = device->access_texture(resource->texture);
         bool is_depth_texture = (texture->image_aspect & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 
@@ -70,13 +61,11 @@ namespace mirai
         texture->current_layout = required_layout;
     }
 
-    CommandBuffer::CommandBuffer()
-    {
+    CommandBuffer::CommandBuffer() {
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
 
-    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph)
-    {
+    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
         prepare_render_pass_resources(frame_graph, node);
 
         uint32_t attachment_count = static_cast<uint32_t>(node->outputs.size());
@@ -86,8 +75,7 @@ namespace mirai
         bool has_stencil_attachment = false;
 
         const FrameGraphRenderingInfo &frame_graph_rendering_info = node->rendering_info;
-        for (uint32_t i = 0; i < frame_graph_rendering_info.attachment_info.size(); ++i)
-        {
+        for (uint32_t i = 0; i < frame_graph_rendering_info.attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &frame_graph_rendering_info.attachment_info[i];
             FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
 
@@ -95,22 +83,16 @@ namespace mirai
             attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
             attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-            if (i == frame_graph_rendering_info.depth_attachment_index)
-            {
+            if (i == frame_graph_rendering_info.depth_attachment_index) {
                 attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
                 attachment_info.imageLayout = frame_graph_rendering_info.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 attachment_info.imageView = device->access_texture(resource->texture)->image_view;
                 depth_attachment = std::move(attachment_info);
-            }
-            else
-            {
-                if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
-                {
+            } else {
+                if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                     VulkanSwapchain *swapchain = device->get_swapchain();
                     attachment_info.imageView = swapchain->get_current_image_view();
-                }
-                else
-                {
+                } else {
                     attachment_info.imageView = device->access_texture(resource->texture)->image_view;
                 }
                 attachment_info.clearValue = {
@@ -152,8 +134,7 @@ namespace mirai
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void CommandBuffer::bind_pipeline(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count)
-    {
+    void CommandBuffer::bind_pipeline(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count) {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
@@ -162,12 +143,10 @@ namespace mirai
         set_push_constants(pipeline_id, push_constants, push_constant_count);
     }
 
-    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count)
-    {
+    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count) {
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
-        for (uint32_t i = 0; i < uniform_set_count; ++i)
-        {
+        for (uint32_t i = 0; i < uniform_set_count; ++i) {
             VulkanUniformSet *uniform_set = device->access_uniform_set(uniform_sets[i]);
             vkCmdBindDescriptorSets(command_buffer,
                                     pipeline->bind_point, pipeline->pipeline_layout,
@@ -177,11 +156,9 @@ namespace mirai
         }
     }
 
-    void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count)
-    {
+    void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count) {
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
-        for (uint32_t i = 0; i < push_constant_count; ++i)
-        {
+        for (uint32_t i = 0; i < push_constant_count; ++i) {
             PushConstant *push_constant = &push_constants[i];
             vkCmdPushConstants(command_buffer, pipeline->pipeline_layout,
                                VkShaderStageFlags(push_constant->shader_stage),
@@ -189,38 +166,32 @@ namespace mirai
         }
     }
 
-    void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
-    {
+    void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
         vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex, first_instance);
     }
 
-    void CommandBuffer::draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance)
-    {
+    void CommandBuffer::draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance) {
         vkCmdDrawIndexed(command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);
     }
 
-    void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride)
-    {
+    void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride) {
         VulkanBuffer *indirect_buffer = device->access_buffer(buffer);
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
-    void CommandBuffer::set_vertex_buffer(BufferID buffer)
-    {
+    void CommandBuffer::set_vertex_buffer(BufferID buffer) {
         VulkanBuffer *vertex_buffer = device->access_buffer(buffer);
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertex_buffer->buffer, &offset);
     }
 
-    void CommandBuffer::set_index_buffer(BufferID buffer)
-    {
+    void CommandBuffer::set_index_buffer(BufferID buffer) {
         VulkanBuffer *index_buffer = device->access_buffer(buffer);
         vkCmdBindIndexBuffer(command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
     }
 
-    void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region)
-    {
+    void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region) {
         VulkanBuffer *src_buffer = device->access_buffer(src);
         VulkanBuffer *dst_buffer = device->access_buffer(dst);
 
@@ -229,13 +200,11 @@ namespace mirai
         vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, 1, (const VkBufferCopy *)&region);
     }
 
-    void CommandBuffer::end_render_pass()
-    {
+    void CommandBuffer::end_render_pass() {
         vkCmdEndRendering(command_buffer);
     }
 
-    void CommandBuffer::begin()
-    {
+    void CommandBuffer::begin() {
         // Log::Info("Memory Usage GPU: ", utils::bytes_to_mb((uint32_t)device->total_memory_usage));
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -245,30 +214,25 @@ namespace mirai
         VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
     }
 
-    void CommandBuffer::wait()
-    {
+    void CommandBuffer::wait() {
         VK_CHECK(vkWaitForFences(device->device, 1, &fence, VK_TRUE, UINT64_MAX));
         vkResetFences(device->device, 1, &fence);
     }
 
-    void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
-    {
+    void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         prepare_input_resources(frame_graph, node);
         prepare_output_resources(frame_graph, node);
     }
 
-    void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
-    {
+    void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         std::vector<VkImageMemoryBarrier2> image_barriers;
         // Input Barrier
-        for (auto resource_handle : node->inputs)
-        {
+        for (auto resource_handle : node->inputs) {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
             create_image_barrier(device, resource, image_barriers);
         }
 
-        if (image_barriers.size() > 0)
-        {
+        if (image_barriers.size() > 0) {
             VkDependencyInfo dependency_info = {
                 .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
                 .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
@@ -284,21 +248,17 @@ namespace mirai
         }
     }
 
-    void CommandBuffer::prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node)
-    {
+    void CommandBuffer::prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         std::vector<VkImageMemoryBarrier2> image_barriers;
 
         // Output Barrier
-        for (auto resource_handle : node->outputs)
-        {
+        for (auto resource_handle : node->outputs) {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
-            if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
-            {
+            if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                 VulkanSwapchain *swapchain = device->get_swapchain();
 
                 VkImageLayout current_layout = swapchain->get_current_image_layout();
-                if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-                {
+                if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
                     image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
                                                                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -308,13 +268,11 @@ namespace mirai
                                                                        VK_IMAGE_ASPECT_COLOR_BIT));
                     swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
                 }
-            }
-            else
+            } else
                 create_image_barrier(device, resource, image_barriers);
         }
 
-        if (image_barriers.size() > 0)
-        {
+        if (image_barriers.size() > 0) {
             VkDependencyInfo dependency_info = {
                 .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
                 .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,

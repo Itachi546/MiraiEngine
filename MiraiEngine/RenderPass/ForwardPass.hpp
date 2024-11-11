@@ -1,11 +1,9 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
-namespace mirai
-{
+namespace mirai {
     class ShaderMaterial;
-    class ForwardPass : public FrameGraphRenderPass
-    {
+    class ForwardPass : public FrameGraphRenderPass {
       public:
         ForwardPass(const std::string &name);
 

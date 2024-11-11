@@ -19,16 +19,13 @@
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 
-class TestApplication : public App
-{
+class TestApplication : public App {
   public:
-    TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths)
-    {
+    TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
         Window::get()->set_title("TestApplication");
     }
 
-    void start() override
-    {
+    void start() override {
         uint32_t width = 1920;
         uint32_t height = 1080;
         scene = Renderer::get()->get_scene();
@@ -101,8 +98,7 @@ class TestApplication : public App
 
         frame_graph->compile();
 
-        if (model_paths.size() > 0)
-        {
+        if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);
         }
@@ -110,16 +106,14 @@ class TestApplication : public App
         controller = new CameraController(scene->get_camera());
     }
 
-    void update() override
-    {
+    void update() override {
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
 
         controller->update(Engine::get()->get_dt_seconds() * 1000.0f);
     }
 
-    ~TestApplication()
-    {
+    ~TestApplication() {
         delete controller;
         Log::Info("Destroying Test Application...");
     }
@@ -130,8 +124,7 @@ class TestApplication : public App
     CameraController *controller;
 };
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     EngineInitializationOptions options = {
         .width = 1360,
         .height = 769,
@@ -139,10 +132,8 @@ int main(int argc, char **argv)
     };
 
     std::vector<std::string> model_paths;
-    if (argc > 1)
-    {
-        for (int i = 1; i < argc; ++i)
-        {
+    if (argc > 1) {
+        for (int i = 1; i < argc; ++i) {
             model_paths.push_back(argv[i]);
         }
     }

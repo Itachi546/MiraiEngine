@@ -4,14 +4,11 @@
 
 #include "Common/CommonInclude.hpp"
 
-namespace mirai
-{
-    class App
-    {
+namespace mirai {
+    class App {
       public:
         explicit App(const std::string &name)
-            : name(name)
-        {
+            : name(name) {
         }
 
         virtual void start() = 0;

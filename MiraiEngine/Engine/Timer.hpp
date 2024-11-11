@@ -2,35 +2,28 @@
 
 #include <chrono>
 
-namespace mirai
-{
-    class Timer
-    {
+namespace mirai {
+    class Timer {
       public:
-        Timer()
-        {
+        Timer() {
             timestamp = std::chrono::high_resolution_clock::now();
         }
 
-        void record()
-        {
+        void record() {
             timestamp = std::chrono::high_resolution_clock::now();
         }
 
-        double elapsed_seconds()
-        {
+        double elapsed_seconds() {
             auto timestamp2 = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> timespan = std::chrono::duration_cast<std::chrono::duration<double>>(timestamp2 - timestamp);
             return timespan.count();
         }
 
-        double elapsed_milliseconds()
-        {
+        double elapsed_milliseconds() {
             return elapsed_seconds() * 1000.0f;
         }
 
-        double elapsed()
-        {
+        double elapsed() {
             return elapsed_milliseconds();
         }
 

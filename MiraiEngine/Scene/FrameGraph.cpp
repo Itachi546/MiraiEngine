@@ -1,22 +1,18 @@
 #include "FrameGraph.hpp"
 
-namespace mirai
-{
+namespace mirai {
     FrameGraphBuilder::FrameGraphBuilder() : resource_pool_nodes(64, "frame_graph_node"),
                                              resource_pool_resources(512, "frame_graph_resources"),
-                                             device(RenderingDevice::get())
-    {
+                                             device(RenderingDevice::get()) {
     }
 
-    FrameGraphNodeHandle FrameGraphBuilder::create_node(const FrameGraphNodeDescription &node_description)
-    {
+    FrameGraphNodeHandle FrameGraphBuilder::create_node(const FrameGraphNodeDescription &node_description) {
         uint32_t node_index = resource_pool_nodes.obtain();
         FrameGraphNode *node = resource_pool_nodes.access(node_index);
         node->name = node_description.name;
         node->enabled = node_description.enabled;
 
-        for (uint32_t i = 0; i < node_description.inputs.size(); ++i)
-        {
+        for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
             // auto found = resources_map.find(utils::djb2_hash_string(node_description.inputs[i].name));
             // ASSERT(found != resources_map.end());
             // node->inputs.push_back(FrameGraphResourceHandle{found->second});
@@ -29,16 +25,14 @@ namespace mirai
         uint32_t height = node_description.outputs[0].height;
 
         FrameGraphRenderingInfo &rendering_info = node->rendering_info;
-        for (uint32_t i = 0; i < node_description.outputs.size(); ++i)
-        {
+        for (uint32_t i = 0; i < node_description.outputs.size(); ++i) {
             ASSERT(width == node_description.outputs[i].width);
             ASSERT(height == node_description.outputs[i].height);
 
             const FrameGraphResourceOutput *output = &node_description.outputs[i];
             const FrameGraphResourceType &resource_type = output->resource_type;
 
-            if (is_depth_format(output->format))
-            {
+            if (is_depth_format(output->format)) {
                 rendering_info.depth_attachment_index = i;
                 rendering_info.has_stencil_attachment = is_stencil_format(output->format);
             }
@@ -61,16 +55,14 @@ namespace mirai
         return FrameGraphNodeHandle{node_index};
     }
 
-    FrameGraphResourceHandle FrameGraphBuilder::create_node_output(const FrameGraphResourceOutput *output)
-    {
+    FrameGraphResourceHandle FrameGraphBuilder::create_node_output(const FrameGraphResourceOutput *output) {
         // SamplerDescription sampler_desc = SamplerDescription::create();
         uint32_t handle = resource_pool_resources.obtain();
         FrameGraphResource *resource = resource_pool_resources.access(handle);
         resource->resource_type = output->resource_type;
         resource->texture = TextureID{K_INVALID_ID};
 
-        if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT)
-        {
+        if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT) {
             TextureDescription desc = {
                 .width = output->width,
                 .height = output->height,
@@ -84,14 +76,11 @@ namespace mirai
             };
 
             SamplerDescription sampler = SamplerDescription::create();
-            if (is_depth_format(output->format))
-            {
+            if (is_depth_format(output->format)) {
                 desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
                 if (is_stencil_format(output->format))
                     desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
-            }
-            else
-            {
+            } else {
                 desc.sampler_desc = &sampler;
                 desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
             }
@@ -104,15 +93,13 @@ namespace mirai
         return FrameGraphResourceHandle{handle};
     }
 
-    FrameGraphResourceHandle FrameGraphBuilder::create_node_input(const FrameGraphResourceInput *input)
-    {
+    FrameGraphResourceHandle FrameGraphBuilder::create_node_input(const FrameGraphResourceInput *input) {
         uint32_t handle = resource_pool_resources.obtain();
         FrameGraphResource *resource = resource_pool_resources.access(handle);
         resource->resource_type = input->resource_type;
 
         ASSERT(input->resource_type != FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT);
-        if (input->resource_type == FRAMEGRAPH_RESOURCE_TYPE_TEXTURE)
-        {
+        if (input->resource_type == FRAMEGRAPH_RESOURCE_TYPE_TEXTURE) {
             auto found = resources_map.find(utils::djb2_hash_string(input->name));
             ASSERT(found != resources_map.end());
             resource->texture = resource_pool_resources.access(found->second)->texture;
@@ -121,13 +108,10 @@ namespace mirai
         return FrameGraphResourceHandle{handle};
     }
 
-    FrameGraphBuilder::~FrameGraphBuilder()
-    {
-        for (auto &[key, val] : resources_map)
-        {
+    FrameGraphBuilder::~FrameGraphBuilder() {
+        for (auto &[key, val] : resources_map) {
             FrameGraphResource *resource = resource_pool_resources.access(val);
-            if (resource->resource_type != FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
-            {
+            if (resource->resource_type != FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                 device->destroy_textures(&resource->texture, 1);
             }
         }
@@ -136,14 +120,11 @@ namespace mirai
     }
 
     // @TODO Create from JSON file as well
-    FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder)
-    {
+    FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder) {
     }
 
-    void FrameGraph::compile()
-    {
-        for (uint32_t i = 0; i < node_descriptions.size(); ++i)
-        {
+    void FrameGraph::compile() {
+        for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
             const FrameGraphNode *node = builder->get_node(node_handle);
             node->renderer->initialize(this, node);
@@ -151,10 +132,8 @@ namespace mirai
         }
     }
 
-    void FrameGraph::render(CommandBuffer *command_buffer, Scene *scene)
-    {
-        for (auto handle : node_handles)
-        {
+    void FrameGraph::render(CommandBuffer *command_buffer, Scene *scene) {
+        for (auto handle : node_handles) {
             const FrameGraphNode *node = builder->get_node(handle);
             node->renderer->render(command_buffer, this, node, scene);
         }
