@@ -68,7 +68,7 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${MIRAI_LIBRARIES})
-target_link_libraries(${TARGET_NAME} INTERFACE glm::glm)
+target_link_libraries(${TARGET_NAME} PRIVATE glm::glm)
 
 target_compile_definitions(${TARGET_NAME} PRIVATE 
     GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -81,7 +81,10 @@ if(WIN32)
     WIN32_LEAN_AND_MEAN
     NOMINMAX
     )
-    target_compile_options(${TARGET_NAME} PRIVATE /W3)
 else()
     message(FATAL_ERROR "Unsupported platform")
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(${TARGET_NAME} PRIVATE /W3)
 endif()
