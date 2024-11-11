@@ -243,7 +243,7 @@ namespace mirai {
         int mesh_id = node->mesh;
         if (mesh_id >= 0) {
             ASSERT(mesh_id < load_state->mesh_components.size());
-            comp_manager->add_component<MeshComponent>(entity, std::move(load_state->mesh_components[mesh_id]));
+            comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
         }
 
         for (const auto &child : node->children)
@@ -299,9 +299,10 @@ namespace mirai {
 
         LoadMaterials(&gltf_model, &load_state);
 
-        for (uint32_t i = 0; i < gltf_model.nodes.size(); ++i)
-            ParseNodes(&gltf_model, i, root_entity, &load_state);
-
+        for (const auto &scene : gltf_model.scenes) {
+            for (const auto &node : scene.nodes)
+                ParseNodes(&gltf_model, node, root_entity, &load_state);
+        }
         GpuMesh &mesh = load_state.scene->gpu_meshes[load_state.gpu_mesh_id];
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());

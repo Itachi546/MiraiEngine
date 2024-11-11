@@ -92,7 +92,6 @@ namespace mirai {
       protected:
         std::string name;
 
-        uint32_t K_MAX_ENTITIES = 2'000;
         bool dirty = true;
 
         std::unique_ptr<Camera> camera;

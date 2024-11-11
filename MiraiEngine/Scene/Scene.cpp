@@ -4,7 +4,6 @@
 #include "Camera.hpp"
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
-
 #include <execution>
 #include <algorithm>
 
@@ -120,6 +119,8 @@ namespace mirai {
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
+        draw_infos.reserve(component_count);
+
         DrawData draw_data;
         for (uint32_t i = 0; i < component_count; ++i) {
             const MeshComponent &mesh_component = mesh_component_ptr->components[i];
@@ -133,6 +134,7 @@ namespace mirai {
             draw_data.vertex_buffer = gpu_mesh.vertex_buffer;
             draw_data.index_buffer = gpu_mesh.index_buffer;
             draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
+            ASSERT(mesh_component.mesh_subsets.size() > 0);
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 draw_data.transform_index = i;
                 draw_data.material_index = mesh_subset.material_index;
@@ -144,7 +146,6 @@ namespace mirai {
         }
 
         std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-
         dirty = false;
     }
 
