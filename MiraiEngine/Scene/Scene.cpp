@@ -8,10 +8,8 @@
 #include <execution>
 #include <algorithm>
 
-namespace mirai
-{
-    Scene::Scene(const std::string &name) : name(name)
-    {
+namespace mirai {
+    Scene::Scene(const std::string &name) : name(name) {
         component_manager = std::make_unique<ComponentManager>();
         component_manager->register_component<NameComponent>();
         component_manager->register_component<HierarchyComponent>();
@@ -19,7 +17,7 @@ namespace mirai
         component_manager->register_component<TransformComponent>();
 
         BufferDescription buffer_desc = {
-            .size = K_MAX_ENTITIES * sizeof(glm::mat4),
+            .size = static_cast<uint32_t>(K_MAX_ENTITIES * sizeof(glm::mat4)),
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
@@ -54,8 +52,7 @@ namespace mirai
         camera = std::make_unique<Camera>();
     }
 
-    void Scene::update()
-    {
+    void Scene::update() {
         camera->update();
 
         update_transform_components();
@@ -73,14 +70,11 @@ namespace mirai
         frame_data_ptr->window_size = glm::vec2((float)width, (float)height);
     }
 
-    void Scene::remove_entity_tree(Entity entity)
-    {
-        if (component_manager->has_component<MeshComponent>(entity))
-        {
+    void Scene::remove_entity_tree(Entity entity) {
+        if (component_manager->has_component<MeshComponent>(entity)) {
             component_manager->get_component<MeshComponent>(entity)->destroy_render_data();
         }
-        if (component_manager->has_component<HierarchyComponent>(entity))
-        {
+        if (component_manager->has_component<HierarchyComponent>(entity)) {
             HierarchyComponent *comp = component_manager->get_component<HierarchyComponent>(entity);
             for (auto child : comp->childrens)
                 remove_entity_tree(child);
@@ -88,42 +82,35 @@ namespace mirai
         ecs::destroy_entity(component_manager.get(), entity);
     }
 
-    void Scene::update_transform_components()
-    {
+    void Scene::update_transform_components() {
         auto transform_array_ptr = component_manager->get_component_array<TransformComponent>();
         std::vector<TransformComponent> &transforms = transform_array_ptr->components;
         std::for_each(std::execution::par_unseq,
                       transforms.begin(),
                       transforms.end(),
-                      [](TransformComponent &transform)
-                      { transform.update_local_transform(); });
+                      [](TransformComponent &transform) { transform.update_local_transform(); });
     }
 
-    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform)
-    {
+    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform) {
         TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-        if (transform->dirty)
-        {
+        if (transform->dirty) {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
 
             HierarchyComponent *hierarchy_component = component_manager->get_component<HierarchyComponent>(entity);
-            if (hierarchy_component != nullptr)
-            {
+            if (hierarchy_component != nullptr) {
                 for (auto &child : hierarchy_component->childrens)
                     update_hierarchy(child, transform->world_transform);
             }
         }
     }
 
-    void Scene::update_hierarchy_component()
-    {
+    void Scene::update_hierarchy_component() {
         for (auto &entity : entities)
             update_hierarchy(entity, glm::mat4(1.0f));
     }
 
-    void Scene::update_draw_data()
-    {
+    void Scene::update_draw_data() {
         if (!dirty)
             return;
 
@@ -134,8 +121,7 @@ namespace mirai
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
         DrawData draw_data;
-        for (uint32_t i = 0; i < component_count; ++i)
-        {
+        for (uint32_t i = 0; i < component_count; ++i) {
             const MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
 
@@ -147,8 +133,7 @@ namespace mirai
             draw_data.vertex_buffer = gpu_mesh.vertex_buffer;
             draw_data.index_buffer = gpu_mesh.index_buffer;
             draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
-            for (auto &mesh_subset : mesh_component.mesh_subsets)
-            {
+            for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 draw_data.transform_index = i;
                 draw_data.material_index = mesh_subset.material_index;
                 draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
@@ -158,17 +143,14 @@ namespace mirai
             }
         }
 
-        std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs)
-                  { return lhs.vertex_buffer < rhs.vertex_buffer; });
+        std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
 
         dirty = false;
     }
 
-    void Scene::remove_entity(Entity entity)
-    {
+    void Scene::remove_entity(Entity entity) {
         auto found = std::find(entities.begin(), entities.end(), entity);
-        if (found == entities.end())
-        {
+        if (found == entities.end()) {
             Log::Warn("Entity doesn't belong to the scene");
             return;
         }
@@ -178,25 +160,21 @@ namespace mirai
         dirty = true;
     }
 
-    void Scene::release_all_entities()
-    {
+    void Scene::release_all_entities() {
         for (auto entity : entities)
             remove_entity_tree(entity);
         entities.clear();
     }
 
-    Scene::~Scene()
-    {
+    Scene::~Scene() {
         release_all_entities();
 
-        for (auto &gpu_mesh : gpu_meshes)
-        {
+        for (auto &gpu_mesh : gpu_meshes) {
             RenderingDevice::get()->destroy_buffers(&gpu_mesh.vertex_buffer, 1);
             RenderingDevice::get()->destroy_buffers(&gpu_mesh.index_buffer, 1);
         }
 
-        for (auto &comp_array : component_manager->component_array)
-        {
+        for (auto &comp_array : component_manager->component_array) {
             if (comp_array)
                 ASSERT(comp_array->size() == 0);
         }

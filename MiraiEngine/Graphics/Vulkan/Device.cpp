@@ -1,4 +1,5 @@
 #include "Device.hpp"
+#include <string.h>
 
 #define GPU_TYPE_INTEGRATED 0
 namespace mirai
@@ -15,7 +16,7 @@ namespace mirai
             bool available = false;
             for (auto &supported : supported_extensions)
             {
-                if (std::strcmp(requested, supported.extensionName) == 0)
+                if (strcmp(requested, supported.extensionName) == 0)
                 {
                     available = true;
                     break;
@@ -48,7 +49,7 @@ namespace mirai
         {
             VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
             vkGetPhysicalDeviceProperties2(physical_devices[i], &properties);
-            gpus[i].device_type = DeviceType{properties.properties.deviceType};
+            gpus[i].device_type = static_cast<DeviceType>(properties.properties.deviceType);
             gpus[i].vendor = properties.properties.vendorID;
             gpus[i].name = properties.properties.deviceName;
 

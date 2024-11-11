@@ -8,7 +8,6 @@ add_subdirectory(Shaders/)
 add_dependencies(TestApplication Shaders)
 
 set_property(TARGET TestApplication PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-message(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_custom_command(TARGET TestApplication
   POST_BUILD

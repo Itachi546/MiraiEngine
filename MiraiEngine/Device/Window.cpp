@@ -2,32 +2,34 @@
 #include "Engine/Log.hpp"
 #include "InputDevice.hpp"
 
+#include <GLFW/glfw3.h>
+
 namespace mirai
 {
-    static void WindowKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+    void WindowKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
     {
         Input::get()->set_modifiers(mods);
         Input::get()->set_state(Key(key), action != GLFW_RELEASE);
     }
 
-    static void WindowButtonCallback(GLFWwindow *window, int button, int action, int mods)
+    void WindowButtonCallback(GLFWwindow *window, int button, int action, int mods)
     {
         Input::get()->set_modifiers(mods);
         Input::get()->set_state(Key(button), action != GLFW_RELEASE);
     }
 
-    static void WindowSizeCallback(GLFWwindow *glfw_window, int width, int height)
+    void WindowSizeCallback(GLFWwindow *glfw_window, int width, int height)
     {
         Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
         window->width = static_cast<uint32_t>(width);
         window->height = static_cast<uint32_t>(height);
     }
 
-    static void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y)
+    void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y)
     {
     }
 
-    static void WindowScrollCallback(GLFWwindow *glfw_window, double xoffset, double yoffset)
+    void WindowScrollCallback(GLFWwindow *glfw_window, double xoffset, double yoffset)
     {
         Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
         glm::vec2 current_scroll{static_cast<float>(xoffset), static_cast<float>(yoffset)};
@@ -35,7 +37,7 @@ namespace mirai
         window->mouse_scroll = current_scroll;
     }
 
-    static void WindowIconifyCallback(GLFWwindow *glfw_window, int iconified)
+    void WindowIconifyCallback(GLFWwindow *glfw_window, int iconified)
     {
         Window *window = static_cast<Window *>(glfwGetWindowUserPointer(glfw_window));
         if (iconified == GLFW_TRUE)

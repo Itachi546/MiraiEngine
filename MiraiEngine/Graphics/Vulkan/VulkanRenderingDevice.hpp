@@ -41,7 +41,7 @@ namespace mirai
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
 
-        TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name);
+        TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
 
         void new_frame() override;
 
@@ -56,7 +56,7 @@ namespace mirai
 
         void submit_command_buffer_immediate(CommandBuffer *command_buffer) override;
 
-        void wait();
+        void wait() override;
 
         void present() override;
 

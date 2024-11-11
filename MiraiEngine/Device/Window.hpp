@@ -2,7 +2,6 @@
 
 #include "Common/CommonInclude.hpp"
 
-#include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <string>
@@ -88,9 +87,9 @@ namespace mirai
         ~Window();
 
       private:
-        friend static void WindowSizeCallback(GLFWwindow *window, int width, int height);
-        friend static void WindowCursorPosCallback(GLFWwindow *window, double x, double y);
-        friend static void WindowScrollCallback(GLFWwindow *window, double xoffset, double yoffset);
+        friend void WindowSizeCallback(GLFWwindow *window, int width, int height);
+        friend void WindowCursorPosCallback(GLFWwindow *window, double x, double y);
+        friend void WindowScrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 
         static Window *Instance;
 

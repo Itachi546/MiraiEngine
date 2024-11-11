@@ -7,6 +7,7 @@
 #include <array>
 #include <memory>
 #include <unordered_map>
+#include <algorithm>
 
 namespace mirai
 {
@@ -121,10 +122,10 @@ namespace mirai
             return ~0ull;
         }
 
-        template <typename T>
+        template <typename Component>
         uint32_t get_index(const T *val)
         {
-            auto found = std::find_if(components.begin(), components.end(), [val](T &comp)
+            auto found = std::find_if(components.begin(), components.end(), [val](Component &comp)
                                       { return &comp == val; });
 
             if (found != components.end())
@@ -132,7 +133,7 @@ namespace mirai
             return -1;
         }
 
-        std::size_t size() const
+        std::size_t size() const override
         {
             return components.size();
         }

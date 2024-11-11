@@ -16,5 +16,3 @@ CompactNamespaces: true
 AllowShortIfStatementsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortBlocksOnASingleLine: true
-AllowShortIfStatementsOnASingleLine: false
-BreakBeforeBraces: Allman

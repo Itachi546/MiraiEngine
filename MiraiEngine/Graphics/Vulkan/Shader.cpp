@@ -3,6 +3,8 @@
 #include "spirv_reflect.h"
 #include "Common/Hash.hpp"
 
+#include <algorithm>
+
 namespace mirai
 {
     static void parse_shader_reflection(VulkanShader *shader, const uint32_t *code, uint32_t code_size_in_bytes)

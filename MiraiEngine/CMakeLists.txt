@@ -15,7 +15,7 @@ set(MIRAI_LIBRARY_TYPE STATIC)
 message(STATUS "Building MiraiEngine as static library")
 endif()
 
-find_package(glfw3 QUIET)
+find_package(glfw QUIET)
 if(NOT TARGET glfw)
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "")
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "")
@@ -68,7 +68,7 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${MIRAI_LIBRARIES})
-target_link_libraries(${TARGET_NAME} PRIVATE glm::glm)
+target_link_libraries(${TARGET_NAME} PUBLIC glm::glm)
 
 target_compile_definitions(${TARGET_NAME} PRIVATE 
     GLM_FORCE_DEPTH_ZERO_TO_ONE

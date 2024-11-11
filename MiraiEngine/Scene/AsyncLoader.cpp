@@ -26,7 +26,7 @@ namespace mirai
                     if (copy_task != nullptr)
                     {
                         ASSERT(copy_task->size_in_bytes <= K_STAGING_BUFFER_SIZE);
-                        std::memcpy(staging_buffer_ptr, copy_task->data, copy_task->size_in_bytes);
+                        memcpy(staging_buffer_ptr, copy_task->data, copy_task->size_in_bytes);
 
                         // Immediate Copy
                         command_buffer->begin();

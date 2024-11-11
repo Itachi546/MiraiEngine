@@ -110,6 +110,8 @@ namespace mirai
         case FORMAT_D32_SFLOAT_S8_UINT:
         case FORMAT_D24_UNORM_S8_UINT:
             return true;
+        default:
+            return false;
         }
 
         return false;
@@ -122,6 +124,8 @@ namespace mirai
         case FORMAT_D32_SFLOAT_S8_UINT:
         case FORMAT_D24_UNORM_S8_UINT:
             return true;
+        default:
+            return false;
         }
         return false;
     }

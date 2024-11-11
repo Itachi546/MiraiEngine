@@ -1,6 +1,7 @@
 #include "Instance.hpp"
 
 #include <vector>
+#include <string.h>
 
 namespace mirai
 {
@@ -66,7 +67,7 @@ namespace mirai
             bool available = false;
             for (auto &supported : supported_extensions)
             {
-                if (std::strcmp(requested, supported.extensionName) == 0)
+                if (strcmp(requested, supported.extensionName) == 0)
                 {
                     available = true;
                     break;
