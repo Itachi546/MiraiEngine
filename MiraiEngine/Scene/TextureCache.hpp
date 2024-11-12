@@ -1,0 +1,34 @@
+#pragma once
+
+#include <unordered_map>
+#include "Graphics/RenderingDevice.hpp"
+#include "Engine/Log.hpp"
+
+namespace mirai {
+
+    class TextureCache {
+      public:
+        TextureCache();
+
+        static TextureCache *get() {
+            return Instance;
+        }
+
+        TextureID get_texture_id(const std::string &name);
+
+        void add_texture(const std::string &name, TextureID texture);
+
+        ~TextureCache() {
+            RenderingDevice *device = RenderingDevice::get();
+            Log::Info("Destroying ", textures_map.size(), " textures...");
+            for (auto &[key, val] : textures_map) {
+                device->destroy_textures(&val, 1);
+            }
+        }
+
+      private:
+        static TextureCache *Instance;
+        std::unordered_map<uint32_t, TextureID> textures_map;
+    };
+
+} // namespace mirai

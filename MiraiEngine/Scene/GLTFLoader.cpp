@@ -8,8 +8,11 @@
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
 #include "Common/MathUtils.hpp"
+#include "Common/dds.hpp"
 #include "Engine/Timer.hpp"
+#include "TextureCache.hpp"
 
+#include <memory>
 #include <glm/glm.hpp>
 
 namespace mirai {
@@ -250,22 +253,99 @@ namespace mirai {
             ParseNodes(model, child, entity, load_state);
     }
 
-    bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
-                       std::string *warn, int req_width, int req_height,
-                       const unsigned char *bytes, int size, void *user_data) {
+    static Format get_image_format(dds::DXGI_FORMAT format) {
+        switch (format) {
+        case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
+            return FORMAT_BC7_SRGB_BLOCK;
+        case dds::DXGI_FORMAT_BC7_UNORM:
+            return FORMAT_BC7_UNORM_BLOCK;
+        default:
+            return FORMAT_UNDEFINED;
+        }
+    }
+
+    struct UserData {
+        std::string base_path;
+        AsyncLoader *async_loader;
+    };
+
+    bool
+    LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
+                  std::string *warn, int req_width, int req_height,
+                  const unsigned char *bytes, int size, void *user_data) {
+
+        if (image->uri.empty()) {
+            image->uri = "gltftexture_" + std::to_string(rand()) + ".dds";
+        }
+
+        if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
+            Log::Warn("Duplicate texture: ", image->uri);
+            return true;
+        }
+
+        if (utils::get_file_extension(image->uri) != "dds")
+            return false;
+
+        UserData *p_user_data = (UserData *)user_data;
+        std::string full_path = p_user_data->base_path + image->uri;
+        FILE *file = fopen(full_path.c_str(), "rb");
+        if (!file)
+            return false;
+
+        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
+
+        dds::Header header;
+        if (fread(&header, sizeof(header), 1, file) != 1)
+            return false;
+
+        ASSERT_MSG(header.header.dwWidth > 0 && header.header.dwWidth > 0, "zero width or height");
+        if (header.header10.resourceDimension != dds::D3D10_RESOURCE_DIMENSION_TEXTURE2D)
+            return false;
+
+        Format format = get_image_format(header.header10.dxgiFormat);
+        ASSERT_MSG(format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
+
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        TextureDescription texture_desc = {
+            .width = header.header.dwWidth,
+            .height = header.header.dwHeight,
+            .depth = 1,
+            .mip_levels = header.header.dwMipMapCount,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = format,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
+            .sampler_desc = &sampler_desc,
+        };
+
         Log::Info("Image: ", image->uri);
+        TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
+        TextureCache::get()->add_texture(image->uri, texture);
+
+        p_user_data->async_loader->add_texture_load_task({
+            .texture = texture,
+            .filename = full_path,
+        });
+
         return true;
     }
 
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene) {
         Timer load_timer;
+        AsyncLoader async_loader;
+        UserData user_data = {
+            .base_path = utils::get_base_path(filename),
+            .async_loader = &async_loader,
+        };
 
         std::string file_extension = utils::get_file_extension(filename);
 
         bool ret = false;
         std::string err, warn;
+
         tinygltf::TinyGLTF gltf_loader;
-        gltf_loader.SetImageLoader(LoadImageData, nullptr);
+        gltf_loader.SetImageLoader(LoadImageData, &user_data);
+
         tinygltf::Model gltf_model;
         if (file_extension == "GLB" || file_extension == "glb")
             ret = gltf_loader.LoadBinaryFromFile(&gltf_model, &err, &warn, filename);
@@ -291,7 +371,6 @@ namespace mirai {
             .material_base_offset = static_cast<uint32_t>(scene->materials.size()),
         };
 
-        AsyncLoader async_loader;
         load_state.async_loader = &async_loader;
 
         LoadMeshes(&gltf_model, &load_state);

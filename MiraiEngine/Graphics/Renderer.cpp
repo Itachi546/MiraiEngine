@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderMaterialCache.hpp"
+#include "Scene/TextureCache.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
 
@@ -15,6 +16,8 @@ namespace mirai {
         device = std::make_unique<VulkanRenderingDevice>(enable_validation);
         scene = std::make_unique<Scene>("default");
         material_cache = std::make_unique<ShaderMaterialCache>();
+        texture_cache = std::make_unique<TextureCache>();
+
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }

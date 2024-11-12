@@ -5,7 +5,7 @@
 
 namespace mirai {
     using namespace std::chrono_literals;
-    const uint32_t K_STAGING_BUFFER_SIZE = utils::mb_to_bytes(128);
+    const uint32_t K_STAGING_BUFFER_SIZE = utils::mb_to_bytes(32);
     void AsyncLoader::start() {
         BufferDescription buffer_desc = {
             .size = K_STAGING_BUFFER_SIZE,
@@ -20,8 +20,22 @@ namespace mirai {
                 while (!buffer_copy_tasks.empty()) {
                     std::shared_ptr<BufferCopyTask> copy_task = buffer_copy_tasks.try_pop();
                     if (copy_task != nullptr) {
-                        ASSERT(copy_task->size_in_bytes <= K_STAGING_BUFFER_SIZE);
-                        memcpy(staging_buffer_ptr, copy_task->data, copy_task->size_in_bytes);
+                        uint32_t copy_data_size = copy_task->size_in_bytes;
+
+                        // Check if the copy size is greater than the staging buffer
+                        if (copy_task->size_in_bytes > K_STAGING_BUFFER_SIZE) {
+                            uint32_t remaining_data_size = copy_task->size_in_bytes - K_STAGING_BUFFER_SIZE;
+                            add_buffer_copy_task({
+                                .dst = copy_task->dst,
+                                .data = ((uint8_t *)copy_task->data + K_STAGING_BUFFER_SIZE),
+                                .offset_in_bytes = K_STAGING_BUFFER_SIZE + copy_task->offset_in_bytes,
+                                .size_in_bytes = remaining_data_size,
+                            });
+                            copy_data_size = K_STAGING_BUFFER_SIZE;
+                            Log::Warn("Splitting data, total: ", copy_task->size_in_bytes, " remaining: ", remaining_data_size);
+                        }
+
+                        memcpy(staging_buffer_ptr, copy_task->data, copy_data_size);
 
                         // Immediate Copy
                         command_buffer->begin();
@@ -29,7 +43,7 @@ namespace mirai {
                         command_buffer->copy_buffer(copy_task->dst, staging_buffer, {
                                                                                         .src_offset = 0,
                                                                                         .dst_offset = copy_task->offset_in_bytes,
-                                                                                        .size = copy_task->size_in_bytes,
+                                                                                        .size = copy_data_size,
                                                                                     });
                         RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
 

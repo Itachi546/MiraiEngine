@@ -44,6 +44,8 @@ namespace mirai {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_BC7_SRGB_BLOCK,
+        VK_FORMAT_BC7_UNORM_BLOCK,
         VK_FORMAT_UNDEFINED,
     };
 } // namespace mirai

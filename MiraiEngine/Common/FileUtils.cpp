@@ -36,6 +36,13 @@ namespace utils {
         return filename.substr(0, index - 1);
     }
 
+    std::string get_base_path(const std::string &path) {
+        size_t index = path.find_last_of('/');
+        if (index == std::string::npos)
+            return path;
+        return path.substr(0, index + 1);
+    }
+
     std::string get_filename(const std::string &filename) {
         size_t index = filename.find_last_of('/');
         if (index == std::string::npos)

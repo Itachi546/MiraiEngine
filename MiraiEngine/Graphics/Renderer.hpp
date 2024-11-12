@@ -11,6 +11,7 @@
 namespace mirai {
     class CommandBuffer;
     class ShaderMaterialCache;
+    class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
 
@@ -47,6 +48,7 @@ namespace mirai {
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
         std::unique_ptr<ShaderMaterialCache> material_cache;
+        std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
     };

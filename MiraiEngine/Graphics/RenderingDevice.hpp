@@ -88,6 +88,8 @@ namespace mirai {
         FORMAT_D32_SFLOAT,
         FORMAT_D32_SFLOAT_S8_UINT,
         FORMAT_D24_UNORM_S8_UINT,
+        FORMAT_BC7_SRGB_BLOCK,
+        FORMAT_BC7_UNORM_BLOCK,
         FORMAT_UNDEFINED,
         FORMAT_MAX
     };

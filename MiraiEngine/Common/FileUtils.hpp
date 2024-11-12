@@ -10,5 +10,6 @@ namespace utils {
     std::string get_file_extension(const std::string &filename);
     std::string get_filename(const std::string &filename);
     std::string trim_file_extension(const std::string &filename);
+    std::string get_base_path(const std::string &path);
 }
 } // namespace mirai::utils

@@ -13,6 +13,11 @@ namespace mirai {
         uint32_t size_in_bytes;
     };
 
+    struct TextureLoadTask {
+        TextureID texture;
+        std::string filename;
+    };
+
     class AsyncLoader {
       public:
         AsyncLoader() = default;
@@ -21,12 +26,17 @@ namespace mirai {
 
         void wait();
 
-        void add_buffer_copy_task(BufferCopyTask &&copy_task) {
+        void add_buffer_copy_task(const BufferCopyTask &copy_task) {
             buffer_copy_tasks.push(copy_task);
+        }
+
+        void add_texture_load_task(const TextureLoadTask &texture_load_task) {
+            texture_load_tasks.push(texture_load_task);
         }
 
       private:
         ThreadSafeQueue<BufferCopyTask> buffer_copy_tasks;
+        ThreadSafeQueue<TextureLoadTask> texture_load_tasks;
         BufferID staging_buffer;
         std::thread task_thread;
     };
