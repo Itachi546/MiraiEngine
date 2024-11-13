@@ -47,6 +47,7 @@ namespace mirai {
         VkShaderStageFlagBits shader_stage;
         std::vector<VkReflectionDescriptorSet> descriptor_sets;
         std::unordered_map<uint32_t, VkPushConstantRange> push_constants;
+        bool support_bindless_texture;
     };
 
     struct VulkanBindingInfo {
@@ -87,15 +88,15 @@ namespace mirai {
         VkPipelineBindPoint bind_point;
         std::vector<VkDescriptorSetLayout> set_layouts;
         VkPipelineLayout pipeline_layout;
+        bool support_bindless_texture;
     };
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size);
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const std::vector<VkReflectionDescriptorBinding> &descriptor_bindings, uint32_t set, VkDescriptorSetLayoutCreateFlags flags);
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void* p_next);
+
     uint64_t GetDescriptorSetLayoutHash(const std::vector<VkReflectionDescriptorBinding> &bindings, uint32_t set);
     uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set);
-
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const std::vector<VkReflectionDescriptorBinding> &descriptor_bindings, uint32_t set, VkDescriptorSetLayoutCreateFlags flags);
 
     void MergePushConstants(std::unordered_map<uint32_t, VkPushConstantRange> &dst, const std::unordered_map<uint32_t, VkPushConstantRange> &src);
 

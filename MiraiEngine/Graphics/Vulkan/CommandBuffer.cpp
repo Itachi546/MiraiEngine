@@ -140,6 +140,9 @@ namespace mirai {
 
         set_uniform_sets(pipeline_id, uniform_sets, uniform_set_count);
         set_push_constants(pipeline_id, push_constants, push_constant_count);
+
+        if (pipeline->support_bindless_texture)
+            vkCmdBindDescriptorSets(command_buffer, pipeline->bind_point, pipeline->pipeline_layout, K_BINDLESS_TEXTURE_SET, 1, &device->bindless_descriptor_set, 0, nullptr);
     }
 
     void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count) {
@@ -273,6 +276,7 @@ namespace mirai {
             },
         };
         pipeline_barrier(&shader_read_barrier, 1);
+        dst_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
     void CommandBuffer::end_render_pass() {

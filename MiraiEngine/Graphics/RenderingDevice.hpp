@@ -439,6 +439,7 @@ namespace mirai {
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
+        virtual void add_bindless_texture(TextureID *textures, uint32_t texture_count) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 

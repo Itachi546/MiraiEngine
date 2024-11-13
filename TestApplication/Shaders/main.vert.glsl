@@ -1,7 +1,6 @@
 #version 460
 
-layout(location = 0) out VS_OUT
-{
+layout(location = 0) out VS_OUT {
     vec3 normal;
     vec3 tangent;
     vec3 bitangent;
@@ -18,13 +17,7 @@ vs_out;
 
 #include "utils/vertexdata.glsl"
 
-layout(set = 0, binding = 0) readonly buffer VertexData
-{
-    Vertex vertices[];
-};
-
-layout(set = 1, binding = 0) uniform PerFrameData
-{
+layout(set = 0, binding = 0) uniform PerFrameData {
     mat4 P;
     mat4 V;
     mat4 VP;
@@ -36,19 +29,20 @@ layout(set = 1, binding = 0) uniform PerFrameData
     vec2 _padding;
 };
 
-layout(set = 2, binding = 0) readonly buffer Transform
-{
+layout(set = 2, binding = 0) readonly buffer VertexData {
+    Vertex vertices[];
+};
+
+layout(set = 3, binding = 0) readonly buffer Transform {
     mat4 transforms[];
 };
 
-layout(push_constant) uniform PushConstants
-{
+layout(push_constant) uniform PushConstants {
     uint transform_id;
     uint padding[3];
 };
 
-void main()
-{
+void main() {
     Vertex vertex = vertices[gl_VertexIndex];
     mat4 M = transforms[transform_id];
 

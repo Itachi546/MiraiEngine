@@ -11,21 +11,27 @@ namespace mirai {
         SpvReflectResult result = spvReflectCreateShaderModule(code_size_in_bytes, code, &reflection);
         ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
-        shader->descriptor_sets.resize(reflection.descriptor_set_count);
         for (uint32_t s = 0; s < reflection.descriptor_set_count; ++s) {
             SpvReflectDescriptorSet &descriptor_set = reflection.descriptor_sets[s];
 
-            VkReflectionDescriptorSet &vk_set = shader->descriptor_sets[s];
+            VkReflectionDescriptorSet vk_set;
             vk_set.set = descriptor_set.set;
-            vk_set.bindings.resize(descriptor_set.binding_count);
-
             for (uint32_t b = 0; b < descriptor_set.binding_count; ++b) {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
-                VkReflectionDescriptorBinding &vk_binding = vk_set.bindings[b];
+
+                if (descriptor_set.set == K_BINDLESS_TEXTURE_SET && binding->binding == K_BINDLESS_TEXTURE_BINDING) {
+                    Log::Info("Bindless texture requested");
+                    shader->support_bindless_texture = true;
+                    continue;
+                }
+
+                VkReflectionDescriptorBinding &vk_binding = vk_set.bindings.emplace_back(VkReflectionDescriptorBinding{});
                 vk_binding.binding = binding->binding;
                 vk_binding.descriptor_type = VkDescriptorType(binding->descriptor_type);
                 vk_binding.shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
             }
+            if (vk_set.bindings.size() > 0)
+                shader->descriptor_sets.push_back(std::move(vk_set));
         }
 
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {
@@ -100,8 +106,8 @@ namespace mirai {
         return hash;
     }
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const std::vector<VkReflectionDescriptorBinding> &descriptor_bindings, uint32_t set, VkDescriptorSetLayoutCreateFlags flags) {
-        uint32_t binding_count = static_cast<uint32_t>(descriptor_bindings.size());
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void *p_next) {
+        /*
         std::vector<VkDescriptorSetLayoutBinding> bindings(binding_count);
 
         for (uint32_t i = 0; i < binding_count; ++i) {
@@ -110,12 +116,14 @@ namespace mirai {
             bindings[i].descriptorType = descriptor_bindings[i].descriptor_type;
             bindings[i].stageFlags = descriptor_bindings[i].shader_stage;
         }
+        */
 
         VkDescriptorSetLayoutCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext = p_next,
             .flags = flags,
             .bindingCount = binding_count,
-            .pBindings = bindings.data(),
+            .pBindings = bindings,
         };
 
         VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;

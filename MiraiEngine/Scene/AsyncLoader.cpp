@@ -88,8 +88,7 @@ namespace mirai {
 
                         command_buffer->copy_texture(texture_load_task->texture, staging_buffer, header.header.dwMipMapCount, block_size);
 
-                        RenderingDevice::get()
-                            ->submit_command_buffer_immediate(command_buffer);
+                        RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
                         command_buffer->wait();
 
                         total_texture_loaded++;

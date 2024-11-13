@@ -21,7 +21,7 @@ namespace mirai {
             {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
         };
 
-        mesh_instance_set = RenderingDevice::get()->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 2, "mesh_instance_set");
+        mesh_instance_set = RenderingDevice::get()->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {

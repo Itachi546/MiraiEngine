@@ -39,7 +39,7 @@ namespace mirai {
             .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
-        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 1, "per_frame_uniform_set");
+        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
 
         UniformBinding binding = {
             .resource_id = per_frame_data_buffer,

@@ -26,6 +26,10 @@ namespace mirai {
 
 #define VK_LOAD_FUNCTION(instance, pFuncName) (vkGetInstanceProcAddr(instance, pFuncName))
 
+    constexpr uint32_t K_BINDLESS_TEXTURE_BINDING = 0;
+    constexpr uint32_t K_BINDLESS_TEXTURE_SET = 1;
+    constexpr uint32_t K_MAX_BINDLESS_RESOURCE = 16536;
+
     constexpr const VkFormat RD_FORMAT_TO_VK_FORMAT[Format::FORMAT_MAX] = {
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_FORMAT_R8G8B8A8_UNORM,

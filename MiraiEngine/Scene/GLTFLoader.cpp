@@ -194,7 +194,7 @@ namespace mirai {
             .binding_type = BINDING_TYPE_STORAGE_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
-        UniformSetID vertex_binding_set = device->create_uniform_set(&vertex_data_layout, 1, 0, "mesh_data_set");
+        UniformSetID vertex_binding_set = device->create_uniform_set(&vertex_data_layout, 1, 2, "mesh_data_set");
 
         UniformBinding vertex_binding = {
             .resource_id = vertex_buffer,
@@ -267,6 +267,7 @@ namespace mirai {
     struct UserData {
         std::string base_path;
         AsyncLoader *async_loader;
+        std::vector<TextureID> textures;
     };
 
     bool
@@ -320,6 +321,8 @@ namespace mirai {
         };
 
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
+        p_user_data->textures.push_back(texture);
+
         TextureCache::get()->add_texture(image->uri, texture);
 
         p_user_data->async_loader->add_texture_load_task({
@@ -384,11 +387,12 @@ namespace mirai {
                 ParseNodes(&gltf_model, node, root_entity, &load_state);
         }
         async_loader.wait();
-        
+
         GpuMesh &mesh = load_state.scene->gpu_meshes[load_state.gpu_mesh_id];
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
         Log::Info("meshes: ", load_state.mesh_components.size());
+        RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));
 
         return root_entity;
     }
