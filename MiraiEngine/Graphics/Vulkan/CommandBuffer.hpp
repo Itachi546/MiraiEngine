@@ -32,6 +32,8 @@ namespace mirai {
 
         void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region);
 
+        void copy_texture(TextureID dst, BufferID src, uint32_t mip_count, uint32_t block_size);
+
         void end_render_pass();
 
         void begin();
@@ -42,6 +44,7 @@ namespace mirai {
         void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+        void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count);
 
         friend class VulkanRenderingDevice;
         VulkanRenderingDevice *device;

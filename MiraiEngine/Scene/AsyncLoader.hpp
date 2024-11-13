@@ -16,6 +16,7 @@ namespace mirai {
     struct TextureLoadTask {
         TextureID texture;
         std::string filename;
+        uint32_t block_size;
     };
 
     class AsyncLoader {
@@ -39,5 +40,8 @@ namespace mirai {
         ThreadSafeQueue<TextureLoadTask> texture_load_tasks;
         BufferID staging_buffer;
         std::thread task_thread;
+
+        uint32_t total_buffer_loaded = 0;
+        uint32_t total_texture_loaded = 0;
     };
 } // namespace mirai

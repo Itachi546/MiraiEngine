@@ -1,11 +1,23 @@
 #include "AsyncLoader.hpp"
 #include "Common/MathUtils.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Common/dds.hpp"
 #include <chrono>
 
 namespace mirai {
     using namespace std::chrono_literals;
     const uint32_t K_STAGING_BUFFER_SIZE = utils::mb_to_bytes(32);
+
+    static size_t get_image_size_bc(uint32_t width, uint32_t height, uint32_t mip_levels, uint32_t block_size) {
+        size_t size = 0;
+        for (uint32_t i = 0; i < mip_levels; ++i) {
+            size += ((width + 3) / 4) * ((height + 3) / 4) * block_size;
+            width = width > 1 ? width / 2 : 1;
+            height = height > 1 ? height / 2 : 1;
+        }
+        return size;
+    }
+
     void AsyncLoader::start() {
         BufferDescription buffer_desc = {
             .size = K_STAGING_BUFFER_SIZE,
@@ -17,7 +29,7 @@ namespace mirai {
             [this]() {
                 CommandBuffer *command_buffer = RenderingDevice::get()->get_command_buffer(1);
                 void *staging_buffer_ptr = RenderingDevice::get()->map_buffer(staging_buffer);
-                while (!buffer_copy_tasks.empty()) {
+                while (!buffer_copy_tasks.empty() || !texture_load_tasks.empty()) {
                     std::shared_ptr<BufferCopyTask> copy_task = buffer_copy_tasks.try_pop();
                     if (copy_task != nullptr) {
                         uint32_t copy_data_size = copy_task->size_in_bytes;
@@ -48,14 +60,48 @@ namespace mirai {
                         RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
 
                         command_buffer->wait();
-                    } else
-                        std::this_thread::sleep_for(10ms);
+
+                        total_buffer_loaded++;
+                    }
+
+                    std::shared_ptr<TextureLoadTask> texture_load_task = texture_load_tasks.try_pop();
+                    if (texture_load_task != nullptr) {
+                        FILE *file = fopen(texture_load_task->filename.c_str(), "rb");
+                        if (!file)
+                            continue;
+                        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
+                        dds::Header header;
+                        fread(&header, sizeof(header), 1, file);
+
+                        uint32_t block_size = texture_load_task->block_size;
+                        size_t image_size = get_image_size_bc(header.header.dwWidth, header.header.dwHeight, header.header.dwMipMapCount, block_size);
+                        ASSERT(image_size <= K_STAGING_BUFFER_SIZE);
+                        size_t read_size = fread(staging_buffer_ptr, 1, image_size, file);
+
+                        ASSERT(read_size == image_size);
+                        ASSERT(fgetc(file) == -1);
+
+                        file_ptr.reset();
+                        file_ptr = nullptr;
+
+                        command_buffer->begin();
+
+                        command_buffer->copy_texture(texture_load_task->texture, staging_buffer, header.header.dwMipMapCount, block_size);
+
+                        RenderingDevice::get()
+                            ->submit_command_buffer_immediate(command_buffer);
+                        command_buffer->wait();
+
+                        total_texture_loaded++;
+                        Log::Info("Texture Loaded: ", texture_load_task->filename, " texture_id: ", texture_load_task->texture.id);
+                    }
                 }
             });
     }
 
     void AsyncLoader::wait() {
         task_thread.join();
+        Log::Info("buffer copy: ", total_buffer_loaded, " texture copy: ", total_texture_loaded);
         RenderingDevice::get()->destroy_buffers(&staging_buffer, 1);
     }
 

@@ -3,7 +3,6 @@
 #include "Swapchain.h"
 #include "VulkanUtils.hpp"
 #include "Scene/FrameGraph.hpp"
-#include "Common/MathUtils.hpp"
 
 namespace mirai {
     VkImageLayout find_required_barrier_info(bool is_depth_texture,
@@ -200,12 +199,87 @@ namespace mirai {
         vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, 1, (const VkBufferCopy *)&region);
     }
 
+    void CommandBuffer::copy_texture(TextureID dst, BufferID src, uint32_t mip_count, uint32_t block_size) {
+        VulkanBuffer *src_buffer = device->access_buffer(src);
+        VulkanTexture *dst_image = device->access_texture(dst);
+
+        VkImageMemoryBarrier2 transfer_dst_barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .srcAccessMask = 0,
+            .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = dst_image->image,
+            .subresourceRange = {
+                .aspectMask = dst_image->image_aspect,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        };
+        pipeline_barrier(&transfer_dst_barrier, 1);
+
+        uint32_t mip_width = dst_image->width;
+        uint32_t mip_height = dst_image->height;
+        uint32_t buffer_offset = 0;
+        for (uint32_t mip = 0; mip < mip_count; ++mip) {
+            VkBufferImageCopy copy_region = {
+                .bufferOffset = buffer_offset,
+                .bufferRowLength = 0,
+                .bufferImageHeight = 0,
+                .imageSubresource = {
+                    .aspectMask = dst_image->image_aspect,
+                    .mipLevel = mip,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+                .imageOffset = {0, 0, 0},
+                .imageExtent = {
+                    .width = mip_width,
+                    .height = mip_height,
+                    .depth = 1,
+                },
+            };
+
+            vkCmdCopyBufferToImage(command_buffer, src_buffer->buffer, dst_image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
+
+            buffer_offset += ((mip_width + 3) / 4) * ((mip_height + 3) / 4) * block_size;
+            mip_width = mip_width > 1 ? mip_width / 2 : 1;
+            mip_height = mip_height > 1 ? mip_height / 2 : 1;
+        }
+
+        VkImageMemoryBarrier2 shader_read_barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = dst_image->image,
+            .subresourceRange = {
+                .aspectMask = dst_image->image_aspect,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        };
+        pipeline_barrier(&shader_read_barrier, 1);
+    }
+
     void CommandBuffer::end_render_pass() {
         vkCmdEndRendering(command_buffer);
     }
 
     void CommandBuffer::begin() {
-        // Log::Info("Memory Usage GPU: ", utils::bytes_to_mb((uint32_t)device->total_memory_usage));
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
@@ -233,17 +307,7 @@ namespace mirai {
         }
 
         if (image_barriers.size() > 0) {
-            VkDependencyInfo dependency_info = {
-                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-                .memoryBarrierCount = 0,
-                .pMemoryBarriers = nullptr,
-                .bufferMemoryBarrierCount = 0,
-                .pBufferMemoryBarriers = nullptr,
-                .imageMemoryBarrierCount = static_cast<uint32_t>(image_barriers.size()),
-                .pImageMemoryBarriers = image_barriers.data(),
-            };
-            vkCmdPipelineBarrier2(command_buffer, &dependency_info);
+            pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
             image_barriers.clear();
         }
     }
@@ -262,7 +326,7 @@ namespace mirai {
                     image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
                                                                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                                       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                                       VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                                                                        current_layout,
                                                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                                        VK_IMAGE_ASPECT_COLOR_BIT));
@@ -273,19 +337,23 @@ namespace mirai {
         }
 
         if (image_barriers.size() > 0) {
-            VkDependencyInfo dependency_info = {
-                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-                .memoryBarrierCount = 0,
-                .pMemoryBarriers = nullptr,
-                .bufferMemoryBarrierCount = 0,
-                .pBufferMemoryBarriers = nullptr,
-                .imageMemoryBarrierCount = static_cast<uint32_t>(image_barriers.size()),
-                .pImageMemoryBarriers = image_barriers.data(),
-            };
-            vkCmdPipelineBarrier2(command_buffer, &dependency_info);
+            pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
             image_barriers.clear();
         }
+    }
+
+    void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count) {
+        VkDependencyInfo dependency_info = {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .memoryBarrierCount = 0,
+            .pMemoryBarriers = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers = nullptr,
+            .imageMemoryBarrierCount = image_memory_barrier_count,
+            .pImageMemoryBarriers = image_memory_barriers,
+        };
+        vkCmdPipelineBarrier2(command_buffer, &dependency_info);
     }
 
 } // namespace mirai

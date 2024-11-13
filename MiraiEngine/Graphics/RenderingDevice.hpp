@@ -378,6 +378,14 @@ namespace mirai {
         uint64_t size;
     };
 
+    struct ImageCopyRegion {
+        uint32_t buffer_offset;
+        uint32_t width;
+        uint32_t height;
+        uint32_t mip_level;
+        uint32_t array_layer;
+    };
+
     struct PushConstant {
         void *data;
         ShaderStage shader_stage;

@@ -279,7 +279,6 @@ namespace mirai {
         }
 
         if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
-            Log::Warn("Duplicate texture: ", image->uri);
             return true;
         }
 
@@ -297,6 +296,8 @@ namespace mirai {
         dds::Header header;
         if (fread(&header, sizeof(header), 1, file) != 1)
             return false;
+        file_ptr.reset();
+        file_ptr.release();
 
         ASSERT_MSG(header.header.dwWidth > 0 && header.header.dwWidth > 0, "zero width or height");
         if (header.header10.resourceDimension != dds::D3D10_RESOURCE_DIMENSION_TEXTURE2D)
@@ -318,13 +319,13 @@ namespace mirai {
             .sampler_desc = &sampler_desc,
         };
 
-        Log::Info("Image: ", image->uri);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
         TextureCache::get()->add_texture(image->uri, texture);
 
         p_user_data->async_loader->add_texture_load_task({
             .texture = texture,
             .filename = full_path,
+            .block_size = 16,
         });
 
         return true;
@@ -346,6 +347,7 @@ namespace mirai {
         tinygltf::TinyGLTF gltf_loader;
         gltf_loader.SetImageLoader(LoadImageData, &user_data);
 
+        Log::Info("Loading Model: ", filename);
         tinygltf::Model gltf_model;
         if (file_extension == "GLB" || file_extension == "glb")
             ret = gltf_loader.LoadBinaryFromFile(&gltf_model, &err, &warn, filename);
@@ -375,19 +377,19 @@ namespace mirai {
 
         LoadMeshes(&gltf_model, &load_state);
         async_loader.start();
-
         LoadMaterials(&gltf_model, &load_state);
 
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
                 ParseNodes(&gltf_model, node, root_entity, &load_state);
         }
+        async_loader.wait();
+        
         GpuMesh &mesh = load_state.scene->gpu_meshes[load_state.gpu_mesh_id];
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
         Log::Info("meshes: ", load_state.mesh_components.size());
 
-        async_loader.wait();
         return root_entity;
     }
 } // namespace mirai
