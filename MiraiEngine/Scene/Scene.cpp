@@ -22,8 +22,15 @@ namespace mirai {
         };
 
         RenderingDevice *device = RenderingDevice::get();
+
+        // Allocate transform buffer
         transform_buffer = device->create_buffer(&buffer_desc, "transform_buffer");
         transform_array = (glm::mat4 *)(device->map_buffer(transform_buffer));
+
+        // Allocate material buffer
+        buffer_desc.size = static_cast<uint32_t>(K_MAX_ENTITIES * sizeof(Material));
+        material_buffer = device->create_buffer(&buffer_desc, "material_buffer");
+        material_array = device->map_buffer(material_buffer);
 
         buffer_desc = {
             .size = sizeof(FrameData),
@@ -113,6 +120,8 @@ namespace mirai {
         if (!dirty)
             return;
 
+        memcpy(material_array, materials.data(), sizeof(Material) * materials.size());
+
         draw_infos.clear();
         draw_infos.reserve(100);
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
@@ -181,8 +190,8 @@ namespace mirai {
         }
         ecs::destroy(component_manager.get());
 
-        BufferID buffers[] = {per_frame_data_buffer, transform_buffer};
-        RenderingDevice::get()->destroy_buffers(buffers, 2);
+        BufferID buffers[] = {per_frame_data_buffer, transform_buffer, material_buffer};
+        RenderingDevice::get()->destroy_buffers(buffers, static_cast<uint32_t>(std::size(buffers)));
     }
 
 } // namespace mirai

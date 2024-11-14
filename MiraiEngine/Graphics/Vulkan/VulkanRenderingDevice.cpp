@@ -149,8 +149,7 @@ namespace mirai {
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, K_MAX_BINDLESS_RESOURCE},
         };
 
-        // @TODO try changing the max set
-        bindless_descriptor_pool = create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT, pools, 1, K_MAX_BINDLESS_RESOURCE);
+        bindless_descriptor_pool = create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT, pools, 1, 1);
 
         VkDescriptorSetLayoutBinding bindless_binding = {
             .binding = K_BINDLESS_TEXTURE_BINDING,
@@ -163,9 +162,8 @@ namespace mirai {
                                                  VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
                                                  VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
 
-        // @TODO change to no ext version
-        VkDescriptorSetLayoutBindingFlagsCreateInfoEXT binding_flag = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT,
+        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flag = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
             .bindingCount = 1,
             .pBindingFlags = &bindless_flag,
         };

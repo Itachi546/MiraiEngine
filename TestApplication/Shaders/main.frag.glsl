@@ -17,11 +17,33 @@ layout(location = 0) in FS_IN {
 fs_in;
 
 #include "utils/bindless.glsl"
+#include "utils/material.glsl"
+
+layout(set = 3, binding = 1) readonly buffer Materials {
+    Material materials[];
+};
 
 void main() {
-    vec3 n = normalize(fs_in.normal);
     vec3 col = vec3(0.0f);
-    vec4 albedo = sample_texture(16, fs_in.uv);
-    col += dot(n, normalize(vec3(-1.0f, -1.0f, 1.0f))) * albedo.rgb;
+
+    Material material = materials[fs_in.matId];
+
+    vec4 albedo = vec4(0.3f, 0.3f, 0.3f, 1.0f);
+    if (material.albedo_texture != K_INVALID_TEXTURE)
+        albedo = sample_texture(material.albedo_texture, fs_in.uv) * material.albedo;
+    if (albedo.a < 0.5f)
+        discard;
+
+    vec3 n = vec3(0.0f, 0.0f, 1.0f);
+    if (material.normal_texture != K_INVALID_TEXTURE)
+        n = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
+    n = normalize(n.x * fs_in.tangent + n.y * fs_in.bitangent + n.z * fs_in.normal);
+
+    vec3 emissive = material.emissive_factor;
+    if (material.emissive_texture != K_INVALID_TEXTURE)
+        emissive = sample_texture(material.emissive_texture, fs_in.uv).rgb;
+
+    col += max(dot(n, normalize(vec3(-1.0f, -1.0f, 1.0f))), 0.1f) * albedo.rgb + emissive;
+    col = pow(col.rgb, vec3(0.4545));
     fragColor = vec4(col.rgb, 1.0f);
 }

@@ -70,6 +70,8 @@ namespace mirai {
 
         BufferID transform_buffer;
         glm::mat4 *transform_array;
+        BufferID material_buffer;
+        uint8_t *material_array;
 
         struct FrameData {
             glm::mat4 P;

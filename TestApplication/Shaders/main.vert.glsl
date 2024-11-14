@@ -39,7 +39,8 @@ layout(set = 3, binding = 0) readonly buffer Transform {
 
 layout(push_constant) uniform PushConstants {
     uint transform_id;
-    uint padding[3];
+    uint material_id;
+    uint padding[2];
 };
 
 void main() {
@@ -52,4 +53,7 @@ void main() {
 
     vs_out.normal = u32_to_vec3(vertex.normal);
     vs_out.uv = vec2(vertex.tu, vertex.tv);
+    vs_out.tangent = u32_to_vec3(vertex.tangent);
+    vs_out.bitangent = u32_to_vec3(vertex.bitangent);
+    vs_out.matId = material_id;
 }

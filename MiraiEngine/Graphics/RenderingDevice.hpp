@@ -277,7 +277,7 @@ namespace mirai {
                 .max_anisotropy = 16,
                 .min_lod = 0,
                 .max_lod = 16,
-                .enable_anisotropy = false,
+                .enable_anisotropy = true,
             };
         }
     };

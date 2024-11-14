@@ -104,6 +104,7 @@ class TestApplication : public App {
         }
 
         controller = new CameraController(scene->get_camera());
+        controller->set_walk_speed(0.005f);
     }
 
     void update() override {

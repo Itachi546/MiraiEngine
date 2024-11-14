@@ -167,20 +167,20 @@ namespace mirai {
     };
 
     struct Material {
-        std::string name;
-
         glm::vec4 albedo;
-        glm::vec4 emission;
 
+        glm::vec3 emissive_factor;
         float metallic_factor;
+
         float roughness_factor;
         float transmission;
-        bool receive_shadow;
-        bool cast_shadow;
+        uint32_t shadow_flag;
+        uint32_t emissive_texture;
 
-        TextureID albedo_texture;
-        TextureID normal_texture;
-        TextureID metallic_roughness_texture;
-        TextureID occlusion_texture;
+        uint32_t albedo_texture;
+        uint32_t normal_texture;
+        uint32_t metallic_roughness_texture;
+        uint32_t occlusion_texture;
     };
+    static_assert(sizeof(Material) % 16 == 0);
 }; // namespace mirai
