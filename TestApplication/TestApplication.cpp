@@ -102,15 +102,18 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
+        Camera *camera = scene->get_camera();
+        camera->position = glm::vec3(-25.0f, 2.0f, 10.0f);
+        camera->rotation = glm::vec3(2.0f, 101.0f, 0.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
-        controller->set_walk_speed(0.005f);
     }
 
     void update() override {
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
 
-        controller->update(Engine::get()->get_dt_seconds() * 1000.0f);
+        float dt = Engine::get()->get_dt_seconds();
+        controller->update(Engine::get()->get_dt_seconds());
     }
 
     ~TestApplication() {
