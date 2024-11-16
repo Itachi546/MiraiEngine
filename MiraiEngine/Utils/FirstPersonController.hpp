@@ -6,11 +6,12 @@
 
 using namespace mirai;
 
-class CameraController {
+class FirstPersonController {
   public:
-    CameraController(Camera *camera) {
+    FirstPersonController(Camera *camera) {
         this->camera = camera;
         camera->position = glm::vec3(0.0f, 10.0f, 0.0f);
+        target_position = camera->position;
     }
 
     void set_walk_speed(float speed) {
@@ -38,6 +39,9 @@ class CameraController {
   private:
     Camera *camera;
     float walk_speed = 0.01f;
-    float run_speed = 0.1f;
+    float run_speed = 0.03f;
     float sensitivity = 0.01f;
+
+    glm::vec3 target_position;
+    glm::vec3 target_rotation;
 };

@@ -8,9 +8,9 @@ namespace mirai {
     struct FrameGraphNode;
     class FrameGraph;
 
-    class FullScreenPass : public FrameGraphRenderPass {
+    class SwapchainCopyPass : public FrameGraphRenderPass {
       public:
-        FullScreenPass(const std::string &name);
+        SwapchainCopyPass();
 
         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
 
@@ -20,7 +20,7 @@ namespace mirai {
             this->enable_aa = state;
         }
 
-        ~FullScreenPass();
+        ~SwapchainCopyPass();
 
       private:
         UniformSetID uniform_set;

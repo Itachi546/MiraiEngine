@@ -5,12 +5,11 @@
 #include "Device/InputDevice.hpp"
 #include "Graphics/Renderer.hpp"
 #include "RenderPass/ForwardPass.hpp"
-#include "RenderPass/FullScreenPass.hpp"
+#include "RenderPass/SwapchainCopyPass.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/GLTFLoader.hpp"
-#include "FullScreenMaterial.hpp"
 #include "Utils/FirstPersonController.hpp"
 
 #include <fstream>
@@ -60,7 +59,7 @@ class TestApplication : public App {
                 .enabled = true,
                 .inputs = {},
                 .outputs = outputs,
-                .renderer = std::make_shared<ForwardPass>("forward_pass"),
+                .renderer = std::make_shared<ForwardPass>(),
             };
             frame_graph->add_node(node_description);
         }
@@ -91,7 +90,7 @@ class TestApplication : public App {
                 .enabled = true,
                 .inputs = inputs,
                 .outputs = outputs,
-                .renderer = std::make_shared<FullScreenPass>("swapchain_pass"),
+                .renderer = std::make_shared<SwapchainCopyPass>(),
             };
             frame_graph->add_node(node_description);
         }
@@ -103,7 +102,7 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-        controller = new CameraController(scene->get_camera());
+        controller = std::make_unique<FirstPersonController>(scene->get_camera());
         controller->set_walk_speed(0.005f);
     }
 
@@ -115,14 +114,13 @@ class TestApplication : public App {
     }
 
     ~TestApplication() {
-        delete controller;
         Log::Info("Destroying Test Application...");
     }
 
   private:
     Scene *scene;
     const std::vector<std::string> &model_paths;
-    CameraController *controller;
+    std::unique_ptr<FirstPersonController> controller;
 };
 
 int main(int argc, char **argv) {

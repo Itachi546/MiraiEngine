@@ -5,7 +5,7 @@ namespace mirai {
     class ShaderMaterial;
     class ForwardPass : public FrameGraphRenderPass {
       public:
-        ForwardPass(const std::string &name);
+        ForwardPass();
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 

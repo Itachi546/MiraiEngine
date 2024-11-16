@@ -47,7 +47,6 @@ if(NOT TARGET volk)
     set_target_properties(volk PROPERTIES FOLDER "External")
 endif()
 
-
 set(MIRAI_LIBRARIES
     glfw
     volk::volk
@@ -89,3 +88,6 @@ endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(${TARGET_NAME} PRIVATE /W3)
 endif()
+
+add_subdirectory(Shaders/)
+add_dependencies(${TARGET_NAME} Shaders)

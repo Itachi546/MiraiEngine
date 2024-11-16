@@ -4,7 +4,7 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass(const std::string &name) : FrameGraphRenderPass(name) {
+    ForwardPass::ForwardPass() : FrameGraphRenderPass("forward_pass") {
         shader = std::make_shared<ShaderMaterial>("TriangleMaterial");
         shader->create_from_file({
             "SPIRV/main.vert.spv",

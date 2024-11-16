@@ -19,7 +19,7 @@ namespace mirai {
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
         renderer = std::make_unique<Renderer>(options.enable_validation);
         Instance = this;
-        std::cout << "Initialization: " << timer.elapsed_seconds() << "s";
+        Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
     }
 
     void Engine::run() {
@@ -27,7 +27,7 @@ namespace mirai {
             Timer timer;
             if (app)
                 app->start();
-            std::cout << "Application Initialization: " << timer.elapsed_seconds() << "s";
+            Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
         }
 
         auto start = std::chrono::steady_clock::now();
