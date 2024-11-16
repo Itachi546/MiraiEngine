@@ -304,14 +304,17 @@ namespace mirai {
             return true;
         }
 
-        if (utils::get_file_extension(image->uri) != "dds")
-            return false;
+        if (utils::get_file_extension(image->uri) != "dds") {
+            image->uri = utils::replace_file_extension(image->uri, "dds");
+        }
 
         UserData *p_user_data = (UserData *)user_data;
         std::string full_path = p_user_data->base_path + image->uri;
         FILE *file = fopen(full_path.c_str(), "rb");
-        if (!file)
+        if (!file) {
+            *err = "Failed to open texture file: " + image->uri;
             return false;
+        }
 
         std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
 
@@ -381,7 +384,7 @@ namespace mirai {
 
         if (!ret) {
             Log::Warn("GLTF ERROR:: ", err);
-            Log::Error("Failed to load file: ", filename);
+            // Log::Error("Failed to load file: ", filename);
             return K_INVALID_ENTITY;
         }
 

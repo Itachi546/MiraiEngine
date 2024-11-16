@@ -868,8 +868,8 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
-            for (auto &set_layout : pipeline->set_layouts)
-                vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
+            // for (auto &set_layout : pipeline->set_layouts)
+            //    vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
             vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
             resource_pool_pipelines.release(pipeline_ids[i]);
@@ -968,6 +968,9 @@ namespace mirai {
 
         for (auto &descriptor_pool : descriptor_pools)
             vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+
+        for (auto &[key, val] : descriptor_set_layouts_cache)
+            vkDestroyDescriptorSetLayout(device, val, nullptr);
 
         vkDestroyDescriptorSetLayout(device, bindless_descriptor_layout, nullptr);
         vkDestroyDescriptorPool(device, bindless_descriptor_pool, nullptr);

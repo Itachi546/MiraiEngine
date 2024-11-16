@@ -43,6 +43,14 @@ namespace utils {
         return path.substr(0, index + 1);
     }
 
+    std::string replace_file_extension(const std::string &filename, const std::string& new_extension) {
+        size_t index = filename.find_last_of('.');
+        if(index == std::string::npos) {
+            return filename.substr(0, index) + "." + new_extension;
+        }
+        return filename.substr(0, index + 1) + new_extension;
+    }
+
     std::string get_filename(const std::string &filename) {
         size_t index = filename.find_last_of('/');
         if (index == std::string::npos)

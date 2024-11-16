@@ -2,6 +2,7 @@
 #include "Device/Window.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Log.hpp"
+#include "Timer.hpp"
 #include "Device/InputDevice.hpp"
 
 #include <chrono>
@@ -12,16 +13,22 @@ namespace mirai {
     Engine *Engine::Instance = nullptr;
 
     Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
+        Timer timer;
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
         renderer = std::make_unique<Renderer>(options.enable_validation);
         Instance = this;
+        std::cout << "Initialization: " << timer.elapsed_seconds() << "s";
     }
 
     void Engine::run() {
-        if (app)
-            app->start();
+        {
+            Timer timer;
+            if (app)
+                app->start();
+            std::cout << "Application Initialization: " << timer.elapsed_seconds() << "s";
+        }
 
         auto start = std::chrono::steady_clock::now();
         while (running && !window->is_closed()) {
