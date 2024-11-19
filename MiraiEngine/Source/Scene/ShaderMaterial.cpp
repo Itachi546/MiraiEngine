@@ -10,6 +10,7 @@ namespace mirai {
                                                               front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
                                                               enable_depth_test(false),
                                                               enable_depth_write(false),
+                                                              enable_blend(false),
                                                               hash(0),
                                                               is_resource_updated(true),
                                                               pipeline{K_INVALID_ID} {
@@ -53,6 +54,8 @@ namespace mirai {
         rs.front_face = front_face;
 
         BlendState bs = BlendState::create();
+        if (enable_blend)
+            bs.enable = true;
         PipelineDescription pipeline_description;
 
         std::vector<ShaderID> shaders = ShaderMaterialCache::get()->get_shaders(utils::djb2_hash_string(name));

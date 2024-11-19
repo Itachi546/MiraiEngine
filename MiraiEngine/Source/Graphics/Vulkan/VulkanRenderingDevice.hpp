@@ -85,6 +85,10 @@ namespace mirai {
             return resource_pool_uniform_sets.access(uniform_set);
         }
 
+        uint64_t get_memory_usage() override {
+            return total_memory_usage;
+        }
+
         ~VulkanRenderingDevice();
 
       private:

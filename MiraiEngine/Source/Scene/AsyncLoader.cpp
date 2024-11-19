@@ -6,7 +6,7 @@
 
 namespace mirai {
     using namespace std::chrono_literals;
-    const uint32_t K_STAGING_BUFFER_SIZE = utils::mb_to_bytes(32);
+    const uint32_t K_STAGING_BUFFER_SIZE = static_cast<uint32_t>(utils::mb_to_bytes(32));
 
     static size_t get_image_size_bc(uint32_t width, uint32_t height, uint32_t mip_levels, uint32_t block_size) {
         size_t size = 0;

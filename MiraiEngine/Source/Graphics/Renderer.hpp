@@ -15,6 +15,7 @@ namespace mirai {
     class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
+    struct Font;
 
     class Renderer {
       public:
@@ -45,6 +46,7 @@ namespace mirai {
         ~Renderer();
 
       private:
+        float render_time_ms;
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
@@ -52,6 +54,8 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
+
         std::unique_ptr<TextRenderManager> text_render_manager;
+        std::unique_ptr<Font> default_font;
     };
 } // namespace mirai

@@ -9,7 +9,11 @@ layout(location = 1) in vec2 uv;
 
 #include "utils/bindless.glsl"
 
+const float width = 0.3;
+const float edge = 0.5;
 void main() {
-    float col = sample_texture(tex_id, vec2(uv.x, uv.y)).r;
-    fragColor = vec4(col, col, col, 1.0f);
+    float dist = 1.0 - sample_texture(tex_id, vec2(uv.x, uv.y)).r;
+    float alpha = 1.0 - smoothstep(width, width + edge, dist);
+    vec3 col = vec3(0.9f);
+    fragColor = vec4(col, alpha);
 }

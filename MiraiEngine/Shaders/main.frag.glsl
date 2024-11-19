@@ -31,7 +31,8 @@ void main() {
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
-    if (albedo.a < 0.5f)
+
+    if (albedo.a < 0.2f)
         discard;
 
     vec3 n = vec3(0.0f, 0.0f, 1.0f);
@@ -41,8 +42,8 @@ void main() {
 
     vec3 emissive = material.emissive_factor;
     if (material.emissive_texture != K_INVALID_TEXTURE)
-        emissive = sample_texture(material.emissive_texture, fs_in.uv).rgb;
+        emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
 
-    col += max(dot(n, normalize(vec3(-1.0f, -1.0f, 1.0f))), 0.1f) * albedo.rgb + emissive;
+    col += max(dot(n, normalize(vec3(-1.0f, 1.0f, 1.0f))), 0.1f) * albedo.rgb + emissive;
     fragColor = vec4(col.rgb, 1.0f);
 }

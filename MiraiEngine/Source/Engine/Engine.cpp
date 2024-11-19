@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 namespace mirai {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
+    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0), render_time_ms(16.0f) {
         Timer timer;
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");

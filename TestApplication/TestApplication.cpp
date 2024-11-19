@@ -94,10 +94,6 @@ class TestApplication : public App {
         camera->position = glm::vec3(-25.0f, 2.0f, 10.0f);
         camera->rotation = glm::vec3(2.0f, 101.0f, 0.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
-        font_georgia = LoadFont("georgia");
-
-        TextRenderer *text_renderer = TextRenderManager::get()->get_renderer_by_font(font_georgia.get());
-        text_renderer->AddText("grappledMingb", glm::vec2{0.0f, 1000.0f});
     }
 
     void update() override {
@@ -116,7 +112,6 @@ class TestApplication : public App {
     Scene *scene;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
-    std::unique_ptr<Font> font_georgia;
 };
 
 int main(int argc, char **argv) {

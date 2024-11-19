@@ -51,9 +51,10 @@ void main() {
     vec4 worldPos = M * vec4(position, 1.0f);
     gl_Position = VP * worldPos;
 
-    vs_out.normal = u32_to_vec3(vertex.normal);
+    mat3 normal_matrix = mat3(inverse(transpose(M)));
+    vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);
     vs_out.uv = vec2(vertex.tu, vertex.tv);
-    vs_out.tangent = u32_to_vec3(vertex.tangent);
-    vs_out.bitangent = u32_to_vec3(vertex.bitangent);
+    vs_out.tangent = normal_matrix * u32_to_vec3(vertex.tangent);
+    vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
     vs_out.matId = material_id;
 }

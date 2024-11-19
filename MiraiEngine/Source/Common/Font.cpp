@@ -53,9 +53,9 @@ namespace mirai {
         font->set_texture(texture);
         font->width = width;
         font->height = height;
-
         // Load metadata file
         json json_data = json::parse(meta_file);
+        json_data.at("size").get_to(font->font_size);
 
         auto characters = json_data["characters"];
         for (auto c = characters.begin(); c != characters.end(); ++c) {

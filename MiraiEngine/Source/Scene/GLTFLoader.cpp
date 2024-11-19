@@ -28,8 +28,6 @@ namespace mirai {
         size_t material_count = model->materials.size();
 
         std::vector<Material> &materials = load_state->scene->materials;
-        materials.resize(material_count);
-
         auto LoadTexture = [&](int texture_index) {
             if (texture_index < 0)
                 return K_INVALID_ID;
@@ -43,41 +41,42 @@ namespace mirai {
         for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
             // std::string name = gltf_material->name;
-            // materials[i].name = name.size() > 0 ? std::move(name) : "Unnamed" + std::to_string(i);
+            // material].name = name.size() > 0 ? std::move(name) : "Unnamed" + std::to_string(i);
+            Material &material = materials.emplace_back(Material{});
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
-            materials[i].albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
-            materials[i].emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
-            materials[i].metallic_factor = static_cast<float>(pbr.metallicFactor);
-            materials[i].roughness_factor = static_cast<float>(pbr.roughnessFactor);
-            materials[i].transmission = static_cast<float>(pbr.baseColorFactor[3]);
-            materials[i].shadow_flag = UINT32_MAX;
+            material.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
+            material.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
+            material.metallic_factor = static_cast<float>(pbr.metallicFactor);
+            material.roughness_factor = static_cast<float>(pbr.roughnessFactor);
+            material.transmission = static_cast<float>(pbr.baseColorFactor[3]);
+            material.shadow_flag = UINT32_MAX;
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
                 if (ext->second.Has("diffuseTexture"))
-                    materials[i].albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>());
+                    material.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>());
                 if (ext->second.Has("specularGlossinessTexture"))
-                    materials[i].metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>());
+                    material.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>());
                 if (ext->second.Has("diffuseFactor")) {
                     auto factor = ext->second.Get("diffuseFactor");
                     for (uint32_t d = 0; d < factor.ArrayLen(); ++d) {
                         auto val = factor.Get(d);
-                        materials[i].albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();
+                        material.albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();
                     }
                 }
             } else {
                 // Process Textures
-                materials[i].albedo_texture = LoadTexture(pbr.baseColorTexture.index);
-                materials[i].metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index);
+                material.albedo_texture = LoadTexture(pbr.baseColorTexture.index);
+                material.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index);
             }
 
-            materials[i].emissive_texture = LoadTexture(gltf_material->emissiveTexture.index);
+            material.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index);
 
             const tinygltf::NormalTextureInfo &normal_texture = gltf_material->normalTexture;
-            materials[i].normal_texture = LoadTexture(normal_texture.index);
+            material.normal_texture = LoadTexture(normal_texture.index);
 
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
-            materials[i].occlusion_texture = LoadTexture(occlusion_texture.index);
+            material.occlusion_texture = LoadTexture(occlusion_texture.index);
         }
     }
 

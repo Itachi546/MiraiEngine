@@ -1,3 +1,6 @@
+#include <iomanip>
+#include <sstream>
+
 namespace mirai {
 namespace utils {
     inline uint8_t pack_float_to_u8(float val) {
@@ -10,20 +13,30 @@ namespace utils {
                (pack_float_to_u8(z) << 8);
     }
 
-    inline uint32_t mb_to_bytes(uint32_t mb) {
+    template <typename T>
+    inline uint64_t mb_to_bytes(T mb) {
         return mb * 1024 * 1024;
     }
 
-    inline float bytes_to_mb(uint32_t bytes) {
+    template <typename T>
+    inline float bytes_to_mb(T bytes) {
         return float(bytes) / (1024.0f * 1024.0f);
     }
 
-    inline uint32_t kb_to_bytes(uint32_t kb) {
+    template <typename T>
+    inline uint64_t kb_to_bytes(T kb) {
         return kb * 1024;
     }
 
-    inline float bytes_to_kb(uint32_t bytes) {
+    template <typename T>
+    inline float bytes_to_kb(T bytes) {
         return float(bytes) / 1024.0f;
+    }
+
+    inline std::string precision(float val, int precision) {
+        std::stringstream ss;
+        ss << std::setprecision(precision) << val;
+        return ss.str();
     }
 }
 } // namespace mirai::utils

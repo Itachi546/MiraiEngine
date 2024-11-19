@@ -77,7 +77,10 @@ namespace mirai {
             glm::mat4 ortho_matrix;
             uint32_t texture_id;
         } push_constant_data;
-        push_constant_data.ortho_matrix = glm::ortho(0.0f, 1920.0f, 0.0f, 1080.0f);
+
+        uint32_t width, height;
+        Window::get()->get_size(&width, &height);
+        push_constant_data.ortho_matrix = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
 
         PushConstant push_constant = {
             .data = &push_constant_data,
@@ -94,6 +97,8 @@ namespace mirai {
             command_buffer->set_uniform_sets(pipeline, &renderer->uniform_set, 1);
             command_buffer->set_push_constants(pipeline, &push_constant, 1);
             command_buffer->draw(renderer->vertex_count, 1, 0, 0);
+
+            renderer->reset();
         }
     }
 

@@ -29,14 +29,14 @@ namespace mirai {
         RenderingDevice::get()->update_uniform_set(uniform_set, binding, 1);
     }
 
-    void TextRenderer::AddText(const std::string &str, const glm::vec2 &position, const uint32_t color) {
+    void TextRenderer::AddText(const std::string &str, const glm::vec2 &position, float font_size, const uint32_t color) {
         ASSERT(font != nullptr);
 
         glm::vec2 offset = position;
         for (uint32_t i = 0; i < str.size(); ++i) {
             uint32_t char_index = (uint32_t)str[i];
             ASSERT(char_index >= 0 && char_index < 255);
-            PushChar(char_index, offset, color);
+            PushChar(char_index, offset, color, font_size);
         }
     }
 
@@ -44,22 +44,27 @@ namespace mirai {
         return font->texture;
     }
 
-    void TextRenderer::PushChar(uint32_t char_index, glm::vec2 &position, uint32_t color) {
+    void TextRenderer::PushChar(uint32_t char_index, glm::vec2 &offset, uint32_t color, float font_size) {
         FontCharacterInfo &char_info = font->character_info[char_index];
+
+        float scaling = font_size / font->font_size;
+        glm::vec2 position = offset + glm::vec2{-char_info.origin_x * scaling, (char_info.height - char_info.origin_y) * scaling};
+        float width = (float)char_info.width;
+        float height = (float)char_info.height;
 
         glm::vec2 positions[] = {
             glm::vec2(position.x, position.y),                                      // BL
-            glm::vec2(position.x + char_info.width, position.y),                    // BR
-            glm::vec2(position.x, position.y - char_info.height),                   // TL
-            glm::vec2(position.x + char_info.width, position.y - char_info.height), // TR
+            glm::vec2(position.x + width * scaling, position.y),                    // BR
+            glm::vec2(position.x, position.y - height * scaling),                   // TL
+            glm::vec2(position.x + width * scaling, position.y - height * scaling), // TR
         };
 
         glm::vec2 font_texture_size = glm::vec2(font->width, font->height);
         glm::vec2 uvs[] = {
-            glm::vec2(char_info.x, char_info.y + char_info.height) / font_texture_size,                   // TL
-            glm::vec2(char_info.x + char_info.width, char_info.y + char_info.height) / font_texture_size, // TR
-            glm::vec2(char_info.x, char_info.y) / font_texture_size,                                      // BL
-            glm::vec2(char_info.x + char_info.width, char_info.y) / font_texture_size,                    // BR
+            glm::vec2(char_info.x, char_info.y + height) / font_texture_size,         // TL
+            glm::vec2(char_info.x + width, char_info.y + height) / font_texture_size, // TR
+            glm::vec2(char_info.x, char_info.y) / font_texture_size,                  // BL
+            glm::vec2(char_info.x + width, char_info.y) / font_texture_size,          // BR
         };
 
         // Create Triangle 0
@@ -81,7 +86,7 @@ namespace mirai {
         glm::vec4 &v5 = vertex_array[vertex_count++]; // TR
         v5 = glm::vec4{positions[3], uvs[3]};
 
-        position.x += char_info.advance + char_info.width;
+        offset.x += (char_info.advance) * scaling;
     }
 
     TextRenderManager *TextRenderManager::Instance = nullptr;
@@ -99,6 +104,7 @@ namespace mirai {
         });
         shader->set_depth_test(false);
         shader->set_depth_write(false);
+        shader->set_enable_blend(true);
     }
 
     TextRenderManager::~TextRenderManager() {

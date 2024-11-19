@@ -19,32 +19,39 @@ namespace mirai {
             if (this->cull_mode == cull_mode)
                 return;
 
-            clear_pipeline_state();
             this->cull_mode = cull_mode;
+            clear_pipeline_state();
         }
 
         void set_front_face(FrontFace front_face) {
             if (this->front_face == front_face)
                 return;
 
-            clear_pipeline_state();
             this->front_face = front_face;
+            clear_pipeline_state();
         }
 
         void set_depth_test(bool depth_test) {
             if (this->enable_depth_test == depth_test)
                 return;
 
-            clear_pipeline_state();
             this->enable_depth_test = depth_test;
+            clear_pipeline_state();
+        }
+
+        void set_enable_blend(bool blend) {
+            if (this->enable_blend == blend)
+                return;
+            this->enable_blend = blend;
+            clear_pipeline_state();
         }
 
         void set_depth_write(bool depth_write) {
             if (this->enable_depth_write == depth_write)
                 return;
 
-            clear_pipeline_state();
             this->enable_depth_write = depth_write;
+            clear_pipeline_state();
         }
 
         void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
@@ -77,6 +84,7 @@ namespace mirai {
 
         bool enable_depth_test;
         bool enable_depth_write;
+        bool enable_blend;
 
         void calculate_hash();
 

@@ -33,6 +33,10 @@ namespace mirai {
             return static_cast<float>(dt_ms) / 1000.0f;
         }
 
+        void set_show_metrics(bool state) {
+            this->show_metrics = state;
+        }
+
         float get_elapsed_seconds() const {
             return static_cast<float>(elapsed_time_ms) / 1000.0f;
         }
@@ -42,6 +46,8 @@ namespace mirai {
 
         ~Engine();
 
+        bool show_metrics;
+        float render_time_ms;
       private:
         uint64_t dt_ms;
         uint64_t elapsed_time_ms;
