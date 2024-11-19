@@ -13,3 +13,4 @@
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "Utils/FirstPersonController.hpp"
+#include "Common/Font.hpp"
