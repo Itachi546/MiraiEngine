@@ -14,3 +14,4 @@
 #include "Scene/GLTFLoader.hpp"
 #include "Utils/FirstPersonController.hpp"
 #include "Common/Font.hpp"
+#include "Graphics/TextRenderManager.hpp"

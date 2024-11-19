@@ -43,15 +43,16 @@ namespace mirai {
             .sampler_desc = &sampler_desc,
         };
         TextureID texture = RenderingDevice::get()->create_texture(&tex_desc, "font_texture_" + name);
-        // @TODO upload texture
-        // @TODO refactor this later, maybe when we use copy queue
         rendering_utils::copy_texture_immediate(texture, data, width * height);
+        RenderingDevice::get()->add_bindless_texture(&texture, 1);
         stbi_image_free(data);
 
         // RenderingDevice::get()->add_bindless_texture(&texture, 1);
 
         std::unique_ptr<Font> font = std::make_unique<Font>();
         font->set_texture(texture);
+        font->width = width;
+        font->height = height;
 
         // Load metadata file
         json json_data = json::parse(meta_file);

@@ -1,8 +1,11 @@
 #include "SwapchainCopyPass.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
+
+#include <glm/gtc/matrix_transform.hpp>
 #include <string>
 
 namespace mirai {
@@ -53,10 +56,45 @@ namespace mirai {
 
         command_buffer->draw(6, 1, 0, 0);
 
+        // Draw Text
+        render_text(command_buffer, frame_graph, node);
+
         command_buffer->end_render_pass();
     }
 
     SwapchainCopyPass::~SwapchainCopyPass() {
+    }
+
+    void SwapchainCopyPass::render_text(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node) {
+        TextRenderManager *text_render_manager = TextRenderManager::get();
+        if (text_render_manager->renderers.size() == 0)
+            return;
+
+        text_render_manager->shader->bind(command_buffer, node, frame_graph);
+        PipelineID pipeline = text_render_manager->shader->get_pipeline_id();
+
+        struct PushConstantData {
+            glm::mat4 ortho_matrix;
+            uint32_t texture_id;
+        } push_constant_data;
+        push_constant_data.ortho_matrix = glm::ortho(0.0f, 1920.0f, 0.0f, 1080.0f);
+
+        PushConstant push_constant = {
+            .data = &push_constant_data,
+            .shader_stage = SHADER_STAGE_VERTEX,
+            .size = sizeof(PushConstantData),
+            .offset = 0,
+        };
+
+        for (auto &renderer : text_render_manager->renderers) {
+            if (renderer->vertex_count == 0)
+                continue;
+            push_constant_data.texture_id = renderer->get_font_texture().id;
+
+            command_buffer->set_uniform_sets(pipeline, &renderer->uniform_set, 1);
+            command_buffer->set_push_constants(pipeline, &push_constant, 1);
+            command_buffer->draw(renderer->vertex_count, 1, 0, 0);
+        }
     }
 
 } // namespace mirai

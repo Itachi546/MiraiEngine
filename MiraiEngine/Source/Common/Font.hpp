@@ -33,6 +33,7 @@ namespace mirai {
 
         TextureID texture;
         std::array<FontCharacterInfo, 512> character_info;
+        uint32_t width, height;
     };
 
     std::unique_ptr<Font> LoadFont(const std::string &name);

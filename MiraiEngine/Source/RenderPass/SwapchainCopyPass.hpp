@@ -26,5 +26,7 @@ namespace mirai {
         UniformSetID uniform_set;
         std::shared_ptr<ShaderMaterial> material;
         bool enable_aa;
+
+        void render_text(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node);
     };
 } // namespace mirai

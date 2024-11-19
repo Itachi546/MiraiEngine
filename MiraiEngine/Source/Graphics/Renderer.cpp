@@ -7,6 +7,7 @@
 #include "Scene/TextureCache.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
+#include "TextRenderManager.hpp"
 
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
@@ -20,6 +21,8 @@ namespace mirai {
 
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
+
+        text_render_manager = std::make_unique<TextRenderManager>();
     }
 
     void Renderer::compile_passes() {

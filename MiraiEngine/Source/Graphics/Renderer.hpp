@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 
 namespace mirai {
+    struct TextRenderManager;
     class CommandBuffer;
     class ShaderMaterialCache;
     class TextureCache;
@@ -51,5 +52,6 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
+        std::unique_ptr<TextRenderManager> text_render_manager;
     };
 } // namespace mirai
