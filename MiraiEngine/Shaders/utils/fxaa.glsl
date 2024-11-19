@@ -60,8 +60,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void texcoords(vec2 fragCoord, vec2 resolution,
                out vec2 v_rgbNW, out vec2 v_rgbNE,
                out vec2 v_rgbSW, out vec2 v_rgbSE,
-               out vec2 v_rgbM)
-{
+               out vec2 v_rgbM) {
     vec2 inverseVP = 1.0 / resolution.xy;
     v_rgbNW = (fragCoord + vec2(-1.0, -1.0)) * inverseVP;
     v_rgbNE = (fragCoord + vec2(1.0, -1.0)) * inverseVP;
@@ -72,8 +71,7 @@ void texcoords(vec2 fragCoord, vec2 resolution,
 
 // optimized version for mobile, where dependent
 // texture reads can be a bottleneck
-vec4 fxaa(sampler2D tex, vec2 fragCoord, vec2 resolution)
-{
+vec4 fxaa(sampler2D tex, vec2 fragCoord, vec2 resolution) {
     vec4 color;
     vec2 v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM;
     texcoords(fragCoord, resolution, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
@@ -118,5 +116,6 @@ vec4 fxaa(sampler2D tex, vec2 fragCoord, vec2 resolution)
         color = vec4(rgbA, texColor.a);
     else
         color = vec4(rgbB, texColor.a);
+
     return color;
 }
