@@ -39,6 +39,13 @@ namespace mirai {
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
 
+        QueryID create_query(uint32_t query_count) override;
+        void query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) override;
+        void resolve_query(QueryID query, uint64_t *resolve_output, uint32_t start, uint32_t count) override;
+        void reset_query(CommandBuffer *command_buffer, QueryID query, uint32_t start, uint32_t count) override;
+
+        float get_timestamp_period() override;
+
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
 
         void add_bindless_texture(TextureID *textures, uint32_t texture_count) override;
@@ -64,6 +71,8 @@ namespace mirai {
         void destroy_pipelines(PipelineID *pipelines, uint32_t count) override;
 
         void destroy_buffers(BufferID *buffers, uint32_t count) override;
+
+        void destroy_queries(QueryID *queries, uint32_t count) override;
 
         void destroy_textures(TextureID *textures, uint32_t count) override;
 
@@ -115,6 +124,7 @@ namespace mirai {
         ResourcePool<VulkanTexture> resource_pool_textures;
         ResourcePool<VulkanBuffer> resource_pool_buffers;
         ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
+        ResourcePool<VulkanQuery> resource_pool_queries;
         std::unordered_map<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
 
         static const uint32_t K_NUM_THREAD = 2;
@@ -127,6 +137,7 @@ namespace mirai {
         VkInstance instance;
         VkDevice device;
 
+        VkPhysicalDeviceProperties2 physical_device_properties;
         VkPhysicalDevice physical_device;
         VmaAllocator vma_allocator;
         VkSurfaceKHR surface;
@@ -135,9 +146,6 @@ namespace mirai {
         VkDescriptorSetLayout bindless_descriptor_layout;
         VkDescriptorSet bindless_descriptor_set;
         VkDescriptorPool bindless_descriptor_pool;
-
-        uint32_t K_MAX_QUERY = 256;
-        VkQueryPool query_pool;
 
         std::vector<VkCommandPool> command_pools;
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;

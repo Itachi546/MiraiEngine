@@ -35,6 +35,11 @@ namespace mirai {
         VkAccessFlags access_flags;
     };
 
+    struct VulkanQuery {
+        VkQueryPool query_pool;
+        VkQueryType type;
+    };
+
     struct VulkanBuffer {
         VkBuffer buffer;
         VmaAllocation allocation;
@@ -93,7 +98,7 @@ namespace mirai {
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size);
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void* p_next);
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void *p_next);
 
     uint64_t GetDescriptorSetLayoutHash(const std::vector<VkReflectionDescriptorBinding> &bindings, uint32_t set);
     uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set);

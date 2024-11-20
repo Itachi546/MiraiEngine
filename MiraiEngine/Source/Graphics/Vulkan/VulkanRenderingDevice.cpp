@@ -34,6 +34,7 @@ namespace mirai {
                                                                            resource_pool_textures(1024, "Texture"),
                                                                            resource_pool_buffers(256, "Buffer"),
                                                                            resource_pool_uniform_sets(256, "UniformSet"),
+                                                                           resource_pool_queries(32, "Query"),
                                                                            RenderingDevice(enable_validation) {
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
@@ -65,6 +66,9 @@ namespace mirai {
             debug_utils_messenger = VK_NULL_HANDLE;
 
         physical_device = SelectPhysicalDevice(instance, gpus, device_extensions);
+
+        physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
 
         GetDeviceQueueFamilies(physical_device, queue_family_indices);
 
@@ -185,13 +189,6 @@ namespace mirai {
         };
 
         VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
-
-        VkQueryPoolCreateInfo query_pool_create_info = {
-            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
-            .queryType = VK_QUERY_TYPE_TIMESTAMP,
-            .queryCount = K_MAX_QUERY,
-        };
-        VK_CHECK(vkCreateQueryPool(device, &query_pool_create_info, nullptr, &query_pool));
     }
 
     VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
@@ -653,14 +650,50 @@ namespace mirai {
             VK_CHECK(vmaMapMemory(vma_allocator, vk_buffer->allocation, &vk_buffer->buffer_ptr));
         return reinterpret_cast<uint8_t *>(vk_buffer->buffer_ptr);
     }
-    /*
-    void VulkanRenderingDevice::CopyBuffer(CommandBufferID commandBuffer, BufferID src, BufferID dst, BufferCopyRegion *region)
-    {
-        VulkanBuffer *vkSrc = _buffers.Access(src.id);
-        VulkanBuffer *vkDst = _buffers.Access(dst.id);
-        vkCmdCopyBuffer(_commandBuffers[commandBuffer.id], vkSrc->buffer, vkDst->buffer, 1, (const VkBufferCopy *)region);
+
+    QueryID VulkanRenderingDevice::create_query(uint32_t query_count) {
+        VkQueryPoolCreateInfo query_pool_create_info = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = query_count,
+        };
+        VkQueryPool query_pool = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateQueryPool(device, &query_pool_create_info, nullptr, &query_pool));
+
+        uint32_t id = resource_pool_queries.obtain();
+        VulkanQuery *query = resource_pool_queries.access(id);
+        query->type = VK_QUERY_TYPE_TIMESTAMP;
+        query->query_pool = query_pool;
+        return QueryID{id};
     }
-    */
+
+    void VulkanRenderingDevice::query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) {
+        VulkanQuery *vk_query = resource_pool_queries.access(query);
+        ASSERT(vk_query->type == VK_QUERY_TYPE_TIMESTAMP);
+        vkCmdWriteTimestamp(command_buffer->command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, vk_query->query_pool, query_index);
+    }
+
+    void VulkanRenderingDevice::resolve_query(QueryID query, uint64_t *resolve_output, uint32_t start, uint32_t count) {
+        VulkanQuery *vk_query = resource_pool_queries.access(query);
+        VK_CHECK(vkGetQueryPoolResults(device, vk_query->query_pool, start, count, sizeof(uint64_t) * count, resolve_output, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+    }
+
+    void VulkanRenderingDevice::reset_query(CommandBuffer *command_buffer, QueryID query, uint32_t start, uint32_t count) {
+        VulkanQuery *vk_query = resource_pool_queries.access(query);
+        vkCmdResetQueryPool(command_buffer->command_buffer, vk_query->query_pool, start, count);
+    }
+
+    float VulkanRenderingDevice::get_timestamp_period() {
+        return physical_device_properties.properties.limits.timestampPeriod;
+    }
+    /*
+        void VulkanRenderingDevice::CopyBuffer(CommandBufferID commandBuffer, BufferID src, BufferID dst, BufferCopyRegion *region)
+        {
+            VulkanBuffer *vkSrc = _buffers.Access(src.id);
+            VulkanBuffer *vkDst = _buffers.Access(dst.id);
+            vkCmdCopyBuffer(_commandBuffers[commandBuffer.id], vkSrc->buffer, vkDst->buffer, 1, (const VkBufferCopy *)region);
+        }
+        */
     TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name) {
         uint32_t textureID = resource_pool_textures.obtain();
         VulkanTexture *texture = resource_pool_textures.access(textureID);
@@ -903,6 +936,15 @@ namespace mirai {
         }
     }
 
+    void VulkanRenderingDevice::destroy_queries(QueryID *queries, uint32_t count) {
+        for (uint32_t i = 0; i < count; ++i) {
+            VulkanQuery *query = resource_pool_queries.access(queries[i]);
+            vkDestroyQueryPool(device, query->query_pool, nullptr);
+            query->query_pool = VK_NULL_HANDLE;
+            resource_pool_queries.release(queries[i]);
+        }
+    }
+
     void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanTexture *texture = resource_pool_textures.access(textures[i]);
@@ -962,8 +1004,6 @@ namespace mirai {
         VK_CHECK(vkDeviceWaitIdle(device));
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);
-
-        vkDestroyQueryPool(device, query_pool, nullptr);
 
         for (auto &command_pool : command_pools)
             vkDestroyCommandPool(device, command_pool, nullptr);

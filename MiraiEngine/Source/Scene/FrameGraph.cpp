@@ -1,5 +1,4 @@
 #include "FrameGraph.hpp"
-
 namespace mirai {
     FrameGraphBuilder::FrameGraphBuilder() : resource_pool_nodes(64, "frame_graph_node"),
                                              resource_pool_resources(512, "frame_graph_resources"),

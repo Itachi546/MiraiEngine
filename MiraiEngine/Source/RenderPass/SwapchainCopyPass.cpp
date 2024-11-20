@@ -38,6 +38,7 @@ namespace mirai {
     void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
+        ScopedGpuProfiling(command_buffer, "FXAA");
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
         set_size(width, height);

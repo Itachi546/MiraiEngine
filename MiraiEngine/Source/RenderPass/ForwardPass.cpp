@@ -2,6 +2,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Engine/Profiler.hpp"
 
 namespace mirai {
     ForwardPass::ForwardPass() : FrameGraphRenderPass("forward_pass") {
@@ -29,6 +30,9 @@ namespace mirai {
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
+
+        ScopedGpuProfiling(command_buffer, "Forward Pass");
+
         command_buffer->begin_render_pass(node, frame_graph);
 
         std::vector<DrawData> &draw_infos = scene->draw_infos;

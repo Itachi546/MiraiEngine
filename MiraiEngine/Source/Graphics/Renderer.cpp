@@ -20,6 +20,7 @@ namespace mirai {
         scene = std::make_unique<Scene>("default");
         material_cache = std::make_unique<ShaderMaterialCache>();
         texture_cache = std::make_unique<TextureCache>();
+        miProfiler::Initialize();
 
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
@@ -46,6 +47,8 @@ namespace mirai {
 
         cb->begin();
 
+        miProfiler::NewFrame(cb);
+
         frame_graph->render(cb, scene.get());
 
         device->queue_command_buffer(cb);
@@ -55,6 +58,7 @@ namespace mirai {
 
     Renderer::~Renderer() {
         device->wait();
+        miProfiler::Destroy();
         scene.reset();
     }
 
