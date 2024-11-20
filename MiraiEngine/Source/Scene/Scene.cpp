@@ -4,6 +4,8 @@
 #include "Camera.hpp"
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
+#include "Engine/Profiler.hpp"
+
 #include <execution>
 #include <algorithm>
 
@@ -59,6 +61,8 @@ namespace mirai {
     }
 
     void Scene::update() {
+        ScopedCpuProfiling("Scene Update");
+
         camera->update();
 
         update_transform_components();

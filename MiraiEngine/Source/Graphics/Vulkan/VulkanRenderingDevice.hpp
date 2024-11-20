@@ -136,6 +136,9 @@ namespace mirai {
         VkDescriptorSet bindless_descriptor_set;
         VkDescriptorPool bindless_descriptor_pool;
 
+        uint32_t K_MAX_QUERY = 256;
+        VkQueryPool query_pool;
+
         std::vector<VkCommandPool> command_pools;
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;
         std::vector<CommandBuffer *> queued_command_buffer;

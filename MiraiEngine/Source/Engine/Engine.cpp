@@ -4,6 +4,7 @@
 #include "Log.hpp"
 #include "Timer.hpp"
 #include "Device/InputDevice.hpp"
+#include "Profiler.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -32,18 +33,21 @@ namespace mirai {
 
         auto start = std::chrono::steady_clock::now();
         while (running && !window->is_closed()) {
-            window->update();
-            if (window->is_minimized())
-                continue;
+            {
+                ScopedCpuProfiling("CPU Time");
+                window->update();
+                if (window->is_minimized())
+                    continue;
 
-            if (app)
-                app->update();
+                if (app)
+                    app->update();
 
-            renderer->update();
+                renderer->update();
+                
+                renderer->render();
 
-            renderer->render();
-
-            Input::get()->update();
+                Input::get()->update();
+            }
 
             auto end = std::chrono::steady_clock::now();
             dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

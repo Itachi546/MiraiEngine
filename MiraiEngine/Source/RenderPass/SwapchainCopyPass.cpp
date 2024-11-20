@@ -4,6 +4,7 @@
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
+#include "Engine/Profiler.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
@@ -89,6 +90,7 @@ namespace mirai {
             .offset = 0,
         };
 
+        miProfiler::DrawData();
         for (auto &renderer : text_render_manager->renderers) {
             if (renderer->vertex_count == 0)
                 continue;

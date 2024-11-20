@@ -185,6 +185,13 @@ namespace mirai {
         };
 
         VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
+
+        VkQueryPoolCreateInfo query_pool_create_info = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = K_MAX_QUERY,
+        };
+        VK_CHECK(vkCreateQueryPool(device, &query_pool_create_info, nullptr, &query_pool));
     }
 
     VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
@@ -955,6 +962,8 @@ namespace mirai {
         VK_CHECK(vkDeviceWaitIdle(device));
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);
+
+        vkDestroyQueryPool(device, query_pool, nullptr);
 
         for (auto &command_pool : command_pools)
             vkDestroyCommandPool(device, command_pool, nullptr);

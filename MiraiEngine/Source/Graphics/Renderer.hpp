@@ -46,7 +46,6 @@ namespace mirai {
         ~Renderer();
 
       private:
-        float render_time_ms;
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
