@@ -19,6 +19,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
+#if 0
         {
             // Forward Pass
             std::vector<FrameGraphResourceOutput> outputs = {
@@ -82,9 +83,12 @@ class TestApplication : public App {
             };
             frame_graph->add_node(node_description);
         }
-
+#else
+        frame_graph->load_from_file("Assets/framegraph.json");
+        frame_graph->set_renderer("gbuffer_pass", std::make_shared<GBufferPass>());
+        frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
+#endif
         frame_graph->compile();
-
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);

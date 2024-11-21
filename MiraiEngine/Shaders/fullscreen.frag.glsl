@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : enable
 
 layout(set = 0, binding = 0) uniform sampler2D u_texture;
+
 layout(push_constant) uniform PushConstants {
     vec2 resolution;
     float u_enable_aa;

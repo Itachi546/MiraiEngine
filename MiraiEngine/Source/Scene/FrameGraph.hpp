@@ -25,6 +25,7 @@ namespace mirai {
         FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN,
         FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
         FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
+        FRAMEGRAPH_RESOURCE_TYPE_INVALID
     };
 
     struct FrameGraphResourceOutput {
@@ -49,24 +50,16 @@ namespace mirai {
 
         virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node) {}
 
-        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) = 0;
-
-        void set_size(uint32_t width, uint32_t height) {
-            this->width = width;
-            this->height = height;
-        }
-
-        uint32_t get_width() const { return width; }
-        uint32_t get_height() const { return height; }
+        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) = 0;
 
       protected:
         std::string name;
-        uint32_t width, height;
     };
 
     struct FrameGraphNodeDescription {
         std::string name;
         bool enabled;
+        bool is_compute_pass;
         std::vector<FrameGraphResourceInput> inputs;
         std::vector<FrameGraphResourceOutput> outputs;
         std::shared_ptr<FrameGraphRenderPass> renderer;
@@ -99,6 +92,7 @@ namespace mirai {
         std::vector<FrameGraphResourceHandle> outputs;
         std::shared_ptr<FrameGraphRenderPass> renderer;
         FrameGraphRenderingInfo rendering_info;
+        uint32_t width, height;
     };
 
     class FrameGraphBuilder {
@@ -144,6 +138,10 @@ namespace mirai {
       public:
         FrameGraph(FrameGraphBuilder *builder);
 
+        void load_from_file(const std::string &filename);
+
+        // Renderer must be set for each pass before calling compile function
+        // use set_renderer() function
         void compile();
 
         void render(CommandBuffer *command_buffer, Scene *scene);
@@ -168,7 +166,19 @@ namespace mirai {
             return builder->get_resource(name);
         }
 
+        bool set_renderer(const std::string &name, std::shared_ptr<FrameGraphRenderPass> renderer) {
+            for (auto &desc : node_descriptions) {
+                if (desc.name == name) {
+                    desc.renderer = renderer;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
       private:
+        std::string name;
         FrameGraphBuilder *builder;
         std::vector<FrameGraphNodeDescription> node_descriptions;
         std::vector<FrameGraphNodeHandle> node_handles;

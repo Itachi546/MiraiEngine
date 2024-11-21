@@ -1,16 +1,18 @@
-#include "ForwardPass.hpp"
+#include "GBufferPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass() : FrameGraphRenderPass("forward_pass") {
-        shader = std::make_shared<ShaderMaterial>("ForwardPassMaterial");
+
+    GBufferPass::GBufferPass() : FrameGraphRenderPass("forward_pass") {
+        shader = std::make_shared<ShaderMaterial>("GBufferMaterial");
         shader->create_from_file({
-            "SPIRV/forward_pass.vert.spv",
-            "SPIRV/forward_pass.frag.spv",
+            "SPIRV/gbuffer.vert.spv",
+            "SPIRV/gbuffer.frag.spv",
         });
+
         shader->set_depth_write(true);
         shader->set_depth_test(true);
 
@@ -28,12 +30,12 @@ namespace mirai {
         mesh_instance_set = RenderingDevice::get()->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
     }
 
-    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void GBufferPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        ScopedGpuProfiling(command_buffer, "Forward Pass");
+        ScopedGpuProfiling(command_buffer, "GBuffer Pass");
 
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
+        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "GBufferPass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
 
@@ -78,6 +80,6 @@ namespace mirai {
         RenderingDevice::get()->end_debug_utils_label(command_buffer);
     }
 
-    ForwardPass::~ForwardPass() {
+    GBufferPass::~GBufferPass() {
     }
 } // namespace mirai

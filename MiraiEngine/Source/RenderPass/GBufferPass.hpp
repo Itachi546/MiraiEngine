@@ -3,13 +3,13 @@
 #include "Scene/FrameGraph.hpp"
 namespace mirai {
     class ShaderMaterial;
-    class ForwardPass : public FrameGraphRenderPass {
+    class GBufferPass : public FrameGraphRenderPass {
       public:
-        ForwardPass();
+        GBufferPass();
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 
-        ~ForwardPass();
+        ~GBufferPass();
 
       private:
         std::shared_ptr<ShaderMaterial> shader;

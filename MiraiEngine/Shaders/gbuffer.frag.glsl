@@ -1,0 +1,58 @@
+#version 450
+
+#extension GL_GOOGLE_include_directive : enable
+
+layout(location = 0) out vec4 albedo_buffer;
+layout(location = 1) out vec4 normal_buffer;
+layout(location = 2) out vec4 pbr_buffer;
+layout(location = 3) out vec4 position_buffer;
+layout(location = 4) out vec4 emissive_buffer;
+
+layout(location = 0) in FS_IN {
+    vec3 normal;
+    vec3 tangent;
+    vec3 bitangent;
+    vec3 world_pos;
+    vec3 light_pos;
+    vec3 view_dir;
+    vec2 uv;
+    flat uint mat_id;
+}
+fs_in;
+
+#include "utils/bindless.glsl"
+#include "utils/material.glsl"
+
+layout(set = 3, binding = 1) readonly buffer Materials {
+    Material materials[];
+};
+
+void main() {
+    vec3 col = vec3(0.0f);
+
+    Material material = materials[fs_in.mat_id];
+
+    position_buffer = vec4(fs_in.world_pos, 1.0f);
+
+    vec4 albedo = material.albedo;
+    if (material.albedo_texture != K_INVALID_TEXTURE)
+        albedo *= sample_texture(material.albedo_texture, fs_in.uv);
+
+    albedo_buffer = albedo;
+
+    vec3 n = vec3(0.0f, 0.0f, 1.0f);
+    if (material.normal_texture != K_INVALID_TEXTURE)
+        n = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
+    n = normalize(n.x * fs_in.tangent + n.y * fs_in.bitangent + n.z * fs_in.normal);
+    normal_buffer = vec4(n, 1.0f);
+
+    vec3 emissive = material.emissive_factor;
+    if (material.emissive_texture != K_INVALID_TEXTURE)
+        emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
+    emissive_buffer = vec4(emissive, 1.0f);
+
+    vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
+    if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
+        metallic_roughness = sample_texture(material.metallic_roughness_texture, fs_in.uv).bg;
+    pbr_buffer = vec4(metallic_roughness, 1.0f, 1.0f);
+}

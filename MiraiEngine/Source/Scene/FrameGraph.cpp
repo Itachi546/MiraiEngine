@@ -1,4 +1,8 @@
 #include "FrameGraph.hpp"
+#include "Engine/Log.hpp"
+#include <json.hpp>
+#include <fstream>
+
 namespace mirai {
     FrameGraphBuilder::FrameGraphBuilder() : resource_pool_nodes(64, "frame_graph_node"),
                                              resource_pool_resources(512, "frame_graph_resources"),
@@ -46,8 +50,9 @@ namespace mirai {
                 node->outputs.push_back(create_node_output(output));
         }
 
+        node->width = width;
+        node->height = height;
         node->renderer = node_description.renderer;
-        node->renderer->set_size(width, height);
 
         nodes_maps.insert(std::make_pair(utils::djb2_hash_string(node->name), node_index));
 
@@ -118,14 +123,135 @@ namespace mirai {
         resource_pool_nodes.release_all();
     }
 
-    // @TODO Create from JSON file as well
-    FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder) {
+    static FrameGraphResourceType get_resource_type_from_string(std::string input_type) {
+        if (input_type == "attachment")
+            return FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT;
+        else if (input_type == "texture")
+            return FRAMEGRAPH_RESOURCE_TYPE_TEXTURE;
+        else if (input_type == "swapchain")
+            return FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN;
+
+        ASSERT_MSG(0, "Invalid FrameGraphResourceType");
+        return FRAMEGRAPH_RESOURCE_TYPE_INVALID;
+    }
+
+    static Format get_texture_format(const std::string &inputFormat) {
+        if (inputFormat == "B8G8R8A8_UNORM") {
+            return FORMAT_B8G8R8A8_UNORM;
+        } else if (inputFormat == "R16G16B16A16_SFLOAT") {
+            return FORMAT_R16G16B16A16_SFLOAT;
+        } else if (inputFormat == "R16G16B16_SFLOAT") {
+            return FORMAT_R16G16B16_SFLOAT;
+        } else if (inputFormat == "R32G32B32_SFLOAT") {
+            return FORMAT_R32G32B32_SFLOAT;
+        } else if (inputFormat == "R32G32B32A32_SFLOAT") {
+            return FORMAT_R32G32B32A32_SFLOAT;
+        } else if (inputFormat == "D32_SFLOAT") {
+            return FORMAT_D32_SFLOAT;
+        } else if (inputFormat == "D32_SFLOAT_S8_UINT") {
+            return FORMAT_D32_SFLOAT_S8_UINT;
+        } else if (inputFormat == "R16_SFLOAT") {
+            return FORMAT_R16_SFLOAT;
+        }
+
+        ASSERT(!"Undefined input format");
+        return FORMAT_UNDEFINED;
+    }
+
+    static AttachmentLoadOp get_attachment_load_op(const std::string &op) {
+        if (op == "LOAD_OP_CLEAR")
+            return LOAD_OP_CLEAR;
+        else if (op == "LOAD_OP_LOAD")
+            return LOAD_OP_LOAD;
+
+        return LOAD_OP_DONT_CARE;
+    }
+
+    FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder), name("default_framegraph") {
+    }
+
+    void FrameGraph::load_from_file(const std::string &filename) {
+        using json = nlohmann::json;
+        std::ifstream json_file(filename);
+        if (!json_file) {
+            Log::Error("Failed to load framegraph: " + filename);
+            return;
+        }
+
+        Log::Info("Parsing FrameGraph: " + filename);
+
+        // Start parsing frame graph
+        json data = json::parse(json_file);
+
+        this->name = data.value("name", "");
+        Log::Info("FrameGraph Name: " + name);
+
+        json passes = data["passes"];
+        Log::Info("Total passes: " + std::to_string(passes.size()));
+
+        for (std::size_t i = 0; i < passes.size(); ++i) {
+            json pass = passes[i];
+            bool enabled = pass.value("enabled", true);
+            if (!enabled)
+                continue;
+
+            FrameGraphNodeDescription node_description;
+            node_description.name = pass.value("name", "");
+            node_description.is_compute_pass = pass.value("type", "") == "compute" ? true : false;
+            node_description.enabled = enabled;
+
+            json inputs = pass["inputs"];
+            json outputs = pass["outputs"];
+
+            node_description.inputs.resize(inputs.size());
+            node_description.outputs.resize(outputs.size());
+
+            // Parse Inputs for the pass
+            for (std::size_t j = 0; j < inputs.size(); ++j) {
+                json passInput = inputs[j];
+                FrameGraphResourceInput &resource = node_description.inputs[j];
+                resource.name = passInput.value("name", "");
+                std::string resourceType = passInput.value("type", "");
+                resource.resource_type = get_resource_type_from_string(resourceType);
+            }
+
+            for (std::size_t j = 0; j < outputs.size(); ++j) {
+                json passOutput = outputs[j];
+                FrameGraphResourceOutput &resource = node_description.outputs[j];
+
+                resource.name = passOutput.value("name", "");
+
+                std::string resourceType = passOutput.value("type", "");
+                resource.resource_type = get_resource_type_from_string(resourceType);
+                switch (resource.resource_type) {
+                case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
+                case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE: {
+                    json resolution = passOutput["resolution"];
+                    resource.width = resolution[0];
+                    resource.height = resolution[1];
+                    resource.format = get_texture_format(passOutput["format"]);
+                    resource.load_op = get_attachment_load_op(passOutput["op"]);
+
+                    json clear_color = passOutput["clear_color"];
+                    if (clear_color.size() == 4) {
+                        resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
+                    } else {
+                        if (is_depth_format(resource.format))
+                            resource.clear_color = {1.0f, 0.0f, 0.0f, 0.0f};
+                    }
+                    break;
+                }
+                }
+            }
+            node_descriptions.push_back(node_description);
+        }
     }
 
     void FrameGraph::compile() {
         for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
             const FrameGraphNode *node = builder->get_node(node_handle);
+            ASSERT_MSG(node->renderer != nullptr, "Did you forgot to call set_renderer() before compile?");
             node->renderer->initialize(this, node);
             node_handles.push_back(node_handle);
         }
@@ -133,7 +259,7 @@ namespace mirai {
 
     void FrameGraph::render(CommandBuffer *command_buffer, Scene *scene) {
         for (auto handle : node_handles) {
-            const FrameGraphNode *node = builder->get_node(handle);
+            FrameGraphNode *node = builder->get_node(handle);
             node->renderer->render(command_buffer, this, node, scene);
         }
     }

@@ -6,8 +6,11 @@
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Graphics/Renderer.hpp"
+
 #include "RenderPass/ForwardPass.hpp"
 #include "RenderPass/SwapchainCopyPass.hpp"
+#include "RenderPass/GBufferPass.hpp"
+
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"

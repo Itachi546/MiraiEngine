@@ -105,8 +105,8 @@ namespace mirai {
             }
         }
 
-        uint32_t width = node->renderer->get_width();
-        uint32_t height = node->renderer->get_height();
+        uint32_t width = node->width;
+        uint32_t height = node->height;
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .renderArea = {0, 0, width, height},

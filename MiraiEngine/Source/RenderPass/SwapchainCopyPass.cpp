@@ -35,15 +35,16 @@ namespace mirai {
         material->set_uniform_sets(&uniform_set, 1);
     }
 
-    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Swapchain + FXAA" ,nullptr);
+        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
 
         ScopedGpuProfiling(command_buffer, "FXAA");
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
-        set_size(width, height);
+        node->width = width;
+        node->height = height;
 
         float push_constant_data[4] = {(float)width, (float)height, static_cast<float>(enable_aa), 0.0f};
         PushConstant push_constants = {
