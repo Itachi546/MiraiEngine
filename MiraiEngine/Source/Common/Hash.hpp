@@ -14,6 +14,13 @@ namespace utils {
         return hashv;
     }
 
+    inline void string_hash_to_colors(const std::string &message, float *out_color) {
+        uint32_t hash = djb2_hash_string(message);
+        out_color[0] = float((hash >> 24) & 0xff) / 255.0f;
+        out_color[1] = float((hash >> 16) & 0xff) / 255.0f;
+        out_color[2] = float((hash >> 8) & 0xff) / 255.0f;
+    }
+
     template <typename... Args>
     void hash_combine(std::size_t &seed, const Args &...args) {
         ((seed = seed ^ (std::hash<Args>{}(args) + 0x9e3779b9 + (seed << 6) + (seed >> 2))), ...);

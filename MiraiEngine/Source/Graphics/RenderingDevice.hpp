@@ -464,13 +464,23 @@ namespace mirai {
         virtual void destroy_textures(TextureID *textures, uint32_t count) = 0;
         virtual void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) = 0;
 
-        virtual uint64_t get_memory_usage() = 0;
+        virtual void begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors) = 0;
+        virtual void end_debug_utils_label(CommandBuffer *command_buffer) = 0;
+
+        uint64_t get_memory_usage() {
+            return total_memory_usage;
+        }
+
+        void set_enable_debug_utils_label(bool state) {
+            this->enable_debug_utils_label = state;
+        }
 
         virtual ~RenderingDevice() = default;
 
       protected:
-        bool enable_validation;
-
+        bool enable_validation = true;
+        bool enable_debug_utils_label = true;
+        uint64_t total_memory_usage = 0;
         static RenderingDevice *Instance;
     };
 

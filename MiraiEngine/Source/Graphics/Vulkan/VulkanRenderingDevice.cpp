@@ -16,7 +16,7 @@
 
 namespace mirai {
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName) {
-        if (!enable_validation)
+        if (!enable_debug_utils_label)
             return;
 
         VkDebugUtilsObjectNameInfoEXT name_info = {
@@ -976,6 +976,32 @@ namespace mirai {
             uniform_set->set_id = 0;
             resource_pool_uniform_sets.release(uniform_sets[i]);
         }
+    }
+
+    void VulkanRenderingDevice::begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors) {
+        if (!enable_debug_utils_label)
+            return;
+
+        VkDebugUtilsLabelEXT label_info = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+            .pLabelName = name,
+        };
+
+        if (colors == nullptr) {
+            utils::string_hash_to_colors(name, label_info.color);
+        } else {
+            label_info.color[0] = colors[0];
+            label_info.color[1] = colors[1];
+            label_info.color[2] = colors[2];
+        }
+        label_info.color[3] = 1.0f;
+        vkCmdBeginDebugUtilsLabelEXT(command_buffer->command_buffer, &label_info);
+    }
+
+    void VulkanRenderingDevice::end_debug_utils_label(CommandBuffer *command_buffer) {
+        if (!enable_debug_utils_label)
+            return;
+        vkCmdEndDebugUtilsLabelEXT(command_buffer->command_buffer);
     }
 
     void VulkanRenderingDevice::add_bindless_texture(TextureID *textures, uint32_t texture_count) {

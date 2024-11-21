@@ -33,6 +33,8 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "Forward Pass");
 
+        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
+
         command_buffer->begin_render_pass(node, frame_graph);
 
         std::vector<DrawData> &draw_infos = scene->draw_infos;
@@ -72,6 +74,8 @@ namespace mirai {
             }
         }
         command_buffer->end_render_pass();
+
+        RenderingDevice::get()->end_debug_utils_label(command_buffer);
     }
 
     ForwardPass::~ForwardPass() {

@@ -78,6 +78,9 @@ namespace mirai {
 
         void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) override;
 
+        void begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float* colors);
+        void end_debug_utils_label(CommandBuffer *command_buffer);
+
         VulkanPipeline *access_pipeline(PipelineID pipeline) {
             return resource_pool_pipelines.access(pipeline);
         }
@@ -92,10 +95,6 @@ namespace mirai {
 
         VulkanUniformSet *access_uniform_set(UniformSetID uniform_set) {
             return resource_pool_uniform_sets.access(uniform_set);
-        }
-
-        uint64_t get_memory_usage() override {
-            return total_memory_usage;
         }
 
         ~VulkanRenderingDevice();
@@ -131,7 +130,6 @@ namespace mirai {
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 1;
         uint32_t current_frame = 0;
-        uint64_t total_memory_usage = 0;
         bool vsync = true;
 
         VkInstance instance;
