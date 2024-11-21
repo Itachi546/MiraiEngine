@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <glm/glm.hpp>
 #include <sstream>
+#include <cstring>
 
 namespace mirai::miProfiler {
     const uint32_t K_MAX_QUERY_COUNT = 64;
@@ -111,7 +112,7 @@ namespace mirai::miProfiler {
 
         TextRenderer *renderer = TextRenderManager::get()->get_default();
         std::stringstream ss("");
-        glm::vec2 position = {5.0f, 20.0f};
+        glm::vec2 position = {5.0f, 34.0f};
         float font_size = 12.0f;
         for (auto &[key, val] : ranges) {
             // Skip for first frame

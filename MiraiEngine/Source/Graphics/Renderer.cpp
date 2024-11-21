@@ -10,6 +10,7 @@
 #include "TextRenderManager.hpp"
 #include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
+#include "Common/MathUtils.hpp"
 
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
@@ -36,24 +37,29 @@ namespace mirai {
 
     void Renderer::update() {
         scene->update();
+
+        std::stringstream ss("");
+        ss << "Memory: " << std::fixed << std::setprecision(2) << utils::bytes_to_mb(device->get_memory_usage()) << "MB";
+        TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 12);
     }
 
     void Renderer::render() {
-        ScopedCpuProfiling("Render Time");
 
         device->new_frame();
 
         CommandBuffer *cb = device->get_command_buffer();
-
         cb->begin();
-
         miProfiler::NewFrame(cb);
+        {
+            ScopedGpuProfiling(cb, "Gpu Time");
 
-        frame_graph->render(cb, scene.get());
+            frame_graph->render(cb, scene.get());
 
-        device->queue_command_buffer(cb);
+            device->queue_command_buffer(cb);
+        }
 
         device->present();
+        // device->wait();
     }
 
     Renderer::~Renderer() {

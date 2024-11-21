@@ -427,6 +427,11 @@ namespace mirai {
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
         pipeline->support_bindless_texture = support_bindless_texture;
 
+        uint32_t set_layouts_count = (pipeline->support_bindless_texture ? 1 : 0) + static_cast<uint32_t>(descriptor_sets_map.size());
+        std::vector<VkDescriptorSetLayout> set_layouts(set_layouts_count);
+        if (pipeline->support_bindless_texture)
+            set_layouts[K_BINDLESS_TEXTURE_SET] = bindless_descriptor_layout;
+
         for (const auto &[key, val] : descriptor_sets_map) {
             uint64_t hash = GetDescriptorSetLayoutHash(val, key);
             auto found = descriptor_set_layouts_cache.find(hash);
@@ -442,15 +447,12 @@ namespace mirai {
                     bindings[b].stageFlags = val[b].shader_stage;
                 }
                 VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, bindings.data(), binding_count, 0, nullptr);
-                pipeline->set_layouts.push_back(set_layout);
+                set_layouts[key] = set_layout;
                 descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
-            } else
-                pipeline->set_layouts.push_back(found->second);
+            } else {
+                set_layouts[key] = found->second;
+            }
         }
-
-        std::vector<VkDescriptorSetLayout> set_layouts = pipeline->set_layouts;
-        if (support_bindless_texture)
-            set_layouts.insert(set_layouts.begin() + K_BINDLESS_TEXTURE_SET, bindless_descriptor_layout);
 
         std::vector<VkPushConstantRange> push_constants;
         for (const auto &entry : push_constants_map)
@@ -611,13 +613,8 @@ namespace mirai {
 
         switch (buffer_description->allocation_type) {
         case MEMORY_ALLOCATION_TYPE_CPU: {
-            bool is_src = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_SRC_BIT) > 0;
-            bool is_dst = (buffer_description->usage_flags & BUFFER_USAGE_TRANSFER_DST_BIT) > 0;
-
             // This is a staging buffer
-            allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-            allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
             allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
             break;
         }
@@ -632,6 +629,13 @@ namespace mirai {
         VmaAllocationInfo allocation_info = {};
         VK_CHECK(vmaCreateBuffer(vma_allocator, &create_info, &allocation_create_info, &vk_buffer, &allocation, &allocation_info));
         set_debug_marker_object_name(VK_OBJECT_TYPE_BUFFER, (uint64_t)vk_buffer, debug_name.c_str());
+
+        if (MEMORY_ALLOCATION_TYPE_CPU) {
+            VkMemoryPropertyFlags memory_properties;
+            vmaGetAllocationMemoryProperties(vma_allocator, allocation, &memory_properties);
+            ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+            ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        }
 
         uint32_t buffer_id = resource_pool_buffers.obtain();
         VulkanBuffer *buffer = resource_pool_buffers.access(buffer_id);
@@ -649,6 +653,14 @@ namespace mirai {
         if (vk_buffer->buffer_ptr == nullptr)
             VK_CHECK(vmaMapMemory(vma_allocator, vk_buffer->allocation, &vk_buffer->buffer_ptr));
         return reinterpret_cast<uint8_t *>(vk_buffer->buffer_ptr);
+    }
+
+    void VulkanRenderingDevice::unmap_buffer(BufferID buffer) {
+        VulkanBuffer *vk_buffer = resource_pool_buffers.access(buffer.id);
+        if (vk_buffer->buffer_ptr != nullptr) {
+            vmaUnmapMemory(vma_allocator, vk_buffer->allocation);
+            vk_buffer->buffer_ptr = nullptr;
+        }
     }
 
     QueryID VulkanRenderingDevice::create_query(uint32_t query_count) {
@@ -913,8 +925,6 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
-            // for (auto &set_layout : pipeline->set_layouts)
-            //    vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
             vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
             resource_pool_pipelines.release(pipeline_ids[i]);

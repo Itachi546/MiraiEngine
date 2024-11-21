@@ -41,7 +41,7 @@ namespace mirai {
         };
 
         per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-        frame_data_ptr = (FrameData *)device->map_buffer(per_frame_data_buffer);
+        per_frame_data_ptr = device->map_buffer(per_frame_data_buffer);
 
         UniformLayout layout = {
             .binding = 0,
@@ -73,11 +73,18 @@ namespace mirai {
 
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
-        frame_data_ptr->elapsed_time = Engine::get()->get_elapsed_seconds();
-        frame_data_ptr->P = camera->get_projection_transform();
-        frame_data_ptr->V = camera->get_camera_transform();
-        frame_data_ptr->VP = frame_data_ptr->P * frame_data_ptr->V;
-        frame_data_ptr->window_size = glm::vec2((float)width, (float)height);
+
+        glm::mat4 P = camera->get_projection_transform();
+        glm::mat4 V = camera->get_camera_transform();
+        glm::mat4 VP = P * V;
+
+        per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
+        per_frame_data.P = P; 
+        per_frame_data.V = V; 
+        per_frame_data.VP = VP; 
+        per_frame_data.window_size = glm::vec2((float)width, (float)height);
+
+        std::memcpy(per_frame_data_ptr, &per_frame_data, sizeof(FrameData));
     }
 
     void Scene::remove_entity_tree(Entity entity) {

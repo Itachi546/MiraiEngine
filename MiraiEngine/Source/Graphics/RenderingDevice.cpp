@@ -3,6 +3,8 @@
 #include "Common/FileUtils.hpp"
 #include "Engine/Log.hpp"
 
+#include <cstring>
+
 namespace mirai {
     RenderingDevice *RenderingDevice::Instance = nullptr;
 
@@ -17,7 +19,7 @@ namespace mirai {
         }
     }
 
-    void rendering_utils::copy_texture_immediate(TextureID dst, unsigned char* data, uint32_t size) {
+    void rendering_utils::copy_texture_immediate(TextureID dst, unsigned char *data, uint32_t size) {
         BufferDescription buffer_desc = {
             .size = size,
             .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -32,7 +34,7 @@ namespace mirai {
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         // Block size is ignored for single mip
-        command_buffer->copy_texture(dst, staging_buffer, 1, 32);
+        command_buffer->copy_texture(dst, staging_buffer, 0, 1, 32);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
         device->destroy_buffers(&staging_buffer, 1);

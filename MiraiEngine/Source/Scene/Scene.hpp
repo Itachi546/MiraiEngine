@@ -83,10 +83,12 @@ namespace mirai {
 
             glm::vec2 window_size;
             glm::vec2 _padding;
-        };
+        } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
         BufferID per_frame_data_buffer;
+        uint8_t *per_frame_data_ptr;
+
         UniformSetID per_frame_uniform_set;
 
         std::vector<GpuMesh> gpu_meshes;
@@ -97,7 +99,6 @@ namespace mirai {
         bool dirty = true;
 
         std::unique_ptr<Camera> camera;
-        FrameData *frame_data_ptr;
 
         void remove_entity_tree(Entity entity);
         void update_transform_components();

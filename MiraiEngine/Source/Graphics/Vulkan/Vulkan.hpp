@@ -16,12 +16,10 @@
 namespace mirai {
     constexpr const uint32_t VULKAN_API_VERSION VK_API_VERSION_1_3;
 
-#define VK_CHECK(x)                                           \
-    do {                                                      \
-        VkResult err = x;                                     \
-        if (err) {                                            \
-            Log::Error("VulkanError::", std::to_string(err)); \
-        }                                                     \
+#define VK_CHECK(call)                 \
+    do {                               \
+        VkResult result_ = call;       \
+        ASSERT(result_ == VK_SUCCESS); \
     } while (0)
 
 #define VK_LOAD_FUNCTION(instance, pFuncName) (vkGetInstanceProcAddr(instance, pFuncName))

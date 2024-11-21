@@ -17,6 +17,7 @@ namespace mirai {
         TextureID texture;
         std::string filename;
         uint32_t block_size;
+        uint32_t skip_n_levels;
     };
 
     class AsyncLoader {

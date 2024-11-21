@@ -91,7 +91,6 @@ namespace mirai {
     struct VulkanPipeline {
         VkPipeline pipeline;
         VkPipelineBindPoint bind_point;
-        std::vector<VkDescriptorSetLayout> set_layouts;
         VkPipelineLayout pipeline_layout;
         bool support_bindless_texture;
     };

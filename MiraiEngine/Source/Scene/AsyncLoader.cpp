@@ -78,6 +78,17 @@ namespace mirai {
                         ASSERT(image_size <= K_STAGING_BUFFER_SIZE);
                         size_t read_size = fread(staging_buffer_ptr, 1, image_size, file);
 
+                        uint32_t buffer_offset = 0;
+                        if (texture_load_task->skip_n_levels > 0) {
+                            uint32_t w = header.header.dwWidth;
+                            uint32_t h = header.header.dwHeight;
+                            for (uint32_t i = 0; i < texture_load_task->skip_n_levels; ++i) {
+                                buffer_offset += ((w + 3) / 4) * ((h + 3) / 4) * block_size;
+                                w = w > 1 ? w / 2 : 1;
+                                h = h > 1 ? h / 2 : 1;
+                            }
+                        }
+
                         ASSERT(read_size == image_size);
                         ASSERT(fgetc(file) == -1);
 
@@ -86,7 +97,7 @@ namespace mirai {
 
                         command_buffer->begin();
 
-                        command_buffer->copy_texture(texture_load_task->texture, staging_buffer, header.header.dwMipMapCount, block_size);
+                        command_buffer->copy_texture(texture_load_task->texture, staging_buffer, buffer_offset, header.header.dwMipMapCount - texture_load_task->skip_n_levels, block_size);
 
                         RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
                         command_buffer->wait();

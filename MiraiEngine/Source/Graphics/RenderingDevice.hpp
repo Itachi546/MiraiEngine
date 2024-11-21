@@ -438,6 +438,7 @@ namespace mirai {
 
         virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
+        virtual void unmap_buffer(BufferID buffer) = 0;
 
         virtual QueryID create_query(uint32_t query_count) = 0;
         virtual void query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) = 0;

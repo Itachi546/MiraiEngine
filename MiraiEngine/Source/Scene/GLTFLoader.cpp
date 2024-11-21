@@ -15,6 +15,8 @@
 #include <memory>
 #include <glm/glm.hpp>
 
+constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
+
 namespace mirai {
     struct LoadState {
         Scene *scene;
@@ -330,12 +332,24 @@ namespace mirai {
         Format format = get_image_format(header.header10.dxgiFormat);
         ASSERT_MSG(format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
 
+        uint32_t width = header.header.dwWidth;
+        uint32_t height = header.header.dwHeight;
+        uint32_t mip_count = header.header.dwMipMapCount;
+
+        if (SKIP_DDS_FIRST_N_LEVEL > 0 && mip_count > SKIP_DDS_FIRST_N_LEVEL) {
+            for (int i = 0; i < SKIP_DDS_FIRST_N_LEVEL; ++i) {
+                width = width / 2;
+                height = height / 2;
+                mip_count--;
+            }
+        }
+
         SamplerDescription sampler_desc = SamplerDescription::create();
         TextureDescription texture_desc = {
-            .width = header.header.dwWidth,
-            .height = header.header.dwHeight,
+            .width = width,
+            .height = height,
             .depth = 1,
-            .mip_levels = header.header.dwMipMapCount,
+            .mip_levels = mip_count,
             .array_layers = 1,
             .texture_type = TEXTURE_TYPE_2D,
             .format = format,
@@ -352,6 +366,7 @@ namespace mirai {
             .texture = texture,
             .filename = full_path,
             .block_size = 16,
+            .skip_n_levels = SKIP_DDS_FIRST_N_LEVEL,
         });
 
         return true;

@@ -35,7 +35,7 @@ namespace utils {
 
     inline std::string precision(float val, int precision) {
         std::stringstream ss;
-        ss << std::setprecision(precision) << val;
+        ss << std::fixed << std::setprecision(precision) << val;
         return ss.str();
     }
 }

@@ -38,6 +38,7 @@ namespace mirai {
 
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
+        void unmap_buffer(BufferID buffer) override;
 
         QueryID create_query(uint32_t query_count) override;
         void query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) override;
@@ -78,7 +79,7 @@ namespace mirai {
 
         void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) override;
 
-        void begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float* colors);
+        void begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors);
         void end_debug_utils_label(CommandBuffer *command_buffer);
 
         VulkanPipeline *access_pipeline(PipelineID pipeline) {
