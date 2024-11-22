@@ -1,7 +1,7 @@
 #include "Device.hpp"
 #include <string.h>
 
-#define GPU_TYPE_INTEGRATED 1
+#define GPU_TYPE_INTEGRATED 0
 namespace mirai {
     bool is_device_extensions_available(VkPhysicalDevice physical_device, const std::vector<const char *> &requested_extensions) {
         uint32_t extension_count = 0;

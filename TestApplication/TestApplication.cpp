@@ -19,7 +19,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 0
+#if 1
         {
             // Forward Pass
             std::vector<FrameGraphResourceOutput> outputs = {

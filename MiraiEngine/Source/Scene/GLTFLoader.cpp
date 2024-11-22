@@ -113,18 +113,21 @@ namespace mirai {
 
                 float *normals = nullptr;
                 auto normal_attributes = primitive.attributes.find("NORMAL");
+                const tinygltf::Accessor normal_accessor = model->accessors[normal_attributes->second];
                 if (normal_attributes != primitive.attributes.end())
-                    normals = (float *)GetBufferPtr(model, model->accessors[normal_attributes->second]);
+                    normals = (float *)GetBufferPtr(model, normal_accessor);
 
                 float *tangents = nullptr;
                 auto tangent_attributes = primitive.attributes.find("TANGENT");
+                const tinygltf::Accessor tangent_accessor = model->accessors[tangent_attributes->second];
                 if (tangent_attributes != primitive.attributes.end())
-                    tangents = (float *)GetBufferPtr(model, model->accessors[tangent_attributes->second]);
+                    tangents = (float *)GetBufferPtr(model, tangent_accessor);
 
                 float *uvs = nullptr;
                 auto uv_attributes = primitive.attributes.find("TEXCOORD_0");
+                const tinygltf::Accessor uv_accessor = model->accessors[uv_attributes->second];
                 if (uv_attributes != primitive.attributes.end())
-                    uvs = (float *)GetBufferPtr(model, model->accessors[uv_attributes->second]);
+                    uvs = (float *)GetBufferPtr(model, uv_accessor);
 
                 uint32_t num_position = static_cast<uint32_t>(position_accessor.count);
                 for (uint32_t i = 0; i < num_position; ++i) {
@@ -139,19 +142,22 @@ namespace mirai {
                     else
                         normal = {0.0f, 1.0f, 0.0f};
 
-                    normal = glm::normalize(normal);
                     vertex.normal = utils::pack_vec3_to_u32(normal.x, normal.y, normal.z);
 
-                    glm::vec3 tangent;
+                    glm::vec4 tangent;
                     if (tangents != nullptr)
-                        tangent = {tangents[i * 3], tangents[i * 3 + 1], tangents[i * 3 + 2]};
+                        tangent = {
+                            tangents[i * 4],
+                            tangents[i * 4 + 1],
+                            tangents[i * 4 + 2],
+                            tangents[i * 4 + 3],
+                        };
                     else
-                        tangent = {1.0f, 0.0f, 0.0f};
+                        tangent = {1.0f, 0.0f, 0.0f, 1.0f};
 
-                    tangent = glm::normalize(tangent);
                     vertex.tangent = utils::pack_vec3_to_u32(tangent.x, tangent.y, tangent.z);
 
-                    glm::vec3 bitangent = glm::cross(normal, tangent);
+                    glm::vec3 bitangent = glm::cross(normal, glm::vec3(tangent)) * tangent.w;
                     vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
 
                     if (uvs != nullptr) {

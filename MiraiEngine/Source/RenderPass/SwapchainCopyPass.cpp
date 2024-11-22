@@ -11,7 +11,7 @@
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderPass("swapchain_copy"), enable_aa(false) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderPass("swapchain_copy"), enable_aa(true) {
         material = std::make_shared<ShaderMaterial>("FullScreenTextureMaterial");
         material->create_from_file(std::vector<std::string>{
             "SPIRV/fullscreen.vert.spv",

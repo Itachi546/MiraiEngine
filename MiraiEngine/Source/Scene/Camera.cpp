@@ -8,7 +8,7 @@ namespace mirai {
                        rotation(glm::vec3(0.0f)),
                        fov(60.0f),
                        aspect_ratio(4.0f / 3.0f),
-                       near_plane(0.1f),
+                       near_plane(0.3f),
                        far_plane(1000.0f),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
         viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
