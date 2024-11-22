@@ -49,7 +49,7 @@ namespace mirai {
             RenderingDevice::get()->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
             // Set Per Frame Data
-            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
+            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set[scene->per_frame_uniform_id], mesh_instance_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
             shader->bind(command_buffer, node, frame_graph);
 
