@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Common/CommonInclude.hpp"
-
-#include <glm/glm.hpp>
+#include "Math/Math.hpp"
 #include <string>
 
 struct GLFWwindow;

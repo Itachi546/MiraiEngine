@@ -5,8 +5,8 @@
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Engine/Profiler.hpp"
+#include "Math/Math.hpp"
 
-#include <glm/gtc/matrix_transform.hpp>
 #include <string>
 
 namespace mirai {

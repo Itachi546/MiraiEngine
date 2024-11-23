@@ -1,5 +1,5 @@
 #include "AsyncLoader.hpp"
-#include "Common/MathUtils.hpp"
+#include "Math/MathUtils.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Common/dds.hpp"
 #include <chrono>

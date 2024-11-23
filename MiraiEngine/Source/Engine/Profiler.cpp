@@ -2,10 +2,10 @@
 #include "Engine/Timer.hpp"
 #include "Common/Hash.hpp"
 #include "Graphics/TextRenderManager.hpp"
+#include "Math/Math.hpp"
 
 #include <iomanip>
 #include <unordered_map>
-#include <glm/glm.hpp>
 #include <sstream>
 #include <cstring>
 

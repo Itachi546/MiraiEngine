@@ -2,7 +2,6 @@
 
 #include "Common/CommonInclude.hpp"
 #include "Common/Color.hpp"
-#include <glm/glm.hpp>
 
 #include <string>
 #include <vector>

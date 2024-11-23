@@ -1,8 +1,9 @@
 #pragma once
 
 #include "RenderingDevice.hpp"
+#include "Math/Math.hpp"
+
 #include <map>
-#include <glm/glm.hpp>
 #include <vector>
 #include <memory>
 

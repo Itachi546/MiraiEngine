@@ -2,10 +2,7 @@
 
 #include "ECS.hpp"
 #include "Graphics/RenderingDevice.hpp"
-#include "AsyncLoader.hpp"
-#include <glm/glm.hpp>
-
-#include <glm/gtc/quaternion.hpp>
+#include "Math/Math.hpp"
 
 namespace mirai {
     struct NameComponent {

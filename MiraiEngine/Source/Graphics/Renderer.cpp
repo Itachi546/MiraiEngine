@@ -10,7 +10,7 @@
 #include "TextRenderManager.hpp"
 #include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
-#include "Common/MathUtils.hpp"
+#include "Math/MathUtils.hpp"
 
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;

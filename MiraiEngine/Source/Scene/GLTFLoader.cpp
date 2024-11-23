@@ -5,15 +5,16 @@
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 #include <tiny_gltf.h>
 #include "Scene.hpp"
+#include "Scene/AsyncLoader.hpp"
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
-#include "Common/MathUtils.hpp"
+#include "Math/MathUtils.hpp"
+#include "Math/Math.hpp"
 #include "Common/dds.hpp"
 #include "Engine/Timer.hpp"
 #include "TextureCache.hpp"
 
 #include <memory>
-#include <glm/glm.hpp>
 
 constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
 

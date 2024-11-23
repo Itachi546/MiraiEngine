@@ -6,7 +6,7 @@
 #include "RenderingDevice.hpp"
 #include "Scene/Scene.hpp"
 
-#include <glm/glm.hpp>
+#include "Math/Math.hpp"
 
 namespace mirai {
     struct TextRenderManager;
