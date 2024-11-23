@@ -25,6 +25,10 @@ namespace mirai {
         right = glm::vec3(rotation_matrix[0][0], rotation_matrix[1][0], rotation_matrix[2][0]);
         up = glm::vec3(rotation_matrix[0][1], rotation_matrix[1][1], rotation_matrix[2][1]);
         forward = glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]);
+
+        view_projection_matrix = projection_matrix * view_matrix;
+
+        frustum.create_from_matrix(view_projection_matrix);
     }
 
     void Camera::update_projection_matrix() {
@@ -37,4 +41,5 @@ namespace mirai {
             projection_matrix = glm::ortho(-x_span, x_span, y_span, -y_span, near_plane, far_plane);
         }
     }
+
 } // namespace mirai

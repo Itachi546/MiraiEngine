@@ -104,7 +104,12 @@ namespace mirai {
             mesh_component.gpu_mesh_index = gpu_mesh_index;
             const tinygltf::Mesh &gltf_mesh = model->meshes[i];
 
-            for (const auto &primitive : gltf_mesh.primitives) {
+            uint32_t primitive_count = static_cast<uint32_t>(gltf_mesh.primitives.size());
+            mesh_component.mesh_subsets.resize(primitive_count);
+            mesh_component.aabbs.resize(primitive_count);
+
+            for (uint32_t p = 0; p < primitive_count; ++p) {
+                const auto &primitive = gltf_mesh.primitives[p];
                 uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
                 uint32_t index_offset = static_cast<uint32_t>(indices.size());
 
@@ -120,22 +125,36 @@ namespace mirai {
 
                 float *tangents = nullptr;
                 auto tangent_attributes = primitive.attributes.find("TANGENT");
-                const tinygltf::Accessor tangent_accessor = model->accessors[tangent_attributes->second];
-                if (tangent_attributes != primitive.attributes.end())
-                    tangents = (float *)GetBufferPtr(model, tangent_accessor);
+                if (tangent_attributes != primitive.attributes.end()) {
+                    const tinygltf::Accessor tangent_accessor = model->accessors[tangent_attributes->second];
+                    if (tangent_attributes != primitive.attributes.end())
+                        tangents = (float *)GetBufferPtr(model, tangent_accessor);
+                }
 
                 float *uvs = nullptr;
                 auto uv_attributes = primitive.attributes.find("TEXCOORD_0");
-                const tinygltf::Accessor uv_accessor = model->accessors[uv_attributes->second];
-                if (uv_attributes != primitive.attributes.end())
-                    uvs = (float *)GetBufferPtr(model, uv_accessor);
-
+                if (uv_attributes != primitive.attributes.end()) {
+                    const tinygltf::Accessor uv_accessor = model->accessors[uv_attributes->second];
+                    if (uv_attributes != primitive.attributes.end())
+                        uvs = (float *)GetBufferPtr(model, uv_accessor);
+                }
                 uint32_t num_position = static_cast<uint32_t>(position_accessor.count);
+                AABB &aabb = mesh_component.aabbs[p];
+                aabb.min = glm::vec3{FLT_MAX};
+                aabb.max = glm::vec3{-FLT_MAX};
+
                 for (uint32_t i = 0; i < num_position; ++i) {
                     Vertex &vertex = vertices.emplace_back();
-                    vertex.px = positions[i * 3];
-                    vertex.py = positions[i * 3 + 1];
-                    vertex.pz = positions[i * 3 + 2];
+                    glm::vec3 position = glm::vec3{
+                        positions[i * 3],
+                        positions[i * 3 + 1],
+                        positions[i * 3 + 2]};
+                    vertex.px = position.x;
+                    vertex.py = position.y;
+                    vertex.pz = position.z;
+
+                    aabb.min = glm::min(aabb.min, position);
+                    aabb.max = glm::min(aabb.min, position);
 
                     glm::vec3 normal;
                     if (normals != nullptr)
@@ -177,7 +196,7 @@ namespace mirai {
                     indices.insert(indices.end(), indices_ptr, indices_ptr + index_count);
                 }
 
-                MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets.emplace_back();
+                MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
                 mesh_subset.vertex_buffer = {
                     .offset = vertex_offset,
                     .count = (uint32_t)vertices.size() - vertex_offset,

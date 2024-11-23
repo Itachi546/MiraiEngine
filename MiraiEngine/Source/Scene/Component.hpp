@@ -76,6 +76,7 @@ namespace mirai {
 
         uint32_t gpu_mesh_index;
         std::vector<MeshSubset> mesh_subsets;
+        std::vector<AABB> aabbs;
         /*
         void prepare_render_data(AsyncLoader *async_loader)
         {

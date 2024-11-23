@@ -13,11 +13,12 @@ using namespace std::chrono_literals;
 namespace mirai {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0), render_time_ms(16.0f) {
+    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
         Timer timer;
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
+
         renderer = std::make_unique<Renderer>(options.enable_validation);
         Instance = this;
         Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
@@ -43,7 +44,7 @@ namespace mirai {
                     app->update();
 
                 renderer->update();
-                
+
                 renderer->render();
 
                 Input::get()->update();

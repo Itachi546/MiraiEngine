@@ -19,7 +19,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 1
+#if 0
         {
             // Forward Pass
             std::vector<FrameGraphResourceOutput> outputs = {
@@ -120,8 +120,8 @@ class TestApplication : public App {
 
 int main(int argc, char **argv) {
     EngineInitializationOptions options = {
-        .width = 1360,
-        .height = 769,
+        .width = 1920,
+        .height = 1080,
         .enable_validation = true,
     };
 

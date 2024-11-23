@@ -47,7 +47,7 @@ namespace mirai {
         ~Engine();
 
         bool show_metrics;
-        float render_time_ms;
+      
       private:
         uint64_t dt_ms;
         uint64_t elapsed_time_ms;

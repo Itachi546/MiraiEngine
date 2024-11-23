@@ -14,12 +14,16 @@ namespace mirai {
 
         void update();
 
-        glm::mat4 get_camera_transform() const {
+        glm::mat4 get_view_transform() const {
             return view_matrix;
         }
 
         glm::mat4 get_projection_transform() const {
             return projection_matrix;
+        }
+
+        glm::mat4 get_view_projection_transform() const {
+            return view_projection_matrix;
         }
 
         glm::vec3 position;
@@ -69,10 +73,15 @@ namespace mirai {
             return forward;
         }
 
+        Frustum &get_frustum() {
+            return frustum;
+        }
+
       private:
         glm::mat4 view_matrix;
         glm::mat4 projection_matrix;
         glm::mat4 viewport_matrix;
+        glm::mat4 view_projection_matrix;
 
         ProjectionMode projection_mode;
 
@@ -82,6 +91,8 @@ namespace mirai {
         float aspect_ratio;
         float near_plane;
         float far_plane;
+
+        Frustum frustum;
 
         void update_projection_matrix();
     };

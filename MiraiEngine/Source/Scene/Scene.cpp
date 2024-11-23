@@ -79,8 +79,8 @@ namespace mirai {
         Window::get()->get_size(&width, &height);
 
         glm::mat4 P = camera->get_projection_transform();
-        glm::mat4 V = camera->get_camera_transform();
-        glm::mat4 VP = P * V;
+        glm::mat4 V = camera->get_view_transform();
+        glm::mat4 VP = camera->get_view_projection_transform();
 
         per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
         per_frame_data.P = P;

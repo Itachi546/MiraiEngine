@@ -11,6 +11,7 @@
 #include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/MathUtils.hpp"
+#include "Device/Window.hpp"
 
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
