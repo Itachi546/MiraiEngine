@@ -39,8 +39,8 @@ namespace mirai {
         ASSERT(node != nullptr);
 
         RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
-
         ScopedGpuProfiling(command_buffer, "FXAA");
+        
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
         node->width = width;
@@ -61,54 +61,12 @@ namespace mirai {
 
         command_buffer->draw(6, 1, 0, 0);
 
-        // Draw Text
-        render_text(command_buffer, frame_graph, node);
-
         command_buffer->end_render_pass();
 
         RenderingDevice::get()->end_debug_utils_label(command_buffer);
     }
 
     SwapchainCopyPass::~SwapchainCopyPass() {
-    }
-
-    void SwapchainCopyPass::render_text(CommandBuffer *command_buffer, FrameGraph *frame_graph, const FrameGraphNode *node) {
-        TextRenderManager *text_render_manager = TextRenderManager::get();
-        if (text_render_manager->renderers.size() == 0)
-            return;
-
-        text_render_manager->shader->bind(command_buffer, node, frame_graph);
-        PipelineID pipeline = text_render_manager->shader->get_pipeline_id();
-
-        struct PushConstantData {
-            glm::mat4 ortho_matrix;
-            uint32_t texture_id;
-            uint32_t _unused[3];
-        } push_constant_data;
-
-        uint32_t width, height;
-        Window::get()->get_size(&width, &height);
-        push_constant_data.ortho_matrix = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
-
-        PushConstant push_constant = {
-            .data = &push_constant_data,
-            .shader_stage = SHADER_STAGE_VERTEX,
-            .size = sizeof(PushConstantData),
-            .offset = 0,
-        };
-
-        miProfiler::DrawData();
-        for (auto &renderer : text_render_manager->renderers) {
-            if (renderer->vertex_count == 0)
-                continue;
-            push_constant_data.texture_id = renderer->get_font_texture().id;
-
-            command_buffer->set_uniform_sets(pipeline, &renderer->uniform_set, 1);
-            command_buffer->set_push_constants(pipeline, &push_constant, 1);
-            command_buffer->draw(renderer->vertex_count, 1, 0, 0);
-
-            renderer->reset();
-        }
     }
 
 } // namespace mirai

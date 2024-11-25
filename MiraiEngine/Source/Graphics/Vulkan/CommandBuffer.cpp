@@ -304,14 +304,29 @@ namespace mirai {
         prepare_output_resources(frame_graph, node);
     }
 
+    void CommandBuffer::prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers) {
+        VulkanSwapchain *swapchain = device->get_swapchain();
+
+        VkImageLayout current_layout = swapchain->get_current_image_layout();
+        if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+            image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
+                                                               VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                                               current_layout,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                               VK_IMAGE_ASPECT_COLOR_BIT));
+            swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        }
+    }
+
     void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         std::vector<VkImageMemoryBarrier2> image_barriers;
         // Input Barrier
+
         for (auto resource_handle : node->inputs) {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
             create_image_barrier(device, resource, image_barriers);
         }
-
         if (image_barriers.size() > 0) {
             pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
             image_barriers.clear();
@@ -325,18 +340,7 @@ namespace mirai {
         for (auto resource_handle : node->outputs) {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
             if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
-                VulkanSwapchain *swapchain = device->get_swapchain();
-
-                VkImageLayout current_layout = swapchain->get_current_image_layout();
-                if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-                    image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
-                                                                       VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-                                                                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                                                                       current_layout,
-                                                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                       VK_IMAGE_ASPECT_COLOR_BIT));
-                    swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-                }
+                prepare_swapchain_image(frame_graph, resource, image_barriers);
             } else
                 create_image_barrier(device, resource, image_barriers);
         }

@@ -40,6 +40,7 @@ namespace mirai {
     struct FrameGraphResourceInput {
         std::string name;
         FrameGraphResourceType resource_type;
+        AttachmentLoadOp load_op;
     };
 
     class FrameGraphRenderPass {

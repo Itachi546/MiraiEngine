@@ -43,7 +43,7 @@ namespace mirai {
             rendering_info.attachment_info.push_back(FrameGraphAttachmentInfo{
                 .clear_color = output->clear_color,
                 .format = output->format,
-                .load_op = LOAD_OP_CLEAR,
+                .load_op = output->load_op,
             });
 
             if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT || output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
@@ -102,13 +102,11 @@ namespace mirai {
         FrameGraphResource *resource = resource_pool_resources.access(handle);
         resource->resource_type = input->resource_type;
 
-        ASSERT(input->resource_type != FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT);
         if (input->resource_type == FRAMEGRAPH_RESOURCE_TYPE_TEXTURE) {
             auto found = resources_map.find(utils::djb2_hash_string(input->name));
             ASSERT(found != resources_map.end());
             resource->texture = resource_pool_resources.access(found->second)->texture;
         }
-
         return FrameGraphResourceHandle{handle};
     }
 
@@ -191,7 +189,7 @@ namespace mirai {
 
         for (std::size_t i = 0; i < passes.size(); ++i) {
             json pass = passes[i];
-            bool enabled = pass.value("enabled", true);
+            bool enabled = pass.value("enabled", false);
             if (!enabled)
                 continue;
 
@@ -212,6 +210,7 @@ namespace mirai {
                 FrameGraphResourceInput &resource = node_description.inputs[j];
                 resource.name = passInput.value("name", "");
                 std::string resourceType = passInput.value("type", "");
+                resource.load_op = get_attachment_load_op(passInput.value("op", "LOAD_OP_CLEAR"));
                 resource.resource_type = get_resource_type_from_string(resourceType);
             }
 
@@ -239,6 +238,10 @@ namespace mirai {
                         if (is_depth_format(resource.format))
                             resource.clear_color = {1.0f, 0.0f, 0.0f, 0.0f};
                     }
+                    break;
+                }
+                case FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN: {
+                    resource.load_op = get_attachment_load_op(passOutput["op"]);
                     break;
                 }
                 }

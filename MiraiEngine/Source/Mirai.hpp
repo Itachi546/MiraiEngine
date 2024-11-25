@@ -10,6 +10,7 @@
 #include "RenderPass/ForwardPass.hpp"
 #include "RenderPass/SwapchainCopyPass.hpp"
 #include "RenderPass/GBufferPass.hpp"
+#include "RenderPass/DebugPass.hpp"
 
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"

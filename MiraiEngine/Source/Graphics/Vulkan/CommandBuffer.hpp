@@ -7,6 +7,7 @@ namespace mirai {
     class VulkanRenderingDevice;
     struct FrameGraphNode;
     class FrameGraph;
+    struct FrameGraphResource;
 
     class CommandBuffer {
       public:
@@ -41,6 +42,7 @@ namespace mirai {
         void wait();
 
       private:
+        void prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers);
         void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
