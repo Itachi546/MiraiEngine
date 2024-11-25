@@ -96,7 +96,7 @@ namespace mirai {
         swapchain = std::make_unique<VulkanSwapchain>();
         swapchain->swapchain = VK_NULL_HANDLE;
         CreateSwapchain(swapchain.get(), physical_device, device, surface, vsync);
-        for (uint32_t i = 0; i < swapchain->image_count; ++i) {
+        for (uint32_t i = 0; i < swapchain->images.size(); ++i) {
             std::string image_name = "swapchain_image_" + std::to_string(i);
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)swapchain->images[i], image_name.c_str());
 
@@ -809,7 +809,7 @@ namespace mirai {
         if (resized) {
             swapchain->width = surface_caps.currentExtent.width;
             swapchain->height = surface_caps.currentExtent.height;
-            ResizeSwapchain(swapchain.get(), physical_device, device, surface, vsync);
+            ResizeSwapchain(swapchain.get(), physical_device, device, surface, surface_caps, vsync);
         }
         VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &swapchain->current_image_index));
     }
@@ -842,7 +842,6 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::present() {
-        std::vector<VkCommandBufferSubmitInfo> command_buffer_submit_infos(queued_command_buffer.size());
 
         VkImageLayout current_layout = swapchain->get_current_image_layout();
         if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
@@ -850,8 +849,8 @@ namespace mirai {
             VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                                                                               VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                                                                              VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-                                                                              VK_ACCESS_2_NONE,
+                                                                              VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                                                                              0,
                                                                               current_layout,
                                                                               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                                                               VK_IMAGE_ASPECT_COLOR_BIT);
@@ -868,37 +867,26 @@ namespace mirai {
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         }
 
+        std::vector<VkCommandBuffer> submit_command_buffers(queued_command_buffer.size());
         for (uint32_t i = 0; i < queued_command_buffer.size(); ++i) {
             VK_CHECK(vkEndCommandBuffer(queued_command_buffer[i]->command_buffer));
-            command_buffer_submit_infos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-            command_buffer_submit_infos[i].commandBuffer = queued_command_buffer[i]->command_buffer;
+            submit_command_buffers[i] = queued_command_buffer[i]->command_buffer;
         }
-
-        VkSemaphoreSubmitInfo semaphore_wait_info = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = image_acquire_semaphore[current_frame],
-            .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        };
-
-        VkSemaphoreSubmitInfo semaphore_signal_info = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-            .semaphore = render_finished_semaphore[current_frame],
-            .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        };
-
-        VkSubmitInfo2 submit_info = {
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-            .waitSemaphoreInfoCount = 1,
-            .pWaitSemaphoreInfos = &semaphore_wait_info,
-            .commandBufferInfoCount = static_cast<uint32_t>(command_buffer_submit_infos.size()),
-            .pCommandBufferInfos = command_buffer_submit_infos.data(),
-            .signalSemaphoreInfoCount = 1,
-            .pSignalSemaphoreInfos = &semaphore_signal_info,
-        };
-
-        VK_CHECK(vkQueueSubmit2(device_queues[QUEUE_TYPE_GRAPHICS], 1, &submit_info, in_flight_fences[current_frame]));
-
         queued_command_buffer.clear();
+
+        VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+        VkSubmitInfo submit_info = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &image_acquire_semaphore[current_frame],
+            .pWaitDstStageMask = wait_stages,
+            .commandBufferCount = static_cast<uint32_t>(submit_command_buffers.size()),
+            .pCommandBuffers = submit_command_buffers.data(),
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &render_finished_semaphore[current_frame],
+        };
+
+        VK_CHECK(vkQueueSubmit(device_queues[QUEUE_TYPE_GRAPHICS], 1, &submit_info, in_flight_fences[current_frame]));
 
         VkPresentInfoKHR present_info = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

@@ -86,11 +86,10 @@ namespace mirai {
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
-        BufferID per_frame_data_buffer[2];
-        uint8_t *per_frame_data_ptr[2];
+        BufferID per_frame_data_buffer;
+        uint8_t *per_frame_data_ptr;
 
-        UniformSetID per_frame_uniform_set[2];
-        uint32_t per_frame_uniform_id = 0;
+        UniformSetID per_frame_uniform_set;
 
         std::vector<GpuMesh> gpu_meshes;
 

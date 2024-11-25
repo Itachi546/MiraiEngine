@@ -9,7 +9,6 @@ namespace mirai {
         std::vector<VkImage> images;
         std::vector<VkImageView> image_views;
         uint32_t width, height;
-        uint32_t image_count;
         uint32_t current_image_index;
         VkSurfaceFormatKHR surface_format;
         VkPresentModeKHR present_mode;
@@ -40,6 +39,6 @@ namespace mirai {
 
     void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync);
 
-    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync);
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, bool vsync);
 
 } // namespace mirai

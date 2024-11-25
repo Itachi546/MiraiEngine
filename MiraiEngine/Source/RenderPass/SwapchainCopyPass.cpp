@@ -83,6 +83,7 @@ namespace mirai {
         struct PushConstantData {
             glm::mat4 ortho_matrix;
             uint32_t texture_id;
+            uint32_t _unused[3];
         } push_constant_data;
 
         uint32_t width, height;

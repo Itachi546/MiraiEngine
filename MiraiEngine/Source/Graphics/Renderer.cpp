@@ -60,7 +60,7 @@ namespace mirai {
         }
 
         device->present();
-        // device->wait();
+        device->wait();
     }
 
     Renderer::~Renderer() {

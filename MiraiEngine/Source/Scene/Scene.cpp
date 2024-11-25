@@ -46,26 +46,22 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_VERTEX,
         };
 
-        for (int i = 0; i < 2; ++i) {
-            per_frame_data_buffer[i] = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-            per_frame_data_ptr[i] = device->map_buffer(per_frame_data_buffer[i]);
-            per_frame_uniform_set[i] = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
+        per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
+        per_frame_data_ptr = device->map_buffer(per_frame_data_buffer);
+        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
 
-            UniformBinding binding = {
-                .resource_id = per_frame_data_buffer[i],
-                .offset = 0,
-                .range = sizeof(FrameData),
-            };
-            device->update_uniform_set(per_frame_uniform_set[i], &binding, 1);
-        }
-        per_frame_uniform_id = 0;
+        UniformBinding binding = {
+            .resource_id = per_frame_data_buffer,
+            .offset = 0,
+            .range = sizeof(FrameData),
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 
         camera = std::make_unique<Camera>();
     }
 
     void Scene::update() {
         ScopedCpuProfiling("Scene Update");
-        per_frame_uniform_id = 1 - per_frame_uniform_id;
 
         camera->update();
 
@@ -88,7 +84,7 @@ namespace mirai {
         per_frame_data.VP = VP;
         per_frame_data.window_size = glm::vec2((float)width, (float)height);
 
-        std::memcpy(per_frame_data_ptr[per_frame_uniform_id], &per_frame_data, sizeof(FrameData));
+        std::memcpy(per_frame_data_ptr, &per_frame_data, sizeof(FrameData));
     }
 
     void Scene::remove_entity_tree(Entity entity) {
@@ -205,7 +201,7 @@ namespace mirai {
         }
         ecs::destroy(component_manager.get());
 
-        BufferID buffers[] = {per_frame_data_buffer[0], per_frame_data_buffer[1], transform_buffer, material_buffer};
+        BufferID buffers[] = {per_frame_data_buffer, transform_buffer, material_buffer};
         RenderingDevice::get()->destroy_buffers(buffers, static_cast<uint32_t>(std::size(buffers)));
     }
 

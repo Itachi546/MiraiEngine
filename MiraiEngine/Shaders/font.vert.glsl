@@ -7,6 +7,7 @@ layout(set = 0, binding = 0) readonly buffer VertexData {
 layout(push_constant) uniform PushConstants {
     mat4 ortho_matrix;
     uint texture_id;
+    uint _unused[3];
 };
 
 layout(location = 0) out flat uint tex_id;

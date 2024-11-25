@@ -331,8 +331,7 @@ namespace mirai {
                 if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
                     image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-                                                                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                                       VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                                                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                                                                        current_layout,
                                                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                                        VK_IMAGE_ASPECT_COLOR_BIT));

@@ -10,6 +10,8 @@
 
 namespace mirai {
 
+    constexpr uint32_t SWAPCHAIN_MIN_IMAGE_COUNT = 3;
+
     bool PhysicalDeviceSupportPresentation(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t graphics_queue_index) {
         static PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR vk_check_presentation_support = (PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR)VK_LOAD_FUNCTION(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
         return vk_check_presentation_support(physicalDevice, graphics_queue_index);
@@ -63,11 +65,11 @@ namespace mirai {
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface) {
+    static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface, uint32_t min_image_count) {
         VkSwapchainCreateInfoKHR createInfo = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = surface,
-            .minImageCount = swapchain->image_count,
+            .minImageCount = min_image_count,
             .imageFormat = swapchain->surface_format.format,
             .imageColorSpace = swapchain->surface_format.colorSpace,
             .imageExtent = VkExtent2D{swapchain->width, swapchain->height},
@@ -118,8 +120,8 @@ namespace mirai {
             },
         };
 
-        swapchain->image_layouts.resize(swapchain->image_count);
-        for (uint32_t i = 0; i < swapchain->image_count; ++i) {
+        swapchain->image_layouts.resize(swapchain->images.size());
+        for (uint32_t i = 0; i < swapchain->images.size(); ++i) {
             swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
             image_view_create_info.image = swapchain->images[i];
             VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
@@ -148,21 +150,22 @@ namespace mirai {
                                         : VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
         swapchain->current_transform = surface_caps.currentTransform;
-        swapchain->image_count = std::min(std::max(2u, surface_caps.minImageCount), surface_caps.maxImageCount);
-        create_swapchain(swapchain, device, surface);
+        uint32_t min_image_count = std::min(std::max(SWAPCHAIN_MIN_IMAGE_COUNT, surface_caps.minImageCount), surface_caps.maxImageCount);
+        create_swapchain(swapchain, device, surface, min_image_count);
 
-        uint32_t image_count = swapchain->image_count;
+        uint32_t image_count = 0;
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+
         swapchain->images.resize(image_count);
         swapchain->image_views.resize(image_count);
         VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, swapchain->images.data()));
 
-        swapchain->image_count = image_count;
         swapchain->current_image_index = 0;
 
         create_swapchain_image_views(device, swapchain);
     }
 
-    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync) {
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, bool vsync) {
         VkSwapchainKHR old_swapchain = swapchain->swapchain;
         for (auto &image_view : swapchain->image_views)
             vkDestroyImageView(device, image_view, nullptr);
@@ -176,9 +179,12 @@ namespace mirai {
 
         VkSurfaceTransformFlagBitsKHR old_transform = swapchain->current_transform;
 
-        create_swapchain(swapchain, device, surface);
+        uint32_t min_image_count = std::min(std::max(SWAPCHAIN_MIN_IMAGE_COUNT, surface_caps.minImageCount), min_image_count);
+        create_swapchain(swapchain, device, surface, min_image_count);
 
-        uint32_t image_count = swapchain->image_count;
+        uint32_t image_count = 0;
+        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+
         swapchain->images.resize(image_count);
         swapchain->image_views.resize(image_count);
 
