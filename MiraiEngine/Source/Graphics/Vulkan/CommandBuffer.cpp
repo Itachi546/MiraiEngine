@@ -74,6 +74,9 @@ namespace mirai {
         bool has_stencil_attachment = false;
 
         const FrameGraphRenderingInfo &frame_graph_rendering_info = node->rendering_info;
+        uint32_t width = node->width;
+        uint32_t height = node->height;
+
         for (uint32_t i = 0; i < frame_graph_rendering_info.attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &frame_graph_rendering_info.attachment_info[i];
             FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
@@ -81,7 +84,6 @@ namespace mirai {
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
             attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
             attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
             if (i == frame_graph_rendering_info.depth_attachment_index) {
                 attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
                 attachment_info.imageLayout = frame_graph_rendering_info.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
@@ -91,6 +93,8 @@ namespace mirai {
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                     VulkanSwapchain *swapchain = device->get_swapchain();
                     attachment_info.imageView = swapchain->get_current_image_view();
+                    width = swapchain->width;
+                    height = swapchain->height;
                 } else {
                     attachment_info.imageView = device->access_texture(resource->texture)->image_view;
                 }
@@ -105,8 +109,6 @@ namespace mirai {
             }
         }
 
-        uint32_t width = node->width;
-        uint32_t height = node->height;
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .renderArea = {0, 0, width, height},

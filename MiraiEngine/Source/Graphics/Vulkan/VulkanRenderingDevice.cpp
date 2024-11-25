@@ -811,9 +811,7 @@ namespace mirai {
             swapchain->height = surface_caps.currentExtent.height;
             ResizeSwapchain(swapchain.get(), physical_device, device, surface, vsync);
         }
-
-        uint32_t &current_image_index = swapchain->current_image_index;
-        VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &current_image_index));
+        VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &swapchain->current_image_index));
     }
 
     CommandBuffer *VulkanRenderingDevice::get_command_buffer(uint32_t thread_id) {

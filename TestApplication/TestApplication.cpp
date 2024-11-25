@@ -10,6 +10,7 @@ class TestApplication : public App {
   public:
     TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
         Window::get()->set_title("TestApplication");
+        Window::get()->set_fullscreen(fullscreen);
     }
 
     void start() override {
@@ -106,6 +107,11 @@ class TestApplication : public App {
 
         float dt = Engine::get()->get_dt_seconds();
         controller->update(Engine::get()->get_dt_seconds());
+
+        if (Input::get()->is_down(KB_F)) {
+            fullscreen = !fullscreen;
+            Window::get()->set_fullscreen(fullscreen);
+        }
     }
 
     ~TestApplication() {
@@ -113,6 +119,7 @@ class TestApplication : public App {
     }
 
   private:
+    bool fullscreen = false;
     Scene *scene;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
@@ -120,8 +127,8 @@ class TestApplication : public App {
 
 int main(int argc, char **argv) {
     EngineInitializationOptions options = {
-        .width = 1920,
-        .height = 1080,
+        .width = 1360,
+        .height = 769,
         .enable_validation = true,
     };
 

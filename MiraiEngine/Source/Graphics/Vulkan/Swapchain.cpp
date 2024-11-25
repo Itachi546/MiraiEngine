@@ -134,7 +134,6 @@ namespace mirai {
 
         swapchain->width = surface_caps.currentExtent.width;
         swapchain->height = surface_caps.currentExtent.height;
-        swapchain->image_count = std::min(std::max(2u, surface_caps.maxImageCount), 4u);
 
         swapchain->surface_format = select_surface_format(physical_device, surface);
 
@@ -149,14 +148,14 @@ namespace mirai {
                                         : VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
         swapchain->current_transform = surface_caps.currentTransform;
+        swapchain->image_count = std::min(std::max(2u, surface_caps.minImageCount), surface_caps.maxImageCount);
         create_swapchain(swapchain, device, surface);
 
-        uint32_t image_count = 0;
-        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+        uint32_t image_count = swapchain->image_count;
         swapchain->images.resize(image_count);
         swapchain->image_views.resize(image_count);
-
         VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, swapchain->images.data()));
+
         swapchain->image_count = image_count;
         swapchain->current_image_index = 0;
 
@@ -179,13 +178,11 @@ namespace mirai {
 
         create_swapchain(swapchain, device, surface);
 
-        uint32_t image_count = 0;
-        VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, nullptr));
+        uint32_t image_count = swapchain->image_count;
         swapchain->images.resize(image_count);
         swapchain->image_views.resize(image_count);
 
         VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain->swapchain, &image_count, swapchain->images.data()));
-        swapchain->image_count = image_count;
         swapchain->current_image_index = 0;
 
         create_swapchain_image_views(device, swapchain);
