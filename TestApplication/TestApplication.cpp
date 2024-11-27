@@ -20,7 +20,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 0
+#if 0 
         {
             // Forward Pass
             std::vector<FrameGraphResourceOutput> outputs = {
@@ -89,6 +89,8 @@ class TestApplication : public App {
         frame_graph->set_renderer("gbuffer_pass", std::make_shared<GBufferPass>());
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
+        frame_graph->set_renderer("sky_pass", std::make_shared<SkyPass>());
+        frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
 #endif
         frame_graph->compile();
         if (model_paths.size() > 0) {

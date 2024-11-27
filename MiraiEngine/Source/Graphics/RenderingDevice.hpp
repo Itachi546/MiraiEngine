@@ -175,10 +175,22 @@ namespace mirai {
         }
     };
 
+    enum CompareOp {
+        COMPARE_OP_NEVER = 0,
+        COMPARE_OP_LESS = 1,
+        COMPARE_OP_EQUAL = 2,
+        COMPARE_OP_LESS_OR_EQUAL = 3,
+        COMPARE_OP_GREATER = 4,
+        COMPARE_OP_NOT_EQUAL = 5,
+        COMPARE_OP_GREATER_OR_EQUAL = 6,
+        COMPARE_OP_ALWAYS = 7,
+    };
+
     struct DepthState {
         bool enable_depth_test;
         bool enable_depth_write;
         float max_depth_bounds, min_depth_bounds;
+        CompareOp compare_op;
 
         static DepthState create() {
             return DepthState{
@@ -186,6 +198,7 @@ namespace mirai {
                 .enable_depth_write = false,
                 .max_depth_bounds = 1.0f,
                 .min_depth_bounds = 0.0f,
+                .compare_op = COMPARE_OP_LESS_OR_EQUAL,
             };
         }
     };

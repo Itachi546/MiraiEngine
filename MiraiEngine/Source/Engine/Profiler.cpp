@@ -92,7 +92,7 @@ namespace mirai::miProfiler {
             return;
 
         if (ranges[id].is_cpu_profiler()) {
-            ranges[id].time += (float)ranges[id].cpu_timer.elapsed_milliseconds();
+            ranges[id].time = (float)ranges[id].cpu_timer.elapsed_milliseconds();
         } else {
             uint32_t current_query_index = query_indices[frame_id]++;
             RenderingDevice::get()->query(ranges[id].command_buffer, gpu_query_pools[frame_id], current_query_index);
@@ -121,7 +121,7 @@ namespace mirai::miProfiler {
 
             float avg_time = 0.0f;
             if (val.is_cpu_profiler()) {
-                avg_time = val.time / val.avg_counter;
+                avg_time = val.time;
             } else {
                 // GPU is always one frame behind
                 float delta = (float(query_results[val.query_index_end] - query_results[val.query_index_begin]) * gpu_timestamp_period) / 1000000.0f;

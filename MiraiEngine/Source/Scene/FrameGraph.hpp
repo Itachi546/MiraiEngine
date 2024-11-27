@@ -25,6 +25,7 @@ namespace mirai {
         FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN,
         FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
         FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
+        FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
         FRAMEGRAPH_RESOURCE_TYPE_INVALID
     };
 
@@ -66,10 +67,13 @@ namespace mirai {
         std::shared_ptr<FrameGraphRenderPass> renderer;
     };
 
+    using FrameGraphResourceHandle = uint32_t;
+
     struct FrameGraphAttachmentInfo {
         Color clear_color;
         Format format;
         AttachmentLoadOp load_op;
+        FrameGraphResourceHandle resource_handle;
     };
 
     struct FrameGraphRenderingInfo {
@@ -78,12 +82,19 @@ namespace mirai {
         bool has_stencil_attachment = false;
     };
 
-    struct FrameGraphResource {
-        FrameGraphResourceType resource_type;
+    struct FrameGraphResourceInfo {
+
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
         TextureID texture;
+        Format format;
     };
 
-    using FrameGraphResourceHandle = uint32_t;
+    struct FrameGraphResource {
+        FrameGraphResourceType resource_type;
+        FrameGraphResourceInfo resource_info;
+    };
 
     struct FrameGraphNode {
         std::string name;
@@ -123,6 +134,9 @@ namespace mirai {
 
         FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
         FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput *input);
+        void get_output_attachment_size(uint32_t *width, uint32_t *height, const FrameGraphResourceOutput *output);
+        void add_renderpass_info(FrameGraphResourceHandle handle, FrameGraphRenderingInfo &rendering_info,
+                                 Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}, AttachmentLoadOp load_op = LOAD_OP_LOAD);
 
         ~FrameGraphBuilder();
 

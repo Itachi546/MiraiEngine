@@ -339,7 +339,7 @@ namespace mirai {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = pipeline_description->depth_state->enable_depth_test,
             .depthWriteEnable = pipeline_description->depth_state->enable_depth_write,
-            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+            .depthCompareOp = VkCompareOp(pipeline_description->depth_state->compare_op),
             .stencilTestEnable = false,
             .minDepthBounds = pipeline_description->depth_state->min_depth_bounds,
             .maxDepthBounds = pipeline_description->depth_state->max_depth_bounds,

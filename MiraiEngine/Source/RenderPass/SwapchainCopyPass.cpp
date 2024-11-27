@@ -30,7 +30,7 @@ namespace mirai {
         };
         uniform_set = RenderingDevice::get()->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
 
-        UniformBinding bindings = {.resource_id = input_texture->texture};
+        UniformBinding bindings = {.resource_id = input_texture->resource_info.texture};
         RenderingDevice::get()->update_uniform_set(uniform_set, &bindings, 1);
         material->set_uniform_sets(&uniform_set, 1);
     }
@@ -40,7 +40,7 @@ namespace mirai {
 
         RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
         ScopedGpuProfiling(command_buffer, "FXAA");
-        
+
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
         node->width = width;
@@ -59,7 +59,7 @@ namespace mirai {
 
         material->bind(command_buffer, node, frame_graph);
 
-        command_buffer->draw(6, 1, 0, 0);
+        command_buffer->draw(3, 1, 0, 0);
 
         command_buffer->end_render_pass();
 

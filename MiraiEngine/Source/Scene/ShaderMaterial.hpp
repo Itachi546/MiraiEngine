@@ -23,6 +23,10 @@ namespace mirai {
             clear_pipeline_state();
         }
 
+        void set_depth_compare_op(CompareOp compare_op) {
+            depth_compare_op = compare_op;
+        }
+
         void set_front_face(FrontFace front_face) {
             if (this->front_face == front_face)
                 return;
@@ -54,7 +58,7 @@ namespace mirai {
             clear_pipeline_state();
         }
 
-        void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
+        virtual void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
 
         void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
             this->uniform_sets.clear();
@@ -85,6 +89,7 @@ namespace mirai {
         bool enable_depth_test;
         bool enable_depth_write;
         bool enable_blend;
+        CompareOp depth_compare_op;
 
         void calculate_hash();
 

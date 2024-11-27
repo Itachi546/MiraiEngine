@@ -8,6 +8,7 @@ namespace mirai {
     ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
                                                               cull_mode(CullMode::CULL_MODE_BACK),
                                                               front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
+                                                              depth_compare_op(COMPARE_OP_LESS_OR_EQUAL),
                                                               enable_depth_test(false),
                                                               enable_depth_write(false),
                                                               enable_blend(false),
@@ -45,7 +46,7 @@ namespace mirai {
 
     void ShaderMaterial::calculate_hash() {
         hash = 0;
-        utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write);
+        utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write, depth_compare_op);
     }
 
     PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph) {
@@ -75,6 +76,7 @@ namespace mirai {
             if (i == rendering_info->depth_attachment_index) {
                 ds.enable_depth_write = enable_depth_write;
                 ds.enable_depth_test = enable_depth_test;
+                ds.compare_op = depth_compare_op;
                 pipeline_description.depth_attachment_format = attachment->format;
             } else {
                 FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);

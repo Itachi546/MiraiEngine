@@ -19,6 +19,7 @@ namespace mirai {
 
         glm::mat4 rotation_matrix = glm::eulerAngleZXY(rotation_radians.z, rotation_radians.x, rotation_radians.y);
         view_matrix = rotation_matrix * glm::translate(glm::mat4(1.0f), -position);
+        inv_view_matrix = glm::inverse(view_matrix);
 
         update_projection_matrix();
 
@@ -40,6 +41,8 @@ namespace mirai {
             float x_span = y_span * aspect_ratio;
             projection_matrix = glm::ortho(-x_span, x_span, y_span, -y_span, near_plane, far_plane);
         }
+
+        inv_projection_matrix = glm::inverse(projection_matrix);
     }
 
 } // namespace mirai
