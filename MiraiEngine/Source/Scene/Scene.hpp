@@ -66,7 +66,9 @@ namespace mirai {
         std::unique_ptr<ComponentManager> component_manager;
         std::vector<Material> materials;
         std::vector<Entity> entities;
-        std::vector<DrawData> draw_infos;
+
+        std::vector<DrawData> opaque_batches;
+        std::vector<DrawData> transparent_batches;
 
         BufferID transform_buffer;
         glm::mat4 *transform_array;

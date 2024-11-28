@@ -71,6 +71,16 @@ namespace mirai {
 
         update_draw_data();
 
+        // Sort transparent batches
+        /*
+        glm::vec3 camera_position = camera->position;
+        if (transparent_batches.size() > 0) {
+            std::sort(std::execution::par_unseq, transparent_batches.begin(), transparent_batches.end(), [camera_position](const TransparentDrawData &lhs, const TransparentDrawData &rhs) {
+                return glm::length(lhs.position - camera_position) > glm::length(rhs.position - camera_position);
+            });
+        }
+        */
+        
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
 
@@ -128,24 +138,23 @@ namespace mirai {
     }
 
     void Scene::update_draw_data() {
+
         if (!dirty)
             return;
 
         memcpy(material_array, materials.data(), sizeof(Material) * materials.size());
 
-        draw_infos.clear();
-        draw_infos.reserve(100);
+        opaque_batches.clear();
+        transparent_batches.clear();
+
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
-
-        draw_infos.reserve(component_count);
 
         DrawData draw_data;
         for (uint32_t i = 0; i < component_count; ++i) {
             const MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
-
             const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
 
             transform_array[i] = transform->world_transform;
@@ -154,6 +163,7 @@ namespace mirai {
             draw_data.vertex_buffer = gpu_mesh.vertex_buffer;
             draw_data.index_buffer = gpu_mesh.index_buffer;
             draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
+
             ASSERT(mesh_component.mesh_subsets.size() > 0);
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 draw_data.transform_index = i;
@@ -161,11 +171,17 @@ namespace mirai {
                 draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
                 draw_data.index_offset = mesh_subset.index_buffer.offset;
                 draw_data.index_count = mesh_subset.index_buffer.count;
-                draw_infos.push_back(draw_data);
+
+                const Material &material = materials[mesh_subset.material_index];
+                if (material.is_transparent()) {
+                    transparent_batches.push_back(draw_data);
+                } else {
+                    opaque_batches.push_back(draw_data);
+                }
             }
         }
 
-        std::sort(draw_infos.begin(), draw_infos.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
+        std::sort(opaque_batches.begin(), opaque_batches.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
         dirty = false;
     }
 

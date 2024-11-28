@@ -39,7 +39,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        std::vector<DrawData> &draw_infos = scene->draw_infos;
+        std::vector<DrawData> &draw_infos = scene->opaque_batches;
         if (draw_infos.size() > 0) {
             // Update Per Pipeline Data (Transform/Material)
             UniformBinding per_shader_bindings[] = {

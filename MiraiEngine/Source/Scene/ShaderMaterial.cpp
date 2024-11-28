@@ -46,7 +46,7 @@ namespace mirai {
 
     void ShaderMaterial::calculate_hash() {
         hash = 0;
-        utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write, depth_compare_op);
+        utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write, depth_compare_op, enable_blend);
     }
 
     PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph) {

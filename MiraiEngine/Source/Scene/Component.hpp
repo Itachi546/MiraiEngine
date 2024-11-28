@@ -165,6 +165,14 @@ namespace mirai {
     };
 
     struct Material {
+        enum FLAGS {
+            FLAG_EMPTY = 0,
+            FLAG_OPAQUE = 1 << 0,
+            FLAG_ALPHA_BLEND = 1 << 1,
+            FLAG_ALPHA_MASK = 1 << 2,
+            FLAG_DOUBLE_SIDED = 1 << 3,
+        };
+
         glm::vec4 albedo;
 
         glm::vec3 emissive_factor;
@@ -172,13 +180,17 @@ namespace mirai {
 
         float roughness_factor;
         float transmission;
-        uint32_t shadow_flag;
+        uint32_t flags = 0;
         uint32_t emissive_texture;
 
         uint32_t albedo_texture;
         uint32_t normal_texture;
         uint32_t metallic_roughness_texture;
         uint32_t occlusion_texture;
+
+        bool is_transparent() const {
+            return ((flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
+        }
     };
     static_assert(sizeof(Material) % 16 == 0);
 }; // namespace mirai

@@ -20,79 +20,19 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 0 
-        {
-            // Forward Pass
-            std::vector<FrameGraphResourceOutput> outputs = {
-                FrameGraphResourceOutput{
-                    COLOR_ATTACHMENT_OUTPUT_NAME,
-                    FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    width,
-                    height,
-                    FORMAT_B8G8R8A8_UNORM,
-                    LOAD_OP_CLEAR,
-                    {0.0f, 0.0f, 0.0f, 1.0f},
-                },
-                FrameGraphResourceOutput{
-                    DEPTH_ATTACHMENT_OUTPUT_NAME,
-                    FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    width,
-                    height,
-                    FORMAT_D32_SFLOAT_S8_UINT,
-                    LOAD_OP_CLEAR,
-                    {1.0f, 0.0f, 0.0f, 1.0f},
-                },
-            };
-
-            FrameGraphNodeDescription node_description = {
-                .name = "forward_pass",
-                .enabled = true,
-                .inputs = {},
-                .outputs = outputs,
-                .renderer = std::make_shared<ForwardPass>(),
-            };
-            frame_graph->add_node(node_description);
-        }
-
-        // Swapchain Copy
-        {
-            std::vector<FrameGraphResourceInput> inputs = {
-                FrameGraphResourceInput{
-                    COLOR_ATTACHMENT_OUTPUT_NAME,
-                    FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
-                },
-            };
-
-            std::vector<FrameGraphResourceOutput> outputs = {
-                FrameGraphResourceOutput{
-                    "swapchain",
-                    FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN,
-                    width,
-                    height,
-                    FORMAT_B8G8R8A8_UNORM,
-                    LOAD_OP_CLEAR,
-                    {0.0f, 0.0f, 0.0f, 1.0f},
-                },
-            };
-
-            FrameGraphNodeDescription node_description = {
-                .name = "swapchain_pass",
-                .enabled = true,
-                .inputs = inputs,
-                .outputs = outputs,
-                .renderer = std::make_shared<SwapchainCopyPass>(),
-            };
-            frame_graph->add_node(node_description);
-        }
+#if 1 
+        frame_graph->load_from_file("Assets/forward_pass.json");
+        frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
 #else
-        frame_graph->load_from_file("Assets/framegraph.json");
+        frame_graph->load_from_file("Assets/deferred_pass.json");
         frame_graph->set_renderer("gbuffer_pass", std::make_shared<GBufferPass>());
+        frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
+#endif
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<SkyPass>());
-        frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
-#endif
         frame_graph->compile();
+
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);

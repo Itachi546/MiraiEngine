@@ -52,7 +52,20 @@ namespace mirai {
             material.metallic_factor = static_cast<float>(pbr.metallicFactor);
             material.roughness_factor = static_cast<float>(pbr.roughnessFactor);
             material.transmission = static_cast<float>(pbr.baseColorFactor[3]);
-            material.shadow_flag = UINT32_MAX;
+            material.flags = 0;
+
+            const std::string &alpha_mode = gltf_material->alphaMode;
+            if (alpha_mode == "OPAQUE")
+                material.flags |= Material::FLAG_OPAQUE;
+            else if (alpha_mode == "BLEND")
+                material.flags |= Material::FLAG_ALPHA_BLEND;
+            else if (alpha_mode == "MASK")
+                material.flags |= Material::FLAG_ALPHA_MASK;
+            else
+                ASSERT_MSG(0, "Unknown alpha mask");
+            if (gltf_material->doubleSided) {
+                material.flags |= Material::FLAG_DOUBLE_SIDED;
+            }
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
