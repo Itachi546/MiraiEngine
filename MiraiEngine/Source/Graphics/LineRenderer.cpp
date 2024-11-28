@@ -1,0 +1,83 @@
+#include "LineRenderer.hpp"
+
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Scene/ShaderMaterial.hpp"
+#include <vector>
+
+namespace mirai {
+    LineRenderer *LineRenderer::Instance = nullptr;
+
+    LineRenderer::LineRenderer() {
+        Instance = this;
+        BufferDescription buffer_desc = {
+            .size = K_MAX_LINE_COUNT * sizeof(Line),
+            .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        RenderingDevice *device = RenderingDevice::get();
+        buffer = device->create_buffer(&buffer_desc, "line_vertex_buffer");
+        line_array = (Line *)device->map_buffer(buffer);
+
+        shader_material = std::make_shared<ShaderMaterial>("line_material");
+        shader_material->create_from_file({"SPIRV/line.vert.spv",
+                                           "SPIRV/line.frag.spv"});
+        shader_material->set_depth_test(true);
+        shader_material->set_topology(TOPOLOGY_LINE_LIST);
+
+        UniformLayout vertex_layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_STORAGE_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        uniform_set = device->create_uniform_set(&vertex_layout, 1, 0, "line_uniform_set");
+        UniformBinding binding = {
+            .resource_id = buffer,
+        };
+        device->update_uniform_set(uniform_set, &binding, 1);
+        shader_material->set_uniform_sets(&uniform_set, 1);
+    }
+
+    void LineRenderer::NewFrame() {
+        line_count = 0;
+    }
+
+    void LineRenderer::AddLine(glm::vec3 s, glm::vec3 e, uint32_t color) {
+        ASSERT(line_count < K_MAX_LINE_COUNT);
+        Line *line = &line_array[line_count++];
+        line->start.x = s.x, line->start.y = s.y, line->start.z = s.z;
+        line->start.color = color;
+
+        line->end.x = e.x, line->end.y = e.y, line->end.z = e.z;
+        line->end.color = color;
+    }
+
+    void LineRenderer::AddAABB(const AABB &aabb, uint32_t color) {
+        const glm::vec3 &min = aabb.min;
+        const glm::vec3 &max = aabb.max;
+
+        // Bottom
+        AddLine(min, glm::vec3(max.x, min.y, min.z), color);
+        AddLine(min, glm::vec3(min.x, min.y, max.z), color);
+        AddLine(glm::vec3(max.x, min.y, max.z), glm::vec3(min.x, min.y, max.z), color);
+        AddLine(glm::vec3(max.x, min.y, max.z), glm::vec3(max.x, min.y, min.z), color);
+
+        // Top
+        AddLine(glm::vec3(min.x, max.y, min.z), glm::vec3(max.x, max.y, min.z), color);
+        AddLine(glm::vec3(min.x, max.y, min.z), glm::vec3(min.x, max.y, max.z), color);
+        AddLine(glm::vec3(max.x, max.y, max.z), glm::vec3(min.x, max.y, max.z), color);
+        AddLine(glm::vec3(max.x, max.y, max.z), glm::vec3(max.x, max.y, min.z), color);
+
+        // Joint
+        AddLine(min, glm::vec3(min.x, max.y, min.z), color);
+        AddLine(glm::vec3(min.x, min.y, max.z), glm::vec3(min.x, max.y, max.z), color);
+        AddLine(glm::vec3(max.x, min.y, max.z), glm::vec3(max.x, max.y, max.z), color);
+        AddLine(glm::vec3(max.x, min.y, min.z), glm::vec3(max.x, max.y, min.z), color);
+    }
+
+    LineRenderer::~LineRenderer() {
+        shader_material.reset();
+        shader_material = nullptr;
+        RenderingDevice::get()->destroy_buffers(&buffer, 1);
+    }
+} // namespace mirai

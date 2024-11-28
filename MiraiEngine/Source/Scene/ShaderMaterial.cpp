@@ -9,6 +9,7 @@ namespace mirai {
                                                               cull_mode(CullMode::CULL_MODE_BACK),
                                                               front_face(FrontFace::FRONT_FACE_COUNTER_CLOCKWISE),
                                                               depth_compare_op(COMPARE_OP_LESS_OR_EQUAL),
+                                                              topology(TOPOLOGY_TRIANGLE_LIST),
                                                               enable_depth_test(false),
                                                               enable_depth_write(false),
                                                               enable_blend(false),
@@ -31,6 +32,11 @@ namespace mirai {
     }
 
     void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) {
+        if (dirty) {
+            calculate_hash();
+            dirty = false;
+        }
+
         if (!pipeline.is_valid()) {
             pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
             if (!pipeline.is_valid())
@@ -46,7 +52,14 @@ namespace mirai {
 
     void ShaderMaterial::calculate_hash() {
         hash = 0;
-        utils::hash_combine(hash, name, (int)cull_mode, (int)front_face, enable_depth_test, enable_depth_write, depth_compare_op, enable_blend);
+        utils::hash_combine(hash,
+                            (int)cull_mode,
+                            (int)front_face,
+                            enable_depth_test,
+                            enable_depth_write,
+                            depth_compare_op,
+                            enable_blend,
+                            topology);
     }
 
     PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph) {
@@ -62,6 +75,7 @@ namespace mirai {
         std::vector<ShaderID> shaders = ShaderMaterialCache::get()->get_shaders(utils::djb2_hash_string(name));
         ASSERT(shaders.size() > 0);
 
+        pipeline_description.topology = topology;
         pipeline_description.shader_count = static_cast<uint32_t>(shaders.size());
         pipeline_description.shaders = shaders.data();
         pipeline_description.rasterization_state = &rs;

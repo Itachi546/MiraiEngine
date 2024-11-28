@@ -38,6 +38,61 @@ namespace mirai {
     struct AABB {
         glm::vec3 min;
         glm::vec3 max;
+
+        void translate(const glm::vec3 &translation) {
+            min += translation;
+            max += translation;
+        }
+
+        void transform(const glm::mat4 &transform) {
+            glm::vec3 vmin{FLT_MAX};
+            glm::vec3 vmax{-FLT_MAX};
+
+            glm::vec3 corners[] = {
+                glm::vec3(min.x, min.y, min.z),
+                glm::vec3(min.x, max.y, min.z),
+                glm::vec3(min.x, min.y, max.z),
+                glm::vec3(min.x, max.y, max.z),
+                glm::vec3(max.x, min.y, min.z),
+                glm::vec3(max.x, max.y, min.z),
+                glm::vec3(max.x, min.y, max.z),
+                glm::vec3(max.x, max.y, max.z),
+            };
+
+            for (auto &v : corners) {
+                v = transform * glm::vec4(v, 1.0f);
+                vmin = glm::min(v, vmin);
+                vmax = glm::max(v, vmax);
+            }
+
+            min = vmin;
+            max = vmax;
+        }
+        // https://x.com/Herschel/status/1188613724665335808/photo/2
+        void transform_fast(const glm::mat4 &transform) {
+            glm::vec3 translation = transform[3];
+
+            glm::vec3 vmin = translation;
+            glm::vec3 vmax = translation;
+            float a, b;
+            for (int i = 0; i < 3; ++i) {
+                for (int j = 0; j < 3; ++j) {
+                    a = transform[j][i] * min[j];
+                    b = transform[j][i] * max[j];
+
+                    if (a < b) {
+                        vmin[i] += a;
+                        vmax[i] += b;
+                    } else {
+                        vmin[i] += b;
+                        vmax[i] += a;
+                    }
+                }
+            }
+
+            min = vmin;
+            max = vmax;
+        }
     };
 
     struct Frustum {

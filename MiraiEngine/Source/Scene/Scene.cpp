@@ -5,6 +5,8 @@
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
+// @TODO TEmp
+#include "Graphics/LineRenderer.hpp"
 
 #include <execution>
 #include <algorithm>
@@ -80,7 +82,7 @@ namespace mirai {
             });
         }
         */
-        
+
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
 
@@ -138,9 +140,7 @@ namespace mirai {
     }
 
     void Scene::update_draw_data() {
-
-        if (!dirty)
-            return;
+        ScopedCpuProfiling("Update Draw Data");
 
         memcpy(material_array, materials.data(), sizeof(Material) * materials.size());
 
@@ -165,7 +165,12 @@ namespace mirai {
             draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
 
             ASSERT(mesh_component.mesh_subsets.size() > 0);
-            for (auto &mesh_subset : mesh_component.mesh_subsets) {
+            for (uint32_t subset = 0; subset < mesh_component.mesh_subsets.size(); ++subset) {
+                AABB aabb = mesh_component.aabbs[subset];
+                aabb.transform_fast(transform->world_transform);
+                LineRenderer::get()->AddAABB(aabb);
+
+                const MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[subset];
                 draw_data.transform_index = i;
                 draw_data.material_index = mesh_subset.material_index;
                 draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
@@ -182,7 +187,9 @@ namespace mirai {
         }
 
         std::sort(opaque_batches.begin(), opaque_batches.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-        dirty = false;
+    }
+
+    void Scene::update_visibility_state() {
     }
 
     void Scene::remove_entity(Entity entity) {
@@ -194,7 +201,6 @@ namespace mirai {
 
         remove_entity_tree(entity);
         entities.erase(found);
-        dirty = true;
     }
 
     void Scene::release_all_entities() {

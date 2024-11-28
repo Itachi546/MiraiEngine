@@ -30,7 +30,7 @@ class TestApplication : public App {
 #endif
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
-        frame_graph->set_renderer("sky_pass", std::make_shared<SkyPass>());
+        frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
         frame_graph->compile();
 
         if (model_paths.size() > 0) {

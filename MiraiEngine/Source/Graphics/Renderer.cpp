@@ -1,5 +1,4 @@
 #include "Renderer.hpp"
-
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
@@ -8,6 +7,7 @@
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
 #include "TextRenderManager.hpp"
+#include "LineRenderer.hpp"
 #include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/MathUtils.hpp"
@@ -31,14 +31,16 @@ namespace mirai {
 
         default_font = LoadFont("Arial");
         text_render_manager->get_renderer_by_font(default_font.get());
+
+        line_renderer = std::make_unique<LineRenderer>();
     }
 
     void Renderer::compile_passes() {
     }
 
     void Renderer::update() {
+        line_renderer->NewFrame();
         scene->update();
-
         std::stringstream ss("");
         ss << "Memory: " << std::fixed << std::setprecision(2) << utils::bytes_to_mb(device->get_memory_usage()) << "MB";
         TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 12);

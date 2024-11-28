@@ -10,6 +10,7 @@
 
 namespace mirai {
     struct TextRenderManager;
+    struct LineRenderer;
     class CommandBuffer;
     class ShaderMaterialCache;
     class TextureCache;
@@ -56,5 +57,6 @@ namespace mirai {
 
         std::unique_ptr<TextRenderManager> text_render_manager;
         std::unique_ptr<Font> default_font;
+        std::unique_ptr<LineRenderer> line_renderer;
     };
 } // namespace mirai

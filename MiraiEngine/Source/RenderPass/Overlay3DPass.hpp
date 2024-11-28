@@ -1,13 +1,13 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
-#include "Scene/Sky.hpp"
 
 namespace mirai {
+    class ProceduralSkyMaterial;
 
-    class SkyPass : public FrameGraphRenderPass {
+    class Overlay3DPass : public FrameGraphRenderPass {
       public:
-        SkyPass();
+        Overlay3DPass();
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 

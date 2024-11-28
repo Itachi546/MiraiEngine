@@ -167,7 +167,7 @@ namespace mirai {
                     vertex.pz = position.z;
 
                     aabb.min = glm::min(aabb.min, position);
-                    aabb.max = glm::min(aabb.min, position);
+                    aabb.max = glm::max(aabb.max, position);
 
                     glm::vec3 normal;
                     if (normals != nullptr)
@@ -219,6 +219,8 @@ namespace mirai {
                     .count = (uint32_t)indices.size() - index_offset,
                 };
                 mesh_subset.vertex_count = index_count;
+
+                ASSERT(primitive.material >= 0);
                 mesh_subset.material_index = primitive.material + load_state->material_base_offset;
             }
         }

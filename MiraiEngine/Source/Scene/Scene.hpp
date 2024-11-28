@@ -22,6 +22,7 @@ namespace mirai {
 
         uint32_t index_count;
         UniformSetID vertex_binding_set;
+
     };
 
     struct GpuMesh {
@@ -98,8 +99,6 @@ namespace mirai {
       protected:
         std::string name;
 
-        bool dirty = true;
-
         std::unique_ptr<Camera> camera;
 
         void remove_entity_tree(Entity entity);
@@ -107,5 +106,7 @@ namespace mirai {
         void update_hierarchy_component();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
         void update_draw_data();
+
+        void update_visibility_state();
     };
 } // namespace mirai

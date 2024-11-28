@@ -11,7 +11,7 @@
 #include "RenderPass/SwapchainCopyPass.hpp"
 #include "RenderPass/GBufferPass.hpp"
 #include "RenderPass/DebugPass.hpp"
-#include "RenderPass/SkyPass.hpp"
+#include "RenderPass/Overlay3DPass.hpp"
 #include "RenderPass/DeferredPass.hpp"
 
 #include "Scene/Component.hpp"

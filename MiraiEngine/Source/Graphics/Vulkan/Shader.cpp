@@ -20,7 +20,6 @@ namespace mirai {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
 
                 if (descriptor_set.set == K_BINDLESS_TEXTURE_SET && binding->binding == K_BINDLESS_TEXTURE_BINDING) {
-                    Log::Info("Bindless texture requested");
                     shader->support_bindless_texture = true;
                     continue;
                 }
@@ -84,11 +83,7 @@ namespace mirai {
         uint64_t hash = 0;
         for (uint32_t i = 0; i < count; ++i) {
             UniformLayout &uniform = uniforms[i];
-            uint64_t input = uint64_t(uniform.binding) << 60 |
-                             uint64_t(uniform.binding_type) << 40 |
-                             uint64_t(set) << 36 |
-                             uint64_t(uniform.shader_stage);
-            utils::hash_combine(hash, input);
+            utils::hash_combine(hash, uniform.binding, uniform.binding_type, set, uniform.shader_stage);
         }
         return hash;
     }

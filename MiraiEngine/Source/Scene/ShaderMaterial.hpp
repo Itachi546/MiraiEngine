@@ -24,7 +24,10 @@ namespace mirai {
         }
 
         void set_depth_compare_op(CompareOp compare_op) {
+            if (this->depth_compare_op == compare_op)
+                return;
             depth_compare_op = compare_op;
+            clear_pipeline_state();
         }
 
         void set_front_face(FrontFace front_face) {
@@ -58,6 +61,13 @@ namespace mirai {
             clear_pipeline_state();
         }
 
+        void set_topology(Topology topology) {
+            if (this->topology == topology)
+                return;
+            this->topology = topology;
+            clear_pipeline_state();
+        }
+
         virtual void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
 
         void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
@@ -86,16 +96,18 @@ namespace mirai {
         CullMode cull_mode;
         FrontFace front_face;
 
+        bool dirty = true;
         bool enable_depth_test;
         bool enable_depth_write;
         bool enable_blend;
         CompareOp depth_compare_op;
+        Topology topology;
 
         void calculate_hash();
 
         void clear_pipeline_state() {
             pipeline.id = K_INVALID_ID;
-            calculate_hash();
+            dirty = true;
         }
 
         struct Resource {
