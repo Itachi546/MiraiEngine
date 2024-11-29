@@ -14,9 +14,9 @@ namespace mirai {
             return Instance;
         }
 
-        void register_shader(uint32_t shader_hash, std::vector<ShaderID> shaders);
+        void cache_shader(uint32_t shader_hash, ShaderID shader);
 
-        std::vector<ShaderID> get_shaders(uint32_t hash);
+        ShaderID get_shader(uint32_t hash);
 
         PipelineID get_pipeline(uint64_t hash);
 
@@ -27,7 +27,7 @@ namespace mirai {
       private:
         static ShaderMaterialCache *Instance;
 
-        std::unordered_map<uint32_t, std::vector<ShaderID>> shader_caches;
+        std::unordered_map<uint32_t, ShaderID> shader_caches;
         std::unordered_map<uint64_t, PipelineID> pipeline_caches;
     };
 

@@ -4,18 +4,17 @@
 #include <string.h>
 
 namespace mirai {
-    VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                               VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-                                                               const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                                                               void *pUserData) {
+    VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT object_type, uint64_t object, size_t location, int message_code, const char *p_layer_prefix, const char *p_message, void *p_user_data) {
+        const char *type = (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) ? "ERROR" : (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) ? "WARNING"
+                                                                                                                         : "INFO";
+        char message[4096];
+        snprintf(message, std::size(message), "[%s]::%s", type, p_message);
 
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-            Log::Error(pCallbackData->pMessage);
-        } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-            Log::Warn(pCallbackData->pMessage);
-        } else {
-            Log::Debug(pCallbackData->pMessage);
-        }
+        std::cout << message << std::endl;
+
+        if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
+            assert(!"Validation error encountered!");
+
         return VK_FALSE;
     }
 
@@ -67,7 +66,7 @@ namespace mirai {
         return true;
     }
 
-    VkInstance CreateInstance(const std::vector<const char *> &validation_layers, const std::vector<const char *> &instance_extensions, bool enable_validation) {
+    VkInstance CreateInstance(const std::vector<const char *> &validation_layers, const std::vector<const char *> &instance_extensions) {
         VK_CHECK(volkInitialize());
 
         if (!is_instance_extensions_available(instance_extensions))
@@ -92,13 +91,15 @@ namespace mirai {
             .ppEnabledExtensionNames = instance_extensions.data(),
         };
 
-        VkDebugUtilsMessengerCreateInfoEXT debug_utils_create_info = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-        if (enable_validation) {
-            debug_utils_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-            debug_utils_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-            debug_utils_create_info.pfnUserCallback = DebugUtilsMessengerCallback;
-        }
-        create_info.pNext = &debug_utils_create_info;
+#if ENABLE_VALIDATION
+        VkValidationFeatureEnableEXT enable_validation_features[] = {
+            VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
+        };
+        VkValidationFeaturesEXT validation_features = {VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
+        validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(std::size(enable_validation_features));
+        validation_features.pEnabledValidationFeatures = enable_validation_features;
+        create_info.pNext = &validation_features;
+#endif
 
         VkInstance instance = VK_NULL_HANDLE;
         VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
@@ -106,14 +107,19 @@ namespace mirai {
         return instance;
     }
 
-    VkDebugUtilsMessengerEXT CreateDebugUtilMessanger(VkInstance instance) {
-        VkDebugUtilsMessengerCreateInfoEXT debug_utils_create_info = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-        debug_utils_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-        debug_utils_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-        debug_utils_create_info.pfnUserCallback = DebugUtilsMessengerCallback;
+    VkDebugReportCallbackEXT RegisterDebugCallback(VkInstance instance) {
+        if (!vkCreateDebugReportCallbackEXT)
+            return nullptr;
 
-        VkDebugUtilsMessengerEXT debug_utils_messenger;
-        VK_CHECK(vkCreateDebugUtilsMessengerEXT(instance, &debug_utils_create_info, nullptr, &debug_utils_messenger));
-        return debug_utils_messenger;
+        VkDebugReportCallbackCreateInfoEXT create_info = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
+            .flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+            .pfnCallback = DebugUtilsMessengerCallback,
+            .pUserData = nullptr,
+        };
+
+        VkDebugReportCallbackEXT debug_report_callback_ext = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateDebugReportCallbackEXT(instance, &create_info, nullptr, &debug_report_callback_ext));
+        return debug_report_callback_ext;
     }
 } // namespace mirai

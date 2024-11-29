@@ -7,6 +7,7 @@
 #include "Engine/Profiler.hpp"
 // @TODO TEmp
 #include "Graphics/LineRenderer.hpp"
+#include "Graphics/TextRenderManager.hpp"
 
 #include <execution>
 #include <algorithm>
@@ -152,7 +153,11 @@ namespace mirai {
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
         DrawData draw_data;
+        uint32_t total_entities = 0;
+
+        Frustum &frustum = camera->get_frustum();
         for (uint32_t i = 0; i < component_count; ++i) {
+            total_entities++;
             const MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
             const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
@@ -165,10 +170,12 @@ namespace mirai {
             draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
 
             ASSERT(mesh_component.mesh_subsets.size() > 0);
+
             for (uint32_t subset = 0; subset < mesh_component.mesh_subsets.size(); ++subset) {
                 AABB aabb = mesh_component.aabbs[subset];
-                aabb.transform_fast(transform->world_transform);
-                LineRenderer::get()->AddAABB(aabb);
+                aabb.transform(transform->world_transform);
+                if (!frustum.intersect(aabb))
+                    continue;
 
                 const MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[subset];
                 draw_data.transform_index = i;
@@ -187,6 +194,10 @@ namespace mirai {
         }
 
         std::sort(opaque_batches.begin(), opaque_batches.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
+
+        uint32_t total_visible = static_cast<uint32_t>(opaque_batches.size() + transparent_batches.size());
+        std::string str = std::to_string(total_visible) + "/" + std::to_string(total_entities);
+        TextRenderManager::get()->get_default()->AddText(str, glm::vec2{5.0f, 150.0f}, 12.0f);
     }
 
     void Scene::update_visibility_state() {

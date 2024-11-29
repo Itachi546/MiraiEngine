@@ -22,7 +22,6 @@ namespace mirai {
 
         uint32_t index_count;
         UniformSetID vertex_binding_set;
-
     };
 
     struct GpuMesh {

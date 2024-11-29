@@ -7,16 +7,16 @@ namespace mirai {
         Instance = this;
     }
 
-    void ShaderMaterialCache::register_shader(uint32_t shader_hash, std::vector<ShaderID> shaders) {
-        if (shader_caches.find(shader_hash) == shader_caches.end())
-            shader_caches[shader_hash] = shaders;
+    void ShaderMaterialCache::cache_shader(uint32_t hash, ShaderID shader) {
+        if (shader_caches.find(hash) == shader_caches.end())
+            shader_caches[hash] = shader;
     }
 
-    std::vector<ShaderID> ShaderMaterialCache::get_shaders(uint32_t hash) {
+    ShaderID ShaderMaterialCache::get_shader(uint32_t hash) {
         auto found = shader_caches.find(hash);
         if (found != shader_caches.end())
             return found->second;
-        return {};
+        return ShaderID{K_INVALID_ID};
     }
 
     PipelineID ShaderMaterialCache::get_pipeline(uint64_t hash) {
@@ -32,7 +32,7 @@ namespace mirai {
 
     ShaderMaterialCache::~ShaderMaterialCache() {
         for (auto &[key, val] : shader_caches) {
-            RenderingDevice::get()->destroy_shaders(val.data(), static_cast<uint32_t>(val.size()));
+            RenderingDevice::get()->destroy_shaders(&val, 1);
         }
 
         for (auto &[key, val] : pipeline_caches) {

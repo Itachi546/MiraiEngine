@@ -30,6 +30,28 @@ namespace mirai {
         view_projection_matrix = projection_matrix * view_matrix;
 
         frustum.create_from_matrix(view_projection_matrix);
+
+        glm::vec3 near_point = position + near_plane * forward;
+
+        float tan_fov = tan(glm::radians(fov * 0.5f));
+        float hH = tan_fov * near_plane;
+        float hW = hH * aspect_ratio;
+
+        glm::vec3 r = right * hW;
+        glm::vec3 u = u * hH;
+
+        frustum.points[Frustum::NTL] = near_point - r + u;
+        frustum.points[Frustum::NTR] = near_point + r + u;
+        frustum.points[Frustum::NBL] = near_point - r - u;
+        frustum.points[Frustum::NBR] = near_point + r - u;
+
+        hH = tan_fov * far_plane;
+        hW = aspect_ratio * hH;
+        glm::vec3 far_point = position + far_plane * forward;
+        frustum.points[Frustum::FTL] = far_point - r + u;
+        frustum.points[Frustum::FTR] = far_point + r + u;
+        frustum.points[Frustum::FBL] = far_point - r - u;
+        frustum.points[Frustum::FBR] = far_point + r - u;
     }
 
     void Camera::update_projection_matrix() {

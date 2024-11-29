@@ -3,7 +3,7 @@
 #include "Vulkan.hpp"
 
 namespace mirai {
-    VkInstance CreateInstance(const std::vector<const char *> &validation_layers, const std::vector<const char *> &instance_extensions, bool enable_validation);
+    VkInstance CreateInstance(const std::vector<const char *> &validation_layers, const std::vector<const char *> &instance_extensions);
 
-    VkDebugUtilsMessengerEXT CreateDebugUtilMessanger(VkInstance instance);
+    VkDebugReportCallbackEXT RegisterDebugCallback(VkInstance instance);
 } // namespace mirai

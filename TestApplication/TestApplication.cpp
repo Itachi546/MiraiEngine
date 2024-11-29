@@ -72,7 +72,6 @@ int main(int argc, char **argv) {
     EngineInitializationOptions options = {
         .width = 1360,
         .height = 769,
-        .enable_validation = true,
     };
 
     std::vector<std::string> model_paths;

@@ -89,7 +89,10 @@ namespace mirai {
         }
 
       protected:
+        std::vector<ShaderID> shaders;
         std::string name;
+
+        uint64_t shader_hash;
         uint64_t hash;
         PipelineID pipeline;
 

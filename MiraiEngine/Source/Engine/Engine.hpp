@@ -10,7 +10,6 @@ namespace mirai {
 
     struct EngineInitializationOptions {
         uint32_t width, height;
-        bool enable_validation;
     };
 
     class Engine {
@@ -47,7 +46,7 @@ namespace mirai {
         ~Engine();
 
         bool show_metrics;
-      
+
       private:
         uint64_t dt_ms;
         uint64_t elapsed_time_ms;

@@ -31,10 +31,9 @@ namespace mirai {
             rendering_info.has_stencil_attachment = is_stencil_format(resource->resource_info.format);
         }
 
+        resource->resource_info.load_op = load_op;
         rendering_info.attachment_info.push_back(FrameGraphAttachmentInfo{
             .clear_color = clear_color,
-            .format = resource->resource_info.format,
-            .load_op = load_op,
             .resource_handle = handle,
         });
     }

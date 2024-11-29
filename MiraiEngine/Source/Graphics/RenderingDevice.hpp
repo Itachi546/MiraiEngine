@@ -429,7 +429,7 @@ namespace mirai {
     */
     class RenderingDevice {
       public:
-        RenderingDevice(bool enable_validation) : enable_validation(enable_validation) {
+        RenderingDevice() {
             Instance = this;
         }
 
@@ -484,15 +484,9 @@ namespace mirai {
             return total_memory_usage;
         }
 
-        void set_enable_debug_utils_label(bool state) {
-            this->enable_debug_utils_label = state;
-        }
-
         virtual ~RenderingDevice() = default;
 
       protected:
-        bool enable_validation = true;
-        bool enable_debug_utils_label = true;
         uint64_t total_memory_usage = 0;
         static RenderingDevice *Instance;
     };

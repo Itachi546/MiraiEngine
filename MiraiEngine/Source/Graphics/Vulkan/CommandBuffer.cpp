@@ -46,9 +46,8 @@ namespace mirai {
         VkAccessFlags access_flags = 0;
         VkPipelineStageFlags2 src_stage, dst_stage;
         VkImageLayout required_layout = find_required_barrier_info(is_depth_texture, texture->image_aspect, resource->resource_type, access_flags, src_stage, dst_stage);
-
-        if (texture->current_layout == required_layout)
-            return;
+        if (resource->resource_info.load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+            access_flags |= is_depth_texture ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
         image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
                                                            src_stage, texture->access_flags,
@@ -80,7 +79,7 @@ namespace mirai {
             FrameGraphResource *resource = frame_graph->get_resource(attachment->resource_handle);
 
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-            attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
+            attachment_info.loadOp = VkAttachmentLoadOp(resource->resource_info.load_op);
             attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             if (i == frame_graph_rendering_info.depth_attachment_index) {
                 attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
@@ -305,11 +304,15 @@ namespace mirai {
     void CommandBuffer::prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers) {
         VulkanSwapchain *swapchain = device->get_swapchain();
 
+        VkAccessFlagBits2 dst_access_flags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        if (resource->resource_info.load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+            dst_access_flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+
         VkImageLayout current_layout = swapchain->get_current_image_layout();
         if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
             image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, dst_access_flags,
                                                                current_layout,
                                                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                                VK_IMAGE_ASPECT_COLOR_BIT));
@@ -325,8 +328,9 @@ namespace mirai {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
             if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                 prepare_swapchain_image(frame_graph, resource, image_barriers);
-            } else
+            } else {
                 create_image_barrier(device, resource, image_barriers);
+            }
         }
         if (image_barriers.size() > 0) {
             pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
@@ -340,9 +344,10 @@ namespace mirai {
         // Output Barrier
         for (auto resource_handle : node->outputs) {
             FrameGraphResource *resource = frame_graph->get_resource(resource_handle);
+
             if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                 prepare_swapchain_image(frame_graph, resource, image_barriers);
-            } else
+            } else if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT)
                 create_image_barrier(device, resource, image_barriers);
         }
 

@@ -29,6 +29,10 @@ namespace mirai {
             this->distance = plane.w;
         }
 
+        float distance_to_point(const glm::vec3 &p) {
+            return dot(p, normal) + distance;
+        }
+
         Plane() {}
 
         glm::vec3 normal;
@@ -44,32 +48,12 @@ namespace mirai {
             max += translation;
         }
 
-        void transform(const glm::mat4 &transform) {
-            glm::vec3 vmin{FLT_MAX};
-            glm::vec3 vmax{-FLT_MAX};
-
-            glm::vec3 corners[] = {
-                glm::vec3(min.x, min.y, min.z),
-                glm::vec3(min.x, max.y, min.z),
-                glm::vec3(min.x, min.y, max.z),
-                glm::vec3(min.x, max.y, max.z),
-                glm::vec3(max.x, min.y, min.z),
-                glm::vec3(max.x, max.y, min.z),
-                glm::vec3(max.x, min.y, max.z),
-                glm::vec3(max.x, max.y, max.z),
-            };
-
-            for (auto &v : corners) {
-                v = transform * glm::vec4(v, 1.0f);
-                vmin = glm::min(v, vmin);
-                vmax = glm::max(v, vmax);
-            }
-
-            min = vmin;
-            max = vmax;
-        }
         // https://x.com/Herschel/status/1188613724665335808/photo/2
-        void transform_fast(const glm::mat4 &transform) {
+        /**
+         * Calculate the rotated minimum and maximum component for each axis
+         * Add maximum value to max and minimum value to min
+         */
+        void transform(const glm::mat4 &transform) {
             glm::vec3 translation = transform[3];
 
             glm::vec3 vmin = translation;
@@ -106,8 +90,22 @@ namespace mirai {
             FRUSTUM_PLANE_FAR
         };
 
+        enum FRUSTUM_POINT {
+            NTL = 0,
+            NTR,
+            NBL,
+            NBR,
+            FTL,
+            FTR,
+            FBL,
+            FBR
+        };
+
         void create_from_matrix(const glm::mat4 &m);
 
+        bool intersect(const AABB &aabb);
+
         std::array<Plane, 6> planes;
+        std::array<glm::vec3, 8> points;
     };
 } // namespace mirai

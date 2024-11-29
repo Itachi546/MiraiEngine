@@ -20,15 +20,19 @@ namespace mirai {
 
     void ShaderMaterial::create_from_file(const std::vector<std::string> &shader_files) {
         uint32_t shader_count = static_cast<uint32_t>(shader_files.size());
-        std::vector<ShaderID> shaders(shader_count);
-
-        for (uint32_t i = 0; i < shader_count; ++i)
-            shaders[i] = rendering_utils::create_shader_module_from_file(shader_files[i]);
-
-        uint32_t shader_hash = utils::djb2_hash_string(name);
-        ShaderMaterialCache::get()->register_shader(shader_hash, std::move(shaders));
-
-        calculate_hash();
+        shader_hash = 0;
+        for (uint32_t i = 0; i < shader_count; ++i) {
+            uint32_t hash = utils::djb2_hash_string(shader_files[i]);
+            utils::hash_combine(shader_hash, hash);
+            auto found = ShaderMaterialCache::get()->get_shader(hash);
+            if (found.is_valid()) {
+                shaders.push_back(found);
+            } else {
+                ShaderID shader = rendering_utils::create_shader_module_from_file(shader_files[i]);
+                ShaderMaterialCache::get()->cache_shader(hash, shader);
+                shaders.push_back(shader);
+            }
+        }
     }
 
     void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) {
@@ -51,7 +55,7 @@ namespace mirai {
     }
 
     void ShaderMaterial::calculate_hash() {
-        hash = 0;
+        hash = shader_hash;
         utils::hash_combine(hash,
                             (int)cull_mode,
                             (int)front_face,
@@ -72,7 +76,6 @@ namespace mirai {
             bs.enable = true;
         PipelineDescription pipeline_description;
 
-        std::vector<ShaderID> shaders = ShaderMaterialCache::get()->get_shaders(utils::djb2_hash_string(name));
         ASSERT(shaders.size() > 0);
 
         pipeline_description.topology = topology;
@@ -87,17 +90,17 @@ namespace mirai {
         const FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
         for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
+            FrameGraphResource *resource = frame_graph->get_resource(attachment->resource_handle);
             if (i == rendering_info->depth_attachment_index) {
                 ds.enable_depth_write = enable_depth_write;
                 ds.enable_depth_test = enable_depth_test;
                 ds.compare_op = depth_compare_op;
-                pipeline_description.depth_attachment_format = attachment->format;
+                pipeline_description.depth_attachment_format = resource->resource_info.format;
             } else {
-                FrameGraphResource *resource = frame_graph->get_resource(node->outputs[i]);
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
                     color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);
                 else
-                    color_attachment_formats.push_back(attachment->format);
+                    color_attachment_formats.push_back(resource->resource_info.format);
             }
         }
         pipeline_description.depth_state = &ds;

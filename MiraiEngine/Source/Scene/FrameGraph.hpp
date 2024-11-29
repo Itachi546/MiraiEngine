@@ -71,8 +71,6 @@ namespace mirai {
 
     struct FrameGraphAttachmentInfo {
         Color clear_color;
-        Format format;
-        AttachmentLoadOp load_op;
         FrameGraphResourceHandle resource_handle;
     };
 
@@ -89,6 +87,7 @@ namespace mirai {
         uint32_t depth;
         TextureID texture;
         Format format;
+        AttachmentLoadOp load_op;
     };
 
     struct FrameGraphResource {

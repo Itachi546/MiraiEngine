@@ -16,8 +16,7 @@
 
 namespace mirai {
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName) {
-        if (!enable_debug_utils_label || !enable_validation)
-            return;
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABEL
 
         VkDebugUtilsObjectNameInfoEXT name_info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -27,18 +26,19 @@ namespace mirai {
         };
 
         VK_CHECK(vkSetDebugUtilsObjectNameEXT(device, &name_info));
+#endif
     }
 
-    VulkanRenderingDevice::VulkanRenderingDevice(bool enable_validation) : resource_pool_pipelines(128, "Pipeline"),
-                                                                           resource_pool_shaders(32, "Shader"),
-                                                                           resource_pool_textures(1024, "Texture"),
-                                                                           resource_pool_buffers(256, "Buffer"),
-                                                                           resource_pool_uniform_sets(256, "UniformSet"),
-                                                                           resource_pool_queries(32, "Query"),
-                                                                           RenderingDevice(enable_validation) {
+    VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
+                                                     resource_pool_shaders(32, "Shader"),
+                                                     resource_pool_textures(1024, "Texture"),
+                                                     resource_pool_buffers(256, "Buffer"),
+                                                     resource_pool_uniform_sets(256, "UniformSet"),
+                                                     resource_pool_queries(32, "Query") {
         instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+            VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
 #ifdef MIRAI_PLATFORM_WINDOW
             VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 #endif
@@ -48,22 +48,22 @@ namespace mirai {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         };
 
-        if (enable_validation) {
-            validation_layers = {
-                "VK_LAYER_KHRONOS_validation",
-                "VK_LAYER_KHRONOS_synchronization2",
-            };
+#if ENABLE_VALIDATION
+        validation_layers = {
+            "VK_LAYER_KHRONOS_validation",
+            "VK_LAYER_KHRONOS_synchronization2",
+        };
+        instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
 
-            instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-
-        instance = CreateInstance(validation_layers, instance_extensions, enable_validation);
+        instance = CreateInstance(validation_layers, instance_extensions);
         volkLoadInstance(instance);
 
-        if (enable_validation)
-            debug_utils_messenger = CreateDebugUtilMessanger(instance);
-        else
-            debug_utils_messenger = VK_NULL_HANDLE;
+#if ENABLE_VALIDATION
+        debug_report_callback = RegisterDebugCallback(instance);
+#else
+        debug_report_callback = VK_NULL_HANDLE;
+#endif
 
         physical_device = SelectPhysicalDevice(instance, gpus, device_extensions);
 
@@ -976,8 +976,7 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors) {
-        if (!enable_debug_utils_label || !enable_validation)
-            return;
+#if ENABLE_VALDIATION_LAYER && ENABLE_DEBUG_LABLES
 
         VkDebugUtilsLabelEXT label_info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -993,12 +992,13 @@ namespace mirai {
         }
         label_info.color[3] = 1.0f;
         vkCmdBeginDebugUtilsLabelEXT(command_buffer->command_buffer, &label_info);
+#endif
     }
 
     void VulkanRenderingDevice::end_debug_utils_label(CommandBuffer *command_buffer) {
-        if (!enable_debug_utils_label || !enable_validation)
-            return;
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
         vkCmdEndDebugUtilsLabelEXT(command_buffer->command_buffer);
+#endif
     }
 
     void VulkanRenderingDevice::add_bindless_texture(TextureID *textures, uint32_t texture_count) {
@@ -1062,8 +1062,9 @@ namespace mirai {
 
         vmaDestroyAllocator(vma_allocator);
         vkDestroyDevice(device, nullptr);
-        if (debug_utils_messenger != VK_NULL_HANDLE)
-            vkDestroyDebugUtilsMessengerEXT(instance, debug_utils_messenger, nullptr);
+        if (debug_report_callback != VK_NULL_HANDLE)
+            vkDestroyDebugReportCallbackEXT(instance, debug_report_callback, nullptr);
+        
         vkDestroyInstance(instance, nullptr);
     }
 } // namespace mirai

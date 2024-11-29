@@ -14,3 +14,23 @@ void mirai::Frustum::create_from_matrix(const glm::mat4 &m) {
     planes[FRUSTUM_PLANE_NEAR].create_from(w + z);
     planes[FRUSTUM_PLANE_FAR].create_from(w - z);
 }
+
+bool mirai::Frustum::intersect(const AABB &aabb) {
+    const glm::vec3 &min = aabb.min;
+    const glm::vec3 &max = aabb.max;
+
+    for (int i = 0; i < 6; ++i) {
+        glm::vec3 p = min;
+        const glm::vec3 &normal = planes[i].normal;
+        if (normal.x >= 0.0f)
+            p.x = max.x;
+        if (normal.y >= 0.0f)
+            p.y = max.y;
+        if (normal.z >= 0.0f)
+            p.z = max.z;
+
+        if (planes[i].distance_to_point(p) < 0.0f)
+            return false;
+    }
+    return true;
+}
