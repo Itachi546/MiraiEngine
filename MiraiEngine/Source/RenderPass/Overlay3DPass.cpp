@@ -7,7 +7,10 @@
 #include "Scene/Sky.hpp"
 
 namespace mirai {
-    Overlay3DPass::Overlay3DPass() : FrameGraphRenderPass("sky_pass") {
+    Overlay3DPass::Overlay3DPass() : FrameGraphRenderPass("sky_pass"), material(nullptr) {
+    }
+
+    void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         material = std::make_shared<ProceduralSkyMaterial>();
         material->set_depth_test(true);
         material->set_depth_write(false);
@@ -15,7 +18,7 @@ namespace mirai {
     }
 
     void Overlay3DPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Overlay3D", nullptr);
+        device->begin_debug_utils_label(command_buffer, "Overlay3D", nullptr);
         ScopedGpuProfiling(command_buffer, "Overlay3D");
 
         Camera *camera = scene->get_camera();
@@ -46,6 +49,6 @@ namespace mirai {
         }
         command_buffer->end_render_pass();
 
-        RenderingDevice::get()->end_debug_utils_label(command_buffer);
+        device->end_debug_utils_label(command_buffer);
     }
 } // namespace mirai

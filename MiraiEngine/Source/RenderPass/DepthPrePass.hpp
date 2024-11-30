@@ -1,20 +1,21 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
+
 namespace mirai {
     class ShaderMaterial;
-    class GBufferPass : public FrameGraphRenderPass {
+    class DepthPrePass : public FrameGraphRenderPass {
       public:
-        GBufferPass();
+        DepthPrePass();
 
         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 
-        ~GBufferPass();
+        ~DepthPrePass();
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
-        UniformSetID mesh_instance_set;
+        UniformSetID transform_set;
     };
 } // namespace mirai

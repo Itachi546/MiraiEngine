@@ -13,6 +13,7 @@
 #include "RenderPass/DebugPass.hpp"
 #include "RenderPass/Overlay3DPass.hpp"
 #include "RenderPass/DeferredPass.hpp"
+#include "RenderPass/DepthPrePass.hpp"
 
 #include "Scene/Component.hpp"
 #include "Scene/FrameGraph.hpp"

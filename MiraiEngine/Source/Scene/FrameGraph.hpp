@@ -46,7 +46,9 @@ namespace mirai {
 
     class FrameGraphRenderPass {
       public:
-        FrameGraphRenderPass(const std::string &name) : name(name) {}
+        FrameGraphRenderPass(const std::string &name) : name(name) {
+            device = RenderingDevice::get();
+        }
 
         virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {}
 
@@ -56,6 +58,7 @@ namespace mirai {
 
       protected:
         std::string name;
+        RenderingDevice *device;
     };
 
     struct FrameGraphNodeDescription {

@@ -5,7 +5,11 @@
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    DeferredPass::DeferredPass() : FrameGraphRenderPass("deferred_pass") {
+    DeferredPass::DeferredPass() : FrameGraphRenderPass("deferred_pass"), shader(nullptr), uniform_set(K_INVALID_ID) {
+    }
+
+    void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+
         shader = std::make_shared<ShaderMaterial>("DeferredPassMaterial");
         shader->create_from_file({
             "SPIRV/fullscreen.vert.spv",
@@ -13,11 +17,8 @@ namespace mirai {
         });
         shader->set_depth_write(false);
         shader->set_depth_test(false);
-    }
 
-    void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         // Deferred Shading Textures
-
         uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
         std::vector<UniformBinding> bindings;
         std::vector<UniformLayout> binding_layout;

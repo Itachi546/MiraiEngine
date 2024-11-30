@@ -5,9 +5,6 @@
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
-// @TODO TEmp
-#include "Graphics/LineRenderer.hpp"
-#include "Graphics/TextRenderManager.hpp"
 
 #include <execution>
 #include <algorithm>
@@ -194,10 +191,6 @@ namespace mirai {
         }
 
         std::sort(opaque_batches.begin(), opaque_batches.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-
-        uint32_t total_visible = static_cast<uint32_t>(opaque_batches.size() + transparent_batches.size());
-        std::string str = std::to_string(total_visible) + "/" + std::to_string(total_entities);
-        TextRenderManager::get()->get_default()->AddText(str, glm::vec2{5.0f, 150.0f}, 12.0f);
     }
 
     void Scene::update_visibility_state() {

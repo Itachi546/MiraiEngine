@@ -11,16 +11,17 @@
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderPass("swapchain_copy"), enable_aa(true) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderPass("swapchain_copy"), enable_aa(true), material(nullptr) {
+    }
+
+    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         material = std::make_shared<ShaderMaterial>("FullScreenTextureMaterial");
         material->create_from_file(std::vector<std::string>{
             "SPIRV/fullscreen.vert.spv",
             "SPIRV/fullscreen.frag.spv",
         });
         material->set_cull_mode(CULL_MODE_BACK);
-    }
 
-    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
 
         UniformLayout bounded_uniform = {
@@ -28,17 +29,17 @@ namespace mirai {
             .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
-        uniform_set = RenderingDevice::get()->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
+        uniform_set = device->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
 
         UniformBinding bindings = {.resource_id = input_texture->resource_info.texture};
-        RenderingDevice::get()->update_uniform_set(uniform_set, &bindings, 1);
+        device->update_uniform_set(uniform_set, &bindings, 1);
         material->set_uniform_sets(&uniform_set, 1);
     }
 
     void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
+        device->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
         ScopedGpuProfiling(command_buffer, "FXAA");
 
         uint32_t width, height;
@@ -63,10 +64,11 @@ namespace mirai {
 
         command_buffer->end_render_pass();
 
-        RenderingDevice::get()->end_debug_utils_label(command_buffer);
+        device->end_debug_utils_label(command_buffer);
     }
 
     SwapchainCopyPass::~SwapchainCopyPass() {
+        material = nullptr;
     }
 
 } // namespace mirai

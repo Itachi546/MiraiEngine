@@ -6,7 +6,10 @@
 
 namespace mirai {
 
-    GBufferPass::GBufferPass() : FrameGraphRenderPass("forward_pass") {
+    GBufferPass::GBufferPass() : FrameGraphRenderPass("forward_pass"), shader(nullptr), mesh_instance_set(K_INVALID_ID) {
+    }
+
+    void GBufferPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         shader = std::make_shared<ShaderMaterial>("GBufferMaterial");
         shader->create_from_file({
             "SPIRV/gbuffer.vert.spv",
@@ -27,7 +30,7 @@ namespace mirai {
             {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
         };
 
-        mesh_instance_set = RenderingDevice::get()->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
+        mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
     }
 
     void GBufferPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -35,7 +38,7 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "GBuffer Pass");
 
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "GBufferPass", nullptr);
+        device->begin_debug_utils_label(command_buffer, "GBufferPass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
 
@@ -46,14 +49,15 @@ namespace mirai {
                 {.resource_id = scene->transform_buffer, .offset = 0},
                 {.resource_id = scene->material_buffer, .offset = 0},
             };
-            RenderingDevice::get()->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
+            device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
             // Set Per Frame Data
             UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
             shader->bind(command_buffer, node, frame_graph);
 
-            PushConstant push_constant = {.data = nullptr, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
+            uint32_t instance_data[] = {0, 0, 0, 0};
+            PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
 
             PipelineID pipeline_id = shader->get_pipeline_id();
             uint32_t last_buffer_id = K_INVALID_ID;
@@ -65,8 +69,8 @@ namespace mirai {
                     command_buffer->set_uniform_sets(pipeline_id, &draw_infos[i].vertex_binding_set, 1);
                 }
 
-                uint32_t instance_data[] = {draw_infos[i].transform_index, draw_infos[i].material_index, 0, 0};
-                push_constant.data = instance_data;
+                instance_data[0] = draw_infos[i].transform_index;
+                instance_data[1] = draw_infos[i].material_index;
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(draw_infos[i].index_count,
                                              1,
@@ -77,9 +81,10 @@ namespace mirai {
         }
         command_buffer->end_render_pass();
 
-        RenderingDevice::get()->end_debug_utils_label(command_buffer);
+        device->end_debug_utils_label(command_buffer);
     }
 
     GBufferPass::~GBufferPass() {
+        shader = nullptr;
     }
 } // namespace mirai

@@ -1,4 +1,4 @@
-#include "Sky.hpp"
+#include "SkyMaterial.hpp"
 
 namespace mirai {
     ProceduralSkyMaterial::ProceduralSkyMaterial() : ShaderMaterial("ProceduralSky") {
