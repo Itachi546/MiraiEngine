@@ -1,0 +1,120 @@
+{
+  "name": "gltf_graph",
+  "passes": [
+    {
+      "name": "gbuffer_pass",
+      "enabled": true,
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "gbuffer_color",
+          "format": "B8G8R8A8_UNORM",
+          "resolution": [1920, 1080],
+          "op": "LOAD_OP_CLEAR"
+        },
+        {
+          "type": "attachment",
+          "name": "gbuffer_normal",
+          "format": "R16G16B16A16_SFLOAT",
+          "resolution": [1920, 1080],
+          "op": "LOAD_OP_CLEAR"
+        },
+        {
+          "type": "attachment",
+          "name": "gbuffer_emissive",
+          "format": "B8G8R8A8_UNORM",
+          "resolution": [1920, 1080],
+          "op": "LOAD_OP_CLEAR"
+        },
+        {
+          "type": "attachment",
+          "name": "gbuffer_depth",
+          "format": "D32_SFLOAT",
+          "resolution": [1920, 1080],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
+      "name": "deferred_pass",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "gbuffer_color"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_depth"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_normal"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "gbuffer_lighting",
+          "format": "B8G8R8A8_UNORM",
+          "resolution": [1920, 1080],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
+      "name": "overlay3D",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "attachment",
+          "name": "gbuffer_lighting"
+        },
+        {
+          "type": "attachment",
+          "name": "gbuffer_depth"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "reference",
+          "name": "gbuffer_lighting"
+        }
+      ]
+    },
+    {
+      "name": "swapchain_copy",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "gbuffer_lighting"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "swapchain",
+          "name": "swapchain",
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+
+    {
+      "name": "debug_pass",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "swapchain",
+          "name": "swapchain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "swapchain",
+          "name": "swapchain"
+        }
+      ]
+    }
+  ]
+}
