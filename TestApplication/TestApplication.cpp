@@ -20,7 +20,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 1
+#if 0 
         frame_graph->load_from_file("Assets/forward_pass.json");
         frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
         frame_graph->set_renderer("depth_prepass", std::make_shared<DepthPrePass>());

@@ -34,6 +34,10 @@ namespace mirai {
             return inv_view_matrix;
         }
 
+        glm::mat4 get_inv_view_projection_transform() const {
+            return inv_view_projection_matrix;
+        }
+
         void set_projection_mode(ProjectionMode projection_mode) {
             this->projection_mode = projection_mode;
         }
@@ -89,7 +93,7 @@ namespace mirai {
         glm::mat4 view_matrix, inv_view_matrix;
         glm::mat4 projection_matrix, inv_projection_matrix;
         glm::mat4 viewport_matrix;
-        glm::mat4 view_projection_matrix;
+        glm::mat4 view_projection_matrix, inv_view_projection_matrix;
 
         ProjectionMode projection_mode;
 

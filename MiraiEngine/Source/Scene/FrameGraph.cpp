@@ -114,11 +114,14 @@ namespace mirai {
             if (is_depth_format(output->format)) {
                 desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
                 if (is_stencil_format(output->format))
-                    desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
-            } else {
-                desc.sampler_desc = &sampler;
+                    desc.usage_flags = TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
+                else
+                    desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
+            } else
                 desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
-            }
+
+            if ((desc.usage_flags & TEXTURE_USAGE_SAMPLED_BIT) == TEXTURE_USAGE_SAMPLED_BIT)
+                desc.sampler_desc = &sampler;
 
             TextureID texture = device->create_texture(&desc, output->name.c_str());
             resource->resource_info.texture = texture;

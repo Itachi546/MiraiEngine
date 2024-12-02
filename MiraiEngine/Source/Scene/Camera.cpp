@@ -28,6 +28,7 @@ namespace mirai {
         forward = glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]);
 
         view_projection_matrix = projection_matrix * view_matrix;
+        inv_view_projection_matrix  = glm::inverse(view_projection_matrix);
 
         frustum.create_from_matrix(view_projection_matrix);
 

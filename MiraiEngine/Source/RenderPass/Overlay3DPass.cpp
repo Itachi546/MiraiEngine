@@ -4,7 +4,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/LineRenderer.hpp"
-#include "Scene/Sky.hpp"
+#include "Scene/SkyMaterial.hpp"
 
 namespace mirai {
     Overlay3DPass::Overlay3DPass() : FrameGraphRenderPass("sky_pass"), material(nullptr) {
