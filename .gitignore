@@ -53,3 +53,5 @@ CMakeUserPresets.json
 TestApplication/SPIRV
 /renderdoc
 MiraiEngine/Assets/
+
+*.org
