@@ -275,6 +275,7 @@ namespace mirai {
                 FrameGraphResourceOutput &resource = node_description.outputs[j];
 
                 resource.name = passOutput.value("name", "");
+                resource.load_op = LOAD_OP_CLEAR;
 
                 std::string resourceType = passOutput.value("type", "");
                 resource.resource_type = get_resource_type_from_string(resourceType);
@@ -292,7 +293,7 @@ namespace mirai {
                         resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
                     } else {
                         if (is_depth_format(resource.format))
-                            resource.clear_color = {1.0f, 0.0f, 0.0f, 0.0f};
+                            resource.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
                     }
                     break;
                 }

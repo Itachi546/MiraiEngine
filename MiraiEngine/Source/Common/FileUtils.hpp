@@ -10,7 +10,10 @@ namespace utils {
     std::string get_file_extension(const std::string &filename);
     std::string get_filename(const std::string &filename);
     std::string trim_file_extension(const std::string &filename);
-    std::string replace_file_extension(const std::string& filename, const std::string& new_extension);
+    std::string replace_file_extension(const std::string &filename, const std::string &new_extension);
     std::string get_base_path(const std::string &path);
+
+    unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel);
+    void free_image(void *data);
 }
 } // namespace mirai::utils

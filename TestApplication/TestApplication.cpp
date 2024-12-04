@@ -1,4 +1,12 @@
-#include "Mirai.hpp"
+#include "Engine/App.hpp"
+#include "Engine/Engine.hpp"
+#include "Device/Window.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/FrameGraph.hpp"
+#include "Graphics/Renderer.hpp"
+#include "RenderPass/RenderPass.hpp"
+#include "Utils/FirstPersonController.hpp"
+#include "Scene/GLTFLoader.hpp"
 
 #include <fstream>
 #include <filesystem>

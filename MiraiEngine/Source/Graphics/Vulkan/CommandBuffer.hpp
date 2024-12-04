@@ -35,6 +35,10 @@ namespace mirai {
 
         void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
 
+        VkCommandBuffer get_command_buffer() {
+            return command_buffer;
+        }
+
         void end_render_pass();
 
         void begin();

@@ -1,0 +1,7 @@
+#include "DebugPass.hpp"
+#include "DeferredPass.hpp"
+#include "DepthPrePass.hpp"
+#include "Overlay3DPass.hpp"
+#include "ForwardPass.hpp"
+#include "GBufferPass.hpp"
+#include "SwapchainCopyPass.hpp"

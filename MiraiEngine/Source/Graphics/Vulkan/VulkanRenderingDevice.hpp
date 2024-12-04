@@ -97,14 +97,23 @@ namespace mirai {
             return resource_pool_uniform_sets.access(uniform_set);
         }
 
+        VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
+
         ~VulkanRenderingDevice();
+
+        VkInstance instance;
+        VkDevice device;
+        VkPhysicalDevice physical_device;
+        VkSurfaceKHR surface;
+        std::vector<uint32_t> queue_family_indices;
+        std::vector<VkQueue> device_queues;
+        std::unique_ptr<VulkanSwapchain> swapchain;
+        std::vector<VkDescriptorPool> descriptor_pools;
 
       private:
         friend class CommandBuffer;
 
         void set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName);
-
-        VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
 
         VkSemaphore create_semaphore(const std::string &name);
 
@@ -132,14 +141,8 @@ namespace mirai {
         uint32_t current_frame = 0;
         bool vsync = true;
 
-        VkInstance instance;
-        VkDevice device;
-
         VkPhysicalDeviceProperties2 physical_device_properties;
-        VkPhysicalDevice physical_device;
         VmaAllocator vma_allocator;
-        VkSurfaceKHR surface;
-        std::vector<VkDescriptorPool> descriptor_pools;
 
         VkDescriptorSetLayout bindless_descriptor_layout;
         VkDescriptorSet bindless_descriptor_set;
@@ -154,10 +157,6 @@ namespace mirai {
         VkFence in_flight_fences[K_MAX_FRAME_IN_FLIGHTS];
 
         std::vector<GpuDevice> gpus;
-        std::vector<uint32_t> queue_family_indices;
-        std::vector<VkQueue> device_queues;
-        std::unique_ptr<VulkanSwapchain> swapchain;
-
         VkDebugReportCallbackEXT debug_report_callback;
     };
 } // namespace mirai

@@ -1,0 +1,15 @@
+{
+  "name": "gltf-tools",
+  "passes": [
+    {
+      "name": "main_pass",
+      "enabled": true,
+      "outputs": [
+        {
+          "type": "swapchain",
+          "name": "swapchain"
+        }
+      ]
+    }
+  ]
+}

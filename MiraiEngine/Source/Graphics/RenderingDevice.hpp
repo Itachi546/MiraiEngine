@@ -495,4 +495,4 @@ namespace mirai {
         ShaderID create_shader_module_from_file(const std::string &filename);
         void copy_texture_immediate(TextureID dst, unsigned char *data, uint32_t size);
     } // namespace rendering_utils
-}; // namespace mirai
+};    // namespace mirai

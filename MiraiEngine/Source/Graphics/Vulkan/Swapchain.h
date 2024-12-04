@@ -10,6 +10,7 @@ namespace mirai {
         std::vector<VkImageView> image_views;
         uint32_t width, height;
         uint32_t current_image_index;
+        uint32_t min_image_count;
         VkSurfaceFormatKHR surface_format;
         VkPresentModeKHR present_mode;
         VkCompositeAlphaFlagBitsKHR composite_mode;
