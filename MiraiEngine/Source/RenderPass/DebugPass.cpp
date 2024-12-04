@@ -16,7 +16,7 @@ namespace mirai {
         if (text_render_manager->renderers.size() == 0)
             return;
 
-        device->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
+        device->begin_debug_utils_label(command_buffer, "Text Rendering", nullptr);
         ScopedGpuProfiling(command_buffer, "Debug Draw");
 
         command_buffer->begin_render_pass(node, frame_graph);

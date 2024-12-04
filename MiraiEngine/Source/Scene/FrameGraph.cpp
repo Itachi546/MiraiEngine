@@ -49,7 +49,7 @@ namespace mirai {
         for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
             const FrameGraphResourceInput &input_desc = node_description.inputs[i];
             FrameGraphResourceHandle handle = create_node_input(&input_desc);
-            if (input_desc.resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT)
+            if (input_desc.resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT || input_desc.resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
                 add_renderpass_info(handle, rendering_info);
 
             node->inputs.push_back(handle);
@@ -293,7 +293,7 @@ namespace mirai {
                         resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
                     } else {
                         if (is_depth_format(resource.format))
-                            resource.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+                            resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
                     }
                     break;
                 }

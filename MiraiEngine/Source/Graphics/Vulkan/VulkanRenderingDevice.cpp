@@ -16,7 +16,7 @@
 
 namespace mirai {
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName) {
-#if ENABLE_VALIDATION && ENABLE_DEBUG_LABEL
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
 
         VkDebugUtilsObjectNameInfoEXT name_info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -1038,8 +1038,7 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors) {
-#if ENABLE_VALDIATION_LAYER && ENABLE_DEBUG_LABLES
-
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
         VkDebugUtilsLabelEXT label_info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
             .pLabelName = name,

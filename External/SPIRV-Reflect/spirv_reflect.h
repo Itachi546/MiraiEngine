@@ -24,14 +24,13 @@ VERSION HISTORY
 
 // clang-format off
 /*!
-
  @file spirv_reflect.h
 
 */
 #ifndef SPIRV_REFLECT_H
 #define SPIRV_REFLECT_H
 
-#include <spirv-headers/spirv.h> 
+#include <spirv.h> 
 
 #include <stdint.h>
 #include <string.h>
