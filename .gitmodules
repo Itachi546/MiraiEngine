@@ -10,3 +10,6 @@
 [submodule "External/tinygltf"]
 	path = External/tinygltf
 	url = https://github.com/syoyo/tinygltf.git
+[submodule "Mirai-Tools/External/imgui"]
+	path = Mirai-Tools/External/imgui
+	url = https://github.com/ocornut/imgui.git
