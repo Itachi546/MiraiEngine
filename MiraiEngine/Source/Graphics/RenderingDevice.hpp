@@ -445,6 +445,8 @@ namespace mirai {
 
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
+        virtual PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name) = 0;
+
         virtual UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") = 0;
         virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;
 
@@ -493,6 +495,6 @@ namespace mirai {
 
     namespace rendering_utils {
         ShaderID create_shader_module_from_file(const std::string &filename);
-        void copy_texture_immediate(TextureID dst, unsigned char *data, uint32_t size);
+        void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
     } // namespace rendering_utils
 };    // namespace mirai

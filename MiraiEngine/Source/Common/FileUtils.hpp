@@ -13,7 +13,8 @@ namespace utils {
     std::string replace_file_extension(const std::string &filename, const std::string &new_extension);
     std::string get_base_path(const std::string &path);
 
-    unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel);
+    unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel = 0);
+    float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel = 0);
     void free_image(void *data);
 }
 } // namespace mirai::utils

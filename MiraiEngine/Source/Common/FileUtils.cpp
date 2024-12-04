@@ -46,14 +46,15 @@ namespace utils {
     }
 
     unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
-        FILE *file = fopen(filename, "rb");
-        if (file == nullptr)
+        unsigned char *data = stbi_load(filename, width, height, n_channel, req_channel);
+        return data;
+    }
+
+    float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
+        stbi_set_flip_vertically_on_load(true);
+        float *data = stbi_loadf(filename, width, height, n_channel, req_channel);
+        if (data == nullptr)
             return nullptr;
-
-        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
-        unsigned char *data = stbi_load_from_file(file, width, height, n_channel, req_channel);
-
-        file_ptr.reset();
         return data;
     }
 

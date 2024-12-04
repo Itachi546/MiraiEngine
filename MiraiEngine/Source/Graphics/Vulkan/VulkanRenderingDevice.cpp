@@ -491,6 +491,68 @@ namespace mirai {
         return PipelineID{pipeline_id};
     }
 
+    PipelineID VulkanRenderingDevice::create_compute_pipeline(ShaderID shader_id, const std::string &debug_name) {
+        VulkanShader *shader = resource_pool_shaders.access(shader_id);
+        ASSERT(shader->shader_stage = VK_SHADER_STAGE_COMPUTE_BIT);
+        uint32_t pipeline_id = resource_pool_pipelines.obtain();
+        VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
+
+        pipeline->bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+        pipeline->support_bindless_texture = false;
+
+        std::vector<VkDescriptorSetLayout> set_layouts(shader->descriptor_sets.size());
+        for (const auto &descriptor_set : shader->descriptor_sets) {
+            uint32_t set = descriptor_set.set;
+            uint64_t hash = GetDescriptorSetLayoutHash(descriptor_set.bindings, set);
+            auto found = descriptor_set_layouts_cache.find(hash);
+
+            if (found == descriptor_set_layouts_cache.end()) {
+
+                uint32_t binding_count = static_cast<uint32_t>(descriptor_set.bindings.size());
+                std::vector<VkDescriptorSetLayoutBinding> bindings(binding_count);
+                for (uint32_t b = 0; b < descriptor_set.bindings.size(); ++b) {
+                    bindings[b].binding = descriptor_set.bindings[b].binding;
+                    bindings[b].descriptorCount = 1;
+                    bindings[b].descriptorType = descriptor_set.bindings[b].descriptor_type;
+                    bindings[b].stageFlags = descriptor_set.bindings[b].shader_stage;
+                }
+                VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, bindings.data(), binding_count, 0, nullptr);
+                set_layouts[set] = set_layout;
+                descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
+            } else {
+                set_layouts[set] = found->second;
+            }
+        }
+
+        std::vector<VkPushConstantRange> push_constants;
+        for (auto &entry : shader->push_constants)
+            push_constants.push_back(entry.second);
+
+        VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = static_cast<uint32_t>(set_layouts.size()),
+            .pSetLayouts = set_layouts.data(),
+            .pushConstantRangeCount = static_cast<uint32_t>(push_constants.size()),
+            .pPushConstantRanges = push_constants.data(),
+        };
+
+        VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &pipeline->pipeline_layout));
+
+        VkComputePipelineCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            .stage = {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = shader->shader_stage,
+                .module = shader->shader,
+                .pName = "main",
+            },
+            .layout = pipeline->pipeline_layout,
+        };
+
+        VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
+        return PipelineID{pipeline_id};
+    }
+
     UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name) {
         uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
         auto found = descriptor_set_layouts_cache.find(hash);
@@ -1064,7 +1126,7 @@ namespace mirai {
         vkDestroyDevice(device, nullptr);
         if (debug_report_callback != VK_NULL_HANDLE)
             vkDestroyDebugReportCallbackEXT(instance, debug_report_callback, nullptr);
-        
+
         vkDestroyInstance(instance, nullptr);
     }
 } // namespace mirai

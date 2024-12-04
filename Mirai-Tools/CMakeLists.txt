@@ -5,6 +5,7 @@ project(MiraiTools)
 set(PROJECT_SOURCE_FILES
     main.cpp
     ImGuiService.cpp
+    HDRIConverter.cpp
     External/imgui/imgui.cpp
     External/imgui/imgui_draw.cpp
     External/imgui/imgui_tables.cpp
@@ -16,17 +17,21 @@ set(PROJECT_SOURCE_FILES
 set(PROJECT_HEADER_FILES
     ImGuiService.hpp
     MainPass.hpp
+    HDRIConverter.hpp
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_FILES} ${PROJECT_HEADER_FILES})
-target_include_directories(${PROJECT_NAME} PUBLIC ./External/imgui)
+
+target_link_libraries(${PROJECT_NAME} MiraiEngine_Windows)
+
+target_include_directories(${PROJECT_NAME} PUBLIC 
+  ./External/imgui
+)
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
 IMGUI_IMPL_VULKAN_USE_VOLK
 )
 
-target_link_libraries(${PROJECT_NAME} MiraiEngine_Windows)
-
- add_custom_command(TARGET ${PROJECT_NAME} 
+add_custom_command(TARGET ${PROJECT_NAME} 
    POST_BUILD
    COMMAND ${CMAKE_COMMAND} -E copy_directory
    ${CMAKE_CURRENT_SOURCE_DIR}/Assets

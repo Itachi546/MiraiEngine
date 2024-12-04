@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Mirai.hpp"
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
-#include "VulkanRenderingDevice.hpp"
+#include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
 
 using namespace mirai;
 
@@ -17,7 +16,15 @@ struct HDRIConverter {
 
     void show_options();
 
+    ~HDRIConverter();
+
     TextureID texture_id;
+    int width;
+    int height;
+    std::string path;
+    float size_in_mb;
+    std::thread load_thread;
+
     VulkanRenderingDevice *device;
     VkDescriptorSet descriptor_set;
 };

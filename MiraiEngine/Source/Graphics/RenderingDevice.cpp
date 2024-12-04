@@ -19,7 +19,7 @@ namespace mirai {
         }
     }
 
-    void rendering_utils::copy_texture_immediate(TextureID dst, unsigned char *data, uint32_t size) {
+    void rendering_utils::copy_texture_immediate(TextureID dst, void *data, uint32_t size) {
         BufferDescription buffer_desc = {
             .size = size,
             .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT,
