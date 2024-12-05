@@ -6,7 +6,7 @@
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    DepthPrePass::DepthPrePass() : FrameGraphRenderPass("depth_prepass"), shader(nullptr), transform_set(K_INVALID_ID) {
+    DepthPrePass::DepthPrePass() : FrameGraphRenderer("depth_prepass"), shader(nullptr), transform_set(K_INVALID_ID) {
     }
 
     void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
@@ -31,7 +31,7 @@ namespace mirai {
             // Set Per Frame Data
             UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, transform_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-            shader->bind(command_buffer, node, frame_graph);
+            shader->bind(command_buffer, &node->renderpass_info);
 
             uint32_t push_constant_data[4] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};

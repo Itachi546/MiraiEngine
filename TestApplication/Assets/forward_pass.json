@@ -64,7 +64,7 @@
       ],
       "outputs": [
         {
-          "type": "swapchain",
+          "type": "attachment",
           "name": "swapchain",
           "op": "LOAD_OP_CLEAR"
         }
@@ -76,13 +76,13 @@
       "enabled": false,
       "inputs": [
         {
-          "type": "swapchain",
+          "type": "attachment",
           "name": "swapchain"
         }
       ],
       "outputs": [
         {
-          "type": "swapchain",
+          "type": "reference",
           "name": "swapchain"
         }
       ]

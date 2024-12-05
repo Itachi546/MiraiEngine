@@ -37,10 +37,10 @@ namespace mirai {
         }
         return required_layout;
     }
-
+    /*
     void create_image_barrier(VulkanRenderingDevice *device, FrameGraphResource *resource,
                               std::vector<VkImageMemoryBarrier2> &image_barriers) {
-        VulkanTexture *texture = device->access_texture(resource->resource_info.texture);
+        VulkanTexture *texture = device->access_texture(resource->resource_handle);
         bool is_depth_texture = (texture->image_aspect & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 
         VkAccessFlags access_flags = 0;
@@ -58,7 +58,7 @@ namespace mirai {
         texture->access_flags = access_flags;
         texture->current_layout = required_layout;
     }
-
+    */
     CommandBuffer::CommandBuffer() {
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
@@ -70,23 +70,24 @@ namespace mirai {
         std::optional<VkRenderingAttachmentInfo> depth_attachment;
         bool has_stencil_attachment = false;
 
-        const FrameGraphRenderingInfo &frame_graph_rendering_info = node->rendering_info;
+        const FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
         uint32_t width = node->width;
         uint32_t height = node->height;
 
-        for (uint32_t i = 0; i < frame_graph_rendering_info.attachment_info.size(); ++i) {
-            const FrameGraphAttachmentInfo *attachment = &frame_graph_rendering_info.attachment_info[i];
+        for (uint32_t i = 0; i < renderpass.attachment_info.size(); ++i) {
+            const FrameGraphAttachmentInfo *attachment = &renderpass.attachment_info[i];
             FrameGraphResource *resource = frame_graph->get_resource(attachment->resource_handle);
 
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-            attachment_info.loadOp = VkAttachmentLoadOp(resource->resource_info.load_op);
+            attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
             attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            if (i == frame_graph_rendering_info.depth_attachment_index) {
+            if (i == renderpass.depth_attachment_index) {
                 attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
-                attachment_info.imageLayout = frame_graph_rendering_info.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                attachment_info.imageView = device->access_texture(resource->resource_info.texture)->image_view;
+                attachment_info.imageLayout = renderpass.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                attachment_info.imageView = device->access_texture(resource->handle)->image_view;
                 depth_attachment = std::move(attachment_info);
             } else {
+                /*
                 if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
                     VulkanSwapchain *swapchain = device->get_swapchain();
                     attachment_info.imageView = swapchain->get_current_image_view();
@@ -95,6 +96,7 @@ namespace mirai {
                 } else {
                     attachment_info.imageView = device->access_texture(resource->resource_info.texture)->image_view;
                 }
+                */
                 attachment_info.clearValue = {
                     attachment->clear_color.r,
                     attachment->clear_color.g,
@@ -302,6 +304,7 @@ namespace mirai {
     }
 
     void CommandBuffer::prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers) {
+        /*
         VulkanSwapchain *swapchain = device->get_swapchain();
 
         VkAccessFlagBits2 dst_access_flags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -318,9 +321,11 @@ namespace mirai {
                                                                VK_IMAGE_ASPECT_COLOR_BIT));
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         }
+        */
     }
 
     void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
+        /*
         std::vector<VkImageMemoryBarrier2> image_barriers;
         // Input Barrier
 
@@ -336,9 +341,11 @@ namespace mirai {
             pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
             image_barriers.clear();
         }
+        */
     }
 
     void CommandBuffer::prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
+        /*
         std::vector<VkImageMemoryBarrier2> image_barriers;
 
         // Output Barrier
@@ -355,6 +362,7 @@ namespace mirai {
             pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
             image_barriers.clear();
         }
+        */
     }
 
     void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count) {

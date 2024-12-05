@@ -4,7 +4,7 @@
 
 namespace mirai {
 
-    class DebugPass : public FrameGraphRenderPass {
+    class DebugPass : public FrameGraphRenderer {
       public:
         DebugPass();
 

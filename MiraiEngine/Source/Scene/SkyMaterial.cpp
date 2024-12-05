@@ -11,11 +11,10 @@ namespace mirai {
         push_constant.shader_stage = SHADER_STAGE_FRAGMENT;
         push_constant.offset = 0;
         push_constant.size = (uint32_t)sizeof(ShaderInputs);
-        
     }
 
-    void ProceduralSkyMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) {
+    void ProceduralSkyMaterial::bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass) {
         set_push_constant(&push_constant, 1);
-        ShaderMaterial::bind(command_buffer, node, frame_graph);
+        ShaderMaterial::bind(command_buffer, renderpass);
     }
 } // namespace mirai

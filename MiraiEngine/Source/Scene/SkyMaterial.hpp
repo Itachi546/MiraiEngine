@@ -8,7 +8,7 @@ namespace mirai {
       public:
         ProceduralSkyMaterial();
 
-        void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) override;
+        void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass) override;
 
         void set_inv_projection_matrix(const glm::mat4 &inv_p) {
             shader_inputs.inv_p = inv_p;

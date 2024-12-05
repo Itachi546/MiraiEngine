@@ -22,19 +22,18 @@ namespace mirai {
         }
     }
 
-    void FrameGraphBuilder::add_renderpass_info(FrameGraphResourceHandle handle, FrameGraphRenderingInfo &rendering_info, Color clear_color, AttachmentLoadOp load_op) {
+    void FrameGraphBuilder::add_renderpass_info(Format format, FrameGraphRenderpassInfo &renderpass, Color clear_color, AttachmentLoadOp load_op) {
         // Check if input consists of an attachment
         // if such is the case we have to specify it while rendering
-        FrameGraphResource *resource = resource_pool_resources.access(handle);
-        if (is_depth_format(resource->resource_info.format)) {
-            rendering_info.depth_attachment_index = (uint32_t)rendering_info.attachment_info.size();
-            rendering_info.has_stencil_attachment = is_stencil_format(resource->resource_info.format);
+        if (is_depth_format(format)) {
+            renderpass.depth_attachment_index = (uint32_t)renderpass.attachment_info.size();
+            renderpass.has_stencil_attachment = is_stencil_format(format);
         }
 
-        resource->resource_info.load_op = load_op;
-        rendering_info.attachment_info.push_back(FrameGraphAttachmentInfo{
+        renderpass.attachment_info.push_back(FrameGraphAttachmentInfo{
             .clear_color = clear_color,
-            .resource_handle = handle,
+            .format = format,
+            .load_op = load_op,
         });
     }
 
@@ -44,14 +43,19 @@ namespace mirai {
         node->name = node_description.name;
         node->enabled = node_description.enabled;
 
-        FrameGraphRenderingInfo &rendering_info = node->rendering_info;
+        FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
 
         for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
             const FrameGraphResourceInput &input_desc = node_description.inputs[i];
             FrameGraphResourceHandle handle = create_node_input(&input_desc);
-            if (input_desc.resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT || input_desc.resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
-                add_renderpass_info(handle, rendering_info);
+            ASSERT(handle != K_INVALID_RESOURCE_HANDLE);
+            Format format = resource_pool_resources.access(handle)->resource_info.format;
 
+            switch (input_desc.resource_type) {
+            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
+                add_renderpass_info(format, renderpass, input_desc.load_op);
+                break;
+            }
             node->inputs.push_back(handle);
         }
 
@@ -74,8 +78,11 @@ namespace mirai {
             FrameGraphResourceHandle resource_handle = create_node_output(output);
             node->outputs.push_back(resource_handle);
 
-            if (resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT || resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
-                add_renderpass_info(resource_handle, rendering_info, output->clear_color, output->load_op);
+            switch (resource_type) {
+            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
+                Format format = output->format;
+                add_renderpass_info(format, renderpass, output->clear_color, output->load_op);
+                break;
             }
         }
 
@@ -91,13 +98,14 @@ namespace mirai {
 
     FrameGraphResourceHandle FrameGraphBuilder::create_node_output(const FrameGraphResourceOutput *output) {
         // SamplerDescription sampler_desc = SamplerDescription::create();
-        uint32_t handle = resource_pool_resources.obtain();
-        FrameGraphResource *resource = resource_pool_resources.access(handle);
-        resource->resource_type = output->resource_type;
-        resource->resource_info.texture = TextureID{K_INVALID_ID};
+        uint32_t handle = K_INVALID_RESOURCE_HANDLE;
+        if (output->name == "swapchain")
+            return FrameGraphResourceHandle{handle};
 
         switch (output->resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
+            handle = resource_pool_resources.obtain();
+            FrameGraphResource *resource = resource_pool_resources.access(handle);
             TextureDescription desc = {
                 .width = output->width,
                 .height = output->height,
@@ -124,7 +132,8 @@ namespace mirai {
                 desc.sampler_desc = &sampler;
 
             TextureID texture = device->create_texture(&desc, output->name.c_str());
-            resource->resource_info.texture = texture;
+            resource->name = output->name;
+            resource->handle = texture;
             resource->resource_info.width = output->width;
             resource->resource_info.height = output->height;
             resource->resource_info.depth = 1;
@@ -135,29 +144,27 @@ namespace mirai {
         case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE: {
             auto found = resources_map.find(utils::djb2_hash_string(output->name));
             ASSERT(found != resources_map.end());
-            FrameGraphResource *reference = resource_pool_resources.access(found->second);
-            resource->resource_info = reference->resource_info;
+            handle = found->second;
             break;
         }
+        default:
+            ASSERT_MSG(0, "Unknow framegraph output resource type");
+            break;
         }
         return FrameGraphResourceHandle{handle};
     }
 
     FrameGraphResourceHandle FrameGraphBuilder::create_node_input(const FrameGraphResourceInput *input) {
-        uint32_t handle = resource_pool_resources.obtain();
-        FrameGraphResource *resource = resource_pool_resources.access(handle);
-        resource->resource_type = input->resource_type;
-
-        switch (resource->resource_type) {
+        uint32_t handle = K_INVALID_RESOURCE_HANDLE;
+        switch (input->resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
-            auto found = resources_map.find(utils::djb2_hash_string(input->name));
-            ASSERT(found != resources_map.end());
-            resource->resource_info = resource_pool_resources.access(found->second)->resource_info;
+            if (input->name != "swapchain") {
+                auto found = resources_map.find(utils::djb2_hash_string(input->name));
+                ASSERT(found->second != K_INVALID_ID);
+                handle = found->second;
+            }
         } break;
-        case FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN:
-            resource->resource_info.texture = TextureID{K_INVALID_ID};
-            break;
         default:
             ASSERT_MSG(0, "Unknown framegraph input attachment");
         }
@@ -167,8 +174,9 @@ namespace mirai {
     FrameGraphBuilder::~FrameGraphBuilder() {
         for (auto &[key, val] : resources_map) {
             FrameGraphResource *resource = resource_pool_resources.access(val);
-            if (resource->resource_type != FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
-                device->destroy_textures(&resource->resource_info.texture, 1);
+            if (resource->handle.is_valid()) {
+                TextureID texture_id = resource->handle;
+                device->destroy_textures(&texture_id, 1);
             }
         }
         resource_pool_resources.release_all();
@@ -180,8 +188,6 @@ namespace mirai {
             return FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT;
         else if (input_type == "texture")
             return FRAMEGRAPH_RESOURCE_TYPE_TEXTURE;
-        else if (input_type == "swapchain")
-            return FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN;
         else if (input_type == "reference")
             return FRAMEGRAPH_RESOURCE_TYPE_REFERENCE;
 
@@ -266,7 +272,7 @@ namespace mirai {
                 FrameGraphResourceInput &resource = node_description.inputs[j];
                 resource.name = passInput.value("name", "");
                 std::string resourceType = passInput.value("type", "");
-                resource.load_op = get_attachment_load_op(passInput.value("op", "LOAD_OP_CLEAR"));
+                resource.load_op = get_attachment_load_op(passInput.value("op", "LOAD_OP_LOAD"));
                 resource.resource_type = get_resource_type_from_string(resourceType);
             }
 
@@ -282,18 +288,22 @@ namespace mirai {
                 switch (resource.resource_type) {
                 case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
                 case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE: {
-                    json resolution = passOutput["resolution"];
-                    resource.width = resolution[0];
-                    resource.height = resolution[1];
-                    resource.format = get_texture_format(passOutput["format"]);
-                    resource.load_op = get_attachment_load_op(passOutput["op"]);
-
-                    json clear_color = passOutput["clear_color"];
-                    if (clear_color.size() == 4) {
-                        resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
+                    if (resource.name == "swapchain") {
+                        resource.format = FORMAT_B8G8R8A8_UNORM;
                     } else {
-                        if (is_depth_format(resource.format))
-                            resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+                        json resolution = passOutput["resolution"];
+                        resource.width = resolution[0];
+                        resource.height = resolution[1];
+                        resource.format = get_texture_format(passOutput["format"]);
+                        resource.load_op = get_attachment_load_op(passOutput["op"]);
+
+                        json clear_color = passOutput["clear_color"];
+                        if (clear_color.size() == 4) {
+                            resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
+                        } else {
+                            if (is_depth_format(resource.format))
+                                resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+                        }
                     }
                     break;
                 }

@@ -4,7 +4,7 @@
 
 namespace mirai {
     class ShaderMaterial;
-    class DepthPrePass : public FrameGraphRenderPass {
+    class DepthPrePass : public FrameGraphRenderer {
       public:
         DepthPrePass();
 

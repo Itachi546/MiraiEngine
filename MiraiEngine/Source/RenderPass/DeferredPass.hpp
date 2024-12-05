@@ -3,11 +3,11 @@
 
 namespace mirai {
     class ShaderMaterial;
-    class DeferredPass : public FrameGraphRenderPass {
+    class DeferredPass : public FrameGraphRenderer {
       public:
         DeferredPass();
 
-        void initialize(FrameGraph* frame_graph, const FrameGraphNode* node) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 

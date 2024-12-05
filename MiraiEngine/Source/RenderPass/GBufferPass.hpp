@@ -3,7 +3,7 @@
 #include "Scene/FrameGraph.hpp"
 namespace mirai {
     class ShaderMaterial;
-    class GBufferPass : public FrameGraphRenderPass {
+    class GBufferPass : public FrameGraphRenderer {
       public:
         GBufferPass();
 

@@ -11,7 +11,7 @@
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderPass("swapchain_copy"), enable_aa(true), material(nullptr) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(true), material(nullptr) {
     }
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
@@ -31,7 +31,7 @@ namespace mirai {
         };
         uniform_set = device->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
 
-        UniformBinding bindings = {.resource_id = input_texture->resource_info.texture};
+        UniformBinding bindings = {.resource_id = input_texture->handle};
         device->update_uniform_set(uniform_set, &bindings, 1);
         material->set_uniform_sets(&uniform_set, 1);
     }
@@ -58,7 +58,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        material->bind(command_buffer, node, frame_graph);
+        material->bind(command_buffer, &node->renderpass_info);
 
         command_buffer->draw(3, 1, 0, 0);
 

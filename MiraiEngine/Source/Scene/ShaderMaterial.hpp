@@ -4,8 +4,7 @@
 #include <unordered_map>
 
 namespace mirai {
-    struct FrameGraphNode;
-    class FrameGraph;
+    struct FrameGraphRenderpassInfo;
 
     class ShaderMaterial {
       public:
@@ -68,7 +67,7 @@ namespace mirai {
             clear_pipeline_state();
         }
 
-        virtual void bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph);
+        virtual void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo* renderpass);
 
         void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
             this->uniform_sets.clear();
@@ -123,6 +122,6 @@ namespace mirai {
         std::vector<UniformSetID> uniform_sets;
         std::vector<PushConstant> push_constants;
 
-        PipelineID create_pipeline(const FrameGraphNode *render_pass, FrameGraph *frame_graph);
+        PipelineID create_pipeline(const FrameGraphRenderpassInfo* renderpass);
     };
 } // namespace mirai

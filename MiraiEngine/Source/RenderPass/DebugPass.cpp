@@ -7,7 +7,7 @@
 
 namespace mirai {
 
-    DebugPass::DebugPass() : FrameGraphRenderPass("debug_pass") {
+    DebugPass::DebugPass() : FrameGraphRenderer("debug_pass") {
     }
 
     void DebugPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -21,7 +21,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        text_render_manager->shader->bind(command_buffer, node, frame_graph);
+        text_render_manager->shader->bind(command_buffer, &node->renderpass_info);
         PipelineID pipeline = text_render_manager->shader->get_pipeline_id();
 
         struct PushConstantData {

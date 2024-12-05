@@ -35,7 +35,7 @@ namespace mirai {
         }
     }
 
-    void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphNode *node, FrameGraph *frame_graph) {
+    void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass) {
         if (dirty) {
             calculate_hash();
             dirty = false;
@@ -44,7 +44,7 @@ namespace mirai {
         if (!pipeline.is_valid()) {
             pipeline = ShaderMaterialCache::get()->get_pipeline(hash);
             if (!pipeline.is_valid())
-                pipeline = create_pipeline(node, frame_graph);
+                pipeline = create_pipeline(renderpass);
         }
 
         command_buffer->bind_pipeline(pipeline,
@@ -66,7 +66,7 @@ namespace mirai {
                             topology);
     }
 
-    PipelineID ShaderMaterial::create_pipeline(const FrameGraphNode *node, FrameGraph *frame_graph) {
+    PipelineID ShaderMaterial::create_pipeline(const FrameGraphRenderpassInfo *renderpass) {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
         rs.front_face = front_face;
@@ -87,20 +87,15 @@ namespace mirai {
         DepthState ds = DepthState::create();
         std::vector<Format> color_attachment_formats;
 
-        const FrameGraphRenderingInfo *rendering_info = &node->rendering_info;
-        for (uint32_t i = 0; i < rendering_info->attachment_info.size(); ++i) {
-            const FrameGraphAttachmentInfo *attachment = &rendering_info->attachment_info[i];
-            FrameGraphResource *resource = frame_graph->get_resource(attachment->resource_handle);
-            if (i == rendering_info->depth_attachment_index) {
+        for (uint32_t i = 0; i < renderpass->attachment_info.size(); ++i) {
+            const FrameGraphAttachmentInfo *attachment = &renderpass->attachment_info[i];
+            if (i == renderpass->depth_attachment_index) {
                 ds.enable_depth_write = enable_depth_write;
                 ds.enable_depth_test = enable_depth_test;
                 ds.compare_op = depth_compare_op;
-                pipeline_description.depth_attachment_format = resource->resource_info.format;
+                pipeline_description.depth_attachment_format = attachment->format;
             } else {
-                if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN)
-                    color_attachment_formats.push_back(FORMAT_B8G8R8A8_UNORM);
-                else
-                    color_attachment_formats.push_back(resource->resource_info.format);
+                color_attachment_formats.push_back(attachment->format);
             }
         }
         pipeline_description.depth_state = &ds;

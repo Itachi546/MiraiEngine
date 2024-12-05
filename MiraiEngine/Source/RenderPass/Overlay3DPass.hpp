@@ -5,7 +5,7 @@
 namespace mirai {
     class ProceduralSkyMaterial;
 
-    class Overlay3DPass : public FrameGraphRenderPass {
+    class Overlay3DPass : public FrameGraphRenderer {
       public:
         Overlay3DPass();
 

@@ -3,7 +3,7 @@
 #include "Scene/FrameGraph.hpp"
 namespace mirai {
     class ShaderMaterial;
-    class ForwardPass : public FrameGraphRenderPass {
+    class ForwardPass : public FrameGraphRenderer {
       public:
         ForwardPass();
 

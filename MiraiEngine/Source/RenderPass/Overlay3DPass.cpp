@@ -7,7 +7,7 @@
 #include "Scene/SkyMaterial.hpp"
 
 namespace mirai {
-    Overlay3DPass::Overlay3DPass() : FrameGraphRenderPass("sky_pass"), material(nullptr) {
+    Overlay3DPass::Overlay3DPass() : FrameGraphRenderer("sky_pass"), material(nullptr) {
     }
 
     void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
@@ -28,7 +28,7 @@ namespace mirai {
 
         // Draw Sky
         material->set_inv_view_matrix(camera->get_inv_view_transform());
-        material->bind(command_buffer, node, frame_graph);
+        material->bind(command_buffer, &node->renderpass_info);
         command_buffer->draw(3, 1, 0, 0);
 
         // Draw Lines
@@ -43,7 +43,7 @@ namespace mirai {
             };
 
             line_renderer->shader_material->set_push_constant(&push_constant, 1);
-            line_renderer->shader_material->bind(command_buffer, node, frame_graph);
+            line_renderer->shader_material->bind(command_buffer, &node->renderpass_info);
 
             command_buffer->draw(line_renderer->line_count * 2, 1, 0, 0);
         }

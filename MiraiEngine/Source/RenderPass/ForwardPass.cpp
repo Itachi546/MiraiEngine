@@ -6,7 +6,7 @@
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass() : FrameGraphRenderPass("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
+    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
     }
 
     void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node) {
@@ -49,7 +49,7 @@ namespace mirai {
             // Set Per Frame Data
             UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-            shader->bind(command_buffer, node, frame_graph);
+            shader->bind(command_buffer, &node->renderpass_info);
 
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};

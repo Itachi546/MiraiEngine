@@ -8,7 +8,7 @@ namespace mirai {
     struct FrameGraphNode;
     class FrameGraph;
 
-    class SwapchainCopyPass : public FrameGraphRenderPass {
+    class SwapchainCopyPass : public FrameGraphRenderer {
       public:
         SwapchainCopyPass();
 
