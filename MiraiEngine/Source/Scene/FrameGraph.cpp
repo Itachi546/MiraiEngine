@@ -37,6 +37,41 @@ namespace mirai {
         });
     }
 
+    void FrameGraphBuilder::create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool is_input_resource) {
+
+        Format format = FORMAT_B8G8R8A8_UNORM;
+        if (state->resource_handle != K_INVALID_RESOURCE_HANDLE) {
+            FrameGraphResource *resource = resource_pool_resources.access(state->resource_handle);
+            format = resource->resource_info.format;
+        }
+        ImageLayout layout = IMAGE_LAYOUT_UNDEFINED;
+
+        switch (resource_type) {
+        case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
+            ASSERT(is_input_resource == true);
+            state->current_access |= ACCESS_FLAG_SHADER_READ;
+            layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            break;
+        case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
+            if (is_depth_format(format)) {
+                state->current_access = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
+                if (load_op == LOAD_OP_LOAD)
+                    state->current_access |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
+                layout = is_stencil_format(format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            } else {
+                state->current_access = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
+                if (load_op == LOAD_OP_LOAD)
+                    state->current_access = is_input_resource ? ACCESS_FLAG_COLOR_ATTACHMENT_READ : ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
+                layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
+            break;
+        case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE:
+            ASSERT(is_input_resource == false);
+            state->current_access |= ACCESS_FLAG_SHADER_WRITE;
+        }
+        state->current_layout = layout;
+    }
+
     FrameGraphNodeHandle FrameGraphBuilder::create_node(const FrameGraphNodeDescription &node_description) {
         uint32_t node_index = resource_pool_nodes.obtain();
         FrameGraphNode *node = resource_pool_nodes.access(node_index);
@@ -45,18 +80,26 @@ namespace mirai {
 
         FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
 
+        std::unordered_map<std::string, FrameGraphResourceState> resource_state_map;
+
         for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
-            const FrameGraphResourceInput &input_desc = node_description.inputs[i];
-            FrameGraphResourceHandle handle = create_node_input(&input_desc);
+            const FrameGraphResourceInput *input_desc = &node_description.inputs[i];
+            FrameGraphResourceHandle handle = create_node_input(input_desc);
             ASSERT(handle != K_INVALID_RESOURCE_HANDLE);
             Format format = resource_pool_resources.access(handle)->resource_info.format;
 
-            switch (input_desc.resource_type) {
+            switch (input_desc->resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                add_renderpass_info(format, renderpass, input_desc.load_op);
+                add_renderpass_info(format, renderpass, input_desc->load_op);
                 break;
             }
             node->inputs.push_back(handle);
+
+            const std::string &resource_name = input_desc->name;
+            auto found = resource_state_map.find(resource_name);
+            if (found == resource_state_map.end())
+                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = handle};
+            create_resource_state(input_desc->resource_type, input_desc->load_op, &resource_state_map[resource_name], true);
         }
 
         ASSERT(node_description.outputs.size() > 0);
@@ -84,7 +127,16 @@ namespace mirai {
                 add_renderpass_info(format, renderpass, output->clear_color, output->load_op);
                 break;
             }
+
+            const std::string &resource_name = output->name;
+            auto found = resource_state_map.find(resource_name);
+            if (found == resource_state_map.end())
+                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = resource_handle};
+            create_resource_state(output->resource_type, output->load_op, &resource_state_map[resource_name], false);
         }
+
+        for (auto &entry : resource_state_map)
+            node->resources_state.push_back(entry.second);
 
         node->width = width;
         node->height = height;
@@ -126,7 +178,7 @@ namespace mirai {
                 else {
                     desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
                     sampler.min_filter = FILTER_NEAREST;
-                    sampler.mag_filter = FILTER_NEAREST; 
+                    sampler.mag_filter = FILTER_NEAREST;
                 }
             } else
                 desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
@@ -317,9 +369,23 @@ namespace mirai {
     }
 
     void FrameGraph::compile() {
+        std::unordered_map<FrameGraphResourceHandle, FrameGraphResourceState *> resource_state_map;
         for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
-            const FrameGraphNode *node = builder->get_node(node_handle);
+            FrameGraphNode *node = builder->get_node(node_handle);
+
+            // Create a linked list of the state where current state points to prev
+            for (auto &state : node->resources_state) {
+                auto found = resource_state_map.find(state.resource_handle);
+                if (found == resource_state_map.end()) {
+                    // This is seen for the first time
+                    state.prev_state = nullptr;
+                } else {
+                    state.prev_state = found->second;
+                }
+                // Update the latest state for that resource
+                resource_state_map[state.resource_handle] = &state;
+            }
             ASSERT_MSG(node->renderer != nullptr, "Did you forgot to call set_renderer() before compile?");
             node->renderer->initialize(this, node);
             node_handles.push_back(node_handle);
