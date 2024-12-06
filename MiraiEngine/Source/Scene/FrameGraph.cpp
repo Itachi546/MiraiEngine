@@ -123,8 +123,11 @@ namespace mirai {
                 desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
                 if (is_stencil_format(output->format))
                     desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
-                else
+                else {
                     desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
+                    sampler.min_filter = FILTER_NEAREST;
+                    sampler.mag_filter = FILTER_NEAREST; 
+                }
             } else
                 desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
 
