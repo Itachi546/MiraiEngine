@@ -22,7 +22,7 @@ namespace mirai {
         }
     }
 
-    void FrameGraphBuilder::add_renderpass_info(Format format, FrameGraphRenderpassInfo &renderpass, Color clear_color, AttachmentLoadOp load_op) {
+    void FrameGraphBuilder::add_renderpass_info(Format format, FrameGraphResourceHandle resource_handle, FrameGraphRenderpassInfo &renderpass, const Color &clear_color, AttachmentLoadOp load_op) {
         // Check if input consists of an attachment
         // if such is the case we have to specify it while rendering
         if (is_depth_format(format)) {
@@ -34,42 +34,48 @@ namespace mirai {
             .clear_color = clear_color,
             .format = format,
             .load_op = load_op,
+            .resource_handle = resource_handle,
         });
     }
 
     void FrameGraphBuilder::create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool is_input_resource) {
-
         Format format = FORMAT_B8G8R8A8_UNORM;
         if (state->resource_handle != K_INVALID_RESOURCE_HANDLE) {
             FrameGraphResource *resource = resource_pool_resources.access(state->resource_handle);
             format = resource->resource_info.format;
         }
-        ImageLayout layout = IMAGE_LAYOUT_UNDEFINED;
 
         switch (resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
             ASSERT(is_input_resource == true);
-            state->current_access |= ACCESS_FLAG_SHADER_READ;
-            layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            state->access_flags |= ACCESS_FLAG_SHADER_READ;
+            state->layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            state->stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
             break;
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
             if (is_depth_format(format)) {
-                state->current_access = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
+                state->access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
                 if (load_op == LOAD_OP_LOAD)
-                    state->current_access |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
-                layout = is_stencil_format(format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                    state->access_flags |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
+
+                if (state->access_flags & ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ)
+                    state->stage_mask = PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                else
+                    state->stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+                state->layout = is_stencil_format(format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
             } else {
-                state->current_access = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
-                if (load_op == LOAD_OP_LOAD)
-                    state->current_access = is_input_resource ? ACCESS_FLAG_COLOR_ATTACHMENT_READ : ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
-                layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                state->access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
+                state->layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                state->stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
             break;
+            /*
         case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE:
             ASSERT(is_input_resource == false);
-            state->current_access |= ACCESS_FLAG_SHADER_WRITE;
+            state->access_flags |= ACCESS_FLAG_SHADER_WRITE;
+        */
         }
-        state->current_layout = layout;
     }
 
     FrameGraphNodeHandle FrameGraphBuilder::create_node(const FrameGraphNodeDescription &node_description) {
@@ -90,7 +96,7 @@ namespace mirai {
 
             switch (input_desc->resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                add_renderpass_info(format, renderpass, input_desc->load_op);
+                add_renderpass_info(format, handle, renderpass, input_desc->load_op);
                 break;
             }
             node->inputs.push_back(handle);
@@ -124,7 +130,7 @@ namespace mirai {
             switch (resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
                 Format format = output->format;
-                add_renderpass_info(format, renderpass, output->clear_color, output->load_op);
+                add_renderpass_info(format, resource_handle, renderpass, output->clear_color, output->load_op);
                 break;
             }
 
@@ -151,49 +157,54 @@ namespace mirai {
     FrameGraphResourceHandle FrameGraphBuilder::create_node_output(const FrameGraphResourceOutput *output) {
         // SamplerDescription sampler_desc = SamplerDescription::create();
         uint32_t handle = K_INVALID_RESOURCE_HANDLE;
-        if (output->name == "swapchain")
-            return FrameGraphResourceHandle{handle};
 
         switch (output->resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
             handle = resource_pool_resources.obtain();
             FrameGraphResource *resource = resource_pool_resources.access(handle);
-            TextureDescription desc = {
-                .width = output->width,
-                .height = output->height,
-                .depth = 1,
-                .mip_levels = 1,
-                .array_layers = 1,
-                .texture_type = TEXTURE_TYPE_2D,
-                .format = output->format,
-                .usage_flags = 0,
-                .sampler_desc = nullptr,
-            };
+            if (output->name == "swapchain") {
+                resource->name = output->name;
+                resource->handle = K_SWAPCHAIN_TEXTURE_HANDLE;
+                resource->resource_info.format = output->format;
+                resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
+            } else {
+                TextureDescription desc = {
+                    .width = output->width,
+                    .height = output->height,
+                    .depth = 1,
+                    .mip_levels = 1,
+                    .array_layers = 1,
+                    .texture_type = TEXTURE_TYPE_2D,
+                    .format = output->format,
+                    .usage_flags = 0,
+                    .sampler_desc = nullptr,
+                };
 
-            SamplerDescription sampler = SamplerDescription::create();
-            if (is_depth_format(output->format)) {
-                desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
-                if (is_stencil_format(output->format))
-                    desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
-                else {
-                    desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
-                    sampler.min_filter = FILTER_NEAREST;
-                    sampler.mag_filter = FILTER_NEAREST;
-                }
-            } else
-                desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
+                SamplerDescription sampler = SamplerDescription::create();
+                if (is_depth_format(output->format)) {
+                    desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
+                    if (is_stencil_format(output->format))
+                        desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
+                    else {
+                        desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
+                        sampler.min_filter = FILTER_NEAREST;
+                        sampler.mag_filter = FILTER_NEAREST;
+                    }
+                } else
+                    desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
 
-            if ((desc.usage_flags & TEXTURE_USAGE_SAMPLED_BIT) == TEXTURE_USAGE_SAMPLED_BIT)
-                desc.sampler_desc = &sampler;
+                if ((desc.usage_flags & TEXTURE_USAGE_SAMPLED_BIT) == TEXTURE_USAGE_SAMPLED_BIT)
+                    desc.sampler_desc = &sampler;
 
-            TextureID texture = device->create_texture(&desc, output->name.c_str());
-            resource->name = output->name;
-            resource->handle = texture;
-            resource->resource_info.width = output->width;
-            resource->resource_info.height = output->height;
-            resource->resource_info.depth = 1;
-            resource->resource_info.format = output->format;
-            resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
+                TextureID texture = device->create_texture(&desc, output->name.c_str());
+                resource->name = output->name;
+                resource->handle = texture;
+                resource->resource_info.width = output->width;
+                resource->resource_info.height = output->height;
+                resource->resource_info.depth = 1;
+                resource->resource_info.format = output->format;
+                resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
+            }
             break;
         }
         case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE: {
@@ -214,11 +225,9 @@ namespace mirai {
         switch (input->resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
-            if (input->name != "swapchain") {
-                auto found = resources_map.find(utils::djb2_hash_string(input->name));
-                ASSERT(found->second != K_INVALID_ID);
-                handle = found->second;
-            }
+            auto found = resources_map.find(utils::djb2_hash_string(input->name));
+            ASSERT(found->second != K_INVALID_ID);
+            handle = found->second;
         } break;
         default:
             ASSERT_MSG(0, "Unknown framegraph input attachment");
@@ -229,7 +238,7 @@ namespace mirai {
     FrameGraphBuilder::~FrameGraphBuilder() {
         for (auto &[key, val] : resources_map) {
             FrameGraphResource *resource = resource_pool_resources.access(val);
-            if (resource->handle.is_valid()) {
+            if (resource->handle.is_valid() && resource->handle != K_SWAPCHAIN_TEXTURE_HANDLE) {
                 TextureID texture_id = resource->handle;
                 device->destroy_textures(&texture_id, 1);
             }
@@ -373,19 +382,6 @@ namespace mirai {
         for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
             FrameGraphNode *node = builder->get_node(node_handle);
-
-            // Create a linked list of the state where current state points to prev
-            for (auto &state : node->resources_state) {
-                auto found = resource_state_map.find(state.resource_handle);
-                if (found == resource_state_map.end()) {
-                    // This is seen for the first time
-                    state.prev_state = nullptr;
-                } else {
-                    state.prev_state = found->second;
-                }
-                // Update the latest state for that resource
-                resource_state_map[state.resource_handle] = &state;
-            }
             ASSERT_MSG(node->renderer != nullptr, "Did you forgot to call set_renderer() before compile?");
             node->renderer->initialize(this, node);
             node_handles.push_back(node_handle);

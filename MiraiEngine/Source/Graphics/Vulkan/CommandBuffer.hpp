@@ -8,6 +8,7 @@ namespace mirai {
     struct FrameGraphNode;
     class FrameGraph;
     struct FrameGraphResource;
+    struct FrameGraphResourceState;
 
     class CommandBuffer {
       public:
@@ -46,7 +47,7 @@ namespace mirai {
         void wait();
 
       private:
-        void prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers);
+        void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
         void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void prepare_output_resources(FrameGraph *frame_graph, const FrameGraphNode *node);

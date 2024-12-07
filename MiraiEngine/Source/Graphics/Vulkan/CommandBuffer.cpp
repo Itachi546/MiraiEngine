@@ -5,6 +5,7 @@
 #include "Scene/FrameGraph.hpp"
 
 namespace mirai {
+    /*
     VkImageLayout find_required_barrier_info(bool is_depth_texture,
                                              VkImageAspectFlags image_aspect,
                                              FrameGraphResourceType resource_type,
@@ -37,6 +38,7 @@ namespace mirai {
         }
         return required_layout;
     }
+    */
     /*
     void create_image_barrier(VulkanRenderingDevice *device, FrameGraphResource *resource,
                               std::vector<VkImageMemoryBarrier2> &image_barriers) {
@@ -76,7 +78,17 @@ namespace mirai {
 
         for (uint32_t i = 0; i < renderpass.attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &renderpass.attachment_info[i];
+            // @TODO create direct pointer to texture if possible
             FrameGraphResource *resource = frame_graph->get_resource(attachment->resource_handle);
+            VkImageView image_view = VK_NULL_HANDLE;
+            ASSERT(resource->handle.is_valid());
+            if (resource->handle == K_SWAPCHAIN_TEXTURE_HANDLE) {
+                VulkanSwapchain *swapchain = device->get_swapchain();
+                image_view = swapchain->get_current_image_view();
+                width = swapchain->width;
+                height = swapchain->height;
+            } else
+                image_view = device->access_texture(resource->handle)->image_view;
 
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
             attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
@@ -84,19 +96,10 @@ namespace mirai {
             if (i == renderpass.depth_attachment_index) {
                 attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
                 attachment_info.imageLayout = renderpass.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                attachment_info.imageView = device->access_texture(resource->handle)->image_view;
+                attachment_info.imageView = image_view;
                 depth_attachment = std::move(attachment_info);
             } else {
-                /*
-                if (resource->resource_type == FRAMEGRAPH_RESOURCE_TYPE_SWAPCHAIN) {
-                    VulkanSwapchain *swapchain = device->get_swapchain();
-                    attachment_info.imageView = swapchain->get_current_image_view();
-                    width = swapchain->width;
-                    height = swapchain->height;
-                } else {
-                    attachment_info.imageView = device->access_texture(resource->resource_info.texture)->image_view;
-                }
-                */
+                attachment_info.imageView = image_view;
                 attachment_info.clearValue = {
                     attachment->clear_color.r,
                     attachment->clear_color.g,
@@ -299,29 +302,41 @@ namespace mirai {
     }
 
     void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        prepare_input_resources(frame_graph, node);
-        prepare_output_resources(frame_graph, node);
+        //prepare_input_resources(frame_graph, node);
+        //prepare_output_resources(frame_graph, node);
+        const std::vector<FrameGraphResourceState> &resources_state = node->resources_state;
+        std::vector<VkImageMemoryBarrier2> image_barriers;
+        for (auto &state : resources_state) {
+            FrameGraphResource *resource = frame_graph->get_resource(state.resource_handle);
+            if (resource->handle == K_SWAPCHAIN_TEXTURE_HANDLE) {
+                prepare_swapchain_image(&state, image_barriers);
+            } else {
+                VulkanTexture *texture = device->access_texture(resource->handle);
+                image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
+                                                                   VkPipelineStageFlags2(texture->stage_mask), texture->access_flags,
+                                                                   VkPipelineStageFlags2(state.stage_mask), VkAccessFlags2(state.access_flags),
+                                                                   texture->current_layout, VkImageLayout(state.layout),
+                                                                   texture->image_aspect));
+                texture->current_layout = VkImageLayout(state.layout);
+                texture->access_flags = VkAccessFlags2(state.access_flags);
+                texture->stage_mask = VkPipelineStageFlags2(state.stage_mask);
+            }
+        }
+        pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
     }
 
-    void CommandBuffer::prepare_swapchain_image(FrameGraph *frame_graph, FrameGraphResource *resource, std::vector<VkImageMemoryBarrier2> &image_barriers) {
-        /*
+    void CommandBuffer::prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers) {
         VulkanSwapchain *swapchain = device->get_swapchain();
-
-        VkAccessFlagBits2 dst_access_flags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-        if (resource->resource_info.load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
-            dst_access_flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-
         VkImageLayout current_layout = swapchain->get_current_image_layout();
         if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
             image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
                                                                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, dst_access_flags,
+                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, state->access_flags,
                                                                current_layout,
                                                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                                VK_IMAGE_ASPECT_COLOR_BIT));
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         }
-        */
     }
 
     void CommandBuffer::prepare_input_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {

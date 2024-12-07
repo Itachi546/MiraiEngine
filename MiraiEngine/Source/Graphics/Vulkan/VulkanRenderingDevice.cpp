@@ -779,6 +779,7 @@ namespace mirai {
         texture->image_type = VkImageType(texture_description->texture_type);
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
         texture->access_flags = 0;
+        texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 
         // @TODO cache sampler
         if (texture_description->sampler_desc)

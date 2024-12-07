@@ -73,7 +73,7 @@
 
     {
       "name": "debug_pass",
-      "enabled": false,
+      "enabled": true,
       "inputs": [
         {
           "type": "attachment",

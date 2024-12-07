@@ -66,9 +66,9 @@ namespace mirai {
 
     struct FrameGraphResourceState {
         FrameGraphResourceHandle resource_handle = K_INVALID_RESOURCE_HANDLE;
-        uint64_t current_access = ACCESS_FLAG_NONE;
-        uint32_t current_layout = IMAGE_LAYOUT_UNDEFINED;
-        FrameGraphResourceState *prev_state = nullptr;
+        uint64_t access_flags = ACCESS_FLAG_NONE;
+        ImageLayout layout = IMAGE_LAYOUT_UNDEFINED;
+        uint64_t stage_mask = PIPELINE_STAGE_NONE;
     };
 
     struct FrameGraphAttachmentInfo {
@@ -178,8 +178,8 @@ namespace mirai {
         FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
         FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput *input);
         void get_output_attachment_size(uint32_t *width, uint32_t *height, const FrameGraphResourceOutput *output);
-        void add_renderpass_info(Format format, FrameGraphRenderpassInfo &rendering_info,
-                                 Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}, AttachmentLoadOp load_op = LOAD_OP_LOAD);
+        void add_renderpass_info(Format format, FrameGraphResourceHandle texture, FrameGraphRenderpassInfo &rendering_info,
+                                 const Color &clear_color = {0.0f, 0.0f, 0.0f, 1.0f}, AttachmentLoadOp load_op = LOAD_OP_LOAD);
 
         void create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool is_input_resource);
 

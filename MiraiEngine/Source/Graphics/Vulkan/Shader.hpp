@@ -30,9 +30,10 @@ namespace mirai {
         VkImageView image_view;
         VmaAllocation allocation;
 
-        VkImageLayout current_layout;
         VkSampler sampler;
-        VkAccessFlags access_flags;
+        VkImageLayout current_layout;
+        VkAccessFlags2 access_flags;
+        VkPipelineStageFlags2 stage_mask;
     };
 
     struct VulkanQuery {

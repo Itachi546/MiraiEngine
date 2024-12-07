@@ -11,3 +11,5 @@
 #define ASSERT_MSG(cond, message) assert(message &&cond)
 
 constexpr const uint32_t K_INVALID_RESOURCE_HANDLE = UINT32_MAX;
+
+#define K_SWAPCHAIN_TEXTURE_HANDLE TextureID(UINT32_MAX - 1)

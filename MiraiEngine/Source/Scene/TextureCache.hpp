@@ -20,7 +20,7 @@ namespace mirai {
 
         ~TextureCache() {
             RenderingDevice *device = RenderingDevice::get();
-            Log::Info("Destroying ", textures_map.size(), " textures...");
+            Log::Info("Destroying ", textures_map.size(), " sampler textures...");
             for (auto &[key, val] : textures_map) {
                 device->destroy_textures(&val, 1);
             }
