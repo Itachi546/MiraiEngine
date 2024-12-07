@@ -1,6 +1,6 @@
 #pragma once
-#include "Scene/FrameGraph.hpp"
 
+#include "Scene/FrameGraph.hpp"
 namespace mirai {
     class ShaderMaterial;
     class DeferredPass : public FrameGraphRenderer {
@@ -15,6 +15,6 @@ namespace mirai {
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
-        UniformSetID uniform_set;
+        UniformSetID mesh_instance_set;
     };
 } // namespace mirai

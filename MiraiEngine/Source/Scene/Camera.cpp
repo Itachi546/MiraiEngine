@@ -5,7 +5,7 @@
 namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
                        rotation(glm::vec3(0.0f)),
-                       fov(60.0f),
+                       fov(45.0f),
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.3f),
                        far_plane(1000.0f),

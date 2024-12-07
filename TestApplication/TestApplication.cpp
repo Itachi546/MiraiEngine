@@ -28,14 +28,14 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 1
+#if 1 
         frame_graph->load_from_file("Assets/forward_pass.json");
         frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
         frame_graph->set_renderer("depth_prepass", std::make_shared<DepthPrePass>());
 #else
         frame_graph->load_from_file("Assets/deferred_pass.json");
-        frame_graph->set_renderer("gbuffer_pass", std::make_shared<GBufferPass>());
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
+        frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
 #endif
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());

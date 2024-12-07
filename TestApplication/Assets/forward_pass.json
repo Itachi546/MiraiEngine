@@ -8,7 +8,7 @@
         {
           "type": "attachment",
           "name": "depth_attachment",
-          "format": "D32_SFLOAT_S8_UINT",
+          "format": "D32_SFLOAT",
           "resolution": [1920, 1080],
           "op": "LOAD_OP_CLEAR"
         }

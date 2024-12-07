@@ -4,9 +4,9 @@
 
 using namespace mirai;
 
-struct MainPass : public FrameGraphRenderPass {
+struct MainPass : public FrameGraphRenderer {
   public:
-    MainPass() : FrameGraphRenderPass("main_pass") {
+    MainPass() : FrameGraphRenderer("main_pass") {
     }
 
     void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override {

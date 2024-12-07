@@ -312,8 +312,14 @@ namespace mirai {
                 prepare_swapchain_image(&state, image_barriers);
             } else {
                 VulkanTexture *texture = device->access_texture(resource->handle);
+                VkPipelineStageFlags2 src_stage_mask = VkPipelineStageFlags2(texture->stage_mask);
+
+                // This is the special case for depth when the last stage is not same as current previous stage
+                if (src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+                    src_stage_mask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+
                 image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
-                                                                   VkPipelineStageFlags2(texture->stage_mask), texture->access_flags,
+                                                                   src_stage_mask, texture->access_flags,
                                                                    VkPipelineStageFlags2(state.stage_mask), VkAccessFlags2(state.access_flags),
                                                                    texture->current_layout, VkImageLayout(state.layout),
                                                                    texture->image_aspect));

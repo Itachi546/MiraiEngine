@@ -6,7 +6,7 @@
       "enabled": true,
       "outputs": [
         {
-          "type": "swapchain",
+          "type": "attachment",
           "name": "swapchain"
         }
       ]

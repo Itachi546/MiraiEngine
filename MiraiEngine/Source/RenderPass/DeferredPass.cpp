@@ -1,64 +1,90 @@
 #include "DeferredPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
-#include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    DeferredPass::DeferredPass() : FrameGraphRenderer("deferred_pass"), shader(nullptr), uniform_set(K_INVALID_ID) {
+
+    DeferredPass::DeferredPass() : FrameGraphRenderer("deferred_pass"), shader(nullptr), mesh_instance_set(K_INVALID_ID) {
     }
 
     void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-
-        shader = std::make_shared<ShaderMaterial>("DeferredPassMaterial");
+        shader = std::make_shared<ShaderMaterial>("GBufferMaterial");
         shader->create_from_file({
-            "SPIRV/fullscreen.vert.spv",
-            "SPIRV/deferred_shading.frag.spv",
+            "SPIRV/gbuffer.vert.spv",
+            "SPIRV/gbuffer.frag.spv",
         });
-        shader->set_depth_write(false);
-        shader->set_depth_test(false);
 
-        // Deferred Shading Textures
-        uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
-        std::vector<UniformBinding> bindings;
-        std::vector<UniformLayout> binding_layout;
+        shader->set_depth_write(true);
+        shader->set_depth_test(true);
 
-        for (uint32_t i = 0; i < binding_count; ++i) {
-            FrameGraphResource *resource = frame_graph->get_resource(node->inputs[i]);
-            binding_layout.push_back(UniformLayout{.binding = i, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT});
-            bindings.push_back(UniformBinding{.resource_id = resource->handle});
-        }
+        // Mesh Data
+        UniformLayout mesh_data_layout[] = {
+            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
+        };
 
-        uniform_set = RenderingDevice::get()->create_uniform_set(binding_layout.data(), binding_count, 0, "deferred_binding_set");
-        RenderingDevice::get()->update_uniform_set(uniform_set, bindings.data(), static_cast<uint32_t>(bindings.size()));
+        // Mesh Instance Data (Transform/Material)
+        UniformLayout mesh_instance_layout[] = {
+            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
+            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
+        };
+
+        mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
     }
 
     void DeferredPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        glm::mat4 inv_VP = scene->get_camera()->get_inv_view_projection_transform();
+        ScopedGpuProfiling(command_buffer, "Deferred Pass");
 
-        ScopedGpuProfiling(command_buffer, "Deferred Shading");
-
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "DeferredPass", nullptr);
+        device->begin_debug_utils_label(command_buffer, "Deferred Pass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        shader->set_uniform_sets(&uniform_set, 1);
+        std::vector<DrawData> &draw_infos = scene->opaque_batches;
+        if (draw_infos.size() > 0) {
+            // Update Per Pipeline Data (Transform/Material)
+            UniformBinding per_shader_bindings[] = {
+                {.resource_id = scene->transform_buffer, .offset = 0},
+                {.resource_id = scene->material_buffer, .offset = 0},
+            };
+            device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
-        PushConstant push_constant = {.data = &inv_VP[0][0], .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4), .offset = 0};
-        shader->set_push_constant(&push_constant, 1);
+            // Set Per Frame Data
+            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
+            shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
+            shader->bind(command_buffer, &node->renderpass_info);
 
-        shader->bind(command_buffer, &node->renderpass_info);
+            uint32_t instance_data[] = {0, 0, 0, 0};
+            PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
 
-        command_buffer->draw(3, 1, 0, 0);
+            PipelineID pipeline_id = shader->get_pipeline_id();
+            uint32_t last_buffer_id = K_INVALID_ID;
+            for (uint32_t i = 0; i < draw_infos.size(); ++i) {
+                BufferID current_buffer = draw_infos[i].vertex_buffer;
+                if (current_buffer.id != last_buffer_id) {
+                    command_buffer->set_index_buffer(draw_infos[i].index_buffer);
+                    last_buffer_id = current_buffer.id;
+                    command_buffer->set_uniform_sets(pipeline_id, &draw_infos[i].vertex_binding_set, 1);
+                }
 
+                instance_data[0] = draw_infos[i].transform_index;
+                instance_data[1] = draw_infos[i].material_index;
+                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+                command_buffer->draw_indexed(draw_infos[i].index_count,
+                                             1,
+                                             draw_infos[i].index_offset,
+                                             draw_infos[i].vertex_offset,
+                                             0);
+            }
+        }
         command_buffer->end_render_pass();
 
-        RenderingDevice::get()->end_debug_utils_label(command_buffer);
+        device->end_debug_utils_label(command_buffer);
     }
 
     DeferredPass::~DeferredPass() {
+        shader = nullptr;
     }
 } // namespace mirai

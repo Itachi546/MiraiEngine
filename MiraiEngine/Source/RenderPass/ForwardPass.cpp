@@ -17,6 +17,7 @@ namespace mirai {
         });
         opaque_shader->set_depth_write(false);
         opaque_shader->set_depth_test(true);
+        opaque_shader->set_depth_compare_op(COMPARE_OP_EQUAL);
 
         transparent_shader = std::make_shared<ShaderMaterial>("TransparentMaterial");
         transparent_shader->create_from_file({

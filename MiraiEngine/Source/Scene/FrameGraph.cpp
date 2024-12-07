@@ -56,16 +56,14 @@ namespace mirai {
             if (is_depth_format(format)) {
                 state->access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
                 if (load_op == LOAD_OP_LOAD)
-                    state->access_flags |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
-
-                if (state->access_flags & ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ)
-                    state->stage_mask = PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-                else
-                    state->stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+                    state->access_flags |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : 0;
+                state->stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 
                 state->layout = is_stencil_format(format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
             } else {
                 state->access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
+                if (load_op == LOAD_OP_LOAD)
+                    state->access_flags |= ACCESS_FLAG_COLOR_ATTACHMENT_READ;
                 state->layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                 state->stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
@@ -187,9 +185,9 @@ namespace mirai {
                         desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
                     else {
                         desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
-                        sampler.min_filter = FILTER_NEAREST;
-                        sampler.mag_filter = FILTER_NEAREST;
                     }
+                    sampler.min_filter = FILTER_NEAREST;
+                    sampler.mag_filter = FILTER_NEAREST;
                 } else
                     desc.usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
 
@@ -276,7 +274,8 @@ namespace mirai {
             return FORMAT_D32_SFLOAT_S8_UINT;
         } else if (inputFormat == "R16_SFLOAT") {
             return FORMAT_R16_SFLOAT;
-        }
+        } else if (inputFormat == "D24_UNORM_S8_UINT")
+            return FORMAT_D24_UNORM_S8_UINT;
 
         ASSERT(!"Undefined input format");
         return FORMAT_UNDEFINED;
