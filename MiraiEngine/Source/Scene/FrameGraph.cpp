@@ -22,7 +22,7 @@ namespace mirai {
         }
     }
 
-    void FrameGraphBuilder::add_renderpass_info(Format format, FrameGraphResourceHandle resource_handle, FrameGraphRenderpassInfo &renderpass, const Color &clear_color, AttachmentLoadOp load_op) {
+    void FrameGraphBuilder::add_renderpass_info(Format format, TextureID texture_id, FrameGraphRenderpassInfo &renderpass, const Color &clear_color, AttachmentLoadOp load_op) {
         // Check if input consists of an attachment
         // if such is the case we have to specify it while rendering
         if (is_depth_format(format)) {
@@ -34,7 +34,7 @@ namespace mirai {
             .clear_color = clear_color,
             .format = format,
             .load_op = load_op,
-            .resource_handle = resource_handle,
+            .texture = texture_id,
         });
     }
 
@@ -88,21 +88,23 @@ namespace mirai {
 
         for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
             const FrameGraphResourceInput *input_desc = &node_description.inputs[i];
-            FrameGraphResourceHandle handle = create_node_input(input_desc);
-            ASSERT(handle != K_INVALID_RESOURCE_HANDLE);
-            Format format = resource_pool_resources.access(handle)->resource_info.format;
+            FrameGraphResourceHandle resource_handle = create_node_input(input_desc);
+            ASSERT(resource_handle != K_INVALID_RESOURCE_HANDLE);
+
+            FrameGraphResource *resource = resource_pool_resources.access(resource_handle);
+            Format format = resource->resource_info.format;
 
             switch (input_desc->resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                add_renderpass_info(format, handle, renderpass, input_desc->load_op);
+                add_renderpass_info(format, resource->handle, renderpass, input_desc->load_op);
                 break;
             }
-            node->inputs.push_back(handle);
+            node->inputs.push_back(resource_handle);
 
             const std::string &resource_name = input_desc->name;
             auto found = resource_state_map.find(resource_name);
             if (found == resource_state_map.end())
-                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = handle};
+                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = resource_handle};
             create_resource_state(input_desc->resource_type, input_desc->load_op, &resource_state_map[resource_name], true);
         }
 
@@ -123,12 +125,13 @@ namespace mirai {
 #endif
             const FrameGraphResourceType &resource_type = output->resource_type;
             FrameGraphResourceHandle resource_handle = create_node_output(output);
+            FrameGraphResource *resource = resource_pool_resources.access(resource_handle);
             node->outputs.push_back(resource_handle);
 
             switch (resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
                 Format format = output->format;
-                add_renderpass_info(format, resource_handle, renderpass, output->clear_color, output->load_op);
+                add_renderpass_info(format, resource->handle, renderpass, output->clear_color, output->load_op);
                 break;
             }
 

@@ -75,7 +75,8 @@ namespace mirai {
         Color clear_color;
         Format format;
         AttachmentLoadOp load_op;
-        FrameGraphResourceHandle resource_handle;
+        TextureID texture;
+        //FrameGraphResourceHandle resource_handle;
     };
 
     struct FrameGraphRenderpassInfo {
@@ -83,18 +84,7 @@ namespace mirai {
         uint32_t depth_attachment_index = ~0u;
         bool has_stencil_attachment = false;
     };
-    /*
-    struct FrameGraphAttachmentInfo {
-        Color clear_color;
-        FrameGraphResourceHandle resource_handle;
-    };
 
-    struct FrameGraphRenderingInfo {
-        std::vector<FrameGraphAttachmentInfo> attachment_info;
-        uint32_t depth_attachment_index = ~0u;
-        bool has_stencil_attachment = false;
-    };
-    */
     class FrameGraphRenderer {
       public:
         FrameGraphRenderer(const std::string &name) : name(name) {
@@ -124,32 +114,7 @@ namespace mirai {
         FrameGraphRenderpassInfo renderpass_info;
         uint32_t width, height;
     };
-    /*
-    struct FrameGraphResourceInfo {
 
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
-        TextureID texture;
-        Format format;
-        AttachmentLoadOp load_op;
-    };
-
-    struct FrameGraphResource {
-        FrameGraphResourceType resource_type;
-        FrameGraphResourceInfo resource_info;
-    };
-    struct FrameGraphNode {
-        std::string name;
-        bool enabled;
-
-        std::vector<FrameGraphResourceHandle> inputs;
-        std::vector<FrameGraphResourceHandle> outputs;
-        std::shared_ptr<FrameGraphRenderPass> renderer;
-        FrameGraphRenderingInfo rendering_info;
-        uint32_t width, height;
-    };
-    */
     class FrameGraphBuilder {
       public:
         FrameGraphBuilder();
@@ -178,7 +143,7 @@ namespace mirai {
         FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
         FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput *input);
         void get_output_attachment_size(uint32_t *width, uint32_t *height, const FrameGraphResourceOutput *output);
-        void add_renderpass_info(Format format, FrameGraphResourceHandle texture, FrameGraphRenderpassInfo &rendering_info,
+        void add_renderpass_info(Format format, TextureID texture_id, FrameGraphRenderpassInfo &rendering_info,
                                  const Color &clear_color = {0.0f, 0.0f, 0.0f, 1.0f}, AttachmentLoadOp load_op = LOAD_OP_LOAD);
 
         void create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool is_input_resource);
