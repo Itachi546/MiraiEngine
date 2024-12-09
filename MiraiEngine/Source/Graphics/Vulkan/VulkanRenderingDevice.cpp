@@ -781,7 +781,6 @@ namespace mirai {
         texture->access_flags = 0;
         texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 
-        // @TODO cache sampler
         if (texture_description->sampler_desc)
             texture->sampler = create_sampler(texture_description->sampler_desc);
         else

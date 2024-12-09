@@ -113,7 +113,7 @@ namespace mirai::miProfiler {
         TextRenderer *renderer = TextRenderManager::get()->get_default();
         std::stringstream ss("");
         glm::vec2 position = {5.0f, 34.0f};
-        float font_size = 12.0f;
+        float font_size = 14.0f;
         for (auto &[key, val] : ranges) {
             // Skip for first frame
             if (val.avg_counter == 1)

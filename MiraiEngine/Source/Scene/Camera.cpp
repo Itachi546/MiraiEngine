@@ -5,7 +5,7 @@
 namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
                        rotation(glm::vec3(0.0f)),
-                       fov(45.0f),
+                       fov(70.0f),
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.3f),
                        far_plane(1000.0f),
@@ -14,7 +14,6 @@ namespace mirai {
     }
 
     void Camera::update() {
-        aspect_ratio = Window::get()->get_aspect_ratio();
         glm::vec3 rotation_radians = glm::radians(rotation);
 
         glm::mat4 rotation_matrix = glm::eulerAngleZXY(rotation_radians.z, rotation_radians.x, rotation_radians.y);
@@ -28,7 +27,7 @@ namespace mirai {
         forward = glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]);
 
         view_projection_matrix = projection_matrix * view_matrix;
-        inv_view_projection_matrix  = glm::inverse(view_projection_matrix);
+        inv_view_projection_matrix = glm::inverse(view_projection_matrix);
 
         frustum.create_from_matrix(view_projection_matrix);
 

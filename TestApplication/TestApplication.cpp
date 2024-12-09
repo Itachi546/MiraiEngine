@@ -28,7 +28,7 @@ class TestApplication : public App {
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
-#if 1 
+#if 0
         frame_graph->load_from_file("Assets/forward_pass.json");
         frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
         frame_graph->set_renderer("depth_prepass", std::make_shared<DepthPrePass>());
@@ -48,8 +48,8 @@ class TestApplication : public App {
         }
 
         Camera *camera = scene->get_camera();
-        camera->position = glm::vec3(-25.0f, 2.0f, 10.0f);
-        camera->rotation = glm::vec3(2.0f, 101.0f, 0.0f);
+        camera->position = glm::vec3(3.0f, 2.0f, 0.0f);
+        camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
     }
 

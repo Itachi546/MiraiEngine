@@ -37,7 +37,13 @@ namespace mirai {
     void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        glm::mat4 inv_VP = scene->get_camera()->get_inv_view_projection_transform();
+        Camera *camera = scene->get_camera();
+        struct {
+            glm::mat4 inv_VP;
+            glm::vec4 camera_position;
+        } push_constant_data;
+        push_constant_data.inv_VP = camera->get_inv_view_projection_transform();
+        push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
@@ -47,7 +53,7 @@ namespace mirai {
 
         shader->set_uniform_sets(&uniform_set, 1);
 
-        PushConstant push_constant = {.data = &inv_VP[0][0], .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4), .offset = 0};
+        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4), .offset = 0};
         shader->set_push_constant(&push_constant, 1);
 
         shader->bind(command_buffer, &node->renderpass_info);

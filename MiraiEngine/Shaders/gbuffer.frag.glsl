@@ -41,7 +41,7 @@ void main() {
     if (material.normal_texture != K_INVALID_TEXTURE)
         n = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
     n = normalize(n.x * fs_in.tangent + n.y * fs_in.bitangent + n.z * fs_in.normal);
-    vec2 oct_n = octahedral_encode(n);
+    vec2 oct_n = octahedral_encode(n) * 0.5 + 0.5;
 
     vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
     if (material.metallic_roughness_texture != K_INVALID_TEXTURE)

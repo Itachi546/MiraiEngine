@@ -54,6 +54,10 @@ namespace mirai {
             this->far_plane = far_plane;
         }
 
+        void set_aspect_ratio(float aspect_ratio) {
+            this->aspect_ratio = aspect_ratio;
+        }
+
         float get_fov() const {
             return fov;
         }

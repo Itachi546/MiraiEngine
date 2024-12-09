@@ -23,8 +23,6 @@ namespace mirai {
         unsigned char *data = stbi_load_from_file(file, &width, &height, &num_channel, 1);
         file_ptr.reset();
         file_ptr = nullptr;
-        // @TODO only single channel is needed
-        ASSERT(num_channel == 4);
 
         if (data == nullptr)
             return nullptr;

@@ -62,6 +62,10 @@
         {
           "type": "texture",
           "name": "gbuffer_normal"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_emissive"
         }
       ],
       "outputs": [

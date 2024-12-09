@@ -84,6 +84,7 @@ namespace mirai {
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
 
+        camera->set_aspect_ratio(float(width) / float(height));
         glm::mat4 P = camera->get_projection_transform();
         glm::mat4 V = camera->get_view_transform();
         glm::mat4 VP = camera->get_view_projection_transform();
@@ -98,9 +99,6 @@ namespace mirai {
     }
 
     void Scene::remove_entity_tree(Entity entity) {
-        if (component_manager->has_component<MeshComponent>(entity)) {
-            component_manager->get_component<MeshComponent>(entity)->destroy_render_data();
-        }
         if (component_manager->has_component<HierarchyComponent>(entity)) {
             HierarchyComponent *comp = component_manager->get_component<HierarchyComponent>(entity);
             for (auto child : comp->childrens)

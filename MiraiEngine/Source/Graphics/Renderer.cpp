@@ -29,7 +29,7 @@ namespace mirai {
 
         text_render_manager = std::make_unique<TextRenderManager>();
 
-        default_font = LoadFont("Arial");
+        default_font = LoadFont("Georgia");
         text_render_manager->get_renderer_by_font(default_font.get());
 
         line_renderer = std::make_unique<LineRenderer>();
@@ -43,7 +43,7 @@ namespace mirai {
         scene->update();
         std::stringstream ss("");
         ss << "Memory: " << std::fixed << std::setprecision(2) << utils::bytes_to_mb(device->get_memory_usage()) << "MB";
-        TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 12);
+        TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 14);
     }
 
     void Renderer::render() {
