@@ -58,6 +58,12 @@ namespace mirai {
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 
         camera = std::make_unique<Camera>();
+
+        sun = std::make_unique<Light>();
+        sun->color = glm::vec3(1.0f);
+        sun->direction = glm::normalize(glm::vec3(-1.0f, 1.0f, 1.0f));
+        sun->intensity = 1.0f;
+        sun->cast_shadow = true;
     }
 
     void Scene::update() {

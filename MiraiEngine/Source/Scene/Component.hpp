@@ -106,6 +106,25 @@ namespace mirai {
         }
     };
 
+    enum LightType {
+        LIGHT_TYPE_DIRECTIONAL = 0,
+        LIGHT_TYPE_POINT = 1,
+        LIGHT_TYPE_SPOT = 2
+    };
+
+    struct Light {
+        union {
+            glm::vec3 position;
+            glm::vec3 direction;
+        };
+
+        LightType light_type;
+        glm::vec3 color;
+        float intensity;
+
+        bool cast_shadow;
+    };
+
     struct Material {
         enum FLAGS {
             FLAG_EMPTY = 0,

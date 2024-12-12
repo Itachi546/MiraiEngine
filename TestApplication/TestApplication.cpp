@@ -37,6 +37,7 @@ class TestApplication : public App {
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
         frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
 #endif
+        frame_graph->set_renderer("cascaded_shadow_pass", std::make_shared<CascadedShadowPass>());
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());

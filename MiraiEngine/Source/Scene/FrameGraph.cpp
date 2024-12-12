@@ -398,6 +398,13 @@ namespace mirai {
         }
     }
 
+    void FrameGraph::update(Scene *scene) {
+        for (auto handle : node_handles) {
+            FrameGraphNode *node = builder->get_node(handle);
+            node->renderer->update(this, node, scene);
+        }
+    }
+
     void FrameGraph::render(CommandBuffer *command_buffer, Scene *scene) {
         for (auto handle : node_handles) {
             FrameGraphNode *node = builder->get_node(handle);

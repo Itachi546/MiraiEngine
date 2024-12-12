@@ -48,6 +48,22 @@
       ]
     },
     {
+      "name": "cascaded_shadow_pass",
+      "enabled": true,
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "cascaded_shadow_map",
+          "format": "D32_SFLOAT",
+          "resolution": [
+            2048,
+            2048
+          ],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
       "name": "deferred_lighting_pass",
       "enabled": true,
       "inputs": [

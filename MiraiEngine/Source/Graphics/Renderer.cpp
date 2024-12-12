@@ -44,6 +44,8 @@ namespace mirai {
         std::stringstream ss("");
         ss << "Memory: " << std::fixed << std::setprecision(2) << utils::bytes_to_mb(device->get_memory_usage()) << "MB";
         TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 14);
+
+        frame_graph->update(scene.get());
     }
 
     void Renderer::render() {

@@ -45,6 +45,10 @@ namespace mirai {
             return camera.get();
         }
 
+        Light *get_sun() {
+            return sun.get();
+        }
+
         void add_entity(Entity entity) { entities.push_back(entity); }
 
         void update();
@@ -99,6 +103,7 @@ namespace mirai {
         std::string name;
 
         std::unique_ptr<Camera> camera;
+        std::unique_ptr<Light> sun;
 
         void remove_entity_tree(Entity entity);
         void update_transform_components();

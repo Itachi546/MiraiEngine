@@ -5,10 +5,10 @@
 namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
                        rotation(glm::vec3(0.0f)),
-                       fov(70.0f),
+                       fov(60.0f),
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.3f),
-                       far_plane(1000.0f),
+                       far_plane(100.0f),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
         viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
     }
@@ -38,7 +38,7 @@ namespace mirai {
         float hW = hH * aspect_ratio;
 
         glm::vec3 r = right * hW;
-        glm::vec3 u = u * hH;
+        glm::vec3 u = up * hH;
 
         frustum.points[Frustum::NTL] = near_point - r + u;
         frustum.points[Frustum::NTR] = near_point + r + u;
@@ -47,6 +47,9 @@ namespace mirai {
 
         hH = tan_fov * far_plane;
         hW = aspect_ratio * hH;
+        r = right * hW;
+        u = up * hH;
+
         glm::vec3 far_point = position + far_plane * forward;
         frustum.points[Frustum::FTL] = far_point - r + u;
         frustum.points[Frustum::FTR] = far_point + r + u;

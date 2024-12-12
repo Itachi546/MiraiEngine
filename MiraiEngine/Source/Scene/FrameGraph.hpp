@@ -94,7 +94,7 @@ namespace mirai {
 
         virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {}
 
-        virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node) {}
+        virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
         virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) = 0;
 
@@ -171,6 +171,7 @@ namespace mirai {
         void compile();
 
         void render(CommandBuffer *command_buffer, Scene *scene);
+        void update(Scene *scene);
 
         void add_node(const FrameGraphNodeDescription &node) {
             node_descriptions.push_back(node);
