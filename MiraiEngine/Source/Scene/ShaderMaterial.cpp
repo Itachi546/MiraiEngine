@@ -104,7 +104,35 @@ namespace mirai {
 
         PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
         ShaderMaterialCache::get()->add_pipeline(hash, pipeline);
+
         return pipeline;
+    }
+
+    ComputeShader::ComputeShader(const std::string &name) : name(name) {
+    }
+
+    void ComputeShader::create_from_file(const std::string &file) {
+        ShaderID shader = rendering_utils::create_shader_module_from_file(file);
+        create_pipeline(shader);
+        RenderingDevice::get()->destroy_shaders(&shader, 1);
+    }
+
+    void ComputeShader::bind(CommandBuffer *command_buffer) {
+        ASSERT(pipeline.is_valid());
+        command_buffer->bind_pipeline(pipeline,
+                                      uniform_sets.data(),
+                                      static_cast<uint32_t>(uniform_sets.size()),
+                                      push_constants.data(),
+                                      static_cast<uint32_t>(push_constants.size()));
+    }
+
+    ComputeShader::~ComputeShader() {
+        RenderingDevice::get()->destroy_pipelines(&pipeline, 1);
+    }
+
+    void ComputeShader::create_pipeline(ShaderID shader) {
+        RenderingDevice *device = RenderingDevice::get();
+        pipeline = device->create_compute_pipeline(shader, name);
     }
 
 } // namespace mirai

@@ -10,6 +10,13 @@ namespace mirai {
     struct FrameGraphResource;
     struct FrameGraphResourceState;
 
+    struct TextureBarrierInfo {
+        TextureID texture_id;
+        uint32_t stage_mask;
+        uint64_t access_mask;
+        ImageLayout layout;
+    };
+
     class CommandBuffer {
       public:
         CommandBuffer();
@@ -28,6 +35,8 @@ namespace mirai {
 
         void draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 
+        void dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z);
+
         void set_vertex_buffer(BufferID buffer);
 
         void set_index_buffer(BufferID buffer);
@@ -35,6 +44,8 @@ namespace mirai {
         void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region);
 
         void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
+
+        void prepare_image(const TextureBarrierInfo *barrier_info, uint32_t barrier_count);
 
         VkCommandBuffer get_command_buffer() {
             return command_buffer;

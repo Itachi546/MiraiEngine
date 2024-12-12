@@ -769,6 +769,9 @@ namespace mirai {
         }
         */
     TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name) {
+        bool is_cubemap = texture_description->texture_type == TEXTURE_TYPE_CUBE;
+        TextureType texture_type = is_cubemap ? TEXTURE_TYPE_2D : texture_description->texture_type;
+
         uint32_t textureID = resource_pool_textures.obtain();
         VulkanTexture *texture = resource_pool_textures.access(textureID);
         texture->width = texture_description->width;
@@ -776,7 +779,7 @@ namespace mirai {
         texture->depth = texture_description->depth;
         texture->mip_levels = texture_description->mip_levels;
         texture->array_layers = texture_description->array_layers;
-        texture->image_type = VkImageType(texture_description->texture_type);
+        texture->image_type = VkImageType(texture_type);
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
         texture->access_flags = 0;
         texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
@@ -825,6 +828,9 @@ namespace mirai {
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
+        if (is_cubemap)
+            create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         allocation_create_info.flags = 0;
@@ -835,10 +841,11 @@ namespace mirai {
         set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)texture->image, debug_name.c_str());
         total_memory_usage += texture->allocation->GetSize();
 
+        VkImageViewType view_type = is_cubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VkImageViewType(texture->image_type);
         VkImageViewCreateInfo imageViewCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = texture->image,
-            .viewType = VkImageViewType(texture->image_type),
+            .viewType = view_type,
             .format = texture->format,
             .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
             .subresourceRange = {
@@ -850,7 +857,7 @@ namespace mirai {
         VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_view));
         set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_view, (debug_name + "_image_view").c_str());
         return TextureID{textureID};
-    };
+    }; // namespace mirai
 
     void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));

@@ -9,7 +9,8 @@
 
 #include "ImGuiService.hpp"
 #include "MainPass.hpp"
-#include "HDRIConverter.hpp"
+#include "HDRIConverterUI.hpp"
+#include "HDRIConverterPass.hpp"
 
 using namespace mirai;
 
@@ -23,11 +24,15 @@ class MainApplication : public App {
         ImGuiService::Initialize();
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         frame_graph->load_from_file("Assets/mirai-tools-framegraph.json");
+
         frame_graph->set_renderer("main_pass", std::make_shared<MainPass>());
+        hdri_pass = std::make_shared<HDRIConverterPass>(1024, 1024);
+        frame_graph->set_renderer("cubemap_gen_pass", hdri_pass);
+
         frame_graph->compile();
 
-        hdri_converter = std::make_unique<HDRIConverter>();
-        hdri_converter->set_texture("C:/Users/Dell/OneDrive/Documents/3D-Assets/EnvironmentMap/daytime.hdr");
+        hdri_ui = std::make_unique<HDRIConverterUI>(hdri_pass);
+        hdri_ui->set_texture("C:/Users/Dell/OneDrive/Documents/3D-Assets/EnvironmentMap/daytime.hdr");
     }
 
     void update() override {
@@ -40,7 +45,7 @@ class MainApplication : public App {
             ImGui::EndMainMenuBar();
         }
 
-        hdri_converter->show_options();
+        hdri_ui->show_options();
     }
 
     ~MainApplication() {
@@ -48,7 +53,8 @@ class MainApplication : public App {
     }
 
   private:
-    std::unique_ptr<HDRIConverter> hdri_converter;
+    std::shared_ptr<HDRIConverterPass> hdri_pass;
+    std::unique_ptr<HDRIConverterUI> hdri_ui;
 };
 
 int main() {

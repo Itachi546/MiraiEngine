@@ -130,6 +130,10 @@ namespace mirai {
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
+    void CommandBuffer::dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z) {
+        vkCmdDispatch(command_buffer, work_size_x, work_size_y, work_size_z);
+    }
+
     void CommandBuffer::set_vertex_buffer(BufferID buffer) {
         VulkanBuffer *vertex_buffer = device->access_buffer(buffer);
 
@@ -226,6 +230,26 @@ namespace mirai {
         };
         pipeline_barrier(&shader_read_barrier, 1);
         dst_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    void CommandBuffer::prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count) {
+        std::vector<VkImageMemoryBarrier2> image_barriers(barrier_count);
+
+        for (uint32_t i = 0; i < barrier_count; ++i) {
+            const TextureBarrierInfo *barrier_info = barrier_infos + i;
+            VulkanTexture *texture = device->access_texture(barrier_info->texture_id);
+            image_barriers[i] = CreateImageMemoryBarrier2(texture->image,
+                                                          texture->stage_mask,
+                                                          texture->access_flags,
+                                                          VkPipelineStageFlags2(barrier_info->stage_mask),
+                                                          VkAccessFlags(barrier_info->access_mask),
+                                                          texture->current_layout,
+                                                          VkImageLayout(barrier_info->layout),
+                                                          texture->image_aspect);
+
+            texture->current_layout = VkImageLayout(barrier_info->layout);
+        }
+        pipeline_barrier(image_barriers.data(), (uint32_t)image_barriers.size());
     }
 
     void CommandBuffer::end_render_pass() {

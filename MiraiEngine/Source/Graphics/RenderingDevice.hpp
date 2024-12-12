@@ -247,7 +247,8 @@ namespace mirai {
     enum TextureType {
         TEXTURE_TYPE_1D = 0,
         TEXTURE_TYPE_2D = 1,
-        TEXTURE_TYPE_3D = 2
+        TEXTURE_TYPE_3D = 2,
+        TEXTURE_TYPE_CUBE = 3
     };
 
     enum SamplerAddressMode {
@@ -350,7 +351,7 @@ namespace mirai {
                 .max_anisotropy = 16,
                 .min_lod = 0,
                 .max_lod = 16,
-                .enable_anisotropy = true,
+                .enable_anisotropy = false,
             };
         }
     };
@@ -556,5 +557,8 @@ namespace mirai {
     namespace rendering_utils {
         ShaderID create_shader_module_from_file(const std::string &filename);
         void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
+        inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
+            return (work_size + local_workgroup_size - 1) / local_workgroup_size;
+        }
     } // namespace rendering_utils
 };    // namespace mirai

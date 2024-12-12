@@ -1,15 +1,17 @@
-#include "HDRIConverter.hpp"
+#include "HDRIConverterUI.hpp"
 #include "Common/FileUtils.hpp"
 #include "Math/MathUtils.hpp"
 
-void HDRIConverter::set_texture(const char *filename) {
+#include "HDRIConverterPass.hpp"
+
+void HDRIConverterUI::set_texture(const char *filename) {
     if (texture_id.is_valid()) {
         ImGui_ImplVulkan_RemoveTexture(descriptor_set);
         device->destroy_textures(&texture_id, 1);
         descriptor_set = VK_NULL_HANDLE;
     }
     path = filename;
-    
+
     int n_channel;
     float *data = utils::load_image_float(filename, &width, &height, &n_channel, 4);
     size_in_mb = utils::bytes_to_mb(width * height * sizeof(float) * 4);
@@ -35,7 +37,7 @@ void HDRIConverter::set_texture(const char *filename) {
     descriptor_set = ImGui_ImplVulkan_AddTexture(texture->sampler, texture->image_view, texture->current_layout);
 }
 
-void HDRIConverter::show_options() {
+void HDRIConverterUI::show_options() {
     ImGui::Begin("HDRI Texture", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     if (texture_id.is_valid()) {
         ImGui::Image((ImTextureID)(intptr_t)descriptor_set, ImVec2{1024, 512});
@@ -43,14 +45,20 @@ void HDRIConverter::show_options() {
         ImGui::Text("Width: %d", width);
         ImGui::Text("Height: %d", height);
         ImGui::Text("Size: %.2fmb", size_in_mb);
-        ImGui::Button("Convert To Cubemap");
+
+        ImGui::InputInt("Width", &converter_pass->width);
+        ImGui::InputInt("Height", &converter_pass->height);
+        if (ImGui::Button("Generate Cubemap")) {
+            converter_pass->set_hdri_texture(texture_id);
+            converter_pass->set_dirty(true);
+        }
         ImGui::Button("Generate Irradiance map");
         ImGui::Button("Export");
     }
     ImGui::End();
 }
 
-HDRIConverter::~HDRIConverter() {
+HDRIConverterUI::~HDRIConverterUI() {
     if (texture_id.is_valid())
         device->destroy_textures(&texture_id, 1);
 }

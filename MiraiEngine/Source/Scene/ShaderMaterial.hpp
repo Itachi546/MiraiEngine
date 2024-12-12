@@ -67,7 +67,7 @@ namespace mirai {
             clear_pipeline_state();
         }
 
-        virtual void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo* renderpass);
+        virtual void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass);
 
         void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
             this->uniform_sets.clear();
@@ -122,6 +122,36 @@ namespace mirai {
         std::vector<UniformSetID> uniform_sets;
         std::vector<PushConstant> push_constants;
 
-        PipelineID create_pipeline(const FrameGraphRenderpassInfo* renderpass);
+        PipelineID create_pipeline(const FrameGraphRenderpassInfo *renderpass);
     };
+
+    class ComputeShader {
+      public:
+        ComputeShader(const std::string &name);
+
+        void create_from_file(const std::string &file);
+
+        virtual void bind(CommandBuffer *command_buffer);
+
+        void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
+            this->uniform_sets.clear();
+            this->uniform_sets.insert(this->uniform_sets.end(), uniform_sets, uniform_sets + count);
+        }
+
+        void set_push_constant(PushConstant *push_constants, uint32_t count) {
+            this->push_constants.clear();
+            this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
+        }
+
+        ~ComputeShader();
+
+        std::string name;
+
+      private:
+        PipelineID pipeline;
+        std::vector<UniformSetID> uniform_sets;
+        std::vector<PushConstant> push_constants;
+        void create_pipeline(ShaderID shader);
+    };
+
 } // namespace mirai

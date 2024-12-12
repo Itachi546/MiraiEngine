@@ -115,6 +115,8 @@ namespace mirai {
 
         for (uint32_t i = 0; i < node_description.outputs.size(); ++i) {
             const FrameGraphResourceOutput *output = &node_description.outputs[i];
+            if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE)
+                continue;
 #ifdef _DEBUG
             if (i > 0) {
                 uint32_t output_width, output_height;
@@ -130,8 +132,7 @@ namespace mirai {
 
             switch (resource_type) {
             case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                Format format = output->format;
-                add_renderpass_info(format, resource->handle, renderpass, output->clear_color, output->load_op);
+                add_renderpass_info(output->format, resource->handle, renderpass, output->clear_color, output->load_op);
                 break;
             }
 
@@ -214,6 +215,8 @@ namespace mirai {
             handle = found->second;
             break;
         }
+        case FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE:
+            break;
         default:
             ASSERT_MSG(0, "Unknow framegraph output resource type");
             break;
@@ -357,18 +360,23 @@ namespace mirai {
                     if (resource.name == "swapchain") {
                         resource.format = FORMAT_B8G8R8A8_UNORM;
                     } else {
-                        json resolution = passOutput["resolution"];
-                        resource.width = resolution[0];
-                        resource.height = resolution[1];
-                        resource.format = get_texture_format(passOutput["format"]);
-                        resource.load_op = get_attachment_load_op(passOutput["op"]);
-
-                        json clear_color = passOutput["clear_color"];
-                        if (clear_color.size() == 4) {
-                            resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
+                        bool external = passOutput.value("external", false);
+                        if (external) {
+                            resource.resource_type = FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE;
                         } else {
-                            if (is_depth_format(resource.format))
-                                resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+                            json resolution = passOutput["resolution"];
+                            resource.width = resolution[0];
+                            resource.height = resolution[1];
+                            resource.format = get_texture_format(passOutput["format"]);
+                            resource.load_op = get_attachment_load_op(passOutput["op"]);
+
+                            json clear_color = passOutput["clear_color"];
+                            if (clear_color.size() == 4) {
+                                resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
+                            } else {
+                                if (is_depth_format(resource.format))
+                                    resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+                            }
                         }
                     }
                     break;

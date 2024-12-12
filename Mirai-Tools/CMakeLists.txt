@@ -5,7 +5,8 @@ project(MiraiTools)
 set(PROJECT_SOURCE_FILES
     main.cpp
     ImGuiService.cpp
-    HDRIConverter.cpp
+    HDRIConverterUI.cpp
+    HDRIConverterPass.cpp
     External/imgui/imgui.cpp
     External/imgui/imgui_draw.cpp
     External/imgui/imgui_tables.cpp
@@ -17,7 +18,8 @@ set(PROJECT_SOURCE_FILES
 set(PROJECT_HEADER_FILES
     ImGuiService.hpp
     MainPass.hpp
-    HDRIConverter.hpp
+    HDRIConverterUI.hpp
+    HDRIConverterPass.hpp
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_FILES} ${PROJECT_HEADER_FILES})

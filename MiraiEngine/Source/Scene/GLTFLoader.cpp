@@ -386,6 +386,7 @@ namespace mirai {
         }
 
         SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.enable_anisotropy = true;
         TextureDescription texture_desc = {
             .width = width,
             .height = height,

@@ -7,8 +7,10 @@
 
 using namespace mirai;
 
-struct HDRIConverter {
-    HDRIConverter() {
+struct HDRIConverterPass;
+
+struct HDRIConverterUI {
+    HDRIConverterUI(std::shared_ptr<HDRIConverterPass> converter_pass) : converter_pass(converter_pass) {
         device = (VulkanRenderingDevice *)RenderingDevice::get();
     }
 
@@ -16,14 +18,15 @@ struct HDRIConverter {
 
     void show_options();
 
-    ~HDRIConverter();
+    ~HDRIConverterUI();
 
     TextureID texture_id;
     int width;
     int height;
     std::string path;
     float size_in_mb;
-    std::thread load_thread;
+
+    std::shared_ptr<HDRIConverterPass> converter_pass;
 
     VulkanRenderingDevice *device;
     VkDescriptorSet descriptor_set;
