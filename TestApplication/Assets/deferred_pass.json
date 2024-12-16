@@ -55,6 +55,7 @@
           "type": "attachment",
           "name": "cascaded_shadow_map",
           "format": "D32_SFLOAT",
+          "layer": 5,
           "resolution": [
             2048,
             2048
@@ -82,6 +83,10 @@
         {
           "type": "texture",
           "name": "gbuffer_emissive"
+        },
+        {
+          "type": "texture",
+          "name": "cascaded_shadow_map"
         }
       ],
       "outputs": [

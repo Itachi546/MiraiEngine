@@ -89,11 +89,11 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        std::vector<DrawData> &opaque_batches = scene->opaque_batches;
+        std::vector<DrawData> &opaque_batches = scene->main_opaque_draw_batch;
         if (opaque_batches.size() > 0)
             draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), opaque_shader.get());
 
-        std::vector<DrawData> &transparent_batches = scene->transparent_batches;
+        std::vector<DrawData> &transparent_batches = scene->main_transparent_draw_batch;
         if (transparent_batches.size() > 0)
             draw_batch(transparent_batches.data(), static_cast<uint32_t>(transparent_batches.size()), transparent_shader.get());
 

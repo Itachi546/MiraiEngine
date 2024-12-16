@@ -19,11 +19,6 @@ namespace mirai {
         shader->set_depth_write(true);
         shader->set_depth_test(true);
 
-        // Mesh Data
-        UniformLayout mesh_data_layout[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-        };
-
         // Mesh Instance Data (Transform/Material)
         UniformLayout mesh_instance_layout[] = {
             {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
@@ -42,7 +37,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        std::vector<DrawData> &draw_infos = scene->opaque_batches;
+        std::vector<DrawData> &draw_infos = scene->main_opaque_draw_batch;
         if (draw_infos.size() > 0) {
             // Update Per Pipeline Data (Transform/Material)
             UniformBinding per_shader_bindings[] = {

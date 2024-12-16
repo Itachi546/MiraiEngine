@@ -16,6 +16,7 @@ namespace mirai {
 
         void AddLine(glm::vec3 s, glm::vec3 e, uint32_t color = 0xffffffff);
         void AddAABB(const AABB &aabb, uint32_t color = 0x00ff00ff);
+        void AddFrustum(const std::array<glm::vec3, 8> &points, uint32_t color);
 
         ~LineRenderer();
 

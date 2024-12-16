@@ -57,7 +57,7 @@ namespace mirai {
             if (found != lookup_.end())
                 return components[found->second];
 
-            lookup_[entity] = components.size();
+            lookup_[entity] = static_cast<uint32_t>(components.size());
             components.emplace_back();
             entities.push_back(entity);
 
@@ -73,7 +73,7 @@ namespace mirai {
             if (found != lookup_.end())
                 return components[found->second];
 
-            lookup_[entity] = components.size();
+            lookup_[entity] = static_cast<uint32_t>(components.size());
             components.push_back(T{std::forward<Args>(args)...});
             entities.push_back(entity);
             return components.back();
@@ -85,7 +85,7 @@ namespace mirai {
                 uint64_t index = found->second;
                 components[index] = std::move(components.back());
                 entities[index] = entities.back();
-                lookup_[entities[index]] = index;
+                lookup_[entities[index]] = static_cast<uint32_t>(index);
                 lookup_.erase(entity);
                 components.pop_back();
                 entities.pop_back();
@@ -105,22 +105,13 @@ namespace mirai {
             return nullptr;
         }
 
-        std::size_t get_index(Entity entity) {
+        uint32_t get_component_index(Entity entity) {
             auto found = lookup_.find(entity);
             if (found != lookup_.end())
                 return found->second;
-            return ~0ull;
+            return UINT32_MAX;
         }
-
-        template <typename Component>
-        uint32_t get_index(const T *val) {
-            auto found = std::find_if(components.begin(), components.end(), [val](Component &comp) { return &comp == val; });
-
-            if (found != components.end())
-                return (uint32_t)std::distance(components.begin(), found);
-            return -1;
-        }
-
+        
         std::size_t size() const override {
             return components.size();
         }
@@ -129,7 +120,7 @@ namespace mirai {
         std::vector<T> components;
 
       private:
-        std::unordered_map<uint32_t, uint64_t> lookup_;
+        std::unordered_map<uint32_t, uint32_t> lookup_;
     };
 
     struct ComponentManager {
@@ -178,7 +169,7 @@ namespace mirai {
         bool has_component(const Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
             auto comp = get_component_array<T>(comp_id);
-            return comp->get_index(entity) != ~0ull;
+            return comp->get_component_index(entity) != UINT32_MAX;
         }
 
         /*
@@ -212,6 +203,16 @@ namespace mirai {
             auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->get_component(entity);
+        }
+
+        template <typename T>
+        uint32_t get_component_index(const Entity &entity) {
+            uint32_t comp_id = get_component_type_id<T>();
+            ASSERT(comp_id < MAX_COMPONENTS);
+
+            auto comp = get_component_array<T>(comp_id);
+            ASSERT(comp != nullptr);
+            return comp->get_component_index(entity);
         }
 
         template <typename T>

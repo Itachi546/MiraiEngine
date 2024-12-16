@@ -15,6 +15,6 @@ namespace mirai {
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
-        UniformSetID uniform_set;
+        UniformSetID uniform_set, cascade_uniform_set;
     };
 } // namespace mirai

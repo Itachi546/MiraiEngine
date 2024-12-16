@@ -769,8 +769,28 @@ namespace mirai {
         }
         */
     TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name) {
-        bool is_cubemap = texture_description->texture_type == TEXTURE_TYPE_CUBE;
-        TextureType texture_type = is_cubemap ? TEXTURE_TYPE_2D : texture_description->texture_type;
+        VkImageViewType image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+        VkImageType image_type = VK_IMAGE_TYPE_2D;
+
+        uint32_t array_layers = texture_description->array_layers;
+        switch (texture_description->texture_type) {
+        case TEXTURE_TYPE_1D:
+            image_view_type = array_layers > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+            image_type = VK_IMAGE_TYPE_1D;
+            break;
+        case TEXTURE_TYPE_2D:
+            image_view_type = array_layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+            break;
+        case TEXTURE_TYPE_3D:
+            ASSERT(array_layers == 1);
+            image_view_type = VK_IMAGE_VIEW_TYPE_3D;
+            image_type = VK_IMAGE_TYPE_3D;
+            break;
+        case TEXTURE_TYPE_CUBE:
+            image_view_type = array_layers > 1 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+            image_type = VK_IMAGE_TYPE_2D;
+            break;
+        }
 
         uint32_t textureID = resource_pool_textures.obtain();
         VulkanTexture *texture = resource_pool_textures.access(textureID);
@@ -779,7 +799,7 @@ namespace mirai {
         texture->depth = texture_description->depth;
         texture->mip_levels = texture_description->mip_levels;
         texture->array_layers = texture_description->array_layers;
-        texture->image_type = VkImageType(texture_type);
+        texture->image_type = image_type;
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
         texture->access_flags = 0;
         texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
@@ -816,7 +836,7 @@ namespace mirai {
 
         VkImageCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = texture->image_type,
+            .imageType = image_type,
             .format = texture->format,
             .extent = {texture->width, texture->height, texture->depth},
             .mipLevels = texture->mip_levels,
@@ -828,7 +848,7 @@ namespace mirai {
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        if (is_cubemap)
+        if (image_view_type == VK_IMAGE_VIEW_TYPE_CUBE || image_view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
             create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
         VmaAllocationCreateInfo allocation_create_info = {};
@@ -841,11 +861,10 @@ namespace mirai {
         set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)texture->image, debug_name.c_str());
         total_memory_usage += texture->allocation->GetSize();
 
-        VkImageViewType view_type = is_cubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VkImageViewType(texture->image_type);
         VkImageViewCreateInfo imageViewCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = texture->image,
-            .viewType = view_type,
+            .viewType = image_view_type,
             .format = texture->format,
             .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
             .subresourceRange = {

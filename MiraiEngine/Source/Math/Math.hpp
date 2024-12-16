@@ -29,7 +29,7 @@ namespace mirai {
             this->distance = plane.w;
         }
 
-        float distance_to_point(const glm::vec3 &p) {
+        float distance_to_point(const glm::vec3 &p) const {
             return dot(p, normal) + distance;
         }
 
@@ -93,17 +93,17 @@ namespace mirai {
         enum FRUSTUM_POINT {
             NTL = 0,
             NTR,
-            NBL,
             NBR,
+            NBL,
             FTL,
             FTR,
+            FBR,
             FBL,
-            FBR
         };
 
-        void create_from_matrix(const glm::mat4 &m);
+        void create_from_matrix(const glm::mat4 &m, const glm::mat4 &inv_m);
 
-        bool intersect(const AABB &aabb);
+        bool intersect(const AABB &aabb) const;
 
         std::array<Plane, 6> planes;
         std::array<glm::vec3, 8> points;

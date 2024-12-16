@@ -20,10 +20,11 @@ namespace mirai {
         const FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
         uint32_t width = node->width;
         uint32_t height = node->height;
+        uint32_t layer_count = 1;
 
         for (uint32_t i = 0; i < renderpass.attachment_info.size(); ++i) {
             const FrameGraphAttachmentInfo *attachment = &renderpass.attachment_info[i];
-            const TextureID texture_id = attachment->texture;
+            TextureID texture_id = attachment->texture;
 
             VkImageView image_view = VK_NULL_HANDLE;
             ASSERT(texture_id.is_valid());
@@ -32,8 +33,11 @@ namespace mirai {
                 image_view = swapchain->get_current_image_view();
                 width = swapchain->width;
                 height = swapchain->height;
-            } else
-                image_view = device->access_texture(texture_id)->image_view;
+            } else {
+                VulkanTexture *texture = device->access_texture(texture_id);
+                image_view = texture->image_view;
+                layer_count = texture->array_layers;
+            }
 
             VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
             attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
@@ -59,7 +63,7 @@ namespace mirai {
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .renderArea = {0, 0, width, height},
-            .layerCount = 1,
+            .layerCount = layer_count,
             .colorAttachmentCount = static_cast<uint32_t>(color_attachments.size()),
             .pColorAttachments = color_attachments.data(),
             .pDepthAttachment = depth_attachment.has_value() ? &depth_attachment.value() : nullptr,

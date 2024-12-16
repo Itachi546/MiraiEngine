@@ -31,6 +31,7 @@ namespace mirai {
         std::string name;
         FrameGraphResourceType resource_type;
         uint32_t width, height;
+        uint32_t array_layers;
         Format format;
         AttachmentLoadOp load_op;
         Color clear_color;
@@ -62,6 +63,7 @@ namespace mirai {
             uint32_t height;
             uint32_t depth;
             Format format;
+            uint32_t array_layers;
         } resource_info;
     };
 

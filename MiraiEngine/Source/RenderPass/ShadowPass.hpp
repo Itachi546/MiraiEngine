@@ -18,6 +18,8 @@ namespace mirai {
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 
+        ~CascadedShadowPass();
+
       private:
         std::shared_ptr<ShaderMaterial> shader;
         uint32_t cascade_count = 5;
@@ -26,8 +28,8 @@ namespace mirai {
 
         uint32_t shadow_map_size = 2048;
 
-        std::vector<float> split_distances;
-        std::vector<glm::mat4> cascade_VP;
-        void calculate_split_distance(float znear, float zfar);
+        void calculate_split_distances(float znear, float zfar, Scene* scene);
+
+        UniformSetID mesh_instance_set;
     };
 } // namespace mirai

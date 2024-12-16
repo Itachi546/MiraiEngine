@@ -175,7 +175,7 @@ namespace mirai {
                     .height = output->height,
                     .depth = 1,
                     .mip_levels = 1,
-                    .array_layers = 1,
+                    .array_layers = output->array_layers,
                     .texture_type = TEXTURE_TYPE_2D,
                     .format = output->format,
                     .usage_flags = 0,
@@ -203,7 +203,7 @@ namespace mirai {
                 resource->handle = texture;
                 resource->resource_info.width = output->width;
                 resource->resource_info.height = output->height;
-                resource->resource_info.depth = 1;
+                resource->resource_info.array_layers = output->array_layers;
                 resource->resource_info.format = output->format;
                 resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
             }
@@ -369,7 +369,7 @@ namespace mirai {
                             resource.height = resolution[1];
                             resource.format = get_texture_format(passOutput["format"]);
                             resource.load_op = get_attachment_load_op(passOutput["op"]);
-
+                            resource.array_layers = passOutput.value("layer", 1);
                             json clear_color = passOutput["clear_color"];
                             if (clear_color.size() == 4) {
                                 resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};

@@ -21,17 +21,24 @@ namespace mirai {
 
         // Deferred Shading Textures
         uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
-        std::vector<UniformBinding> bindings;
-        std::vector<UniformLayout> binding_layout;
+        std::vector<UniformBinding> bindings(binding_count);
+        std::vector<UniformLayout> binding_layout(binding_count);
 
         for (uint32_t i = 0; i < binding_count; ++i) {
             FrameGraphResource *resource = frame_graph->get_resource(node->inputs[i]);
-            binding_layout.push_back(UniformLayout{.binding = i, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT});
-            bindings.push_back(UniformBinding{.resource_id = resource->handle});
+            binding_layout[i] = UniformLayout{.binding = i, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT};
+            bindings[i] = UniformBinding{.resource_id = resource->handle};
         }
 
-        uniform_set = RenderingDevice::get()->create_uniform_set(binding_layout.data(), binding_count, 0, "deferred_binding_set");
-        RenderingDevice::get()->update_uniform_set(uniform_set, bindings.data(), static_cast<uint32_t>(bindings.size()));
+        uniform_set = device->create_uniform_set(binding_layout.data(), binding_count, 0, "deferred_binding_set");
+        device->update_uniform_set(uniform_set, bindings.data(), static_cast<uint32_t>(bindings.size()));
+
+        UniformLayout cascade_data = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_FRAGMENT,
+        };
+        cascade_uniform_set = device->create_uniform_set(&cascade_data, 1, 1, "cascade_info_set");
     }
 
     void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -41,19 +48,25 @@ namespace mirai {
         struct {
             glm::mat4 inv_VP;
             glm::vec4 camera_position;
+            glm::vec4 light_direction;
         } push_constant_data;
         push_constant_data.inv_VP = camera->get_inv_view_projection_transform();
         push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
+        push_constant_data.light_direction = glm::vec4(scene->get_sun()->direction, scene->get_sun()->intensity);
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
-        RenderingDevice::get()->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
+        device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        shader->set_uniform_sets(&uniform_set, 1);
+        UniformBinding cascade_binding = {.resource_id = scene->directional_light_info.cascade_uniform_buffer};
+        device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
 
-        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4), .offset = 0};
+        UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
+        shader->set_uniform_sets(uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
+
+        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(push_constant_data), .offset = 0};
         shader->set_push_constant(&push_constant, 1);
 
         shader->bind(command_buffer, &node->renderpass_info);

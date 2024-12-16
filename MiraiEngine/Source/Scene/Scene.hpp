@@ -4,11 +4,29 @@
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include <string>
+#include <mutex>
 
 namespace mirai {
     struct ComponentManager;
     class CommandBuffer;
     class Camera;
+
+    struct DirectionalLightCascadeInfo {
+        glm::mat4 VP[5];
+        float split_distances[5];
+        float z_range;
+        float _padding[2];
+    };
+
+    struct DirectionalLightInfo {
+        bool enable_shadow;
+        DirectionalLightCascadeInfo cascade_info;
+        UniformSetID cascade_uniform_set;
+        uint32_t cascade_set_binding_id;
+
+        BufferID cascade_uniform_buffer;
+        uint8_t *cascade_buffer_ptr;
+    };
 
     struct DrawData {
         uint32_t transform_index;
@@ -71,8 +89,8 @@ namespace mirai {
         std::vector<Material> materials;
         std::vector<Entity> entities;
 
-        std::vector<DrawData> opaque_batches;
-        std::vector<DrawData> transparent_batches;
+        std::vector<DrawData> main_opaque_draw_batch;
+        std::vector<DrawData> main_transparent_draw_batch;
 
         BufferID transform_buffer;
         glm::mat4 *transform_array;
@@ -96,14 +114,17 @@ namespace mirai {
         uint8_t *per_frame_data_ptr;
 
         UniformSetID per_frame_uniform_set;
+        DirectionalLightInfo directional_light_info;
 
         std::vector<GpuMesh> gpu_meshes;
 
       protected:
+        bool dirty;
         std::string name;
 
         std::unique_ptr<Camera> camera;
         std::unique_ptr<Light> sun;
+        std::mutex mu;
 
         void remove_entity_tree(Entity entity);
         void update_transform_components();
@@ -111,6 +132,17 @@ namespace mirai {
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
         void update_draw_data();
 
-        void update_visibility_state();
+        void update_main_draw_batch();
+
+        struct ObjectDrawData {
+            BufferID vertex_buffer;
+            BufferID index_buffer;
+            UniformSetID vertex_binding_set;
+            uint32_t transform_index;
+
+            std::vector<AABB> aabbs;
+            MeshComponent::MeshSubset *subsets;
+        };
+        std::vector<ObjectDrawData> scene_draw_data;
     };
 } // namespace mirai

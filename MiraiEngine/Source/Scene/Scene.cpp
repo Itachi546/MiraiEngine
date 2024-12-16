@@ -5,12 +5,13 @@
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
+#include "Math/Math.hpp"
 
 #include <execution>
 #include <algorithm>
 
 namespace mirai {
-    Scene::Scene(const std::string &name) : name(name) {
+    Scene::Scene(const std::string &name) : name(name), dirty(true) {
         component_manager = std::make_unique<ComponentManager>();
         component_manager->register_component<NameComponent>();
         component_manager->register_component<HierarchyComponent>();
@@ -34,20 +35,20 @@ namespace mirai {
         material_buffer = device->create_buffer(&buffer_desc, "material_buffer");
         material_array = device->map_buffer(material_buffer);
 
+        // Initialize PerFrame Resources
         buffer_desc = {
             .size = sizeof(FrameData),
             .usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
+        per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
+        per_frame_data_ptr = device->map_buffer(per_frame_data_buffer);
 
         UniformLayout layout = {
             .binding = 0,
             .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
-
-        per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-        per_frame_data_ptr = device->map_buffer(per_frame_data_buffer);
         per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
 
         UniformBinding binding = {
@@ -57,8 +58,30 @@ namespace mirai {
         };
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 
-        camera = std::make_unique<Camera>();
+        // Initialize CascadeShadowInfo
+        // @TODO mirai
+        // fix it
+        directional_light_info.enable_shadow = true;
+        if (directional_light_info.enable_shadow) {
+            buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
+            directional_light_info.cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
+            directional_light_info.cascade_buffer_ptr = device->map_buffer(directional_light_info.cascade_uniform_buffer);
 
+            UniformLayout cascade_buffer_layout = {
+                .binding = 0,
+                .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+                .shader_stage = SHADER_STAGE_GEOMETRY,
+            };
+            directional_light_info.cascade_uniform_set = device->create_uniform_set(&cascade_buffer_layout, 1, 0, "cascade_uniform_set");
+
+            uint32_t set_id = 1;
+            directional_light_info.cascade_set_binding_id = set_id;
+            UniformBinding cascade_uniform_binding = {.resource_id = directional_light_info.cascade_uniform_buffer};
+            device->update_uniform_set(directional_light_info.cascade_uniform_set, &cascade_uniform_binding, set_id);
+        }
+
+        // Initialize camera/sun
+        camera = std::make_unique<Camera>();
         sun = std::make_unique<Light>();
         sun->color = glm::vec3(1.0f);
         sun->direction = glm::normalize(glm::vec3(-1.0f, 1.0f, 1.0f));
@@ -77,15 +100,7 @@ namespace mirai {
 
         update_draw_data();
 
-        // Sort transparent batches
-        /*
-        glm::vec3 camera_position = camera->position;
-        if (transparent_batches.size() > 0) {
-            std::sort(std::execution::par_unseq, transparent_batches.begin(), transparent_batches.end(), [camera_position](const TransparentDrawData &lhs, const TransparentDrawData &rhs) {
-                return glm::length(lhs.position - camera_position) > glm::length(rhs.position - camera_position);
-            });
-        }
-        */
+        update_main_draw_batch();
 
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
@@ -139,65 +154,88 @@ namespace mirai {
     void Scene::update_hierarchy_component() {
         for (auto &entity : entities)
             update_hierarchy(entity, glm::mat4(1.0f));
+
+        std::vector<TransformComponent> &transforms = component_manager->get_component_array<TransformComponent>()->components;
+        for (uint32_t i = 0; i < transforms.size(); ++i)
+            transform_array[i] = transforms[i].world_transform;
     }
 
     void Scene::update_draw_data() {
-        ScopedCpuProfiling("Update Draw Data");
+        // Calculated only when object is added or removed
+        // @TODO calculate it only once if possible
+        if (!dirty)
+            return;
 
         memcpy(material_array, materials.data(), sizeof(Material) * materials.size());
-
-        opaque_batches.clear();
-        transparent_batches.clear();
+        ScopedCpuProfiling("Update Draw Data");
 
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
-        DrawData draw_data;
-        uint32_t total_entities = 0;
-
-        Frustum &frustum = camera->get_frustum();
+        scene_draw_data.clear();
+        scene_draw_data.resize(component_count);
         for (uint32_t i = 0; i < component_count; ++i) {
-            total_entities++;
-            const MeshComponent &mesh_component = mesh_component_ptr->components[i];
+            MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
-            const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-
-            transform_array[i] = transform->world_transform;
 
             GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
-            draw_data.vertex_buffer = gpu_mesh.vertex_buffer;
-            draw_data.index_buffer = gpu_mesh.index_buffer;
-            draw_data.vertex_binding_set = gpu_mesh.vertex_binding_set;
+            scene_draw_data[i].vertex_buffer = gpu_mesh.vertex_buffer;
+            scene_draw_data[i].index_buffer = gpu_mesh.index_buffer;
+            scene_draw_data[i].vertex_binding_set = gpu_mesh.vertex_binding_set;
+            scene_draw_data[i].transform_index = component_manager->get_component_index<TransformComponent>(entity);
+            scene_draw_data[i].subsets = mesh_component.mesh_subsets.data();
 
-            ASSERT(mesh_component.mesh_subsets.size() > 0);
-
-            for (uint32_t subset = 0; subset < mesh_component.mesh_subsets.size(); ++subset) {
-                AABB aabb = mesh_component.aabbs[subset];
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+            scene_draw_data[i].aabbs.resize(mesh_component.aabbs.size());
+            for (uint32_t j = 0; j < mesh_component.aabbs.size(); ++j) {
+                AABB &aabb = scene_draw_data[i].aabbs[j];
+                aabb = mesh_component.aabbs[j];
                 aabb.transform(transform->world_transform);
-                if (!frustum.intersect(aabb))
-                    continue;
-
-                const MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[subset];
-                draw_data.transform_index = i;
-                draw_data.material_index = mesh_subset.material_index;
-                draw_data.vertex_offset = mesh_subset.vertex_buffer.offset;
-                draw_data.index_offset = mesh_subset.index_buffer.offset;
-                draw_data.index_count = mesh_subset.index_buffer.count;
-
-                const Material &material = materials[mesh_subset.material_index];
-                if (material.is_transparent()) {
-                    transparent_batches.push_back(draw_data);
-                } else {
-                    opaque_batches.push_back(draw_data);
-                }
             }
         }
 
-        std::sort(opaque_batches.begin(), opaque_batches.end(), [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
+        dirty = false;
     }
 
-    void Scene::update_visibility_state() {
+    void Scene::update_main_draw_batch() {
+
+        main_transparent_draw_batch.clear();
+        main_opaque_draw_batch.clear();
+
+        const Frustum &frustum = camera->get_frustum();
+        std::for_each(std::execution::par_unseq, scene_draw_data.begin(), scene_draw_data.end(), [this, &frustum](const ObjectDrawData &object_data) {
+            uint32_t num_submesh = static_cast<uint32_t>(object_data.aabbs.size());
+            for (uint32_t i = 0; i < num_submesh; ++i) {
+                const AABB &aabb = object_data.aabbs[i];
+                if (frustum.intersect(aabb)) {
+                    const MeshComponent::MeshSubset &subset = object_data.subsets[i];
+                    const Material &material = materials[subset.material_index];
+
+                    std::unique_lock lk{mu};
+                    DrawData *draw_data;
+                    if (material.is_transparent())
+                        draw_data = &main_transparent_draw_batch.emplace_back(DrawData{});
+                    else
+                        draw_data = &main_opaque_draw_batch.emplace_back(DrawData{});
+                    lk.unlock();
+
+                    draw_data->transform_index = object_data.transform_index;
+                    draw_data->material_index = subset.material_index;
+                    draw_data->vertex_buffer = object_data.vertex_buffer;
+                    draw_data->index_buffer = object_data.index_buffer;
+                    draw_data->vertex_binding_set = object_data.vertex_binding_set;
+                    draw_data->vertex_offset = subset.vertex_buffer.offset;
+                    draw_data->index_offset = subset.index_buffer.offset;
+                    draw_data->index_count = subset.index_buffer.count;
+                }
+            }
+        });
+
+        std::sort(main_opaque_draw_batch.begin(), main_opaque_draw_batch.end(),
+                  [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
+        std::sort(main_transparent_draw_batch.begin(), main_transparent_draw_batch.end(),
+                  [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
     }
 
     void Scene::remove_entity(Entity entity) {
@@ -207,6 +245,7 @@ namespace mirai {
             return;
         }
 
+        dirty = true;
         remove_entity_tree(entity);
         entities.erase(found);
     }
@@ -231,7 +270,7 @@ namespace mirai {
         }
         ecs::destroy(component_manager.get());
 
-        BufferID buffers[] = {per_frame_data_buffer, transform_buffer, material_buffer};
+        BufferID buffers[] = {per_frame_data_buffer, transform_buffer, material_buffer, directional_light_info.cascade_uniform_buffer};
         RenderingDevice::get()->destroy_buffers(buffers, static_cast<uint32_t>(std::size(buffers)));
     }
 

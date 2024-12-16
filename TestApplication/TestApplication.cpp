@@ -51,6 +51,7 @@ class TestApplication : public App {
         Camera *camera = scene->get_camera();
         camera->position = glm::vec3(3.0f, 2.0f, 0.0f);
         camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
+        camera->set_far_plane(200.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
     }
 
