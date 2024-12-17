@@ -45,6 +45,13 @@ namespace mirai {
             clear_pipeline_state();
         }
 
+        void set_depth_clamp(bool depth_clamp) {
+            if (this->enable_depth_clamp == depth_clamp)
+                return;
+            this->enable_depth_clamp = depth_clamp;
+            clear_pipeline_state();
+        }
+
         void set_enable_blend(bool blend) {
             if (this->enable_blend == blend)
                 return;
@@ -101,6 +108,7 @@ namespace mirai {
         bool dirty = true;
         bool enable_depth_test;
         bool enable_depth_write;
+        bool enable_depth_clamp;
         bool enable_blend;
         CompareOp depth_compare_op;
         Topology topology;

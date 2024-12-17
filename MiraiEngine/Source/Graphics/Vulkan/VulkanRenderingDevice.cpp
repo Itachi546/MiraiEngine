@@ -926,7 +926,8 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::wait() {
-        VK_CHECK(vkDeviceWaitIdle(device));
+        VkResult result = vkDeviceWaitIdle(device);
+        VK_CHECK(result);
     }
 
     void VulkanRenderingDevice::present() {

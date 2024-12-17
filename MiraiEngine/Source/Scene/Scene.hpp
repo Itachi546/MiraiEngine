@@ -11,8 +11,9 @@ namespace mirai {
     class CommandBuffer;
     class Camera;
 
+    constexpr const uint32_t NUM_DIRLIGHT_CASCADE = 5;
     struct DirectionalLightCascadeInfo {
-        glm::mat4 VP[5];
+        glm::mat4 VP[NUM_DIRLIGHT_CASCADE];
         float split_distances[5];
         float z_range;
         float _padding[2];
@@ -82,6 +83,8 @@ namespace mirai {
         void remove_entity(Entity entity);
 
         void release_all_entities();
+
+        void generate_draw_batch(std::vector<DrawData> &opaque_batch, std::vector<DrawData> &transparent_batch, const Frustum *frustum);
 
         virtual ~Scene();
 

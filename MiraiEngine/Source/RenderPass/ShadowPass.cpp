@@ -1,6 +1,5 @@
 #include "ShadowPass.hpp"
 
-#include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/Camera.hpp"
@@ -18,6 +17,7 @@ namespace mirai {
         });
         shader->set_depth_write(true);
         shader->set_depth_test(true);
+        shader->set_depth_clamp(true);
 
         shadow_map_size = node->width;
 
@@ -35,8 +35,8 @@ namespace mirai {
 
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
 
-        for (uint32_t i = 0; i < cascade_count; ++i) {
-            float p = (i + 1) / float(cascade_count);
+        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+            float p = (i + 1) / float(NUM_DIRLIGHT_CASCADE);
             float log = znear * std::pow(ratio, p);
             float uniform = znear + range * p;
 
@@ -52,59 +52,49 @@ namespace mirai {
 
         Camera *camera = scene->get_camera();
 
+        // @TODO MIRAI::Generated only once as frustum culling is not done
+        if (opaque_batches.size() == 0)
+            scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
+
         glm::vec3 light_direction = sun->direction;
 
         const Frustum &frustum = camera->get_frustum();
-        std::array<glm::vec3, 8> camera_frustum_points = frustum.points;
+        const std::array<glm::vec3, 8> &camera_frustum_points = frustum.points;
 
-        calculate_split_distances(camera->get_near_plane(), camera->get_far_plane(), scene);
+        calculate_split_distances(camera->get_near_plane(), shadow_distance, scene);
 
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
         float last_split_distance = 0.0f;
-        
-        glm::mat4 viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
-        for (uint32_t cascade = 0; cascade < cascade_count; ++cascade) {
+
+        for (uint32_t cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
 
             float split_distance = cascade_info.split_distances[cascade];
 
             std::array<glm::vec3, 8> frustum_corners;
+            glm::vec3 frustum_center = glm::vec3(0.0f);
             for (uint32_t i = 0; i < 4; ++i) {
-                glm::vec3 direction = camera_frustum_points[i + 4] - camera_frustum_points[i];
+                // @TODO MIRAI::Fix me
+                glm::vec3 direction = glm::normalize(camera_frustum_points[i + 4] - camera_frustum_points[i]) * shadow_distance;
                 frustum_corners[i + 4] = camera_frustum_points[i] + split_distance * direction;
                 frustum_corners[i] = camera_frustum_points[i] + last_split_distance * direction;
+                frustum_center += frustum_corners[i] + frustum_corners[i + 4];
             }
-
-            glm::vec3 frustum_center = frustum_corners[0];
-            for (uint32_t i = 1; i < 8; ++i)
-                frustum_center += frustum_corners[i];
             frustum_center /= 8.0f;
 
-            // Calculate view_matrix
-            //glm::mat4 light_view_matrix = glm::lookAt(glm::vec3(0.0f), -light_direction, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 light_view_matrix = glm::lookAt(frustum_center + light_direction, frustum_center, glm::vec3(0.0f, 1.0f, 0.0f));
-
-            // Calculate bounding box
-            glm::vec3 min = glm::vec3(FLT_MAX);
-            glm::vec3 max = glm::vec3(-FLT_MAX);
-            for (uint32_t i = 0; i < 8; ++i) {
-                // Project the frustum corner in light view space
-                glm::vec3 projected_corner = light_view_matrix * glm::vec4(frustum_corners[i], 1.0f);
-
-                min.x = std::min(min.x, projected_corner.x);
-                min.y = std::min(min.y, projected_corner.y);
-                min.z = std::min(min.z, projected_corner.z);
-
-                max.x = std::max(max.x, projected_corner.x);
-                max.y = std::max(max.y, projected_corner.y);
-                max.z = std::max(max.z, projected_corner.z);
+            float radius = 0.0f;
+            for (const auto &v : frustum_corners) {
+                float distance = glm::length(v - frustum_center);
+                radius = glm::max(radius, distance);
             }
 
-            float z_factor = 2.0f;
-            min.z = min.z < 0.0f ? min.z * z_factor : min.z / z_factor;
-            max.z = max.z < 0.0f ? max.z / z_factor : max.z * z_factor;
+            radius = std::ceil(radius * 16.0f) / 16.0f;
+            glm::vec3 max_extents = glm::vec3(radius);
+            glm::vec3 min_extents = -max_extents;
 
-            glm::mat4 light_projection_matrix = glm::ortho(min.x, max.x, min.y, max.y, min.z, max.z);
-            cascade_info.VP[cascade] = viewport_matrix * light_projection_matrix * light_view_matrix;
+            glm::mat4 light_view = glm::lookAt(frustum_center - light_direction * min_extents.z, frustum_center, glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 light_proj = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
+
+            cascade_info.VP[cascade] = light_proj * light_view;
             last_split_distance = split_distance;
         }
 
@@ -154,9 +144,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        std::vector<DrawData> &draw_data = scene->main_opaque_draw_batch;
-
-        draw_batch(draw_data.data(), static_cast<uint32_t>(draw_data.size()), shader.get());
+        draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get());
 
         command_buffer->end_render_pass();
 

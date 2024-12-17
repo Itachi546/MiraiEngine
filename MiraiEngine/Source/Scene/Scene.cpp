@@ -84,7 +84,7 @@ namespace mirai {
         camera = std::make_unique<Camera>();
         sun = std::make_unique<Light>();
         sun->color = glm::vec3(1.0f);
-        sun->direction = glm::normalize(glm::vec3(-1.0f, 1.0f, 1.0f));
+        sun->direction = glm::normalize(glm::vec3(0.5f, 1.0f, 0.1f));
         sun->intensity = 1.0f;
         sun->cast_shadow = true;
     }
@@ -198,27 +198,26 @@ namespace mirai {
         dirty = false;
     }
 
-    void Scene::update_main_draw_batch() {
-
-        main_transparent_draw_batch.clear();
-        main_opaque_draw_batch.clear();
-
-        const Frustum &frustum = camera->get_frustum();
-        std::for_each(std::execution::par_unseq, scene_draw_data.begin(), scene_draw_data.end(), [this, &frustum](const ObjectDrawData &object_data) {
+    void Scene::generate_draw_batch(std::vector<DrawData> &opaque_batch, std::vector<DrawData> &transparent_batch, const Frustum *frustum) {
+        std::for_each(std::execution::par_unseq, scene_draw_data.begin(), scene_draw_data.end(), [this, frustum, &opaque_batch, &transparent_batch](const ObjectDrawData &object_data) {
             uint32_t num_submesh = static_cast<uint32_t>(object_data.aabbs.size());
             for (uint32_t i = 0; i < num_submesh; ++i) {
-                const AABB &aabb = object_data.aabbs[i];
-                if (frustum.intersect(aabb)) {
+                bool intersect = true;
+                if (frustum != nullptr) {
+                    const AABB &aabb = object_data.aabbs[i];
+                    intersect = frustum->intersect(aabb);
+                }
+
+                if (intersect) {
                     const MeshComponent::MeshSubset &subset = object_data.subsets[i];
                     const Material &material = materials[subset.material_index];
 
                     std::unique_lock lk{mu};
                     DrawData *draw_data;
                     if (material.is_transparent())
-                        draw_data = &main_transparent_draw_batch.emplace_back(DrawData{});
+                        draw_data = &transparent_batch.emplace_back(DrawData{});
                     else
-                        draw_data = &main_opaque_draw_batch.emplace_back(DrawData{});
-                    lk.unlock();
+                        draw_data = &opaque_batch.emplace_back(DrawData{});
 
                     draw_data->transform_index = object_data.transform_index;
                     draw_data->material_index = subset.material_index;
@@ -228,14 +227,24 @@ namespace mirai {
                     draw_data->vertex_offset = subset.vertex_buffer.offset;
                     draw_data->index_offset = subset.index_buffer.offset;
                     draw_data->index_count = subset.index_buffer.count;
+                    lk.unlock();
                 }
             }
         });
 
-        std::sort(main_opaque_draw_batch.begin(), main_opaque_draw_batch.end(),
+        std::sort(opaque_batch.begin(), opaque_batch.end(),
                   [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-        std::sort(main_transparent_draw_batch.begin(), main_transparent_draw_batch.end(),
+        std::sort(transparent_batch.begin(), transparent_batch.end(),
                   [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
+    }
+
+    void Scene::update_main_draw_batch() {
+
+        main_transparent_draw_batch.clear();
+        main_opaque_draw_batch.clear();
+
+        const Frustum &frustum = camera->get_frustum();
+        generate_draw_batch(main_opaque_draw_batch, main_transparent_draw_batch, &frustum);
     }
 
     void Scene::remove_entity(Entity entity) {

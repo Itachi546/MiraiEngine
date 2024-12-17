@@ -2,6 +2,7 @@
 
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
+#include "Scene/Scene.hpp"
 
 namespace mirai {
 
@@ -22,13 +23,15 @@ namespace mirai {
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
-        uint32_t cascade_count = 5;
         float split_lamda = 0.9f;
         float shadow_distance = 80.0f;
 
         uint32_t shadow_map_size = 2048;
 
-        void calculate_split_distances(float znear, float zfar, Scene* scene);
+        std::vector<DrawData> opaque_batches;
+        std::vector<DrawData> transparent_batches;
+
+        void calculate_split_distances(float znear, float zfar, Scene *scene);
 
         UniformSetID mesh_instance_set;
     };

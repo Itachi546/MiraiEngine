@@ -51,7 +51,7 @@ void main() {
     vec4 world_pos = M * vec4(position, 1.0f);
     gl_Position = VP * world_pos;
 
-    mat3 normal_matrix = mat3(inverse(transpose(M)));
+    mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);
     vs_out.uv = vec2(vertex.tu, vertex.tv);
     vs_out.tangent = normal_matrix * u32_to_vec3(vertex.tangent);

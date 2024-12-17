@@ -55,3 +55,4 @@ TestApplication/SPIRV
 MiraiEngine/Assets/
 
 *.org
+.cache/

@@ -64,6 +64,7 @@ namespace mirai {
         }
 
         device->present();
+        // @TODO Mirai::Replace all cpu visible uniform buffer
         device->wait();
     }
 

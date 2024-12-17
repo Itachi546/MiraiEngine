@@ -121,6 +121,7 @@ namespace mirai {
         device_features2.features.geometryShader = true;
         device_features2.features.wideLines = true;
         device_features2.features.shaderInt64 = true;
+        device_features2.features.depthClamp = true;
 
         VkPhysicalDeviceVulkan11Features device_features11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
         device_features11.shaderDrawParameters = true;

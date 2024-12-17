@@ -12,6 +12,7 @@ namespace mirai {
                                                               topology(TOPOLOGY_TRIANGLE_LIST),
                                                               enable_depth_test(false),
                                                               enable_depth_write(false),
+                                                              enable_depth_clamp(false),
                                                               enable_blend(false),
                                                               hash(0),
                                                               is_resource_updated(true),
@@ -61,6 +62,7 @@ namespace mirai {
                             (int)front_face,
                             enable_depth_test,
                             enable_depth_write,
+                            enable_depth_clamp,
                             depth_compare_op,
                             enable_blend,
                             topology);
@@ -70,6 +72,7 @@ namespace mirai {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = cull_mode;
         rs.front_face = front_face;
+        rs.enable_depth_clamp = enable_depth_clamp;
 
         BlendState bs = BlendState::create();
         if (enable_blend)
