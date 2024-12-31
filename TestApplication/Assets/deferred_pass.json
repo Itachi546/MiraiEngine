@@ -55,7 +55,7 @@
           "type": "attachment",
           "name": "cascaded_shadow_map",
           "format": "D32_SFLOAT",
-          "layer": 5,
+          "layer": 4,
           "resolution": [
             2048,
             2048

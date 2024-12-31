@@ -47,60 +47,59 @@ namespace mirai {
     }
 
     void CascadedShadowPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
-        Light *sun = scene->get_sun();
-        ASSERT(sun->cast_shadow);
-
+        Light *light = scene->get_sun();
         Camera *camera = scene->get_camera();
 
-        // @TODO MIRAI::Generated only once as frustum culling is not done
-        if (opaque_batches.size() == 0)
-            scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
+        float z_near = camera->get_near_plane();
+        float z_far = shadow_distance;
 
-        glm::vec3 light_direction = sun->direction;
-
-        const Frustum &frustum = camera->get_frustum();
-        const std::array<glm::vec3, 8> &camera_frustum_points = frustum.points;
-
-        calculate_split_distances(camera->get_near_plane(), shadow_distance, scene);
+        calculate_split_distances(z_near, z_far, scene);
 
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
-        float last_split_distance = 0.0f;
+        float last_split_distance = z_near;
+        float z_range = cascade_info.z_range;
+        float fov = glm::radians(camera->get_fov());
+        float aspect_ratio = camera->get_aspect_ratio();
+        glm::mat4 V = camera->get_view_transform();
 
-        for (uint32_t cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
-
-            float split_distance = cascade_info.split_distances[cascade];
+        for (int cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
+            float split_distance = cascade_info.split_distances[cascade] * z_range;
+            glm::mat4 P = glm::perspective(fov, aspect_ratio, last_split_distance, split_distance);
+            glm::mat4 VP = P * V;
 
             std::array<glm::vec3, 8> frustum_corners;
-            glm::vec3 frustum_center = glm::vec3(0.0f);
-            for (uint32_t i = 0; i < 4; ++i) {
-                // @TODO MIRAI::Fix me
-                glm::vec3 direction = glm::normalize(camera_frustum_points[i + 4] - camera_frustum_points[i]) * shadow_distance;
-                frustum_corners[i + 4] = camera_frustum_points[i] + split_distance * direction;
-                frustum_corners[i] = camera_frustum_points[i] + last_split_distance * direction;
-                frustum_center += frustum_corners[i] + frustum_corners[i + 4];
-            }
-            frustum_center /= 8.0f;
+            Frustum::calculate_frustum_corners(glm::inverse(VP), frustum_corners);
+
+            glm::vec3 center{0.0f};
+            for (const auto &corner : frustum_corners)
+                center += corner;
+            center /= static_cast<float>(frustum_corners.size());
 
             float radius = 0.0f;
             for (const auto &v : frustum_corners) {
-                float distance = glm::length(v - frustum_center);
-                radius = glm::max(radius, distance);
+                float dist = glm::distance(v, center);
+                radius = glm::max(radius, dist);
             }
-
             radius = std::ceil(radius * 16.0f) / 16.0f;
-            glm::vec3 max_extents = glm::vec3(radius);
-            glm::vec3 min_extents = -max_extents;
 
-            glm::mat4 light_view = glm::lookAt(frustum_center - light_direction * min_extents.z, frustum_center, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 light_proj = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
+            glm::vec3 max_extents{radius};
+            glm::vec3 min_extents{-max_extents};
 
-            cascade_info.VP[cascade] = light_proj * light_view;
+            glm::mat4 light_view_transform = glm::lookAt(center - light->direction * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 light_projection_transform = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
+            cascade_info.VP[cascade] = light_projection_transform * light_view_transform;
+
             last_split_distance = split_distance;
         }
 
+        cascade_info.width = static_cast<float>(shadow_map_size);
+        cascade_info.height = static_cast<float>(shadow_map_size);
         DirectionalLightInfo &light_info = scene->directional_light_info;
-        // Copy to uniform buffer
-        std::memcpy(light_info.cascade_buffer_ptr, &cascade_info, sizeof(DirectionalLightCascadeInfo));
+        std::memcpy(light_info.cascade_buffer_ptr, &cascade_info, sizeof(cascade_info));
+
+        // @TODO Generate draw batches
+        if (opaque_batches.size() == 0)
+            scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
     }
 
     void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {

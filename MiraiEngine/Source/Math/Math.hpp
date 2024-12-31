@@ -103,6 +103,8 @@ namespace mirai {
 
         void create_from_matrix(const glm::mat4 &m, const glm::mat4 &inv_m);
 
+        static void calculate_frustum_corners(const glm::mat4 &inv_m, std::array<glm::vec3, 8> &corners);
+
         bool intersect(const AABB &aabb) const;
 
         std::array<Plane, 6> planes;

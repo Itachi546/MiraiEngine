@@ -11,12 +11,15 @@ namespace mirai {
     class CommandBuffer;
     class Camera;
 
-    constexpr const uint32_t NUM_DIRLIGHT_CASCADE = 5;
+    constexpr const uint32_t NUM_DIRLIGHT_CASCADE = 4;
     struct DirectionalLightCascadeInfo {
         glm::mat4 VP[NUM_DIRLIGHT_CASCADE];
-        float split_distances[5];
+        float split_distances[4];
+
         float z_range;
-        float _padding[2];
+        float width;
+        float height;
+        float _padding;
     };
 
     struct DirectionalLightInfo {

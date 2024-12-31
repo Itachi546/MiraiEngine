@@ -1,15 +1,22 @@
 #include "Math.hpp"
 
 const glm::vec3 frustum_corner_ndc[8] = {
-    glm::vec3(-1.0f, 1.0f, 0.0f),  // NTL
-    glm::vec3(1.0f, 1.0f, 0.0f),   // NTR
-    glm::vec3(1.0f, -1.0f, 0.0f),  // NBR
-    glm::vec3(-1.0f, -1.0f, 0.0f), // NBL
+    glm::vec3(-1.0f, 1.0f, -1.0f),  // NTL
+    glm::vec3(1.0f, 1.0f, -1.0f),   // NTR
+    glm::vec3(1.0f, -1.0f, -1.0f),  // NBR
+    glm::vec3(-1.0f, -1.0f, -1.0f), // NBL
     glm::vec3(-1.0f, 1.0f, 1.0f),  // FTL
     glm::vec3(1.0f, 1.0f, 1.0f),   // FTR
     glm::vec3(1.0f, -1.0f, 1.0f),  // FBR
     glm::vec3(-1.0f, -1.0f, 1.0f), // FBL
 };
+
+void mirai::Frustum::calculate_frustum_corners(const glm::mat4 &inv_m, std::array<glm::vec3, 8> &corners) {
+    for (int i = 0; i < 8; ++i) {
+        glm::vec4 corner = inv_m * glm::vec4(frustum_corner_ndc[i], 1.0f);
+        corners[i] = corner / corner.w;
+    }
+}
 
 void mirai::Frustum::create_from_matrix(const glm::mat4 &m, const glm::mat4 &inv_m) {
 

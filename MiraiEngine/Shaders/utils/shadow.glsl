@@ -1,11 +1,12 @@
 #ifndef SHADOW_GLSL
 #define SHADOW_GLSL
 
-#define NUM_DIRLIGHT_CASCADE 5
+#define NUM_DIRLIGHT_CASCADE 4
 
 struct CascadeInfo {
     mat4 VP[NUM_DIRLIGHT_CASCADE];
-    vec4 split_distances[2];
+    vec4 split_distances;
+    vec4 dims;
 };
 
 uint CASCADE_COLORS[5] = uint[5](
