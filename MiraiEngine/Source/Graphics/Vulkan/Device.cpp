@@ -109,7 +109,6 @@ namespace mirai {
         if (!bindless_supported) {
             Log::Fatal("VULKAN::Bindless resources is not supported ...");
         }
-
         Log::Info("VULKAN::Bindless Resources: Supported");
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
@@ -122,6 +121,7 @@ namespace mirai {
         device_features2.features.wideLines = true;
         device_features2.features.shaderInt64 = true;
         device_features2.features.depthClamp = true;
+        device_features2.features.imageCubeArray = true;
 
         VkPhysicalDeviceVulkan11Features device_features11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
         device_features11.shaderDrawParameters = true;

@@ -787,7 +787,7 @@ namespace mirai {
             image_type = VK_IMAGE_TYPE_3D;
             break;
         case TEXTURE_TYPE_CUBE:
-            image_view_type = array_layers > 1 ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+            image_view_type = VK_IMAGE_VIEW_TYPE_CUBE;
             image_type = VK_IMAGE_TYPE_2D;
             break;
         }
