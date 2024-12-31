@@ -28,20 +28,8 @@ namespace mirai {
         rendering_utils::copy_texture_immediate(hdri_texture, data, width * height * sizeof(float) * 4);
         utils::free_image(data);
 
-        texture_desc.width = cubemap_size;
-        texture_desc.height = cubemap_size;
-        texture_desc.array_layers = 6;
-        texture_desc.texture_type = TEXTURE_TYPE_CUBE;
-        texture_desc.format = FORMAT_R16G16B16A16_SFLOAT;
-        texture_desc.usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_SAMPLED_BIT,
-        cubemap_texture = device->create_texture(&texture_desc, "cubemap");
+        initialize_textures();
 
-        generate(hdri_texture);
-        device->destroy_textures(&hdri_texture, 1);
-    }
-
-    void EnvironmentMap::generate(TextureID hdri_texture) {
-        RenderingDevice *device = RenderingDevice::get();
         UniformLayout layout[] = {
             {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
@@ -57,6 +45,34 @@ namespace mirai {
         ComputeShader cubemap_shader("hdri_cubemap");
         cubemap_shader.create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"});
         cubemap_shader.set_uniform_sets(&uniform_set, 1);
+
+        generate_cubemap(cubemap_shader);
+
+        device->destroy_textures(&hdri_texture, 1);
+    }
+
+    EnvironmentMap::EnvironmentMap() {
+        initialize_textures();
+
+        RenderingDevice *device = RenderingDevice::get();
+        UniformLayout layout[] = {
+            {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
+        };
+        UniformSetID uniform_set = device->create_uniform_set(layout, (uint32_t)std::size(layout), 0, "procedural_cubemap_set");
+        UniformBinding bindings[] = {
+            {.resource_id = cubemap_texture},
+        };
+        device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
+
+        ComputeShader cubemap_shader("hdri_cubemap");
+        cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
+        cubemap_shader.set_uniform_sets(&uniform_set, 1);
+        generate_cubemap(cubemap_shader);
+    }
+
+    void EnvironmentMap::generate_cubemap(ComputeShader &cubemap_shader) {
+
+        RenderingDevice *device = RenderingDevice::get();
 
         float push_constant_data[] = {(float)cubemap_size, (float)cubemap_size, 0.0f, 0.0f};
         PushConstant push_constant = {
@@ -93,6 +109,24 @@ namespace mirai {
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
+    }
+
+    void EnvironmentMap::initialize_textures() {
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        TextureDescription texture_desc = {
+            .width = (uint32_t)cubemap_size,
+            .height = (uint32_t)cubemap_size,
+            .depth = 1,
+            .mip_levels = 1,
+            .array_layers = 6,
+            .texture_type = TEXTURE_TYPE_CUBE,
+            .format = FORMAT_R16G16B16A16_SFLOAT,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+            .sampler_desc = &sampler_desc,
+        };
+
+        RenderingDevice *device = RenderingDevice::get();
+        cubemap_texture = device->create_texture(&texture_desc, "cubemap");
     }
 
     EnvironmentMap::~EnvironmentMap() {

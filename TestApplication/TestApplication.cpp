@@ -27,7 +27,7 @@ class TestApplication : public App {
         uint32_t height = 1080;
         scene = Renderer::get()->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>(/*"Assets/Envmap/daytime.hdr"*/);
         scene->set_environment_map(env_map);
 
         // Create RenderPass

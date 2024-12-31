@@ -3,10 +3,12 @@
 #include "Graphics/RenderingDevice.hpp"
 
 namespace mirai {
-
+    class ComputeShader;
     class EnvironmentMap {
       public:
         EnvironmentMap(const std::string &hdri_path);
+
+        EnvironmentMap();
 
         TextureID get_cubemap() {
             return cubemap_texture;
@@ -30,6 +32,8 @@ namespace mirai {
         std::string hdri_path;
         TextureID cubemap_texture;
         uint32_t cubemap_size = 512;
-        void generate(TextureID hdri_texture);
+        void generate_cubemap(ComputeShader &cubemap_shader);
+
+        void initialize_textures();
     };
 } // namespace mirai
