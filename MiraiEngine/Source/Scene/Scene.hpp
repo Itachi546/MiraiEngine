@@ -10,6 +10,7 @@ namespace mirai {
     struct ComponentManager;
     class CommandBuffer;
     class Camera;
+    class EnvironmentMap;
 
     constexpr const uint32_t NUM_DIRLIGHT_CASCADE = 4;
     struct DirectionalLightCascadeInfo {
@@ -67,6 +68,10 @@ namespace mirai {
             return camera.get();
         }
 
+        EnvironmentMap *get_environment_map() {
+            return env_map.get();
+        }
+
         Light *get_sun() {
             return sun.get();
         }
@@ -81,6 +86,10 @@ namespace mirai {
 
         void set_name(const std::string &name) {
             this->name = name;
+        }
+
+        void set_environment_map(std::shared_ptr<EnvironmentMap> env_map) {
+            this->env_map = env_map;
         }
 
         void remove_entity(Entity entity);
@@ -130,6 +139,8 @@ namespace mirai {
 
         std::unique_ptr<Camera> camera;
         std::unique_ptr<Light> sun;
+        std::shared_ptr<EnvironmentMap> env_map;
+
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);

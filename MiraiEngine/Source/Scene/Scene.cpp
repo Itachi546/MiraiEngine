@@ -2,6 +2,8 @@
 #include "ShaderMaterial.hpp"
 #include "Component.hpp"
 #include "Camera.hpp"
+#include "EnvironmentMap.hpp"
+
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"

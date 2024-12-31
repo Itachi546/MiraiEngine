@@ -7,6 +7,7 @@
 #include "RenderPass/RenderPass.hpp"
 #include "Utils/FirstPersonController.hpp"
 #include "Scene/GLTFLoader.hpp"
+#include "Scene/EnvironmentMap.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -25,6 +26,9 @@ class TestApplication : public App {
         uint32_t width = 1920;
         uint32_t height = 1080;
         scene = Renderer::get()->get_scene();
+
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
+        scene->set_environment_map(env_map);
 
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
