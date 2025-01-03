@@ -7,6 +7,9 @@ namespace mirai {
     EnvironmentMap::EnvironmentMap(const std::string &hdri_path) : hdri_path(hdri_path) {
         int width, height, n_channel;
         float *data = utils::load_image_float(hdri_path.c_str(), &width, &height, &n_channel, 4);
+        if (data == nullptr) {
+            Log::Error("Failed to load hdri", hdri_path);
+        }
 
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.enable_anisotropy = false;
@@ -46,7 +49,17 @@ namespace mirai {
         cubemap_shader.create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"});
         cubemap_shader.set_uniform_sets(&uniform_set, 1);
 
-        generate_cubemap(cubemap_shader);
+        ComputeShader convolute_shader("convolute_cubemap_shader");
+        convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
+
+        CommandBuffer *command_buffer = device->get_command_buffer(0);
+        command_buffer->begin();
+
+        generate_cubemap(command_buffer, cubemap_shader);
+        convolute_cubemap(command_buffer, convolute_shader);
+
+        device->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
 
         device->destroy_textures(&hdri_texture, 1);
     }
@@ -67,10 +80,21 @@ namespace mirai {
         ComputeShader cubemap_shader("hdri_cubemap");
         cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
         cubemap_shader.set_uniform_sets(&uniform_set, 1);
-        generate_cubemap(cubemap_shader);
+
+        ComputeShader convolute_shader("convolute_cubemap_shader");
+        convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
+
+        CommandBuffer *command_buffer = device->get_command_buffer(0);
+        command_buffer->begin();
+
+        generate_cubemap(command_buffer, cubemap_shader);
+        convolute_cubemap(command_buffer, convolute_shader);
+
+        device->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
     }
 
-    void EnvironmentMap::generate_cubemap(ComputeShader &cubemap_shader) {
+    void EnvironmentMap::generate_cubemap(CommandBuffer *command_buffer, ComputeShader &cubemap_shader) {
 
         RenderingDevice *device = RenderingDevice::get();
 
@@ -82,9 +106,6 @@ namespace mirai {
             .offset = 0,
         };
         cubemap_shader.set_push_constant(&push_constant, 1);
-
-        CommandBuffer *command_buffer = device->get_command_buffer(0);
-        command_buffer->begin();
 
         TextureBarrierInfo barrier_info = {
             .texture_id = cubemap_texture,
@@ -101,14 +122,63 @@ namespace mirai {
         uint32_t work_size_y = rendering_utils::get_workgroup_size(cubemap_size, 32);
 
         command_buffer->dispatch(work_size_x, work_size_y, 6);
+    }
 
-        barrier_info.stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        barrier_info.access_mask = ACCESS_FLAG_SHADER_READ;
-        barrier_info.layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        command_buffer->prepare_image(&barrier_info, 1);
+    void EnvironmentMap::convolute_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader) {
+        // Layout transition
 
-        device->submit_command_buffer_immediate(command_buffer);
-        command_buffer->wait();
+        TextureBarrierInfo barrier_infos[] = {
+            {
+                .texture_id = cubemap_texture, // CUBEMAP TEXTURE
+                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .access_mask = ACCESS_FLAG_SHADER_READ,
+                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            },
+            {
+                .texture_id = irradiance_texture, // CUBEMAP TEXTURE
+                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .access_mask = ACCESS_FLAG_SHADER_WRITE,
+                .layout = IMAGE_LAYOUT_GENERAL,
+            },
+        };
+
+        command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
+
+        RenderingDevice *device = RenderingDevice::get();
+        UniformLayout layouts[] = {
+            {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
+        };
+        UniformSetID uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_convolute_cubemap_set");
+        UniformBinding bindings[] = {
+            {.resource_id = cubemap_texture},
+            {.resource_id = irradiance_texture},
+        };
+        device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
+
+        float map_dims[] = {cast_float(irradiance_map_size), cast_float(irradiance_map_size),
+                            cast_float(cubemap_size), cast_float(cubemap_size)};
+
+        PushConstant push_constant = {
+            .data = &map_dims,
+            .shader_stage = SHADER_STAGE_COMPUTE,
+            .size = sizeof(float) * 4,
+            .offset = 0,
+        };
+
+        convolute_shader.set_uniform_sets(&uniform_set, 1);
+        convolute_shader.set_push_constant(&push_constant, 1);
+        convolute_shader.bind(command_buffer);
+
+        uint32_t work_group_size = rendering_utils::get_workgroup_size(irradiance_map_size, 32);
+        command_buffer->dispatch(work_group_size, work_group_size, 6);
+
+        for (int i = 0; i < 2; ++i) {
+            barrier_infos[i].stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            barrier_infos[i].access_mask = ACCESS_FLAG_SHADER_READ;
+            barrier_infos[i].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+        command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
     }
 
     void EnvironmentMap::initialize_textures() {
@@ -127,12 +197,16 @@ namespace mirai {
 
         RenderingDevice *device = RenderingDevice::get();
         cubemap_texture = device->create_texture(&texture_desc, "cubemap");
+
+        texture_desc.width = irradiance_map_size;
+        texture_desc.height = irradiance_map_size;
+        irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
     }
 
     EnvironmentMap::~EnvironmentMap() {
         RenderingDevice *device = RenderingDevice::get();
-        TextureID textures[] = {cubemap_texture};
-        device->destroy_textures(textures, 1);
+        TextureID textures[] = {cubemap_texture, irradiance_texture};
+        device->destroy_textures(textures, cast_u32(std::size(textures)));
     }
 
 } // namespace mirai

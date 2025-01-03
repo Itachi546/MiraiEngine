@@ -45,7 +45,12 @@ namespace mirai {
         Camera *camera = scene->get_camera();
         skybox_material->set_inv_projection_matrix(camera->get_inv_projection_transform());
 
+#if 1
+        TextureID skybox = scene->get_environment_map()->get_irradiance_map();
+#else
+
         TextureID skybox = scene->get_environment_map()->get_cubemap();
+#endif
         UniformBinding binding = {.resource_id = skybox};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
 
