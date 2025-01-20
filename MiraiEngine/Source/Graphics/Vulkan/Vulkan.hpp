@@ -6,7 +6,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#define VULKAN_1_3
+#define VULKAN_1_333
 #define VK_NO_PROTOTYPES
 #include <volk.h>
 
@@ -18,7 +18,7 @@ namespace mirai {
 #define ENABLE_VALIDATION 1
 #define ENABLE_DEBUG_LABELS 1
 
-    constexpr const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_4;
+    constexpr const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_3;
 
 #define VK_CHECK(call)                 \
     do {                               \
