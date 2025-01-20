@@ -52,8 +52,11 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
+        device->begin_debug_utils_label(command_buffer, "HDRI Conversion Pass", nullptr);
 
         generate_cubemap(command_buffer, cubemap_shader);
+
+        device->end_debug_utils_label(command_buffer);
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
@@ -82,8 +85,11 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
+        device->begin_debug_utils_label(command_buffer, "Procedural Sky Pass", nullptr);
 
         generate_cubemap(command_buffer, cubemap_shader);
+
+        device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
@@ -101,8 +107,12 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
+        device->begin_debug_utils_label(command_buffer, "Environment Map Pass", nullptr);
+
         convolute_diffuse_cubemap(command_buffer, convolute_shader);
         convolute_specular_cubemap(command_buffer, prefilter_shader);
+
+        device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
     }
@@ -213,16 +223,6 @@ namespace mirai {
 
         RenderingDevice *device = RenderingDevice::get();
 
-        float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size),
-                            cast_float(cubemap_size), cast_float(cubemap_size)};
-
-        PushConstant push_constant = {
-            .data = &map_dims,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * 4,
-            .offset = 0,
-        };
-
         UniformLayout layouts[] = {
             {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
@@ -234,20 +234,37 @@ namespace mirai {
             {.resource_id = prefilter_texture},
         };
 
+        float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size),
+                            cast_float(cubemap_size), cast_float(cubemap_size)};
+
+        PushConstant push_constant = {
+            .data = &map_dims,
+            .shader_stage = SHADER_STAGE_COMPUTE,
+            .size = sizeof(float) * 4,
+            .offset = 0,
+        };
+
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
+
             uniform_sets[i] = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_uniform_set");
             bindings[1].offset_or_mip_level = i;
             device->update_uniform_set(uniform_sets[i], bindings, cast_u32(std::size(bindings)));
         }
 
-        prefilter_shader.set_push_constant(&push_constant, 1);
         prefilter_shader.bind(command_buffer);
-
         PipelineID pipeline_id = prefilter_shader.get_pipeline_id();
+        uint32_t dims = prefilter_map_size;
+
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
+            map_dims[3] = cast_float(i) / cast_float(prefilter_num_mip_levels - 1);
+            map_dims[0] = cast_float(dims);
+            map_dims[1] = cast_float(dims);
+
+            command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
             command_buffer->set_uniform_sets(pipeline_id, &uniform_sets[i], 1);
-            uint32_t work_group_size = rendering_utils::get_workgroup_size(prefilter_map_size, 32);
+            uint32_t work_group_size = rendering_utils::get_workgroup_size(dims, 16);
             command_buffer->dispatch(work_group_size, work_group_size, 6);
+            dims = dims / 2;
         }
 
         for (int i = 0; i < 2; ++i) {
