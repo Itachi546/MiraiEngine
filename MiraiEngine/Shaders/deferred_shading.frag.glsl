@@ -4,6 +4,7 @@
 #include "utils/transform.glsl"
 #include "utils/color.glsl"
 #include "utils/shadow.glsl"
+#include "utils/pbr.glsl"
 
 layout(location = 0) out vec4 fragColor;
 
@@ -36,23 +37,40 @@ void main() {
     vec3 emissive = textureLod(emissive_texture, uv, 0).rgb;
 
     vec3 normal = octahedral_decode(normal_pbr.xy * 2.0 - 1.0);
-    vec2 metallic_roughness = normal_pbr.zw;
-
-    float diffuse = max(dot(normal, light_direction.xyz), 0.0f);
+    float metallic = normal_pbr.z;
+    float roughness = normal_pbr.w;
 
     vec3 view_dir = camera_position.xyz - world_pos;
     float cam_dist = length(view_dir);
     view_dir /= cam_dist;
 
     vec3 halfway_vector = normalize(view_dir + light_direction.xyz);
+
+    float ndotl = max(dot(normal, light_direction.xyz), 0.0);
+    float ndotv = max(dot(normal, view_dir), 0.0);
+    float hdotv = max(dot(halfway_vector, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
 
-    float specular = 0.0f; // pow(ndoth, 64.0f);
-    int cascade_index = 0;
-    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
+    // DEBUG SHADOW CASCADE
 #if 0
     albedo.rgb = cascade_index == -1 ? vec3(1.0) : u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
 #endif
-    vec3 col = (diffuse * shadow_factor + 0.05f) * albedo.rgb + specular + emissive;
-    fragColor = vec4(col, 1.0f);
+    int cascade_index = 0;
+    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
+
+    vec3 diffuse = albedo.rgb / PI;
+
+    float D = D_GGX(ndoth, roughness);
+    float G = G_Smith(ndotv, ndotl, roughness);
+
+    vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
+    vec3 F = F_Schlick(hdotv, F0);
+    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
+
+    // For directional light
+    vec3 radiance = vec3(1.0f);
+    vec3 kD = (1.0 - F) * (1.0 - metallic);
+    vec3 Lo = (kD * diffuse * shadow_factor + specular) * radiance * ndotl;
+
+    fragColor = vec4(Lo, 1.0f);
 }

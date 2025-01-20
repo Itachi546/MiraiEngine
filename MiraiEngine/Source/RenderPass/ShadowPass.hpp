@@ -23,8 +23,8 @@ namespace mirai {
 
       private:
         std::shared_ptr<ShaderMaterial> shader;
-        float split_lamda = 0.85f;
-        float shadow_distance = 150.0f;
+        float split_lamda = 0.9f;
+        float shadow_distance = 80.0f;
 
         uint32_t shadow_map_size = 2048;
 
