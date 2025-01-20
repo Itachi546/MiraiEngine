@@ -618,7 +618,10 @@ namespace mirai {
                 VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                image_info.imageView = texture->image_view;
+
+                uint64_t mip_level = binding.offset_or_mip_level;
+                ASSERT(mip_level <= texture->image_views.size());
+                image_info.imageView = texture->image_views[mip_level];
 
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 write_sets[i].pImageInfo = &image_info;
@@ -627,7 +630,7 @@ namespace mirai {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.offset;
+                buffer_info.offset = binding.offset_or_mip_level;
                 buffer_info.range = binding.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
@@ -636,7 +639,7 @@ namespace mirai {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.offset;
+                buffer_info.offset = binding.offset_or_mip_level;
                 buffer_info.range = binding.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
@@ -645,7 +648,11 @@ namespace mirai {
                 VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                image_info.imageView = texture->image_view;
+
+                uint64_t mip_level = binding.offset_or_mip_level;
+                ASSERT(mip_level <= texture->image_views.size());
+                image_info.imageView = texture->image_views[mip_level];
+
                 image_info.sampler = texture->sampler;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write_sets[i].pImageInfo = &image_info;
@@ -794,6 +801,7 @@ namespace mirai {
 
         uint32_t textureID = resource_pool_textures.obtain();
         VulkanTexture *texture = resource_pool_textures.access(textureID);
+        texture->create_flags = texture_description->create_flags;
         texture->width = texture_description->width;
         texture->height = texture_description->height;
         texture->depth = texture_description->depth;
@@ -873,8 +881,15 @@ namespace mirai {
                 .layerCount = texture->array_layers,
             },
         };
-        VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_view));
-        set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_view, (debug_name + "_image_view").c_str());
+
+        uint32_t image_view_count = (texture_description->create_flags & TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP) > 0 ? texture->mip_levels : 1;
+        texture->image_views.resize(image_view_count);
+        for (uint32_t i = 0; i < image_view_count; ++i) {
+            imageViewCreateInfo.subresourceRange.baseMipLevel = i;
+            imageViewCreateInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+            VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_views[i]));
+            set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_views[i], (debug_name + "_image_view" + std::to_string(i)).c_str());
+        }
         return TextureID{textureID};
     }; // namespace mirai
 
@@ -1035,13 +1050,15 @@ namespace mirai {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanTexture *texture = resource_pool_textures.access(textures[i]);
 
-            vkDestroyImageView(device, texture->image_view, nullptr);
+            for (auto image_view : texture->image_views)
+                vkDestroyImageView(device, image_view, nullptr);
+
             vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
             if (texture->sampler != VK_NULL_HANDLE)
                 vkDestroySampler(device, texture->sampler, nullptr);
             texture->width = texture->height = texture->depth = 0;
             texture->format = VK_FORMAT_UNDEFINED;
-            texture->image_view = VK_NULL_HANDLE;
+            texture->image_views.clear();
             texture->allocation = VK_NULL_HANDLE;
             texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
             texture->sampler = VK_NULL_HANDLE;
@@ -1104,7 +1121,7 @@ namespace mirai {
             VulkanTexture *texture = resource_pool_textures.access(textures[i]);
             image_infos[i].imageLayout = texture->current_layout;
             image_infos[i].sampler = texture->sampler;
-            image_infos[i].imageView = texture->image_view;
+            image_infos[i].imageView = texture->image_views[0];
             write_set[i].pImageInfo = &image_infos[i];
         }
 

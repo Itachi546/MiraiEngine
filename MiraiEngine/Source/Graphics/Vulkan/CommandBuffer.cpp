@@ -35,7 +35,7 @@ namespace mirai {
                 height = swapchain->height;
             } else {
                 VulkanTexture *texture = device->access_texture(texture_id);
-                image_view = texture->image_view;
+                image_view = texture->image_views[0];
                 layer_count = texture->array_layers;
             }
 

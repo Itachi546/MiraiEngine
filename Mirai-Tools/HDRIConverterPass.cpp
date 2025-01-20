@@ -9,6 +9,7 @@ void HDRIConverterPass::initialize(FrameGraph *frame_graph, const FrameGraphNode
     sampler_desc.enable_anisotropy = false;
 
     TextureDescription texture_desc = {
+        .create_flags = 0,
         .width = (uint32_t)width,
         .height = (uint32_t)height,
         .depth = 1,

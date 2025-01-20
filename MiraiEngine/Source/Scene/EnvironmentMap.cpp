@@ -15,6 +15,7 @@ namespace mirai {
         sampler_desc.enable_anisotropy = false;
 
         TextureDescription texture_desc = {
+            .create_flags = 0,
             .width = (uint32_t)width,
             .height = (uint32_t)height,
             .depth = 1,
@@ -49,19 +50,17 @@ namespace mirai {
         cubemap_shader.create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"});
         cubemap_shader.set_uniform_sets(&uniform_set, 1);
 
-        ComputeShader convolute_shader("convolute_cubemap_shader");
-        convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
-
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
 
         generate_cubemap(command_buffer, cubemap_shader);
-        convolute_diffuse_cubemap(command_buffer, convolute_shader);
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
         device->destroy_textures(&hdri_texture, 1);
+
+        create_pbr_env_map();
     }
 
     EnvironmentMap::EnvironmentMap() {
@@ -81,15 +80,29 @@ namespace mirai {
         cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
         cubemap_shader.set_uniform_sets(&uniform_set, 1);
 
-        ComputeShader convolute_shader("convolute_cubemap_shader");
-        convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
-
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
 
         generate_cubemap(command_buffer, cubemap_shader);
-        convolute_diffuse_cubemap(command_buffer, convolute_shader);
+        device->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
 
+        create_pbr_env_map();
+    }
+
+    void EnvironmentMap::create_pbr_env_map() {
+        RenderingDevice *device = RenderingDevice::get();
+
+        ComputeShader convolute_shader("convolute_cubemap_shader");
+        convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
+
+        ComputeShader prefilter_shader("prefilter_shader");
+        prefilter_shader.create_from_file("SPIRV/prefilter-envmap.comp.spv");
+
+        CommandBuffer *command_buffer = device->get_command_buffer(0);
+        command_buffer->begin();
+        convolute_diffuse_cubemap(command_buffer, convolute_shader);
+        convolute_specular_cubemap(command_buffer, prefilter_shader);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
     }
@@ -210,12 +223,29 @@ namespace mirai {
             .offset = 0,
         };
 
+        UniformLayout layouts[] = {
+            {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
+        };
+        std::vector<UniformSetID> uniform_sets(prefilter_num_mip_levels);
+
+        UniformBinding bindings[] = {
+            {.resource_id = cubemap_texture},
+            {.resource_id = prefilter_texture},
+        };
+
+        for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
+            uniform_sets[i] = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_uniform_set");
+            bindings[1].offset_or_mip_level = i;
+            device->update_uniform_set(uniform_sets[i], bindings, cast_u32(std::size(bindings)));
+        }
+
         prefilter_shader.set_push_constant(&push_constant, 1);
         prefilter_shader.bind(command_buffer);
 
         PipelineID pipeline_id = prefilter_shader.get_pipeline_id();
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
-            // command_buffer->set_uniform_sets(pipeline_id, &uniform_sets[i], 1);
+            command_buffer->set_uniform_sets(pipeline_id, &uniform_sets[i], 1);
             uint32_t work_group_size = rendering_utils::get_workgroup_size(prefilter_map_size, 32);
             command_buffer->dispatch(work_group_size, work_group_size, 6);
         }
@@ -225,12 +255,14 @@ namespace mirai {
             barrier_infos[i].access_mask = ACCESS_FLAG_SHADER_READ;
             barrier_infos[i].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
+
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
     }
 
     void EnvironmentMap::initialize_textures() {
         SamplerDescription sampler_desc = SamplerDescription::create();
         TextureDescription texture_desc = {
+            .create_flags = 0,
             .width = (uint32_t)cubemap_size,
             .height = (uint32_t)cubemap_size,
             .depth = 1,
@@ -250,7 +282,10 @@ namespace mirai {
 
         irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
 
+        texture_desc.create_flags = TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP;
         texture_desc.mip_levels = prefilter_num_mip_levels;
+        texture_desc.width = prefilter_map_size;
+        texture_desc.height = prefilter_map_size;
         texture_desc.sampler_desc->mipmap_mode = SAMPLER_MIPMAP_LINEAR;
         prefilter_texture = device->create_texture(&texture_desc, "prefilter_envmap");
     }

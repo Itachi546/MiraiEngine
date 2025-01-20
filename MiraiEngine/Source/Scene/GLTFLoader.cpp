@@ -262,7 +262,7 @@ namespace mirai {
 
         UniformBinding vertex_binding = {
             .resource_id = vertex_buffer,
-            .offset = 0,
+            .offset_or_mip_level = 0,
         };
 
         device->update_uniform_set(vertex_binding_set, &vertex_binding, 1);
@@ -388,6 +388,7 @@ namespace mirai {
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.enable_anisotropy = true;
         TextureDescription texture_desc = {
+            .create_flags = 0,
             .width = width,
             .height = height,
             .depth = 1,

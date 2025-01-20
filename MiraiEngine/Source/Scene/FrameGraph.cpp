@@ -171,6 +171,7 @@ namespace mirai {
                 resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
             } else {
                 TextureDescription desc = {
+                    .create_flags = 0,
                     .width = output->width,
                     .height = output->height,
                     .depth = 1,

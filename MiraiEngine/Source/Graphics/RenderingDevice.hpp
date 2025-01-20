@@ -388,7 +388,11 @@ namespace mirai {
         MemoryAllocationType allocation_type;
     };
 
+    enum TextureCreationFlag {
+        TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP = 1 << 0,
+    };
     struct TextureDescription {
+        uint32_t create_flags;
         uint32_t width, height, depth;
         uint32_t mip_levels, array_layers;
         TextureType texture_type;
@@ -442,7 +446,7 @@ namespace mirai {
 
     struct UniformBinding {
         ID resource_id;
-        uint64_t offset = 0;
+        uint64_t offset_or_mip_level = 0;
         uint64_t range = UINT64_MAX;
     };
 
@@ -561,4 +565,4 @@ namespace mirai {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;
         }
     } // namespace rendering_utils
-};    // namespace mirai
+}; // namespace mirai

@@ -106,7 +106,7 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
 
-        UniformBinding binding = {.resource_id = scene->transform_buffer, .offset = 0};
+        UniformBinding binding = {.resource_id = scene->transform_buffer, .offset_or_mip_level = 0};
         device->update_uniform_set(mesh_instance_set, &binding, 1);
 
         UniformSetID cascade_uniform_set = scene->directional_light_info.cascade_uniform_set;

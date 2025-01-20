@@ -19,6 +19,7 @@ namespace mirai {
     };
 
     struct VulkanTexture {
+        uint32_t create_flags;
         uint32_t width, height, depth;
         uint32_t mip_levels, array_layers;
 
@@ -27,7 +28,7 @@ namespace mirai {
         VkImageType image_type;
 
         VkImage image;
-        VkImageView image_view;
+        std::vector<VkImageView> image_views;
         VmaAllocation allocation;
 
         VkSampler sampler;

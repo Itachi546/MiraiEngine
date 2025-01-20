@@ -18,6 +18,7 @@ void HDRIConverterUI::set_texture(const char *filename) {
 
     SamplerDescription sampler_desc = SamplerDescription::create();
     TextureDescription texture_desc = {
+        .create_flags = 0,
         .width = (uint32_t)width,
         .height = (uint32_t)height,
         .depth = 1,
