@@ -18,7 +18,7 @@ namespace mirai {
 #define ENABLE_VALIDATION 1
 #define ENABLE_DEBUG_LABELS 1
 
-    constexpr const uint32_t VULKAN_API_VERSION VK_API_VERSION_1_3;
+    constexpr const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_4;
 
 #define VK_CHECK(call)                 \
     do {                               \

@@ -38,12 +38,15 @@ namespace mirai {
 
       private:
         std::string hdri_path;
-        TextureID cubemap_texture, irradiance_texture;
+        TextureID cubemap_texture, irradiance_texture, prefilter_texture;
         uint32_t cubemap_size = 512;
         uint32_t irradiance_map_size = 64;
+        uint32_t prefilter_map_size = 128;
+        uint32_t prefilter_num_mip_levels = 5;
 
         void generate_cubemap(CommandBuffer *command_buffer, ComputeShader &cubemap_shader);
-        void convolute_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader);
+        void convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader);
+        void convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader &prefilter_shader);
 
         void initialize_textures();
     };

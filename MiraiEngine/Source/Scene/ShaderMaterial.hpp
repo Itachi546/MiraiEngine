@@ -151,6 +151,9 @@ namespace mirai {
             this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
         }
 
+        PipelineID get_pipeline_id() const {
+            return pipeline;
+        }
         ~ComputeShader();
 
         std::string name;
