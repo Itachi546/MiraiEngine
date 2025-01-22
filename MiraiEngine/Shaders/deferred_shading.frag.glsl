@@ -62,7 +62,7 @@ void main() {
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-
+#if 0
     float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
     {
         vec3 diffuse = albedo.rgb / PI;
@@ -78,8 +78,8 @@ void main() {
         vec3 kD = (1.0 - F) * (1.0 - metallic);
         Lo += (kD * diffuse * shadow_factor + specular) * radiance * ndotl;
     }
-
-    vec3 F = F_SchlickRoughness(hdotv, F0, roughness);
+#endif
+    vec3 F = F_SchlickRoughness(ndotv, F0, roughness);
     vec3 Ks = F;
     vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
 
@@ -95,7 +95,7 @@ void main() {
     vec3 ambient = (Kd * diffuse + specular) * ao;
     Lo += ambient;
 
-    float exposure = 2.5f;
+    float exposure = 1.0f;
     Lo = 1.0 - exp(-Lo * exposure);
 
     fragColor = vec4(Lo, 1.0f);
