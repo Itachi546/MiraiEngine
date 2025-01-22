@@ -5,6 +5,7 @@
 #include "utils/color.glsl"
 #include "utils/shadow.glsl"
 #include "utils/pbr.glsl"
+#include "utils/bindless.glsl"
 
 layout(location = 0) out vec4 fragColor;
 
@@ -16,7 +17,7 @@ layout(set = 0, binding = 2) uniform sampler2D normal_pbr_texture;
 layout(set = 0, binding = 3) uniform sampler2D emissive_texture;
 layout(set = 0, binding = 4) uniform sampler2DArray shadow_depth_texture;
 
-layout(set = 1, binding = 0) uniform CascadeInfoUniform {
+layout(set = 2, binding = 0) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
 };
 
@@ -25,7 +26,10 @@ layout(set = 1, binding = 0) uniform CascadeInfoUniform {
 layout(push_constant) uniform PushConstant {
     mat4 invVP;
     vec4 camera_position;
-    vec3 light_direction;
+    vec4 light_direction;
+    uint irradiance_map;
+    uint prefilter_map;
+    uint brdf_texture;
 };
 
 void main() {
@@ -56,21 +60,43 @@ void main() {
     albedo.rgb = cascade_index == -1 ? vec3(1.0) : u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
 #endif
     int cascade_index = 0;
-    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
-
-    vec3 diffuse = albedo.rgb / PI;
-
-    float D = D_GGX(ndoth, roughness);
-    float G = G_Smith(ndotv, ndotl, roughness);
-
+    vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-    vec3 F = F_Schlick(hdotv, F0);
-    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
 
-    // For directional light
-    vec3 radiance = vec3(1.0f);
-    vec3 kD = (1.0 - F) * (1.0 - metallic);
-    vec3 Lo = (kD * diffuse * shadow_factor + specular) * radiance * ndotl;
+    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
+    {
+        vec3 diffuse = albedo.rgb / PI;
+
+        float D = D_GGX(ndoth, roughness);
+        float G = G_Smith(ndotv, ndotl, roughness);
+
+        vec3 F = F_Schlick(hdotv, F0);
+        vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
+
+        // For directional light
+        vec3 radiance = vec3(1.0f);
+        vec3 kD = (1.0 - F) * (1.0 - metallic);
+        Lo += (kD * diffuse * shadow_factor + specular) * radiance * ndotl;
+    }
+
+    vec3 F = F_SchlickRoughness(hdotv, F0, roughness);
+    vec3 Ks = F;
+    vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
+
+    vec3 irradiance = sample_texture_cube(irradiance_map, normal).rgb;
+    vec3 diffuse = irradiance * albedo.rgb;
+
+    vec3 R = reflect(-view_dir, normal);
+    vec3 prefilter_color = sample_texture_cube_lod(prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
+    vec3 specular = prefilter_color * (F * brdf.x + brdf.y);
+
+    float ao = 1.0f;
+    vec3 ambient = (Kd * diffuse + specular) * ao;
+    Lo += ambient;
+
+    float exposure = 2.5f;
+    Lo = 1.0 - exp(-Lo * exposure);
 
     fragColor = vec4(Lo, 1.0f);
 }

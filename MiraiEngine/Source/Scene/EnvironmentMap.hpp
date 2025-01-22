@@ -18,6 +18,14 @@ namespace mirai {
             return irradiance_texture;
         }
 
+        TextureID get_prefilter_map() const {
+            return prefilter_texture;
+        }
+
+        TextureID get_brdf_texture() const {
+            return brdf_texture;
+        }
+
         void set_cubemap_size(uint32_t size) {
             this->cubemap_size = size;
         }
@@ -30,6 +38,14 @@ namespace mirai {
             return irradiance_map_size;
         }
 
+        uint32_t get_prefilter_map_size() const {
+            return prefilter_map_size;
+        }
+
+        uint32_t get_brdf_texture_size() const {
+            return brdf_texture_size;
+        }
+
         std::string &get_hdri_path() {
             return hdri_path;
         }
@@ -38,15 +54,17 @@ namespace mirai {
 
       private:
         std::string hdri_path;
-        TextureID cubemap_texture, irradiance_texture, prefilter_texture;
+        TextureID cubemap_texture, irradiance_texture, prefilter_texture, brdf_texture;
         uint32_t cubemap_size = 512;
         uint32_t irradiance_map_size = 64;
         uint32_t prefilter_map_size = 512;
+        uint32_t brdf_texture_size = 512;
         uint32_t prefilter_num_mip_levels = 6;
 
         void generate_cubemap(CommandBuffer *command_buffer, ComputeShader &cubemap_shader);
         void convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader);
         void convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader &prefilter_shader);
+        void integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader &integrate_brdf_shader);
 
         void initialize_textures();
         void create_pbr_env_map();

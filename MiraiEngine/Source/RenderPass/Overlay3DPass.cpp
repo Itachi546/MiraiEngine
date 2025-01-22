@@ -46,7 +46,7 @@ namespace mirai {
         skybox_material->set_inv_projection_matrix(camera->get_inv_projection_transform());
 
 #if 1
-        TextureID skybox = scene->get_environment_map()->get_irradiance_map();
+        TextureID skybox = scene->get_environment_map()->get_cubemap();
 #else
 
         TextureID skybox = scene->get_environment_map()->get_cubemap();

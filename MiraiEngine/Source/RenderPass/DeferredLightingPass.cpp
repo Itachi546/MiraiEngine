@@ -1,5 +1,6 @@
 #include "DeferredLightingPass.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/EnvironmentMap.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -38,7 +39,7 @@ namespace mirai {
             .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
-        cascade_uniform_set = device->create_uniform_set(&cascade_data, 1, 1, "cascade_info_set");
+        cascade_uniform_set = device->create_uniform_set(&cascade_data, 1, 2, "cascade_info_set");
     }
 
     void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -49,10 +50,19 @@ namespace mirai {
             glm::mat4 inv_VP;
             glm::vec4 camera_position;
             glm::vec4 light_direction;
+            uint32_t irradiance_map;
+            uint32_t prefilter_map;
+            uint32_t brdf_texture;
         } push_constant_data;
+
         push_constant_data.inv_VP = camera->get_inv_view_projection_transform();
         push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
         push_constant_data.light_direction = glm::vec4(scene->get_sun()->direction, scene->get_sun()->intensity);
+
+        EnvironmentMap *env_map = scene->get_environment_map();
+        push_constant_data.irradiance_map = env_map->get_irradiance_map().id;
+        push_constant_data.prefilter_map = env_map->get_prefilter_map().id;
+        push_constant_data.brdf_texture = env_map->get_brdf_texture().id;
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
