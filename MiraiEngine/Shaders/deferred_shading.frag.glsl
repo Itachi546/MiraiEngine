@@ -62,7 +62,7 @@ void main() {
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-#if 0
+#if 1
     float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
     {
         vec3 diffuse = albedo.rgb / PI;
@@ -76,7 +76,7 @@ void main() {
         // For directional light
         vec3 radiance = vec3(1.0f);
         vec3 kD = (1.0 - F) * (1.0 - metallic);
-        Lo += (kD * diffuse * shadow_factor + specular) * radiance * ndotl;
+        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }
 #endif
     vec3 F = F_SchlickRoughness(ndotv, F0, roughness);
@@ -93,8 +93,7 @@ void main() {
 
     float ao = 1.0f;
     vec3 ambient = (Kd * diffuse + specular) * ao;
-    Lo += ambient;
-
+    // Lo += ambient;
     float exposure = 1.0f;
     Lo = 1.0 - exp(-Lo * exposure);
 

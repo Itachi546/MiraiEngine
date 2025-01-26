@@ -65,6 +65,29 @@
       ]
     },
     {
+      "name": "ssao_pass",
+      "enabled": true,
+      "type": "compute",
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "gbuffer_depth"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "ssao_texture",
+          "format": "R32_SFLOAT",
+          "resolution": [
+            960,
+            540
+          ],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
       "name": "deferred_lighting_pass",
       "enabled": true,
       "inputs": [

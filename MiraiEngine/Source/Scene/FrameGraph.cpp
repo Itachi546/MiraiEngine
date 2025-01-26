@@ -219,7 +219,7 @@ namespace mirai {
         case FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE:
             break;
         default:
-            ASSERT_MSG(0, "Unknow framegraph output resource type");
+            ASSERT_MSG(0, " Unknown framegraph output resource type");
             break;
         }
         return FrameGraphResourceHandle{handle};
@@ -281,6 +281,8 @@ namespace mirai {
             return FORMAT_D32_SFLOAT_S8_UINT;
         } else if (inputFormat == "R16_SFLOAT") {
             return FORMAT_R16_SFLOAT;
+        } else if (inputFormat == "R32_SFLOAT") {
+            return FORMAT_R32_SFLOAT;
         } else if (inputFormat == "D24_UNORM_S8_UINT")
             return FORMAT_D24_UNORM_S8_UINT;
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Graphics/RenderingDevice.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"
