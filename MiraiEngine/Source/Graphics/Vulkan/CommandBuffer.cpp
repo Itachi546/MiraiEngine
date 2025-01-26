@@ -11,7 +11,7 @@ namespace mirai {
     }
 
     void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
-        prepare_render_pass_resources(frame_graph, node);
+        prepare_pass_resources(frame_graph, node);
 
         std::vector<VkRenderingAttachmentInfo> color_attachments;
         std::optional<VkRenderingAttachmentInfo> depth_attachment;
@@ -84,6 +84,11 @@ namespace mirai {
 
         VkRect2D scissor{{0, 0}, {width, height}};
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+    }
+
+    void CommandBuffer::begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
+
+        prepare_pass_resources(frame_graph, node);
     }
 
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count) {
@@ -274,7 +279,7 @@ namespace mirai {
         vkResetFences(device->device, 1, &fence);
     }
 
-    void CommandBuffer::prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void CommandBuffer::prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         const std::vector<FrameGraphResourceState> &resources_state = node->resources_state;
         std::vector<VkImageMemoryBarrier2> image_barriers;
         for (auto &state : resources_state) {

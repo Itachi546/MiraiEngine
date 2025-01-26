@@ -3,6 +3,7 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Math/Math.hpp"
 
 namespace mirai {
 
@@ -19,14 +20,16 @@ namespace mirai {
       private:
         std::unique_ptr<ComputeShader> shader;
         UniformSetID uniform_set;
+        TextureID noise_texture;
 
         struct PushConstants {
+            glm::mat4 inv_projection_matrix;
             float width;
             float height;
             float radius;
             float num_step;
             float step_size;
             float direction_step;
-        } push_constants;
+        } constant_data;
     };
 } // namespace mirai

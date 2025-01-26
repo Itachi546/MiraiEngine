@@ -8,6 +8,11 @@ vec3 clip_pos_to_world_pos(vec3 clip_pos, mat4 invVP) {
     return world_pos.xyz / world_pos.w;
 }
 
+vec3 clip_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
+    vec4 view_pos = invP * vec4(clip_pos, 1.0f);
+    return view_pos.xyz / view_pos.w;
+}
+
 vec2 octwarp(vec2 v) {
     vec2 w = 1.0 - abs(v.yx);
     if (v.x < 0.0)

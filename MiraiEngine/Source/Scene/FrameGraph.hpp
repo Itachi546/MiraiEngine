@@ -79,7 +79,7 @@ namespace mirai {
         Format format;
         AttachmentLoadOp load_op;
         TextureID texture;
-        //FrameGraphResourceHandle resource_handle;
+        // FrameGraphResourceHandle resource_handle;
     };
 
     struct FrameGraphRenderpassInfo {
@@ -99,6 +99,8 @@ namespace mirai {
         virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
         virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) = 0;
+
+        virtual ~FrameGraphRenderer() = default;
 
       protected:
         std::string name;
@@ -143,13 +145,17 @@ namespace mirai {
             return nullptr;
         }
 
-        FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output);
+        FrameGraphResourceHandle create_node_output(const FrameGraphResourceOutput *output, bool compute_pass);
         FrameGraphResourceHandle create_node_input(const FrameGraphResourceInput *input);
         void get_output_attachment_size(uint32_t *width, uint32_t *height, const FrameGraphResourceOutput *output);
         void add_renderpass_info(Format format, TextureID texture_id, FrameGraphRenderpassInfo &rendering_info,
                                  const Color &clear_color = {0.0f, 0.0f, 0.0f, 1.0f}, AttachmentLoadOp load_op = LOAD_OP_LOAD);
 
-        void create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool is_input_resource);
+        void create_resource_state(FrameGraphResourceType resource_type,
+                                   AttachmentLoadOp load_op,
+                                   FrameGraphResourceState *state,
+                                   bool compute_pass,
+                                   bool is_input_resource);
 
         ~FrameGraphBuilder();
 

@@ -565,5 +565,6 @@ namespace mirai {
         inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;
         }
+        TextureID load_texture2d_from_path(const std::string &path);
     } // namespace rendering_utils
 }; // namespace mirai

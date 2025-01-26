@@ -40,4 +40,30 @@ namespace mirai {
         device->destroy_buffers(&staging_buffer, 1);
     }
 
+    TextureID rendering_utils::load_texture2d_from_path(const std::string &path) {
+        int n_channel, width, height;
+        unsigned char *data = utils::load_image(path.c_str(), &width, &height, &n_channel, 4);
+        ASSERT(data != nullptr);
+        if (data == nullptr)
+            return TextureID{K_INVALID_ID};
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        TextureDescription texture_desc = {
+            .create_flags = 0,
+            .width = (uint32_t)width,
+            .height = (uint32_t)height,
+            .depth = 1,
+            .mip_levels = 1,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = FORMAT_B8G8R8A8_UNORM,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
+            .sampler_desc = &sampler_desc,
+        };
+
+        TextureID texture_id = RenderingDevice::get()->create_texture(&texture_desc, "hdri_texture");
+        rendering_utils::copy_texture_immediate(texture_id, data, width * height * sizeof(uint8_t) * 4);
+        utils::free_image(data);
+        return texture_id;
+    }
+
 } // namespace mirai

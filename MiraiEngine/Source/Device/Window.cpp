@@ -115,14 +115,13 @@ namespace mirai {
         fullscreen_width = (uint32_t)videoMode->width;
         fullscreen_height = (uint32_t)videoMode->height;
         if (fullscreen) {
-
-            glfwSetWindowMonitor(glfw_window, monitor, 0, 0, width, height, GLFW_DONT_CARE);
-            Log::Info("Enabling Fullsceen");
+            glfwSetWindowMonitor(glfw_window, monitor, 0, 0, width, height, videoMode->refreshRate);
+            Log::Info("Enabling Fullsceen ", fullscreen_width, " ", fullscreen_height, " ", videoMode->refreshRate);
         } else {
             Log::Info("Disabling Fullscreen");
             uint32_t xpos = (fullscreen_width - width) / 2;
             uint32_t ypos = (fullscreen_height - height) / 2;
-            glfwSetWindowMonitor(glfw_window, nullptr, static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(width), static_cast<int>(height), GLFW_DONT_CARE);
+            glfwSetWindowMonitor(glfw_window, nullptr, static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(width), static_cast<int>(height), videoMode->refreshRate);
         }
     }
 

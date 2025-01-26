@@ -23,6 +23,8 @@ namespace mirai {
 
         void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 
+        void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
+
         void bind_pipeline(PipelineID pipeline, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count);
 
         void set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count);
@@ -59,7 +61,7 @@ namespace mirai {
 
       private:
         void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
-        void prepare_render_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+        void prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count);
 
         friend class VulkanRenderingDevice;

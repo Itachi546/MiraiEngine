@@ -151,7 +151,7 @@
       "inputs": [
         {
           "type": "texture",
-          "name": "gbuffer_lighting"
+          "name": "ssao_texture"
         }
       ],
       "outputs": [
