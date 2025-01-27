@@ -66,8 +66,8 @@
     },
     {
       "name": "ssao_pass",
-      "enabled": true,
       "type": "compute",
+      "enabled": true,
       "inputs": [
         {
           "type": "texture",
@@ -151,7 +151,7 @@
       "inputs": [
         {
           "type": "texture",
-          "name": "ssao_texture"
+          "name": "gbuffer_lighting"
         }
       ],
       "outputs": [

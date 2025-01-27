@@ -103,7 +103,9 @@ namespace mirai {
     }
 
     ForwardPass::~ForwardPass() {
-        transparent_shader = nullptr;
-        opaque_shader = nullptr;
+        if (transparent_shader)
+            transparent_shader = nullptr;
+        if (opaque_shader)
+            opaque_shader = nullptr;
     }
 } // namespace mirai

@@ -13,6 +13,10 @@ vec3 clip_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
     return view_pos.xyz / view_pos.w;
 }
 
+float linearize_depth(float d, float near, float far) {
+    return (near * far) / (far + d * (near - far));
+}
+
 vec2 octwarp(vec2 v) {
     vec2 w = 1.0 - abs(v.yx);
     if (v.x < 0.0)

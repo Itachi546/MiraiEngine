@@ -58,7 +58,7 @@ float calculate_ao(vec2 uv, vec3 V, vec3 N) {
     const float step_size = step_size;
     const float TANGENT_BIAS = 0.3f;
 
-    vec3 rand = texture(u_noise_texture, uv * 20.).rgb;
+    vec3 rand = texture(u_noise_texture, uv * 10.).rgb;
     rand.xy *= 2.0f - 1.0f;
     mat2 rotation = mat2(rand.x, -rand.y, rand.y, rand.x);
 

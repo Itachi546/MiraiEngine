@@ -86,6 +86,8 @@ namespace mirai {
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
+    // @TODO only call this for the passes that are defined in the framegraph file
+    // Not intended for internal compute pass like in case of blurring the mip levels of bloom or ssao output texture
     void CommandBuffer::begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
 
         prepare_pass_resources(frame_graph, node);

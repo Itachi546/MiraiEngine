@@ -200,6 +200,7 @@ namespace mirai {
                 };
 
                 SamplerDescription sampler = SamplerDescription::create();
+                sampler.address_mode_u = sampler.address_mode_v = sampler.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
                 if (is_depth_format(output->format)) {
                     desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
                     if (is_stencil_format(output->format))
@@ -341,7 +342,7 @@ namespace mirai {
 
         for (std::size_t i = 0; i < passes.size(); ++i) {
             json pass = passes[i];
-            bool enabled = pass.value("enabled", false);
+            bool enabled = pass.value("enabled", true);
             if (!enabled)
                 continue;
 

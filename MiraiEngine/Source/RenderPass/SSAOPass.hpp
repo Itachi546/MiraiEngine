@@ -15,13 +15,22 @@ namespace mirai {
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 
+        void set_blur_radius(float radius) {
+            this->blur_radius = radius;
+        }
+
+        void set_blur_sharpness(float sharpness) {
+            this->blur_sharpness = sharpness;
+        }
+
         ~SSAOPass();
 
       private:
-        std::unique_ptr<ComputeShader> shader;
-        UniformSetID uniform_set;
-        TextureID noise_texture;
-
+        std::unique_ptr<ComputeShader> ssao_shader, blur_shader;
+        UniformSetID ssao_set, blur_x_set, blur_y_set;
+        TextureID noise_texture, blur_intermediate_texture;
+        float blur_radius = 3.0f;
+        float blur_sharpness = 40.0f;
         struct PushConstants {
             glm::mat4 inv_projection_matrix;
             float width;
@@ -31,5 +40,8 @@ namespace mirai {
             float step_size;
             float direction_step;
         } constant_data;
+
+        void ssao_pass(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
+        void ssao_blur(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene, float direction);
     };
 } // namespace mirai

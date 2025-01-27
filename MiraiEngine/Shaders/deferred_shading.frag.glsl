@@ -91,9 +91,9 @@ void main() {
     vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (F * brdf.x + brdf.y);
 
-    float ao = 1.0f;
+    float ao = 0.1;
     vec3 ambient = (Kd * diffuse + specular) * ao;
-    // Lo += ambient;
+    Lo += ambient;
     float exposure = 1.0f;
     Lo = 1.0 - exp(-Lo * exposure);
 

@@ -67,7 +67,7 @@ class TestApplication : public App {
         float dt = Engine::get()->get_dt_seconds();
         controller->update(Engine::get()->get_dt_seconds());
 
-        if (Input::get()->is_down(KB_F)) {
+        if (Input::get()->was_down(KB_F)) {
             fullscreen = !fullscreen;
             Window::get()->set_fullscreen(fullscreen);
         }

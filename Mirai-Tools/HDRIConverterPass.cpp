@@ -73,5 +73,6 @@ void HDRIConverterPass::render(CommandBuffer *command_buffer, FrameGraph *frame_
 }
 
 HDRIConverterPass::~HDRIConverterPass() {
-    device->destroy_textures(&cubemap, 1);
+    if (cubemap.is_valid())
+        device->destroy_textures(&cubemap, 1);
 }

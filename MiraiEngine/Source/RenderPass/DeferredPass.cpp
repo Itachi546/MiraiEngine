@@ -7,6 +7,7 @@
 namespace mirai {
 
     DeferredPass::DeferredPass() : FrameGraphRenderer("deferred_pass"), shader(nullptr), mesh_instance_set(K_INVALID_ID) {
+        shader = nullptr;
     }
 
     void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
@@ -80,6 +81,7 @@ namespace mirai {
     }
 
     DeferredPass::~DeferredPass() {
-        shader = nullptr;
+        if (shader)
+            shader = nullptr;
     }
 } // namespace mirai
