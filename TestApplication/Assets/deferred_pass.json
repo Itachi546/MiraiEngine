@@ -110,6 +110,10 @@
         {
           "type": "texture",
           "name": "cascaded_shadow_map"
+        },
+        {
+          "type": "texture",
+          "name": "ssao_texture"
         }
       ],
       "outputs": [

@@ -16,6 +16,7 @@ layout(set = 0, binding = 1) uniform sampler2D depth_texture;
 layout(set = 0, binding = 2) uniform sampler2D normal_pbr_texture;
 layout(set = 0, binding = 3) uniform sampler2D emissive_texture;
 layout(set = 0, binding = 4) uniform sampler2DArray shadow_depth_texture;
+layout(set = 0, binding = 5) uniform sampler2D ssao_texture;
 
 layout(set = 2, binding = 0) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
@@ -63,7 +64,7 @@ void main() {
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 #if 1
-    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.05f);
+    float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);
     {
         vec3 diffuse = albedo.rgb / PI;
 
@@ -83,6 +84,7 @@ void main() {
     vec3 Ks = F;
     vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
 
+    float ao = texture(ssao_texture, uv).r * 0.1;
     vec3 irradiance = sample_texture_cube(irradiance_map, normal).rgb;
     vec3 diffuse = irradiance * albedo.rgb;
 
@@ -91,11 +93,7 @@ void main() {
     vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (F * brdf.x + brdf.y);
 
-    float ao = 0.1;
     vec3 ambient = (Kd * diffuse + specular) * ao;
     Lo += ambient;
-    float exposure = 1.0f;
-    Lo = 1.0 - exp(-Lo * exposure);
-
     fragColor = vec4(Lo, 1.0f);
 }

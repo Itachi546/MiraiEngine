@@ -16,7 +16,7 @@ layout(push_constant) uniform PushConstants {
 
 // https://www.youtube.com/watch?v=xFsJMUS94Fs&list=PL8vNj3osX2PzZ-cNSqhA8G6C1-Li5-Ck8&index=10&ab_channel=GSNComposer
 const int K_MAX_SAMPLES = 512;
-const int K_MAX_SAMPLES_IMPORTANCE = 256;
+const int K_MAX_SAMPLES_IMPORTANCE = 256 * 256;
 const float PI = 3.141593;
 const float PI2 = 6.283185;
 const float PIH = 1.570796;
@@ -75,7 +75,7 @@ vec3 convolute_importance_sample(vec3 direction, uvec2 uv) {
     vec3 tangent = cross(vec3(0.0, 1.0, 0.0), normal);
     vec3 bitangent = cross(normal, tangent);
 
-    uint sample_count = K_MAX_SAMPLES_IMPORTANCE * K_MAX_SAMPLES_IMPORTANCE;
+    uint sample_count = K_MAX_SAMPLES_IMPORTANCE;
     for (uint i = 0; i < sample_count; ++i) {
         vec3 rand = pcg3d(uvec3(uv, i));
         float phi = PI2 * rand.x;

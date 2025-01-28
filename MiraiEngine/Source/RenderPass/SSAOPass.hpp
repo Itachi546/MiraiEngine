@@ -30,7 +30,7 @@ namespace mirai {
         UniformSetID ssao_set, blur_x_set, blur_y_set;
         TextureID noise_texture, blur_intermediate_texture;
         float blur_radius = 3.0f;
-        float blur_sharpness = 40.0f;
+        float blur_sharpness = 10.0f;
         struct PushConstants {
             glm::mat4 inv_projection_matrix;
             float width;

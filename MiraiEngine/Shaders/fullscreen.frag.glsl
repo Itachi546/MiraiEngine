@@ -21,6 +21,9 @@ void main() {
         col = fxaa(u_texture, gl_FragCoord.xy, resolution);
     else
         col = texture(u_texture, uv);
+
+    float exposure = 1.0f;
+    col = 1.0 - exp(-col * exposure);
     col.rgb = pow(col.rgb, vec3(0.4545));
     fragColor = col;
 }
