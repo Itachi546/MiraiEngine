@@ -2,7 +2,6 @@
 
 #extension GL_GOOGLE_include_directive : enable
 #include "utils/transform.glsl"
-#include "utils/color.glsl"
 #include "utils/shadow.glsl"
 #include "utils/pbr.glsl"
 #include "utils/bindless.glsl"
@@ -53,9 +52,8 @@ void main() {
 
     float ndotl = max(dot(normal, light_direction.xyz), 0.0);
     float ndotv = max(dot(normal, view_dir), 0.0);
-    float hdotv = max(dot(halfway_vector, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
-
+    float ldoth = max(dot(light_direction.xyz, halfway_vector), 0.0);
     // DEBUG SHADOW CASCADE
 #if 0
     albedo.rgb = cascade_index == -1 ? vec3(1.0) : u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
@@ -63,7 +61,7 @@ void main() {
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-#if 1
+#if 0
     float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);
     {
         vec3 diffuse = albedo.rgb / PI;
@@ -71,7 +69,7 @@ void main() {
         float D = D_GGX(ndoth, roughness);
         float G = G_Smith(ndotv, ndotl, roughness);
 
-        vec3 F = F_Schlick(hdotv, F0);
+        vec3 F = F_Schlick(ldoth, F0);
         vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
 
         // For directional light
@@ -80,20 +78,19 @@ void main() {
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }
 #endif
-    vec3 F = F_SchlickRoughness(ndotv, F0, roughness);
-    vec3 Ks = F;
+    vec3 Ks = F_SchlickRoughness(ndotv, F0, roughness);
     vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
 
-    float ao = texture(ssao_texture, uv).r * 0.1;
+    float ao = texture(ssao_texture, uv).r;
     vec3 irradiance = sample_texture_cube(irradiance_map, normal).rgb;
     vec3 diffuse = irradiance * albedo.rgb;
 
     vec3 R = reflect(-view_dir, normal);
     vec3 prefilter_color = sample_texture_cube_lod(prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
-    vec3 specular = prefilter_color * (F * brdf.x + brdf.y);
+    vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
     vec3 ambient = (Kd * diffuse + specular) * ao;
-    Lo += ambient;
+    Lo += ambient + emissive;
     fragColor = vec4(Lo, 1.0f);
 }

@@ -120,7 +120,7 @@
         {
           "type": "attachment",
           "name": "gbuffer_lighting",
-          "format": "B8G8R8A8_UNORM",
+          "format": "R16G16B16A16_SFLOAT",
           "resolution": [
             1920,
             1080

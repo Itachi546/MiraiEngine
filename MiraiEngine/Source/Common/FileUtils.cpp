@@ -53,8 +53,6 @@ namespace utils {
     float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
         stbi_set_flip_vertically_on_load(true);
         float *data = stbi_loadf(filename, width, height, n_channel, req_channel);
-        if (data == nullptr)
-            return nullptr;
         return data;
     }
 

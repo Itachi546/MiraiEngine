@@ -26,27 +26,27 @@ vec3 convolute(vec3 direction) {
     float dT = PIH / float(K_MAX_SAMPLES);
 
     // Orthonormal basis
-    vec3 normal = direction;
-    vec3 tangent = cross(vec3(0.0, 1.0, 0.0), normal);
-    vec3 bitangent = cross(normal, tangent);
+    vec3 normal = normalize(direction);
+    vec3 tangent = normalize(cross(vec3(0.0, 1.0, 0.0), normal));
+    vec3 bitangent = normalize(cross(normal, tangent));
 
     int sample_count = 0;
     vec3 irradiance = vec3(0.0f);
-    for (float phi = 0; phi <= PI2; phi += dP) {
+    for (float phi = 0.0f; phi <= PI2; phi += dP) {
         float cos_phi = cos(phi);
         float sin_phi = sin(phi);
-        for (float theta = 0; theta <= PIH; theta += dT) {
+        for (float theta = 0.0f; theta <= PIH; theta += dT) {
             float sin_theta = sin(theta);
             float cos_theta = cos(theta);
             vec3 sphere_coord = vec3(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
 
             vec3 sample_dir = sphere_coord.x * tangent + sphere_coord.y * bitangent + sphere_coord.z * normal;
-            irradiance += texture(u_cubemap, normalize(sample_dir)).rgb;
+            irradiance += texture(u_cubemap, sample_dir).rgb * cos_theta * sin_theta;
             sample_count++;
         }
     }
 
-    return irradiance / float(sample_count);
+    return (PI * irradiance) / float(sample_count);
 }
 
 // hash functions for GPU Rendering.
@@ -71,9 +71,9 @@ vec3 pcg3d(uvec3 v) {
 vec3 convolute_importance_sample(vec3 direction, uvec2 uv) {
     vec3 I = vec3(0.0f);
     // Orthonormal basis
-    vec3 normal = direction;
-    vec3 tangent = cross(vec3(0.0, 1.0, 0.0), normal);
-    vec3 bitangent = cross(normal, tangent);
+    vec3 normal = normalize(direction);
+    vec3 tangent = normalize(cross(vec3(0.0, 1.0, 0.0), normal));
+    vec3 bitangent = normalize(cross(normal, tangent));
 
     uint sample_count = K_MAX_SAMPLES_IMPORTANCE;
     for (uint i = 0; i < sample_count; ++i) {
@@ -83,15 +83,17 @@ vec3 convolute_importance_sample(vec3 direction, uvec2 uv) {
         float sin_theta = sin(theta);
         vec3 sphere_coord = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
         vec3 sample_dir = sphere_coord.x * tangent + sphere_coord.y * bitangent + sphere_coord.z * normal;
-        I += texture(u_cubemap, sample_dir).rgb;
+        I += texture(u_cubemap, normalize(sample_dir)).rgb;
     }
     return I / float(sample_count);
 }
 
 void main() {
     ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
-    vec3 direction = normalize(uv_to_xyz(uv, irradiance_map_dims));
+    if (uv.x >= irradiance_map_dims.x || uv.y >= irradiance_map_dims.y)
+        return;
 
+    vec3 direction = uv_to_xyz(uv, irradiance_map_dims);
     vec3 irradiance = convolute_importance_sample(direction, uvec2(uv.xy));
     // vec3 irradiance = convolute(direction);
     imageStore(u_irradiance_map, uv, vec4(irradiance, 1.0f));

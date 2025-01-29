@@ -58,6 +58,8 @@ class TestApplication : public App {
         camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
         camera->set_far_plane(200.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
+        controller->set_walk_speed(40.0f);
+        controller->set_run_speed(80.0f);
     }
 
     void update() override {
