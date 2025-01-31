@@ -30,6 +30,10 @@ class TestApplication : public App {
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
         scene->set_environment_map(env_map);
 
+        Camera *camera = scene->get_camera();
+        // camera->position = glm::vec3(3.0f, 2.0f, 0.0f);
+        // camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
+        camera->set_far_plane(200.0f);
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
 #if 0
@@ -53,10 +57,6 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-        Camera *camera = scene->get_camera();
-        camera->position = glm::vec3(3.0f, 2.0f, 0.0f);
-        camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
-        camera->set_far_plane(200.0f);
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
         controller->set_walk_speed(40.0f);
         controller->set_run_speed(80.0f);

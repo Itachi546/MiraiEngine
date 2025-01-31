@@ -5,6 +5,7 @@
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 #include <tiny_gltf.h>
 #include "Scene.hpp"
+#include "Scene/Camera.hpp"
 #include "Scene/AsyncLoader.hpp"
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
@@ -276,45 +277,67 @@ namespace mirai {
     } // namespace mirai
 
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
-        Entity entity = ecs::create_entity();
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
-        auto &comp_manager = scene->component_manager;
+        if (node->mesh >= 0) {
+            auto &comp_manager = scene->component_manager;
+            Entity entity = ecs::create_entity();
+            // NameComponent
+            std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
+            comp_manager->add_component<NameComponent>(entity, name);
+            comp_manager->add_component<HierarchyComponent>(entity);
 
-        // NameComponent
-        std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
-        comp_manager->add_component<NameComponent>(entity, name);
-        comp_manager->add_component<HierarchyComponent>(entity);
+            // TransformComponent
+            TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
+            if (node->translation.size() > 0)
+                transform.position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
+            if (node->rotation.size() > 0)
+                transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
+            if (node->scale.size() > 0)
+                transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
 
-        // TransformComponent
-        TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
-        if (node->translation.size() > 0)
-            transform.position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
-        if (node->rotation.size() > 0)
-            transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
-        if (node->scale.size() > 0)
-            transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
+            // HierarchyComponent
+            if (!comp_manager->has_component<HierarchyComponent>(parent))
+                comp_manager->add_component<HierarchyComponent>(parent);
 
-        // HierarchyComponent
-        if (!comp_manager->has_component<HierarchyComponent>(parent))
-            comp_manager->add_component<HierarchyComponent>(parent);
+            // Update Hierarchy
+            HierarchyComponent *parent_hierarchy = comp_manager->get_component<HierarchyComponent>(parent);
+            HierarchyComponent *child_hierarchy = comp_manager->get_component<HierarchyComponent>(entity);
 
-        // Update Hierarchy
-        HierarchyComponent *parent_hierarchy = comp_manager->get_component<HierarchyComponent>(parent);
-        HierarchyComponent *child_hierarchy = comp_manager->get_component<HierarchyComponent>(entity);
+            child_hierarchy->set_parent(parent);
+            parent_hierarchy->add_children(entity);
 
-        child_hierarchy->set_parent(parent);
-        parent_hierarchy->add_children(entity);
+            // Add Mesh Component
+            int mesh_id = node->mesh;
+            if (mesh_id >= 0) {
+                ASSERT(mesh_id < load_state->mesh_components.size());
+                comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+            }
 
-        // Add Mesh Component
-        int mesh_id = node->mesh;
-        if (mesh_id >= 0) {
-            ASSERT(mesh_id < load_state->mesh_components.size());
-            comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+            for (const auto &child : node->children)
+                ParseNodes(model, child, entity, load_state);
+
+        } else if (node->camera >= 0) {
+            const auto &camera_properties = model->cameras[node->camera];
+            ASSERT(camera_properties.type == "perspective");
+
+            Camera *camera = scene->get_camera();
+
+            const tinygltf::PerspectiveCamera &perspective = camera_properties.perspective;
+            camera->set_fov(cast_float(glm::degrees(perspective.yfov)));
+            camera->set_aspect_ratio(cast_float(perspective.aspectRatio));
+            camera->set_near_plane(cast_float(perspective.znear));
+            camera->set_far_plane(cast_float(perspective.zfar));
+
+            if (node->translation.size() > 0)
+                camera->position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
+            if (node->rotation.size() > 0) {
+                glm::fquat rotation = glm::fquat{(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
+                camera->rotation = glm::degrees(glm::eulerAngles(rotation));
+                camera->rotation.x = -camera->rotation.x;
+                camera->rotation.y = -camera->rotation.y;
+            }
         }
-
-        for (const auto &child : node->children)
-            ParseNodes(model, child, entity, load_state);
     }
 
     static Format get_image_format(dds::DXGI_FORMAT format) {
