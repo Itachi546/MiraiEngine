@@ -78,7 +78,7 @@
         {
           "type": "attachment",
           "name": "ssao_texture",
-          "format": "R32_SFLOAT",
+          "format": "R16_SFLOAT",
           "resolution": [
             960,
             540

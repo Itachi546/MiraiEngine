@@ -58,8 +58,8 @@ class TestApplication : public App {
         }
 
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
-        controller->set_walk_speed(40.0f);
-        controller->set_run_speed(80.0f);
+        controller->set_walk_speed(20.0f);
+        controller->set_run_speed(10.0f);
     }
 
     void update() override {

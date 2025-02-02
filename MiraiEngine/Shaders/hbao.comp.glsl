@@ -11,12 +11,16 @@ layout(set = 0, binding = 2) uniform sampler2D u_noise_texture;
 
 layout(push_constant) uniform HBAOPushConstants {
     mat4 inv_projection_matrix;
+
     float width;
     float height;
     float radius;
     float num_step;
+
     float step_size;
     float direction_step;
+    float intensity;
+    float tangent_bias;
 };
 
 vec3 get_view_pos_from_uv(vec2 uv) {
@@ -55,43 +59,44 @@ vec3 get_view_space_normal(vec2 uv, vec3 P, vec2 offset) {
 float calculate_ao(vec2 uv, vec3 V, vec3 N) {
     const float NUM_DIRECTIONS = direction_step;
     const float NUM_STEPS = num_step;
-    const float step_size = step_size;
-    const float TANGENT_BIAS = 0.3f;
+    const float step_size = radius / (V.z * NUM_STEPS);
 
-    vec3 rand = texture(u_noise_texture, uv * 10.).rgb;
+    vec3 rand = texture(u_noise_texture, uv * 20.).rgb;
     rand.xy *= 2.0f - 1.0f;
     mat2 rotation = mat2(rand.x, -rand.y, rand.y, rand.x);
 
     float d_angle = (2.0 * PI) / NUM_DIRECTIONS;
     float last_diff = 0.0f;
     float ao = 0.0f;
-
+    vec2 dims = vec2(width, height);
+    vec2 inv_dims = 1.0f / dims;
     for (float d = 0.0f; d < NUM_DIRECTIONS; ++d) {
         float ang = d * d_angle;
         vec2 dir = rotation * vec2(cos(ang), sin(ang));
-        float tangent_angle = acos(dot(N, vec3(dir, 0.0))) - PI * 0.5 + TANGENT_BIAS;
+        float tangent_angle = acos(dot(N, vec3(dir, 0.0))) - PI * 0.5 + tangent_bias;
         float horizon_angle = tangent_angle;
-        vec2 p = uv + dir * step_size * rand.z;
+        vec2 p = round((uv + dir * step_size * rand.z) * dims) * inv_dims;
 
         for (float s = 0.0f; s < NUM_STEPS; ++s) {
             vec3 S = get_view_pos_from_uv(p);
             vec3 dV = S - V;
+
             float length_dv = length(dV);
-            if (length_dv < radius) {
+            float elevation = atan(dV.z, length(dV.xy));
+            if (length_dv < radius && elevation > horizon_angle) {
                 last_diff = length_dv;
-                float elevation = atan(dV.z, length(dV.xy));
-                horizon_angle = max(horizon_angle, elevation);
+                horizon_angle = elevation;
             }
             p += step_size * dir;
         }
 
         float norm = last_diff / radius;
         float attenuation = 1.0 - norm * norm;
-        float occlusion = clamp(attenuation * (sin(horizon_angle) - sin(tangent_angle)), 0.0, 1.0);
+        float occlusion = clamp(attenuation * (sin(horizon_angle) - sin(tangent_angle)), 0.0, 1.0) * intensity;
         ao += 1.0 - occlusion;
     }
     ao /= (NUM_DIRECTIONS);
-    return ao;
+    return clamp(ao, 0.0, 1.0);
 }
 
 void main() {
