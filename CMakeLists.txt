@@ -8,4 +8,3 @@ option(MIRAI_DYNAMIC_LIBRARY "Build MiraiEngine as dynamic library" OFF)
 
 add_subdirectory(MiraiEngine)
 add_subdirectory(TestApplication)
-add_subdirectory(Mirai-Tools)

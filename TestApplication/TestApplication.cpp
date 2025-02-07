@@ -9,6 +9,9 @@
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
 
+#include "ImGuiService.hpp"
+#include "ImGuiRenderPass.hpp"
+
 #include <fstream>
 #include <filesystem>
 
@@ -23,11 +26,14 @@ class TestApplication : public App {
     }
 
     void start() override {
+        ImGuiService::Initialize();
+
         uint32_t width = 1920;
         uint32_t height = 1080;
+
         scene = Renderer::get()->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/warm_bar_2k.hdr");
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
@@ -50,6 +56,7 @@ class TestApplication : public App {
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
+        frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
         frame_graph->compile();
 
         if (model_paths.size() > 0) {
@@ -63,6 +70,15 @@ class TestApplication : public App {
     }
 
     void update() override {
+        ImGuiService::NewFrame();
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("Options")) {
+                ImGui::MenuItem("Load HDRI");
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
 
@@ -76,6 +92,7 @@ class TestApplication : public App {
     }
 
     ~TestApplication() {
+        ImGuiService::Shutdown();
         Log::Info("Destroying Test Application...");
     }
 

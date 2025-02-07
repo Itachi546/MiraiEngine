@@ -61,7 +61,7 @@ void main() {
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-#if 0
+#if 1 
     float shadow_factor = max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);
     {
         vec3 diffuse = albedo.rgb / PI;

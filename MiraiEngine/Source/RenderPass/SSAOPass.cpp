@@ -64,7 +64,7 @@ namespace mirai {
         constant_data.height = cast_float(node->height);
         constant_data.direction_step = 4.0f;
         constant_data.num_step = 8.0f;
-        constant_data.radius = 2.0f;
+        constant_data.radius = 1.0f;
         constant_data.step_size = 0.005f;
         constant_data.intensity = 1.5f;
         constant_data.tangent_bias = 0.6f;

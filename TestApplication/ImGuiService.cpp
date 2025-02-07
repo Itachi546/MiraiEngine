@@ -31,9 +31,9 @@ namespace ImGuiService {
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-        io.FontGlobalScale = 1.2f;
-        //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        // io.FontGlobalScale = 1.2f;
+        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         VulkanRenderingDevice *device = (VulkanRenderingDevice *)RenderingDevice::get();
         ImGui::StyleColorsDark();
@@ -60,14 +60,14 @@ namespace ImGuiService {
         init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats = &color_attachment_format;
         init_info.CheckVkResultFn = check_vk_result;
         ImGui_ImplVulkan_Init(&init_info);
-        //ImGui_ImplVulkan_CreateFontsTexture();
+        // ImGui_ImplVulkan_CreateFontsTexture();
     }
 
     void NewFrame() {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        //ImGui::DockSpaceOverViewport();
+        // ImGui::DockSpaceOverViewport();
     }
 
     void Render(CommandBuffer *command_buffer) {
@@ -76,8 +76,8 @@ namespace ImGuiService {
 
         ImGuiIO &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            //ImGui::UpdatePlatformWindows();
-            //ImGui::RenderPlatformWindowsDefault();
+            // ImGui::UpdatePlatformWindows();
+            // ImGui::RenderPlatformWindowsDefault();
         }
     }
 
