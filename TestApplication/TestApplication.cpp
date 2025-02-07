@@ -1,5 +1,6 @@
 #include "Engine/App.hpp"
 #include "Engine/Engine.hpp"
+#include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -8,6 +9,7 @@
 #include "Utils/FirstPersonController.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
+#include "Math/MathUtils.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"
@@ -71,14 +73,6 @@ class TestApplication : public App {
 
     void update() override {
         ImGuiService::NewFrame();
-        if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu("Options")) {
-                ImGui::MenuItem("Load HDRI");
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
-        }
-
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
 
@@ -89,6 +83,38 @@ class TestApplication : public App {
             fullscreen = !fullscreen;
             Window::get()->set_fullscreen(fullscreen);
         }
+
+        if (Input::get()->was_down(KB_1)) {
+            show_debug_ui = !show_debug_ui;
+        }
+
+        add_debug_ui();
+    }
+
+    void add_profiler_ui() {
+        if (!miProfiler::IsEnabled())
+            return;
+
+        std::vector<std::pair<std::string, float>> profiler_data;
+        miProfiler::GetProfilerOutput(profiler_data);
+        if (profiler_data.size() == 0)
+            return;
+
+        if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (auto &[name, time] : profiler_data) {
+                ImGui::Text("%s: %.2f", name.c_str(), time);
+            }
+        }
+    }
+
+    void add_debug_ui() {
+        if (show_debug_ui) {
+            ImGui::Begin("Debug UI", 0);
+            uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
+            ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
+            add_profiler_ui();
+            ImGui::End();
+        }
     }
 
     ~TestApplication() {
@@ -97,6 +123,7 @@ class TestApplication : public App {
     }
 
   private:
+    bool show_debug_ui = false;
     bool fullscreen = false;
     Scene *scene;
     const std::vector<std::string> &model_paths;

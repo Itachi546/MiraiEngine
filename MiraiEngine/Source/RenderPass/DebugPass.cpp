@@ -16,6 +16,17 @@ namespace mirai {
         if (text_render_manager->renderers.size() == 0)
             return;
 
+        bool has_drawable = false;
+        for (auto &renderer : text_render_manager->renderers) {
+            if (renderer->vertex_count > 0) {
+                has_drawable = true;
+                break;
+            }
+        }
+
+        if (!has_drawable)
+            return;
+
         device->begin_debug_utils_label(command_buffer, "Text Rendering", nullptr);
         ScopedGpuProfiling(command_buffer, "Debug Draw");
 
@@ -41,7 +52,7 @@ namespace mirai {
             .offset = 0,
         };
 
-        miProfiler::DrawData();
+        // miProfiler::DrawData();
         for (auto &renderer : text_render_manager->renderers) {
             if (renderer->vertex_count == 0)
                 continue;

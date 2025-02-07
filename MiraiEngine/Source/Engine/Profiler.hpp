@@ -1,5 +1,7 @@
 #pragma once
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 #define ScopedCpuProfiling(name) mirai::miProfiler::ScopeRangeCPU MI_PROFILER_CONCAT(_wi_profiler_cpu_range, __LINE__)(name)
 #define ScopedGpuProfiling(command_buffer, name) mirai::miProfiler::ScopeRangeGPU MI_PROFILER_CONCAT(_wi_profiler_cpu_range, __LINE__)(command_buffer, name)
@@ -13,7 +15,13 @@ namespace mirai::miProfiler {
 
     void Initialize();
 
-    void NewFrame(CommandBuffer *command_buffer);
+    void BeginFrame(CommandBuffer *command_buffer);
+
+    bool IsEnabled();
+
+    void EndFrame();
+
+    void GetProfilerOutput(std::vector<std::pair<std::string, float>> &profiler_output);
 
     void Destroy();
 

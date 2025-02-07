@@ -49,7 +49,7 @@ namespace mirai::miProfiler {
         gpu_timestamp_period = device->get_timestamp_period();
     }
 
-    void NewFrame(CommandBuffer *command_buffer) {
+    void BeginFrame(CommandBuffer *command_buffer) {
         if (!enabled)
             return;
 
@@ -57,6 +57,10 @@ namespace mirai::miProfiler {
         RenderingDevice::get()->reset_query(command_buffer, gpu_query_pools[frame_id], 0, K_MAX_QUERY_COUNT);
 
         query_indices[frame_id] = 0;
+    }
+
+    bool IsEnabled() {
+        return enabled;
     }
 
     uint32_t BeginRangeCPU(const char *name) {
@@ -100,20 +104,18 @@ namespace mirai::miProfiler {
         }
     }
 
-    void DrawData() {
+    void EndFrame() {
         if (!enabled)
             return;
 
+        std::memset(query_results, 0, sizeof(uint64_t) * K_MAX_QUERY_COUNT);
         uint32_t prev_frame = 1 - frame_id;
         uint32_t query_count = query_indices[prev_frame];
-
         if (query_count > 0)
             RenderingDevice::get()->resolve_query(gpu_query_pools[prev_frame], query_results, 0, query_count);
+    }
 
-        TextRenderer *renderer = TextRenderManager::get()->get_default();
-        std::stringstream ss("");
-        glm::vec2 position = {5.0f, 34.0f};
-        float font_size = 14.0f;
+    void GetProfilerOutput(std::vector<std::pair<std::string, float>> &profiler_output) {
         for (auto &[key, val] : ranges) {
             // Skip for first frame
             if (val.avg_counter == 1)
@@ -128,12 +130,29 @@ namespace mirai::miProfiler {
                 val.time += delta;
                 avg_time = delta;
             }
-            ss << val.name << "(" << std::fixed << std::setprecision(2) << avg_time << "ms)";
+
+            profiler_output.push_back(std::make_pair(val.name, avg_time));
+        }
+    }
+
+    void DrawData() {
+        if (!enabled)
+            return;
+
+        TextRenderer *renderer = TextRenderManager::get()->get_default();
+        std::stringstream ss("");
+        glm::vec2 position = {5.0f, 34.0f};
+        float font_size = 14.0f;
+
+        std::vector<std::pair<std::string, float>> profiler_output;
+        GetProfilerOutput(profiler_output);
+
+        for (auto &[name, time] : profiler_output) {
+            ss << name << "(" << std::fixed << std::setprecision(2) << time << "ms)";
             renderer->AddText(ss.str(), position, font_size);
             ss.str("");
             position.y += font_size + 2.0f;
         }
-        std::memset(query_results, 0, sizeof(uint64_t) * K_MAX_QUERY_COUNT);
     }
 
     void Destroy() {

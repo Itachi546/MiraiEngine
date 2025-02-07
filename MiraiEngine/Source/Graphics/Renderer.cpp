@@ -10,7 +10,6 @@
 #include "LineRenderer.hpp"
 #include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
-#include "Math/MathUtils.hpp"
 #include "Device/Window.hpp"
 
 namespace mirai {
@@ -41,10 +40,6 @@ namespace mirai {
     void Renderer::update() {
         line_renderer->NewFrame();
         scene->update();
-        std::stringstream ss("");
-        ss << "Memory: " << std::fixed << std::setprecision(2) << utils::bytes_to_mb(device->get_memory_usage()) << "MB";
-        TextRenderManager::get()->get_default()->AddText(ss.str(), glm::vec2{5.0f, 20.0f}, 14);
-
         frame_graph->update(scene.get());
     }
 
@@ -54,7 +49,7 @@ namespace mirai {
 
         CommandBuffer *cb = device->get_command_buffer();
         cb->begin();
-        miProfiler::NewFrame(cb);
+        miProfiler::BeginFrame(cb);
         {
             ScopedGpuProfiling(cb, "Gpu Time");
 
@@ -62,6 +57,7 @@ namespace mirai {
 
             device->queue_command_buffer(cb);
         }
+        miProfiler::EndFrame();
 
         device->present();
         // @TODO Mirai::Replace all cpu visible uniform buffer
