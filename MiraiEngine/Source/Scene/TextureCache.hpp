@@ -18,6 +18,10 @@ namespace mirai {
 
         void add_texture(const std::string &name, TextureID texture);
 
+        uint32_t get_texture_count() const {
+            return cast_u32(textures_map.size());
+        }
+
         ~TextureCache() {
             RenderingDevice *device = RenderingDevice::get();
             Log::Info("Destroying ", textures_map.size(), " sampler textures...");

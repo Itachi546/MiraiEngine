@@ -50,6 +50,7 @@ namespace mirai {
             glm::mat4 inv_VP;
             glm::vec4 camera_position;
             glm::vec4 light_direction;
+            glm::vec4 light_color;
             uint32_t irradiance_map;
             uint32_t prefilter_map;
             uint32_t brdf_texture;
@@ -57,7 +58,10 @@ namespace mirai {
 
         push_constant_data.inv_VP = camera->get_inv_view_projection_transform();
         push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
-        push_constant_data.light_direction = glm::vec4(scene->get_sun()->direction, scene->get_sun()->intensity);
+
+        Light *sun = scene->get_sun();
+        push_constant_data.light_direction = glm::vec4(glm::normalize(sun->direction), (float)sun->cast_shadow);
+        push_constant_data.light_color = glm::vec4(sun->color, sun->intensity);
 
         EnvironmentMap *env_map = scene->get_environment_map();
         push_constant_data.irradiance_map = env_map->get_irradiance_map().id;

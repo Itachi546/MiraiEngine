@@ -2,29 +2,30 @@
 
 void FirstPersonController::update(float dt) {
     Input *input = Input::get();
-    float speed = walk_speed;
+    if (!disable_input) {
+        float speed = walk_speed;
+        if (input->is_down(KB_LEFT_SHIFT))
+            speed = run_speed;
 
-    if (input->is_down(KB_LEFT_SHIFT))
-        speed = run_speed;
+        glm::vec3 direction{0.0f};
 
-    glm::vec3 direction{0.0f};
+        if (input->is_down(KB_W))
+            direction.z = -1.0f;
+        else if (input->is_down(KB_S))
+            direction.z = 1.0f;
 
-    if (input->is_down(KB_W))
-        direction.z = -1.0f;
-    else if (input->is_down(KB_S))
-        direction.z = 1.0f;
+        if (input->is_down(KB_A))
+            direction.x = -1.0f;
+        else if (input->is_down(KB_D))
+            direction.x = 1.0f;
+        if (input->is_down(KB_E))
+            direction.y = -1.0f;
+        else if (input->is_down(KB_Q))
+            direction.y = 1.0f;
 
-    if (input->is_down(KB_A))
-        direction.x = -1.0f;
-    else if (input->is_down(KB_D))
-        direction.x = 1.0f;
-    if (input->is_down(KB_E))
-        direction.y = -1.0f;
-    else if (input->is_down(KB_Q))
-        direction.y = 1.0f;
-
-    direction = direction.x * camera->get_right() + direction.y * camera->get_up() + direction.z * camera->get_forward();
-    target_position += direction * speed * dt;
+        direction = direction.x * camera->get_right() + direction.y * camera->get_up() + direction.z * camera->get_forward();
+        target_position += direction * speed * dt;
+    }
 
     if (enable_smoothing) {
     } else
@@ -35,7 +36,7 @@ void FirstPersonController::update(float dt) {
     else if (input->is_down(KB_O))
         camera->set_projection_mode(PROJECTION_MODE_ORTHOGRAPHIC);
     */
-    if (input->is_down(MB_LEFT)) {
+    if (input->is_down(MB_LEFT) && !disable_input) {
         glm::vec2 mouse_delta = Window::get()->get_mouse_delta() * sensitivity;
         target_rotation += glm::vec3(mouse_delta.y, mouse_delta.x, 0.0f) * dt;
         target_rotation.x = glm::clamp(target_rotation.x, -89.0f, 89.0f);

@@ -4,8 +4,8 @@
 
 namespace mirai {
     enum ProjectionMode {
-        PROJECTION_MODE_ORTHOGRAPHIC,
-        PROJECTION_MODE_PERSPECTIVE
+        PROJECTION_MODE_PERSPECTIVE = 0,
+        PROJECTION_MODE_ORTHOGRAPHIC = 1,
     };
 
     class Camera {
@@ -36,6 +36,10 @@ namespace mirai {
 
         glm::mat4 get_inv_view_projection_transform() const {
             return inv_view_projection_matrix;
+        }
+
+        ProjectionMode get_projection_mode() const {
+            return projection_mode;
         }
 
         void set_projection_mode(ProjectionMode projection_mode) {

@@ -22,9 +22,9 @@ namespace mirai {
 
         update_projection_matrix();
 
-        right = glm::vec3(rotation_matrix[0][0], rotation_matrix[1][0], rotation_matrix[2][0]);
-        up = glm::vec3(rotation_matrix[0][1], rotation_matrix[1][1], rotation_matrix[2][1]);
-        forward = glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]);
+        right = glm::normalize(glm::vec3(rotation_matrix[0][0], rotation_matrix[1][0], rotation_matrix[2][0]));
+        up = glm::normalize(glm::vec3(rotation_matrix[0][1], rotation_matrix[1][1], rotation_matrix[2][1]));
+        forward = glm::normalize(glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]));
 
         view_projection_matrix = projection_matrix * view_matrix;
         inv_view_projection_matrix = glm::inverse(view_projection_matrix);

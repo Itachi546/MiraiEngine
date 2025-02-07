@@ -14,6 +14,10 @@ class FirstPersonController {
         target_rotation = camera->rotation;
     }
 
+    void set_disable_input(bool state) {
+        disable_input = state;
+    }
+
     void set_walk_speed(float speed) {
         this->walk_speed = speed;
     }
@@ -62,8 +66,8 @@ class FirstPersonController {
 
     void update(float dt);
 
-  private:
     Camera *camera;
+    bool disable_input = false;
     float walk_speed = 5.0f;
     float run_speed = 10.0f;
     float sensitivity = 12.0f;

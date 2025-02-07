@@ -85,7 +85,7 @@ namespace mirai {
             glm::vec3 max_extents{radius};
             glm::vec3 min_extents{-max_extents};
 
-            glm::mat4 light_view_transform = glm::lookAt(center - light->direction * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 light_view_transform = glm::lookAt(center - normalize(light->direction) * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 light_projection_transform = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
             cascade_info.VP[cascade] = light_projection_transform * light_view_transform;
 

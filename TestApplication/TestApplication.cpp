@@ -3,6 +3,7 @@
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/TextureCache.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Graphics/Renderer.hpp"
 #include "RenderPass/RenderPass.hpp"
@@ -35,7 +36,7 @@ class TestApplication : public App {
 
         scene = Renderer::get()->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/warm_bar_2k.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
@@ -67,8 +68,8 @@ class TestApplication : public App {
         }
 
         controller = std::make_unique<FirstPersonController>(scene->get_camera());
-        controller->set_walk_speed(20.0f);
-        controller->set_run_speed(10.0f);
+        controller->set_walk_speed(10.0f);
+        controller->set_run_speed(20.0f);
     }
 
     void update() override {
@@ -77,14 +78,16 @@ class TestApplication : public App {
             Engine::get()->request_close();
 
         float dt = Engine::get()->get_dt_seconds();
-        controller->update(Engine::get()->get_dt_seconds());
+
+        controller->set_disable_input(ImGuiService::IsAcceptingEvent());
+        controller->update(dt);
 
         if (Input::get()->was_down(KB_F)) {
             fullscreen = !fullscreen;
             Window::get()->set_fullscreen(fullscreen);
         }
 
-        if (Input::get()->was_down(KB_1)) {
+        if (Input::get()->was_down(KB_O)) {
             show_debug_ui = !show_debug_ui;
         }
 
@@ -94,7 +97,6 @@ class TestApplication : public App {
     void add_profiler_ui() {
         if (!miProfiler::IsEnabled())
             return;
-
         std::vector<std::pair<std::string, float>> profiler_data;
         miProfiler::GetProfilerOutput(profiler_data);
         if (profiler_data.size() == 0)
@@ -102,17 +104,73 @@ class TestApplication : public App {
 
         if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
             for (auto &[name, time] : profiler_data) {
-                ImGui::Text("%s: %.2f", name.c_str(), time);
+                ImGui::Text("%s: %.2fms", name.c_str(), time);
             }
         }
     }
+    void add_scene_ui() {
+        if (ImGui::CollapsingHeader("Scene Stats")) {
+            uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
+            ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
+            uint32_t total_entities = cast_u32(scene->main_opaque_draw_batch.size() + scene->main_transparent_draw_batch.size());
+            ImGui::Text("Total Visible Entities: %u", total_entities);
+
+            uint32_t total_materials = cast_u32(scene->materials.size());
+            ImGui::Text("Total Materials: %u", total_materials);
+
+            uint32_t total_mesh_buffer = cast_u32(scene->gpu_meshes.size());
+            ImGui::Text("Total Mesh Buffer: %u", total_mesh_buffer);
+
+            uint32_t total_textures = TextureCache::get()->get_texture_count();
+            ImGui::Text("Total Textures: %u", total_textures);
+        }
+
+        if (ImGui::CollapsingHeader("Directional Light")) {
+            Light *light = scene->get_sun();
+            ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+            ImGui::DragFloat3("Direction", &light->direction[0], 0.01f, -1.0f, 1.0f);
+            ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 2.0f, 20.0f);
+            ImGui::ColorPicker3("Color", &light->color[0]);
+        }
+
+        if (ImGui::CollapsingHeader("Camera")) {
+            Camera *camera = scene->get_camera();
+            static float fov = camera->get_fov();
+            if (ImGui::DragFloat("FOV", &fov, 1.0f, 0.0f, 90.0f))
+                camera->set_fov(fov);
+
+            static float near_plane = camera->get_near_plane();
+            if (ImGui::DragFloat("Near Plane", &near_plane, 0.1f, 0.01f, 10.0f))
+                camera->set_near_plane(near_plane);
+
+            static float far_plane = camera->get_far_plane();
+            if (ImGui::DragFloat("Far Plane", &far_plane, 1.0f, 50.0f, 5000.0f))
+                camera->set_far_plane(far_plane);
+            /*
+            int projection_mode = cast_int(camera->get_projection_mode());
+            const char *projection_options = "PERSPECTIVE\0ORTHOGRAPHIC";
+            if (ImGui::Combo("Projection Mode", &projection_mode, projection_options))
+                camera->set_projection_mode(ProjectionMode(projection_mode));
+            */
+        }
+
+        if (ImGui::CollapsingHeader("Camera Controller")) {
+            ImGui::DragFloat3("Target Position", &controller->target_position[0]);
+            ImGui::DragFloat3("Target Rotation", &controller->target_rotation[0], 1.0f, 0.0f, 360.0f);
+            ImGui::DragFloat("Walk Speed", &controller->walk_speed, 1.0f, 0.0f, 100.0f);
+            ImGui::DragFloat("Run Speed", &controller->run_speed, 1.0f, 0.0f, 100.0f);
+            ImGui::DragFloat("Sensitivity", &controller->sensitivity, 1.0f, 0.0f, 100.0f);
+            ImGui::Checkbox("Enable Damping", &controller->enable_smoothing);
+            ImGui::DragFloat("Damping(T)", &controller->smoothing_factor, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Damping(R)", &controller->rotation_smoothing_factor, 0.001f, 0.0f, 1.0f);
+        }
+    }
     void add_debug_ui() {
         if (show_debug_ui) {
             ImGui::Begin("Debug UI", 0);
-            uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
-            ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
             add_profiler_ui();
+            add_scene_ui();
             ImGui::End();
         }
     }

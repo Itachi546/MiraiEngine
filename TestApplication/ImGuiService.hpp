@@ -15,6 +15,10 @@ namespace ImGuiService {
 
     void Render(mirai::CommandBuffer *command_buffer);
 
+    inline bool IsAcceptingEvent() {
+        return ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered();
+    }
+
     void Shutdown();
 
 } // namespace ImGuiService
