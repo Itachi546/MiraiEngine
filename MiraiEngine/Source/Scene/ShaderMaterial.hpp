@@ -12,6 +12,9 @@ namespace mirai {
 
         virtual ~ShaderMaterial() = default;
 
+        std::string &get_name() {
+            return name;
+        }
         void create_from_file(const std::vector<std::string> &shader_files);
 
         void set_cull_mode(CullMode cull_mode) {

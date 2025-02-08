@@ -20,6 +20,10 @@ namespace mirai {
             this->enable_aa = state;
         }
 
+        bool is_antialiasing_enabled() const {
+            return enable_aa;
+        }
+
         ~SwapchainCopyPass();
 
       private:

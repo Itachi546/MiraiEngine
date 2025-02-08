@@ -26,6 +26,8 @@ class TestApplication : public App {
     TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
         Window::get()->set_title("TestApplication");
         Window::get()->set_fullscreen(fullscreen);
+        frame_graph = nullptr;
+        scene = nullptr;
     }
 
     void start() override {
@@ -44,7 +46,7 @@ class TestApplication : public App {
         // camera->rotation = glm::vec3(0.0f, -90.0f, 0.0f);
         camera->set_far_plane(200.0f);
         // Create RenderPass
-        FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
+        frame_graph = Renderer::get()->get_frame_graph();
 #if 0
         frame_graph->load_from_file("Assets/forward_pass.json");
         frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
@@ -108,8 +110,17 @@ class TestApplication : public App {
             }
         }
     }
+
     void add_scene_ui() {
         if (ImGui::CollapsingHeader("Scene Stats")) {
+            auto *final_pass = (SwapchainCopyPass *)frame_graph->get_renderer("swapchain_copy");
+            if (final_pass) {
+                static bool enable_aa = final_pass->is_antialiasing_enabled();
+                if (ImGui::Checkbox("FXAA", &enable_aa)) {
+                    final_pass->set_antialiasing(enable_aa);
+                }
+            }
+
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
@@ -166,11 +177,46 @@ class TestApplication : public App {
             ImGui::DragFloat("Damping(R)", &controller->rotation_smoothing_factor, 0.001f, 0.0f, 1.0f);
         }
     }
+
+    void add_pass_ui() {
+        ASSERT(frame_graph != nullptr);
+        if (ImGui::CollapsingHeader("Passes")) {
+            auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("cascaded_shadow_pass");
+            if (cascaded_shadow_pass != nullptr) {
+                if (ImGui::CollapsingHeader("Cascaded Shadow Pass")) {
+                    ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
+                    ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
+                    ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
+                    ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
+                }
+            }
+
+            auto *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
+            if (ssao_pass != nullptr) {
+                if (ImGui::CollapsingHeader("SSAO Pass")) {
+                    ImGui::Text("SSAO Generation");
+                    ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
+                    ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
+                    ImGui::DragFloat("March Step Size", &ssao_pass->constant_data.step_size, 0.0001f, 0.0f, 0.1f);
+                    ImGui::DragFloat("SSAO Intensity", &ssao_pass->constant_data.intensity, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("Tangent Bias", &ssao_pass->constant_data.tangent_bias, 0.01f, 0.0f, 1.0f);
+                    ImGui::DragFloat("SSAO Radius", &ssao_pass->constant_data.radius, 0.01f, 0.0f, 5.0f);
+
+                    ImGui::Separator();
+                    ImGui::Text("SSAO Blur");
+                    ImGui::DragFloat("Blur radius", &ssao_pass->blur_radius, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("Blur Sharpness", &ssao_pass->blur_sharpness, 0.01f, 0.0f, 100.0f);
+                }
+            }
+        }
+    }
+
     void add_debug_ui() {
         if (show_debug_ui) {
             ImGui::Begin("Debug UI", 0);
             add_profiler_ui();
             add_scene_ui();
+            add_pass_ui();
             ImGui::End();
         }
     }
@@ -184,6 +230,7 @@ class TestApplication : public App {
     bool show_debug_ui = false;
     bool fullscreen = false;
     Scene *scene;
+    FrameGraph *frame_graph;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
 };

@@ -25,10 +25,6 @@ namespace mirai {
 
         ~SSAOPass();
 
-      private:
-        std::unique_ptr<ComputeShader> ssao_shader, blur_shader;
-        UniformSetID ssao_set, blur_x_set, blur_y_set;
-        TextureID noise_texture, blur_intermediate_texture;
         float blur_radius = 2.0f;
         float blur_sharpness = 5.0f;
         struct PushConstants {
@@ -42,6 +38,11 @@ namespace mirai {
             float intensity;
             float tangent_bias;
         } constant_data;
+
+      private:
+        std::unique_ptr<ComputeShader> ssao_shader, blur_shader;
+        UniformSetID ssao_set, blur_x_set, blur_y_set;
+        TextureID noise_texture, blur_intermediate_texture;
 
         void ssao_pass(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
         void ssao_blur(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene, float direction);

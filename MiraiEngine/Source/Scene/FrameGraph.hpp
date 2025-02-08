@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <algorithm>
 
 namespace mirai {
 
@@ -202,14 +203,25 @@ namespace mirai {
         }
 
         bool set_renderer(const std::string &name, std::shared_ptr<FrameGraphRenderer> renderer) {
-            for (auto &desc : node_descriptions) {
-                if (desc.name == name) {
-                    desc.renderer = renderer;
-                    return true;
-                }
-            }
+            auto found = std::find_if(node_descriptions.begin(), node_descriptions.end(), [&name](const FrameGraphNodeDescription &node_description) {
+                return name == node_description.name;
+            });
 
+            if (found != node_descriptions.end()) {
+                found->renderer = renderer;
+                return true;
+            }
             return false;
+        }
+
+        FrameGraphRenderer *get_renderer(const std::string &name) {
+            auto found = std::find_if(node_descriptions.begin(), node_descriptions.end(), [&name](const FrameGraphNodeDescription &node_description) {
+                return name == node_description.name;
+            });
+
+            if (found != node_descriptions.end())
+                return found->renderer.get();
+            return nullptr;
         }
 
       private:

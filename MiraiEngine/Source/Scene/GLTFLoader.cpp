@@ -279,9 +279,14 @@ namespace mirai {
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
+
+        // Create parent as default entity to be passed on recursion
+        // For camera, we don't create new entity
+        Entity entity = parent;
+
         if (node->mesh >= 0) {
             auto &comp_manager = scene->component_manager;
-            Entity entity = ecs::create_entity();
+            entity = ecs::create_entity();
             // NameComponent
             std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
             comp_manager->add_component<NameComponent>(entity, name);
@@ -314,9 +319,6 @@ namespace mirai {
                 comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
             }
 
-            for (const auto &child : node->children)
-                ParseNodes(model, child, entity, load_state);
-
         } else if (node->camera >= 0) {
             const auto &camera_properties = model->cameras[node->camera];
             ASSERT(camera_properties.type == "perspective");
@@ -338,6 +340,9 @@ namespace mirai {
                 camera->rotation.y = -camera->rotation.y;
             }
         }
+
+        for (const auto &child : node->children)
+            ParseNodes(model, child, entity, load_state);
     }
 
     static Format get_image_format(dds::DXGI_FORMAT format) {
