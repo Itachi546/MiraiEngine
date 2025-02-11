@@ -259,6 +259,7 @@ namespace mirai {
                                                           texture->image_aspect);
 
             texture->current_layout = VkImageLayout(barrier_info->layout);
+            texture->access_flags = VkAccessFlags(barrier_info->access_mask);
         }
         pipeline_barrier(image_barriers.data(), (uint32_t)image_barriers.size());
     }

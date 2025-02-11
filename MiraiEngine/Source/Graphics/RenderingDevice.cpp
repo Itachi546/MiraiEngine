@@ -65,5 +65,4 @@ namespace mirai {
         utils::free_image(data);
         return texture_id;
     }
-
 } // namespace mirai

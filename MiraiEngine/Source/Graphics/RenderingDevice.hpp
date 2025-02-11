@@ -270,7 +270,7 @@ namespace mirai {
         SAMPLER_MIPMAP_LINEAR = 1,
     };
 
-    enum AccessFlag : uint64_t {
+    enum FlagAccessFlag : uint64_t {
         ACCESS_FLAG_NONE = 0ULL,
         ACCESS_FLAG_INDIRECT_COMMAND_READ = 0x00000001ULL,
         ACCESS_FLAG_INPUT_ATTACHMENT_READ = 0x00000010ULL,
@@ -303,7 +303,7 @@ namespace mirai {
         IMAGE_LAYOUT_MAX_ENUM = 0x7FFFFFFF
     };
 
-    enum PiplineStage : uint64_t {
+    enum PipelineStage : uint64_t {
         PIPELINE_STAGE_NONE = 0ULL,
         PIPELINE_STAGE_TOP_OF_PIPE_BIT = 0x00000001ULL,
         PIPELINE_STAGE_DRAW_INDIRECT_BIT = 0x00000002ULL,
@@ -528,6 +528,7 @@ namespace mirai {
         virtual float get_timestamp_period() = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
+        virtual void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) = 0;
         virtual void add_bindless_texture(TextureID *textures, uint32_t texture_count) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;

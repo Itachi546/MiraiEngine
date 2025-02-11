@@ -282,36 +282,34 @@ namespace mirai {
 
         // Create parent as default entity to be passed on recursion
         // For camera, we don't create new entity
-        Entity entity = parent;
+        auto &comp_manager = scene->component_manager;
+        Entity entity = ecs::create_entity();
+        // NameComponent
+        std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
+        comp_manager->add_component<NameComponent>(entity, name);
+        comp_manager->add_component<HierarchyComponent>(entity);
+
+        // TransformComponent
+        TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
+        if (node->translation.size() > 0)
+            transform.position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
+        if (node->rotation.size() > 0)
+            transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
+        if (node->scale.size() > 0)
+            transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
+
+        // HierarchyComponent
+        if (!comp_manager->has_component<HierarchyComponent>(parent))
+            comp_manager->add_component<HierarchyComponent>(parent);
+
+        // Update Hierarchy
+        HierarchyComponent *parent_hierarchy = comp_manager->get_component<HierarchyComponent>(parent);
+        HierarchyComponent *child_hierarchy = comp_manager->get_component<HierarchyComponent>(entity);
+
+        child_hierarchy->set_parent(parent);
+        parent_hierarchy->add_children(entity);
 
         if (node->mesh >= 0) {
-            auto &comp_manager = scene->component_manager;
-            entity = ecs::create_entity();
-            // NameComponent
-            std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
-            comp_manager->add_component<NameComponent>(entity, name);
-            comp_manager->add_component<HierarchyComponent>(entity);
-
-            // TransformComponent
-            TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
-            if (node->translation.size() > 0)
-                transform.position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
-            if (node->rotation.size() > 0)
-                transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
-            if (node->scale.size() > 0)
-                transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
-
-            // HierarchyComponent
-            if (!comp_manager->has_component<HierarchyComponent>(parent))
-                comp_manager->add_component<HierarchyComponent>(parent);
-
-            // Update Hierarchy
-            HierarchyComponent *parent_hierarchy = comp_manager->get_component<HierarchyComponent>(parent);
-            HierarchyComponent *child_hierarchy = comp_manager->get_component<HierarchyComponent>(entity);
-
-            child_hierarchy->set_parent(parent);
-            parent_hierarchy->add_children(entity);
-
             // Add Mesh Component
             int mesh_id = node->mesh;
             if (mesh_id >= 0) {

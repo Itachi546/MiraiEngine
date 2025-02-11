@@ -12,11 +12,11 @@ namespace mirai {
             .width = (uint32_t)cubemap_size,
             .height = (uint32_t)cubemap_size,
             .depth = 1,
-            .mip_levels = 1,
+            .mip_levels = cast_u32(std::floor(log2(cubemap_size))),
             .array_layers = 6,
             .texture_type = TEXTURE_TYPE_CUBE,
             .format = FORMAT_R16G16B16A16_SFLOAT,
-            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
             .sampler_desc = &sampler_desc,
         };
 
@@ -25,6 +25,8 @@ namespace mirai {
 
         texture_desc.width = irradiance_map_size;
         texture_desc.height = irradiance_map_size;
+        texture_desc.mip_levels = 1;
+        texture_desc.usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT;
 
         irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
 
@@ -197,6 +199,8 @@ namespace mirai {
         uint32_t work_size_y = rendering_utils::get_workgroup_size(cubemap_size, 32);
 
         command_buffer->dispatch(work_size_x, work_size_y, 6);
+
+        device->generate_mipmap(command_buffer, cubemap_texture, PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     }
 
     void EnvironmentMap::convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader) {

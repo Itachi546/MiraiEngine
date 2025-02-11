@@ -48,6 +48,7 @@ namespace mirai {
         float get_timestamp_period() override;
 
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
+        void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) override;
 
         void add_bindless_texture(TextureID *textures, uint32_t texture_count) override;
 

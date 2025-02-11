@@ -891,7 +891,107 @@ namespace mirai {
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_views[i], (debug_name + "_image_view" + std::to_string(i)).c_str());
         }
         return TextureID{textureID};
-    }; // namespace mirai
+    }
+
+    void VulkanRenderingDevice::generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) {
+        VulkanTexture *texture = resource_pool_textures.access(texture_id);
+        ASSERT(texture->mip_levels > 1);
+
+        uint32_t width = texture->width;
+        uint32_t height = texture->height;
+
+        VkImageBlit2 blit_region = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+            .srcSubresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .dstSubresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        VkBlitImageInfo2 blit_image_info = {
+            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .pNext = nullptr,
+            .srcImage = texture->image,
+            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .dstImage = texture->image,
+            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount = 1,
+            .pRegions = &blit_region,
+            .filter = VK_FILTER_LINEAR,
+        };
+
+        // TRANSFER SRC BARRIER
+        VkImageMemoryBarrier2 barriers[2];
+        barriers[0] = CreateImageMemoryBarrier2(texture->image,
+                                                VkPipelineStageFlagBits2(src_pipeline_stage),
+                                                texture->access_flags,
+                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VK_ACCESS_TRANSFER_READ_BIT,
+                                                texture->current_layout,
+                                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                VK_IMAGE_ASPECT_COLOR_BIT);
+        // TRANSFER DST BARRIER
+        barriers[1] = CreateImageMemoryBarrier2(texture->image,
+                                                VkPipelineStageFlagBits2(src_pipeline_stage),
+                                                texture->access_flags,
+                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                texture->current_layout,
+                                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                VK_IMAGE_ASPECT_COLOR_BIT);
+        barriers[0].subresourceRange.levelCount = 1;
+        barriers[1].subresourceRange.levelCount = 1;
+
+        VkDependencyInfo dependency_info = {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .memoryBarrierCount = 0,
+            .bufferMemoryBarrierCount = 0,
+            .imageMemoryBarrierCount = 2,
+            .pImageMemoryBarriers = barriers,
+        };
+
+        for (uint32_t i = 0; i < texture->mip_levels - 1; ++i) {
+            // Image memory barrier
+            barriers[0].subresourceRange.baseMipLevel = i;
+            barriers[1].subresourceRange.baseMipLevel = i + 1;
+            vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
+
+            blit_region.srcOffsets[0] = {0, 0, 0};
+            blit_region.srcOffsets[1] = {cast_int(width), cast_int(height), 1};
+            blit_region.srcSubresource.mipLevel = i;
+
+            uint32_t mip_width = width > 1 ? width / 2 : 1;
+            uint32_t mip_height = height > 1 ? height / 2 : 1;
+
+            blit_region.dstOffsets[0] = {0, 0, 0};
+            blit_region.dstOffsets[1] = {cast_int(mip_width), cast_int(mip_height), 1};
+            blit_region.dstSubresource.mipLevel = i + 1;
+
+            vkCmdBlitImage2(command_buffer->command_buffer, &blit_image_info);
+
+            width = mip_width;
+            height = mip_height;
+            if (i == 0) {
+                barriers[0].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barriers[0].srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+                barriers[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            }
+        }
+
+        // Convert last mip level to transfer src optimal
+        barriers[0].subresourceRange.baseMipLevel = texture->mip_levels - 1;
+        dependency_info.imageMemoryBarrierCount = 1;
+        vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
+
+        texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    } // namespace mirai
 
     void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
