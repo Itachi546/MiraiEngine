@@ -25,6 +25,7 @@ void main() {
     float weight = 0.0;
     vec3 Lo = vec3(0.0);
     float roughness = cubemap_dims_and_roughness.y;
+
     for (uint i = 0; i < SAMPLE_COUNT; ++i) {
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
         vec3 H = ImportanceSampleGGX(Xi, N, roughness);
@@ -32,7 +33,18 @@ void main() {
 
         float ndotl = max(dot(N, L), 0.0);
         if (ndotl > 0.0) {
-            Lo += texture(u_cubemap, L).rgb * ndotl;
+            float ndoth = max(dot(N, H), 0.0);
+            float D = D_GGX(ndoth, roughness);
+
+            float hdotv = max(dot(H, V), 0.0);
+            float pdf = (D * ndoth) / (4.0 * hdotv + 0.0001);
+
+            float resolution = cubemap_dims_and_roughness.x;
+            float sa_texel = (4.0 * PI) / (6.0 * resolution * resolution);
+            float sa_sample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+            float mip_level = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
+
+            Lo += textureLod(u_cubemap, L, mip_level).rgb * ndotl;
             weight += ndotl;
         }
     }

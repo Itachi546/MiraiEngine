@@ -808,6 +808,7 @@ namespace mirai {
         texture->mip_levels = texture_description->mip_levels;
         texture->array_layers = texture_description->array_layers;
         texture->image_type = image_type;
+        texture->image_view_type = image_view_type;
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
         texture->access_flags = 0;
         texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
@@ -899,18 +900,19 @@ namespace mirai {
 
         uint32_t width = texture->width;
         uint32_t height = texture->height;
-
+        // @TODO handle 3D texture
+        uint32_t layer_count = texture->image_view_type == VK_IMAGE_VIEW_TYPE_CUBE ? 6 : 1;
         VkImageBlit2 blit_region = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
             .srcSubresource = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseArrayLayer = 0,
-                .layerCount = 1,
+                .layerCount = layer_count,
             },
             .dstSubresource = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseArrayLayer = 0,
-                .layerCount = 1,
+                .layerCount = layer_count,
             },
         };
 

@@ -38,7 +38,7 @@ class TestApplication : public App {
 
         scene = Renderer::get()->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/warm_bar_2k.hdr");
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();

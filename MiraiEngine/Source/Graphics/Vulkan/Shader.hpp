@@ -26,6 +26,7 @@ namespace mirai {
         VkImageAspectFlags image_aspect;
         VkFormat format;
         VkImageType image_type;
+        VkImageViewType image_view_type;
 
         VkImage image;
         std::vector<VkImageView> image_views;
