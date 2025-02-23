@@ -6,7 +6,6 @@
 namespace mirai {
 
     void EnvironmentMap::initialize_textures() {
-        SamplerDescription sampler_desc = SamplerDescription::create();
         TextureDescription texture_desc = {
             .create_flags = 0,
             .width = (uint32_t)cubemap_size,
@@ -17,17 +16,18 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_CUBE,
             .format = FORMAT_R16G16B16A16_SFLOAT,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
-            .sampler_desc = &sampler_desc,
         };
 
         RenderingDevice *device = RenderingDevice::get();
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        default_sampler = device->create_sampler(&sampler_desc);
+
         cubemap_texture = device->create_texture(&texture_desc, "cubemap");
 
         texture_desc.width = irradiance_map_size;
         texture_desc.height = irradiance_map_size;
         texture_desc.mip_levels = 1;
         texture_desc.usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT;
-
         irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
 
         // Create Prefilter Environment map texture
@@ -35,8 +35,9 @@ namespace mirai {
         texture_desc.mip_levels = prefilter_num_mip_levels;
         texture_desc.width = prefilter_map_size;
         texture_desc.height = prefilter_map_size;
-        texture_desc.sampler_desc->mipmap_mode = SAMPLER_MIPMAP_LINEAR;
         prefilter_texture = device->create_texture(&texture_desc, "prefilter_envmap");
+        sampler_desc.mipmap_mode = SAMPLER_MIPMAP_LINEAR;
+        SamplerID prefilter_sampler = device->create_sampler(&sampler_desc);
 
         // Create 2D BRDF Texture
         texture_desc.create_flags = 0;
@@ -56,10 +57,13 @@ namespace mirai {
             Log::Error("Failed to load hdri", hdri_path);
         }
 
+        RenderingDevice *device = RenderingDevice::get();
+
         SamplerDescription sampler_desc = SamplerDescription::create();
         // @NOTE this is done to prevent the brdf texture wrap around when dot(N, V) = 1
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         sampler_desc.enable_anisotropy = false;
+        SamplerID hdri_sampler = device->create_sampler(&sampler_desc);
 
         TextureDescription texture_desc = {
             .create_flags = 0,
@@ -71,10 +75,8 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_2D,
             .format = FORMAT_R32G32B32A32_SFLOAT,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
-            .sampler_desc = &sampler_desc,
         };
 
-        RenderingDevice *device = RenderingDevice::get();
         TextureID hdri_texture = device->create_texture(&texture_desc, "hdri_texture");
         rendering_utils::copy_texture_immediate(hdri_texture, data, width * height * sizeof(float) * 4);
         utils::free_image(data);
@@ -88,8 +90,8 @@ namespace mirai {
 
         UniformSetID uniform_set = device->create_uniform_set(layout, (uint32_t)std::size(layout), 0, "hdri_to_cubemap_set");
         UniformBinding bindings[] = {
-            {.resource_id = hdri_texture},
-            {.resource_id = cubemap_texture},
+            {.resource_id = hdri_texture, .texture_info = {.sampler = hdri_sampler}},
+            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
         };
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
 
@@ -116,13 +118,15 @@ namespace mirai {
     EnvironmentMap::EnvironmentMap() {
         initialize_textures();
 
+        SamplerDescription sampler_desc = SamplerDescription::create();
+
         RenderingDevice *device = RenderingDevice::get();
         UniformLayout layout[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
         };
         UniformSetID uniform_set = device->create_uniform_set(layout, (uint32_t)std::size(layout), 0, "procedural_cubemap_set");
         UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture},
+            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
         };
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
 
@@ -167,7 +171,15 @@ namespace mirai {
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
-        TextureID textures[] = {irradiance_texture, brdf_texture, prefilter_texture};
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.mipmap_mode = SAMPLER_MIPMAP_LINEAR;
+        SamplerID prefilter_sampler = device->create_sampler(&sampler_desc);
+
+        BindlessTextureEntry textures[] = {
+            {.texture = irradiance_texture, .sampler = default_sampler},
+            {.texture = brdf_texture, .sampler = default_sampler},
+            {.texture = prefilter_texture, .sampler = prefilter_sampler},
+        };
         device->add_bindless_texture(textures, cast_u32(std::size(textures)));
     }
 
@@ -229,7 +241,7 @@ namespace mirai {
         };
         UniformSetID uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_convolute_cubemap_set");
         UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture},
+            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
             {.resource_id = irradiance_texture},
         };
         device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
@@ -285,7 +297,7 @@ namespace mirai {
         std::vector<UniformSetID> uniform_sets(prefilter_num_mip_levels);
 
         UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture},
+            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
             {.resource_id = prefilter_texture},
         };
 
@@ -302,7 +314,7 @@ namespace mirai {
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
 
             uniform_sets[i] = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_uniform_set");
-            bindings[1].offset_or_mip_level = i;
+            bindings[1].texture_info.mip_levels = i;
             device->update_uniform_set(uniform_sets[i], bindings, cast_u32(std::size(bindings)));
         }
 

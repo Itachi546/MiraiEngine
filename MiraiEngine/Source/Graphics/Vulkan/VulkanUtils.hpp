@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Vulkan.hpp"
+#include <vector>
 
 namespace mirai {
+    struct SamplerDescription;
     VkImageMemoryBarrier CreateImageMemoryBarrier(VkImage image,
                                                   VkImageAspectFlags aspect,
                                                   VkAccessFlags src_access_mask,
@@ -31,4 +33,5 @@ namespace mirai {
                                                     uint32_t level_count = VK_REMAINING_MIP_LEVELS,
                                                     uint32_t layer_count = VK_REMAINING_ARRAY_LAYERS);
 
+    uint64_t CalculateSamplerHash(const SamplerDescription *desc);
 } // namespace mirai

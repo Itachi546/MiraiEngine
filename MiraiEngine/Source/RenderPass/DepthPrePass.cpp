@@ -62,7 +62,7 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);
 
         UniformBinding per_shader_bindings[] = {
-            {.resource_id = scene->transform_buffer, .offset_or_mip_level = 0},
+            {.resource_id = scene->transform_buffer},
         };
 
         device->update_uniform_set(transform_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));

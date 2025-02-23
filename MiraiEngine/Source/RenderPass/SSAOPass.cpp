@@ -13,7 +13,7 @@ namespace mirai {
         blur_shader->create_from_file("SPIRV/cross-bilateral-blur.comp.spv");
 
         noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/noise.png");
-        SamplerDescription sampler_desc = SamplerDescription::create();
+
         TextureDescription texture_desc = {
             .create_flags = 0,
             .width = node->width,
@@ -24,8 +24,8 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_2D,
             .format = FORMAT_R16_SFLOAT,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
-            .sampler_desc = &sampler_desc,
         };
+
         blur_intermediate_texture = device->create_texture(&texture_desc, "blur_intermediate_texture");
 
         ASSERT(node->inputs.size() == 1);
@@ -38,10 +38,14 @@ namespace mirai {
             {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
             {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
         };
+
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        SamplerID default_sampler = device->create_sampler(&sampler_desc);
+
         UniformBinding bindings[] = {
             {.resource_id = ssao_texture},
-            {.resource_id = depth_texture},
-            {.resource_id = noise_texture},
+            {.resource_id = depth_texture, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = noise_texture, .texture_info = {.sampler = default_sampler}},
         };
         // SSAO Uniform Set
         ssao_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "ssao_uniform_set");

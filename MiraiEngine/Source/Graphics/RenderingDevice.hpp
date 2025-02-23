@@ -44,6 +44,8 @@ namespace mirai {
     DEFINE_ID(UniformSet)
     DEFINE_ID(Query)
 
+    using SamplerID = uint64_t;
+
     enum class DeviceType {
         DEVICE_TYPE_OTHER = 0x0,
         DEVICE_TYPE_INTEGRATED_GPU = 0x1,
@@ -342,9 +344,9 @@ namespace mirai {
 
         static SamplerDescription create() {
             return {
-                .address_mode_u = SAMPLER_ADDRESS_MODE_REPEAT,
-                .address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT,
-                .address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT,
+                .address_mode_u = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_v = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                .address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                 .min_filter = FILTER_LINEAR,
                 .mag_filter = FILTER_LINEAR,
                 .mipmap_mode = SAMPLER_MIPMAP_LINEAR,
@@ -399,7 +401,11 @@ namespace mirai {
         TextureType texture_type;
         Format format;
         uint64_t usage_flags;
-        SamplerDescription *sampler_desc;
+    };
+
+    struct BindlessTextureEntry {
+        TextureID texture;
+        SamplerID sampler;
     };
 
     enum AttachmentType {
@@ -447,8 +453,17 @@ namespace mirai {
 
     struct UniformBinding {
         ID resource_id;
-        uint64_t offset_or_mip_level = 0;
-        uint64_t range = UINT64_MAX;
+
+        union {
+            struct {
+                uint64_t offset = 0;
+                uint64_t range = UINT64_MAX;
+            } buffer_info;
+            struct {
+                uint64_t mip_levels = 0;
+                uint64_t sampler = UINT64_MAX;
+            } texture_info;
+        };
     };
 
     struct BufferCopyRegion {
@@ -473,26 +488,6 @@ namespace mirai {
     };
 
     class CommandBuffer;
-    /*
-    struct AttachmentInfo
-    {
-        AttachmentType attachment_type;
-        Format format;
-        AttachmentLoadOp load_op;
-        Color clear_color;
-    };
-
-
-    struct RenderPass
-    {
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
-
-        std::vector<AttachmentInfo> color_attachments;
-        std::optional<AttachmentInfo> depth_attachment;
-    };
-    */
     class RenderingDevice {
       public:
         RenderingDevice() {
@@ -528,8 +523,9 @@ namespace mirai {
         virtual float get_timestamp_period() = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
+        virtual SamplerID create_sampler(SamplerDescription *sampler_desc) = 0;
         virtual void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) = 0;
-        virtual void add_bindless_texture(TextureID *textures, uint32_t texture_count) = 0;
+        virtual void add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 

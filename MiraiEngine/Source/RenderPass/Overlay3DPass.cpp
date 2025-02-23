@@ -17,6 +17,9 @@ namespace mirai {
         skybox_material->set_depth_write(false);
         skybox_material->set_depth_compare_op(COMPARE_OP_EQUAL);
 
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        default_sampler = device->create_sampler(&sampler_desc);
+
         UniformLayout layout = {
             .binding = 0,
             .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -51,7 +54,7 @@ namespace mirai {
 
         TextureID skybox = scene->get_environment_map()->get_cubemap();
 #endif
-        UniformBinding binding = {.resource_id = skybox};
+        UniformBinding binding = {.resource_id = skybox, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
 
         // Draw Sky

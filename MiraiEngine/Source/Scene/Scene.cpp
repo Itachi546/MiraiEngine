@@ -55,8 +55,10 @@ namespace mirai {
 
         UniformBinding binding = {
             .resource_id = per_frame_data_buffer,
-            .offset_or_mip_level = 0,
-            .range = sizeof(FrameData),
+            .buffer_info = {
+                .offset = 0,
+                .range = sizeof(FrameData),
+            },
         };
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 

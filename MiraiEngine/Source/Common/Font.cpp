@@ -27,8 +27,6 @@ namespace mirai {
         if (data == nullptr)
             return nullptr;
 
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.enable_anisotropy = false;
         TextureDescription tex_desc = {
             .create_flags = 0,
             .width = static_cast<uint32_t>(width),
@@ -39,11 +37,17 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_2D,
             .format = FORMAT_R8_UNORM,
             .usage_flags = TEXTURE_USAGE_TRANSFER_DST_BIT | TEXTURE_USAGE_SAMPLED_BIT,
-            .sampler_desc = &sampler_desc,
         };
+
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.enable_anisotropy = false;
+        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
+
         TextureID texture = RenderingDevice::get()->create_texture(&tex_desc, "font_texture_" + name);
         rendering_utils::copy_texture_immediate(texture, data, width * height);
-        RenderingDevice::get()->add_bindless_texture(&texture, 1);
+
+        BindlessTextureEntry entry = {.texture = texture, .sampler = sampler};
+        RenderingDevice::get()->add_bindless_texture(&entry, 1);
         stbi_image_free(data);
 
         // RenderingDevice::get()->add_bindless_texture(&texture, 1);

@@ -263,7 +263,6 @@ namespace mirai {
 
         UniformBinding vertex_binding = {
             .resource_id = vertex_buffer,
-            .offset_or_mip_level = 0,
         };
 
         device->update_uniform_set(vertex_binding_set, &vertex_binding, 1);
@@ -357,7 +356,7 @@ namespace mirai {
     struct UserData {
         std::string base_path;
         AsyncLoader *async_loader;
-        std::vector<TextureID> textures;
+        std::vector<BindlessTextureEntry> textures;
     };
 
     bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
@@ -411,8 +410,6 @@ namespace mirai {
             }
         }
 
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.enable_anisotropy = true;
         TextureDescription texture_desc = {
             .create_flags = 0,
             .width = width,
@@ -423,11 +420,13 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_2D,
             .format = format,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
-            .sampler_desc = &sampler_desc,
         };
-
+        // @TODO update sampler based on the gltf_sampler
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
-        p_user_data->textures.push_back(texture);
+        p_user_data->textures.emplace_back(texture, sampler);
 
         TextureCache::get()->add_texture(image->uri, texture);
 
@@ -500,6 +499,7 @@ namespace mirai {
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
         Log::Info("meshes: ", load_state.mesh_components.size());
+
         RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));
 
         return root_entity;

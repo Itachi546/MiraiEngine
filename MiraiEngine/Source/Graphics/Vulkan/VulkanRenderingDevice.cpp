@@ -253,12 +253,16 @@ namespace mirai {
         return fence;
     }
 
-    VkSampler VulkanRenderingDevice::create_sampler(SamplerDescription *desc) {
+    SamplerID VulkanRenderingDevice::create_sampler(SamplerDescription *desc) {
+        uint64_t hash = CalculateSamplerHash(desc);
+        if (sampler_caches.find(hash) != sampler_caches.end())
+            return hash;
+
         VkSamplerCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
             .pNext = nullptr,
-            .magFilter = VkFilter(desc->min_filter),
-            .minFilter = VkFilter(desc->mag_filter),
+            .magFilter = VkFilter(desc->mag_filter),
+            .minFilter = VkFilter(desc->min_filter),
             .mipmapMode = VkSamplerMipmapMode(desc->mipmap_mode),
             .addressModeU = VkSamplerAddressMode(desc->address_mode_u),
             .addressModeV = VkSamplerAddressMode(desc->address_mode_v),
@@ -272,7 +276,8 @@ namespace mirai {
 
         VkSampler sampler = VK_NULL_HANDLE;
         VK_CHECK(vkCreateSampler(device, &createInfo, nullptr, &sampler));
-        return sampler;
+        sampler_caches.insert(std::make_pair(hash, sampler));
+        return SamplerID{hash};
     }
 
     ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name) {
@@ -619,7 +624,7 @@ namespace mirai {
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-                uint64_t mip_level = binding.offset_or_mip_level;
+                uint64_t mip_level = binding.texture_info.mip_levels;
                 ASSERT(mip_level <= texture->image_views.size());
                 image_info.imageView = texture->image_views[mip_level];
 
@@ -630,8 +635,8 @@ namespace mirai {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.offset_or_mip_level;
-                buffer_info.range = binding.range;
+                buffer_info.offset = binding.buffer_info.offset;
+                buffer_info.range = binding.buffer_info.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
             } break;
@@ -639,8 +644,8 @@ namespace mirai {
                 VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
                 VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
                 buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.offset_or_mip_level;
-                buffer_info.range = binding.range;
+                buffer_info.offset = binding.buffer_info.offset;
+                buffer_info.range = binding.buffer_info.range;
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 write_sets[i].pBufferInfo = &buffer_info;
             } break;
@@ -649,11 +654,14 @@ namespace mirai {
                 VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
                 image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-                uint64_t mip_level = binding.offset_or_mip_level;
+                uint64_t mip_level = binding.texture_info.mip_levels;
                 ASSERT(mip_level <= texture->image_views.size());
                 image_info.imageView = texture->image_views[mip_level];
 
-                image_info.sampler = texture->sampler;
+                auto found = sampler_caches.find(binding.texture_info.sampler);
+                if (found != sampler_caches.end())
+                    image_info.sampler = found->second;
+
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write_sets[i].pImageInfo = &image_info;
             } break;
@@ -812,11 +820,6 @@ namespace mirai {
         texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
         texture->access_flags = 0;
         texture->stage_mask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-
-        if (texture_description->sampler_desc)
-            texture->sampler = create_sampler(texture_description->sampler_desc);
-        else
-            texture->sampler = VK_NULL_HANDLE;
 
         VkImageUsageFlags usage = 0;
         if ((texture_description->usage_flags & TEXTURE_USAGE_TRANSFER_SRC_BIT))
@@ -1156,14 +1159,11 @@ namespace mirai {
                 vkDestroyImageView(device, image_view, nullptr);
 
             vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
-            if (texture->sampler != VK_NULL_HANDLE)
-                vkDestroySampler(device, texture->sampler, nullptr);
             texture->width = texture->height = texture->depth = 0;
             texture->format = VK_FORMAT_UNDEFINED;
             texture->image_views.clear();
             texture->allocation = VK_NULL_HANDLE;
             texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-            texture->sampler = VK_NULL_HANDLE;
             texture->mip_levels = 0;
             texture->array_layers = 0;
             texture->image = VK_NULL_HANDLE;
@@ -1208,21 +1208,25 @@ namespace mirai {
 #endif
     }
 
-    void VulkanRenderingDevice::add_bindless_texture(TextureID *textures, uint32_t texture_count) {
+    void VulkanRenderingDevice::add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) {
         std::vector<VkWriteDescriptorSet> write_set(texture_count);
         std::vector<VkDescriptorImageInfo> image_infos(texture_count);
         for (uint32_t i = 0; i < texture_count; ++i) {
-            ASSERT(textures[i].is_valid());
+            ASSERT(textures[i].texture.is_valid());
             write_set[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             write_set[i].dstSet = bindless_descriptor_set;
             write_set[i].dstBinding = K_BINDLESS_TEXTURE_BINDING;
             write_set[i].descriptorCount = 1;
-            write_set[i].dstArrayElement = textures[i].id;
+            write_set[i].dstArrayElement = textures[i].texture.id;
             write_set[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-            VulkanTexture *texture = resource_pool_textures.access(textures[i]);
+            VulkanTexture *texture = resource_pool_textures.access(textures[i].texture.id);
             image_infos[i].imageLayout = texture->current_layout;
-            image_infos[i].sampler = texture->sampler;
+
+            auto found = sampler_caches.find(textures[i].sampler);
+            ASSERT(found != sampler_caches.end());
+            image_infos[i].sampler = found->second;
+
             image_infos[i].imageView = texture->image_views[0];
             write_set[i].pImageInfo = &image_infos[i];
         }
@@ -1255,6 +1259,9 @@ namespace mirai {
 
         for (auto &[key, val] : descriptor_set_layouts_cache)
             vkDestroyDescriptorSetLayout(device, val, nullptr);
+
+        for (auto &[key, val] : sampler_caches)
+            vkDestroySampler(device, val, nullptr);
 
         vkDestroyDescriptorSetLayout(device, bindless_descriptor_layout, nullptr);
         vkDestroyDescriptorPool(device, bindless_descriptor_pool, nullptr);

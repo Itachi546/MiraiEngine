@@ -31,7 +31,10 @@ namespace mirai {
         };
         uniform_set = device->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
 
-        UniformBinding bindings = {.resource_id = input_texture->handle};
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        SamplerID default_sampler = device->create_sampler(&sampler_desc);
+
+        UniformBinding bindings = {.resource_id = input_texture->handle, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(uniform_set, &bindings, 1);
         material->set_uniform_sets(&uniform_set, 1);
     }

@@ -32,7 +32,6 @@ namespace mirai {
         std::vector<VkImageView> image_views;
         VmaAllocation allocation;
 
-        VkSampler sampler;
         VkImageLayout current_layout;
         VkAccessFlags2 access_flags;
         VkPipelineStageFlags2 stage_mask;

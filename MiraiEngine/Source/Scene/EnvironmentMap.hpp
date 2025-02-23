@@ -55,6 +55,7 @@ namespace mirai {
       private:
         std::string hdri_path;
         TextureID cubemap_texture, irradiance_texture, prefilter_texture, brdf_texture;
+        SamplerID default_sampler;
         uint32_t cubemap_size = 512;
         uint32_t irradiance_map_size = 64;
         uint32_t prefilter_map_size = 512;

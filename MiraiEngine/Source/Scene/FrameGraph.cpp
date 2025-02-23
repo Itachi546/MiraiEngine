@@ -196,7 +196,6 @@ namespace mirai {
                     .texture_type = TEXTURE_TYPE_2D,
                     .format = output->format,
                     .usage_flags = 0,
-                    .sampler_desc = nullptr,
                 };
 
                 SamplerDescription sampler = SamplerDescription::create();
@@ -208,15 +207,9 @@ namespace mirai {
                     else {
                         desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
                     }
-                    // @TODO Fix me
-                    // sampler.min_filter = FILTER_NEAREST;
-                    // sampler.mag_filter = FILTER_NEAREST;
                 } else {
                     desc.usage_flags = compute_pass ? TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_SAMPLED_BIT : TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
                 }
-
-                if ((desc.usage_flags & TEXTURE_USAGE_SAMPLED_BIT) == TEXTURE_USAGE_SAMPLED_BIT)
-                    desc.sampler_desc = &sampler;
 
                 TextureID texture = device->create_texture(&desc, output->name.c_str());
                 resource->name = output->name;

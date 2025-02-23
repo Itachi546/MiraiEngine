@@ -57,7 +57,6 @@ namespace mirai {
             .texture_type = TEXTURE_TYPE_2D,
             .format = FORMAT_B8G8R8A8_UNORM,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
-            .sampler_desc = &sampler_desc,
         };
 
         TextureID texture_id = RenderingDevice::get()->create_texture(&texture_desc, "hdri_texture");

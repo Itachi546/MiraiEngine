@@ -1,5 +1,7 @@
 #include "VulkanUtils.hpp"
+#include "Common/Hash.hpp"
 
+#include "Graphics/RenderingDevice.hpp"
 namespace mirai {
     VkImageMemoryBarrier CreateImageMemoryBarrier(VkImage image,
                                                   VkImageAspectFlags aspect,
@@ -67,4 +69,19 @@ namespace mirai {
         };
     }
 
+    uint64_t CalculateSamplerHash(const SamplerDescription *desc) {
+        uint64_t hash = 0;
+        utils::hash_combine(hash, cast_u32(desc->address_mode_u),
+                            cast_u32(desc->address_mode_u),
+                            cast_u32(desc->address_mode_w),
+                            cast_u32(desc->min_filter),
+                            cast_u32(desc->mag_filter),
+                            cast_u32(desc->mipmap_mode),
+                            desc->lod_bias,
+                            desc->max_anisotropy,
+                            desc->min_lod,
+                            desc->max_lod,
+                            cast_u32(desc->enable_anisotropy));
+        return hash;
+    }
 } // namespace mirai

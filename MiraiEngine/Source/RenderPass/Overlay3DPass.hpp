@@ -16,9 +16,10 @@ namespace mirai {
       private:
         std::shared_ptr<SkyboxMaterial> skybox_material;
         UniformSetID skybox_uniform_set;
+        SamplerID default_sampler;
 
         void render_skybox(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass);
-        void render_debug_draw(CommandBuffer *command_buffer, Scene* scene, FrameGraphRenderpassInfo *render_pass);
+        void render_debug_draw(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass);
     };
 
 } // namespace mirai

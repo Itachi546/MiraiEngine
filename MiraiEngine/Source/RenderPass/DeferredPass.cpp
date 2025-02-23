@@ -42,8 +42,8 @@ namespace mirai {
         if (draw_infos.size() > 0) {
             // Update Per Pipeline Data (Transform/Material)
             UniformBinding per_shader_bindings[] = {
-                {.resource_id = scene->transform_buffer, .offset_or_mip_level = 0},
-                {.resource_id = scene->material_buffer, .offset_or_mip_level = 0},
+                {.resource_id = scene->transform_buffer, .buffer_info{.offset = 0}},
+                {.resource_id = scene->material_buffer, .buffer_info{.offset = 0}},
             };
             device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 

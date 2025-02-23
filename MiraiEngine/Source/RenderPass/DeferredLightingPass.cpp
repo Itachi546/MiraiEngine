@@ -22,17 +22,40 @@ namespace mirai {
 
         // Deferred Shading Textures
         uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
-        std::vector<UniformBinding> bindings(binding_count);
-        std::vector<UniformLayout> binding_layout(binding_count);
 
+        UniformLayout layouts[] = {
+            {.binding = 0, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+            {.binding = 1, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+            {.binding = 2, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+            {.binding = 3, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+            {.binding = 4, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+            {.binding = 5, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT},
+        };
+
+        SamplerDescription desc = SamplerDescription::create();
+        SamplerID default_sampler = device->create_sampler(&desc);
+
+        desc.min_filter = desc.mag_filter = FILTER_NEAREST;
+        SamplerID depth_sampler = device->create_sampler(&desc);
+
+        UniformBinding bindings[] = {
+            {.resource_id = frame_graph->get_resource("gbuffer_color")->handle, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = frame_graph->get_resource("gbuffer_depth")->handle, .texture_info = {.sampler = depth_sampler}},
+            {.resource_id = frame_graph->get_resource("gbuffer_normal")->handle, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = frame_graph->get_resource("gbuffer_emissive")->handle, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = frame_graph->get_resource("cascaded_shadow_map")->handle, .texture_info = {.sampler = depth_sampler}},
+            {.resource_id = frame_graph->get_resource("ssao_texture")->handle, .texture_info = {.sampler = default_sampler}},
+        };
+
+        /*
         for (uint32_t i = 0; i < binding_count; ++i) {
             FrameGraphResource *resource = frame_graph->get_resource(node->inputs[i]);
             binding_layout[i] = UniformLayout{.binding = i, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT};
             bindings[i] = UniformBinding{.resource_id = resource->handle};
         }
-
-        uniform_set = device->create_uniform_set(binding_layout.data(), binding_count, 0, "deferred_binding_set");
-        device->update_uniform_set(uniform_set, bindings.data(), static_cast<uint32_t>(bindings.size()));
+        */
+        uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_binding_set");
+        device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
 
         UniformLayout cascade_data = {
             .binding = 0,

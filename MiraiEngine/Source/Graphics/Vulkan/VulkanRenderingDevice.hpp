@@ -48,9 +48,11 @@ namespace mirai {
         float get_timestamp_period() override;
 
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
+        SamplerID create_sampler(SamplerDescription *desc);
+
         void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) override;
 
-        void add_bindless_texture(TextureID *textures, uint32_t texture_count) override;
+        void add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) override;
 
         void new_frame() override;
 
@@ -123,8 +125,6 @@ namespace mirai {
 
         VkFence create_fence(const std::string &name, bool signalled = false);
 
-        VkSampler create_sampler(SamplerDescription *desc);
-
         std::vector<const char *> instance_extensions;
         std::vector<const char *> validation_layers;
         std::vector<const char *> device_extensions;
@@ -136,6 +136,7 @@ namespace mirai {
         ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
         ResourcePool<VulkanQuery> resource_pool_queries;
         std::unordered_map<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
+        std::unordered_map<uint64_t, VkSampler> sampler_caches;
 
         static const uint32_t K_NUM_THREAD = 2;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
