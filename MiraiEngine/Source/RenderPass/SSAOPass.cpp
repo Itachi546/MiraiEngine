@@ -42,10 +42,13 @@ namespace mirai {
         SamplerDescription sampler_desc = SamplerDescription::create();
         SamplerID default_sampler = device->create_sampler(&sampler_desc);
 
+        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerID noise_sampler = device->create_sampler(&sampler_desc);
+
         UniformBinding bindings[] = {
             {.resource_id = ssao_texture},
             {.resource_id = depth_texture, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = noise_texture, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = noise_texture, .texture_info = {.sampler = noise_sampler}},
         };
         // SSAO Uniform Set
         ssao_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "ssao_uniform_set");
@@ -106,7 +109,6 @@ namespace mirai {
 
         // Blur in y-direction
         ssao_blur(command_buffer, frame_graph, node, scene, 1);
-
         device->end_debug_utils_label(command_buffer);
     }
 
