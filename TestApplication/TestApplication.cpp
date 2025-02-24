@@ -38,7 +38,7 @@ class TestApplication : public App {
 
         scene = Renderer::get()->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/warm_bar_2k.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
@@ -186,8 +186,16 @@ class TestApplication : public App {
                 if (ImGui::CollapsingHeader("Cascaded Shadow Pass")) {
                     ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
                     ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
-                    ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
-                    ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
+                    ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
+                    if (cascaded_shadow_pass->calculate_distance_automatic) {
+                        ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
+                        ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
+                    } else {
+                        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                            std::string cascadeName = "Cascade" + std::to_string(i);
+                            ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i]);
+                        }
+                    }
                 }
             }
 

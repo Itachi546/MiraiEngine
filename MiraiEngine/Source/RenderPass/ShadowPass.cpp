@@ -30,20 +30,27 @@ namespace mirai {
     }
 
     void CascadedShadowPass::calculate_split_distances(float znear, float zfar, Scene *scene) {
-        float ratio = zfar / znear;
-        float range = zfar - znear;
-
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
+        if (calculate_distance_automatic) {
+            float ratio = zfar / znear;
+            float range = zfar - znear;
 
-        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
-            float p = (i + 1) / float(NUM_DIRLIGHT_CASCADE);
-            float log = znear * std::pow(ratio, p);
-            float uniform = znear + range * p;
+            for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                float p = (i + 1) / float(NUM_DIRLIGHT_CASCADE);
+                float log = znear * std::pow(ratio, p);
+                float uniform = znear + range * p;
 
-            float d = split_lamda * (log - uniform) + uniform;
-            cascade_info.split_distances[i] = (d - znear) / range;
+                float d = split_lamda * (log - uniform) + uniform;
+                cascade_info.split_distances[i] = (d - znear) / range;
+            }
+            cascade_info.z_range = range;
+        } else {
+            float z_range = split_distances_constants[NUM_DIRLIGHT_CASCADE - 1];
+            for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                cascade_info.split_distances[i] = split_distances_constants[i] / z_range;
+            }
+            cascade_info.z_range = z_range;
         }
-        cascade_info.z_range = range;
     }
 
     void CascadedShadowPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
