@@ -9,28 +9,40 @@
           "type": "attachment",
           "name": "gbuffer_color",
           "format": "B8G8R8A8_UNORM",
-          "resolution": [1920, 1080],
+          "resolution": [
+            1920,
+            1080
+          ],
           "op": "LOAD_OP_CLEAR"
         },
         {
           "type": "attachment",
           "name": "gbuffer_normal",
           "format": "R16G16B16A16_SFLOAT",
-          "resolution": [1920, 1080],
+          "resolution": [
+            1920,
+            1080
+          ],
           "op": "LOAD_OP_CLEAR"
         },
         {
           "type": "attachment",
           "name": "gbuffer_emissive",
           "format": "B8G8R8A8_UNORM",
-          "resolution": [1920, 1080],
+          "resolution": [
+            1920,
+            1080
+          ],
           "op": "LOAD_OP_CLEAR"
         },
         {
           "type": "attachment",
           "name": "gbuffer_depth",
           "format": "D32_SFLOAT",
-          "resolution": [1920, 1080],
+          "resolution": [
+            1920,
+            1080
+          ],
           "op": "LOAD_OP_CLEAR"
         }
       ]
@@ -43,8 +55,10 @@
           "type": "attachment",
           "name": "cascaded_shadow_map",
           "format": "D32_SFLOAT",
-          "layer": 4,
-          "resolution": [2048, 2048],
+          "resolution": [
+            4096,
+            4096
+          ],
           "op": "LOAD_OP_CLEAR"
         }
       ]
@@ -64,7 +78,10 @@
           "type": "attachment",
           "name": "ssao_texture",
           "format": "R16_SFLOAT",
-          "resolution": [960, 540],
+          "resolution": [
+            960,
+            540
+          ],
           "op": "LOAD_OP_CLEAR"
         }
       ]
@@ -103,7 +120,10 @@
           "type": "attachment",
           "name": "gbuffer_lighting",
           "format": "R16G16B16A16_SFLOAT",
-          "resolution": [1920, 1080],
+          "resolution": [
+            1920,
+            1080
+          ],
           "op": "LOAD_OP_CLEAR"
         }
       ]

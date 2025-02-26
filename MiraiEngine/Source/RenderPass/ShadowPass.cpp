@@ -13,13 +13,12 @@ namespace mirai {
         shader = std::make_shared<ShaderMaterial>("cascaded_shadow_material");
         shader->create_from_file({
             "SPIRV/cascaded_shadow.vert.spv",
-            "SPIRV/cascaded_shadow.geom.spv",
         });
         shader->set_depth_write(true);
         shader->set_depth_test(true);
         shader->set_depth_clamp(true);
 
-        shadow_map_size = node->width;
+        shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
 
         UniformLayout mesh_instance_layout = {
             .binding = 0,
@@ -118,13 +117,13 @@ namespace mirai {
 
         UniformSetID cascade_uniform_set = scene->directional_light_info.cascade_uniform_set;
 
-        auto draw_batch = [&](DrawData *batches, uint32_t count, ShaderMaterial *shader) {
+        auto draw_batch = [&](DrawData *batches, uint32_t count, ShaderMaterial *shader, uint32_t cascade_index) {
             // Set Per Frame Data
             UniformSetID uniform_sets[] = {cascade_uniform_set, mesh_instance_set};
             shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
             shader->bind(command_buffer, &node->renderpass_info);
 
-            uint32_t instance_data[] = {0, 0, 0, 0};
+            uint32_t instance_data[] = {0, cascade_index, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
 
             PipelineID pipeline_id = shader->get_pipeline_id();
@@ -138,7 +137,6 @@ namespace mirai {
                 }
 
                 instance_data[0] = batches[i].transform_index;
-                instance_data[1] = batches[i].material_index;
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(batches[i].index_count,
                                              1,
@@ -148,11 +146,23 @@ namespace mirai {
             }
         };
 
-        command_buffer->begin_render_pass(node, frame_graph);
+        Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
+        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+            device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
+            node->renderpass_info.attachment_info[0].load_op = i == 0 ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
+            uint32_t y = i / 2;
+            uint32_t x = i % 2;
+            viewport.x = x * shadow_map_size;
+            viewport.y = y * shadow_map_size;
 
-        draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get());
+            command_buffer->begin_render_pass(node, frame_graph, &viewport);
 
-        command_buffer->end_render_pass();
+            draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get(), i);
+
+            command_buffer->end_render_pass();
+
+            device->end_debug_utils_label(command_buffer);
+        }
 
         device->end_debug_utils_label(command_buffer);
     }

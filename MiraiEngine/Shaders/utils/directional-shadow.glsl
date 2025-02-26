@@ -28,7 +28,7 @@ float texture_proj(vec4 shadowCoord, vec2 offset, int cascadeIndex, float bias) 
     float shadow = 1.0;
     float currentDepth = shadowCoord.z;
     if (currentDepth > -1.0 && currentDepth < 1.0) {
-        float depthFromTexture = texture(shadow_depth_texture, vec3(shadowCoord.xy + offset, cascadeIndex)).r;
+        float depthFromTexture = texture(shadow_depth_texture, shadowCoord.xy + offset).r;
         if (shadowCoord.w > 0.0 && depthFromTexture < currentDepth)
             shadow = 0.0f;
     }

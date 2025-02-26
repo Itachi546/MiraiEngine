@@ -74,7 +74,7 @@ namespace mirai {
             UniformLayout cascade_buffer_layout = {
                 .binding = 0,
                 .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-                .shader_stage = SHADER_STAGE_GEOMETRY,
+                .shader_stage = SHADER_STAGE_VERTEX,
             };
             directional_light_info.cascade_uniform_set = device->create_uniform_set(&cascade_buffer_layout, 1, 0, "cascade_uniform_set");
 
