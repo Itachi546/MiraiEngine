@@ -21,7 +21,7 @@ namespace mirai {
       public:
         CommandBuffer();
 
-        void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
+        void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph, Viewport *override_viewport = nullptr);
 
         void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 

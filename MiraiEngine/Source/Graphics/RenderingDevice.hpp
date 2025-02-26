@@ -158,6 +158,11 @@ namespace mirai {
         POLYGON_MODE_MAX
     };
 
+    struct Viewport {
+        uint32_t x, y, width, height;
+        float min_depth, max_depth;
+    };
+
     struct RasterizationState {
         float line_width;
         CullMode cull_mode;

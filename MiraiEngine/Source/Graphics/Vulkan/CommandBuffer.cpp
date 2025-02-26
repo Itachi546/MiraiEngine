@@ -10,7 +10,7 @@ namespace mirai {
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
     }
 
-    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
+    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph, Viewport *override_viewport) {
         prepare_pass_resources(frame_graph, node);
 
         std::vector<VkRenderingAttachmentInfo> color_attachments;
@@ -72,17 +72,36 @@ namespace mirai {
 
         vkCmdBeginRendering(command_buffer, &rendering_info);
 
-        VkViewport viewport{
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(width),
-            .height = static_cast<float>(height),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-        };
+        VkViewport viewport;
+        VkRect2D scissor;
+        if (override_viewport != nullptr) {
+            viewport = {
+                .x = cast_float(override_viewport->x),
+                .y = cast_float(override_viewport->y),
+                .width = cast_float(override_viewport->width),
+                .height = cast_float(override_viewport->height),
+                .minDepth = override_viewport->min_depth,
+                .maxDepth = override_viewport->max_depth,
+            };
+            scissor = {
+                {cast_int(override_viewport->x), cast_int(override_viewport->y)},
+                {override_viewport->width, override_viewport->height},
+            };
+        } else {
+            viewport = {
+                .x = 0.0f,
+                .y = 0.0f,
+                .width = cast_float(width),
+                .height = cast_float(height),
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f,
+            };
+            scissor = {
+                {0, 0},
+                {width, height},
+            };
+        }
         vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
-        VkRect2D scissor{{0, 0}, {width, height}};
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
