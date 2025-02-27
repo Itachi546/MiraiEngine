@@ -115,8 +115,12 @@ namespace mirai {
     struct Light {
         union {
             glm::vec3 position;
-            glm::vec3 direction;
+            glm::vec3 rotation;
         };
+
+        inline glm::vec3 get_direction() {
+            return rotation_to_direction(glm::radians(rotation));
+        }
 
         LightType light_type;
         glm::vec3 color;

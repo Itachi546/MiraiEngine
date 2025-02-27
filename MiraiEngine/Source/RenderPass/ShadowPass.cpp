@@ -17,6 +17,7 @@ namespace mirai {
         shader->set_depth_write(true);
         shader->set_depth_test(true);
         shader->set_depth_clamp(true);
+        shader->set_cull_mode(CULL_MODE_NONE);
 
         shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
 
@@ -68,6 +69,7 @@ namespace mirai {
         float aspect_ratio = camera->get_aspect_ratio();
         glm::mat4 V = camera->get_view_transform();
 
+        glm::vec3 light_direction = light->get_direction();
         for (int cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
             float split_distance = cascade_info.split_distances[cascade] * z_range;
             glm::mat4 P = glm::perspective(fov, aspect_ratio, last_split_distance, split_distance);
@@ -91,7 +93,7 @@ namespace mirai {
             glm::vec3 max_extents{radius};
             glm::vec3 min_extents{-max_extents};
 
-            glm::mat4 light_view_transform = glm::lookAt(center - normalize(light->direction) * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 light_view_transform = glm::lookAt(center - light_direction * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 light_projection_transform = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
             cascade_info.VP[cascade] = light_projection_transform * light_view_transform;
 

@@ -26,7 +26,7 @@ namespace mirai {
         uint32_t shadow_map_size = 2048;
         std::shared_ptr<ShaderMaterial> shader;
 
-        std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {8.0f, 16.0f, 32.0f, 128.0f};
+        std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {10.0f, 20.0f, 50.0f, 100.0f};
         bool calculate_distance_automatic = true;
 
       private:

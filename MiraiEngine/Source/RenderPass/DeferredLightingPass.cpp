@@ -5,6 +5,7 @@
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
+#include "Math/Math.hpp"
 
 namespace mirai {
     DeferredLightingPass::DeferredLightingPass() : FrameGraphRenderer("deferred_lighting_pass"), shader(nullptr), uniform_set(K_INVALID_ID) {
@@ -83,7 +84,8 @@ namespace mirai {
         push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
 
         Light *sun = scene->get_sun();
-        push_constant_data.light_direction = glm::vec4(glm::normalize(sun->direction), (float)sun->cast_shadow);
+        glm::vec3 light_direction = sun->get_direction(); 
+        push_constant_data.light_direction = glm::vec4(light_direction, (float)sun->cast_shadow);
         push_constant_data.light_color = glm::vec4(sun->color, sun->intensity);
 
         EnvironmentMap *env_map = scene->get_environment_map();

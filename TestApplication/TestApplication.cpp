@@ -140,7 +140,7 @@ class TestApplication : public App {
         if (ImGui::CollapsingHeader("Directional Light")) {
             Light *light = scene->get_sun();
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
-            ImGui::DragFloat3("Direction", &light->direction[0], 0.01f, -1.0f, 1.0f);
+            ImGui::DragFloat3("Direction", &light->rotation[0], 1.0f, -360.0f, 360.0f);
             ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 2.0f, 20.0f);
             ImGui::ColorPicker3("Color", &light->color[0]);
         }
@@ -168,7 +168,7 @@ class TestApplication : public App {
 
         if (ImGui::CollapsingHeader("Camera Controller")) {
             ImGui::DragFloat3("Target Position", &controller->target_position[0]);
-            ImGui::DragFloat3("Target Rotation", &controller->target_rotation[0], 1.0f, 0.0f, 360.0f);
+            ImGui::DragFloat3("Target Rotation", &controller->target_rotation[0], 1.0f, -360.0f, 360.0f);
             ImGui::DragFloat("Walk Speed", &controller->walk_speed, 1.0f, 0.0f, 100.0f);
             ImGui::DragFloat("Run Speed", &controller->run_speed, 1.0f, 0.0f, 100.0f);
             ImGui::DragFloat("Sensitivity", &controller->sensitivity, 1.0f, 0.0f, 100.0f);
