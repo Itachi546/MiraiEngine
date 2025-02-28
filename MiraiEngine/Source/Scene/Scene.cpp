@@ -88,7 +88,7 @@ namespace mirai {
         camera = std::make_unique<Camera>();
         sun = std::make_unique<Light>();
         sun->color = glm::vec3(1.0f);
-        sun->rotation = glm::vec3(-75.0f, 60.0f, 0.0f);
+        sun->rotation = glm::vec3(0.0f, 82.0f, 0.0f);
         sun->intensity = 2.0f;
         sun->cast_shadow = true;
     }

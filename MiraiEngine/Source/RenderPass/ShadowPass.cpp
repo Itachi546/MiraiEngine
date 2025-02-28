@@ -149,6 +149,13 @@ namespace mirai {
         };
 
         Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
+
+        // DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
+        // Frustum frustum;
+
+        // std::vector<DrawData> transparent_batches;
+        // std::vector<DrawData> opaque_batches;
+
         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
             device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
             node->renderpass_info.attachment_info[0].load_op = i == 0 ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
@@ -156,6 +163,10 @@ namespace mirai {
             uint32_t x = i % 2;
             viewport.x = x * shadow_map_size;
             viewport.y = y * shadow_map_size;
+
+            // glm::mat4 &VP = cascade_info.VP[i];
+            // frustum.create_from_matrix(VP, glm::inverse(VP));
+            // scene->generate_draw_batch(opaque_batches, transparent_batches, &frustum);
 
             command_buffer->begin_render_pass(node, frame_graph, &viewport);
 

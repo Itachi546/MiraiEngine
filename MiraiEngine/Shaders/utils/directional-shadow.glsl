@@ -1,7 +1,7 @@
 #ifndef DIRECTIONAL_SHADOW_GLSL
 #define DIRECTIONAL_SHADOW_GLSL
 
-vec2 poissonDisk[16] = vec2[](
+vec2 POISSON_DISK[16] = vec2[](
     vec2(-0.94201624, -0.39906216),
     vec2(0.94558609, -0.76890725),
     vec2(-0.094184101, -0.92938870),
@@ -24,61 +24,65 @@ float rand(vec2 uv) {
     return fract(sin(dot_product) * 43758.5453);
 }
 
-float texture_proj(vec4 shadowCoord, vec2 offset, int cascadeIndex, float bias) {
+float texture_proj(vec4 shadow_coord, vec2 offset, float bias) {
     float shadow = 1.0;
-    float currentDepth = shadowCoord.z;
-    if (currentDepth > -1.0 && currentDepth < 1.0) {
-        float depthFromTexture = texture(shadow_depth_texture, shadowCoord.xy + offset).r;
-        if (shadowCoord.w > 0.0 && depthFromTexture < currentDepth)
+    float current_depth = shadow_coord.z;
+    if (current_depth > -1.0 && current_depth < 1.0) {
+        float depth_from_texture = texture(shadow_depth_texture, shadow_coord.xy + offset + bias).r;
+        if (shadow_coord.w > 0.0 && depth_from_texture < current_depth)
             shadow = 0.0f;
     }
     return shadow;
 }
 
-float calculate_shadow_from_texture(vec3 worldPos, int cascadeIndex) {
-    if (cascadeIndex >= NUM_DIRLIGHT_CASCADE)
+float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
+    if (cascade_index >= NUM_DIRLIGHT_CASCADE)
         return 1.0f;
 
-    mat4 cascadeVP = cascade_info.VP[cascadeIndex];
+    mat4 cascade_VP = cascade_info.VP[cascade_index];
     // Transform into light NDC Coordinate
-    vec4 shadowCoord = cascadeVP * vec4(worldPos, 1.0f);
-    shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
+    vec4 shadow_coord = cascade_VP * vec4(world_pos, 1.0f);
+    shadow_coord.xy = shadow_coord.xy * 0.5 + 0.5;
 
-    float shadowFactor = 0.0f;
-    vec2 shadowDims = vec2(cascade_info.dims[1], cascade_info.dims[2]);
-    vec2 invRes = 1.0f / shadowDims.xy;
+    float shadow_factor = 0.0f;
+    vec2 shadow_dims = vec2(cascade_info.dims[1], cascade_info.dims[2]);
+    vec2 inv_res = 1.0f / shadow_dims.xy;
 
-    int kSampleRadius = 2;
-    int sampleCount = 0;
+    int k_sample_radius = 2;
+    int sample_count = 0;
 
-    const int kPCFRadiusMultiplier = 1;
-    float multiplierX = invRes.x * kPCFRadiusMultiplier;
-    float multiplierY = invRes.y * kPCFRadiusMultiplier;
+    vec2 cascade_uv = vec2(cascade_index % 2, cascade_index / 2);
+    const float k_pcf_radius_multiplier = 1.0f;
+    float mx = inv_res.x * k_pcf_radius_multiplier;
+    float my = inv_res.y * k_pcf_radius_multiplier;
 
-    for (int x = -kSampleRadius; x <= kSampleRadius; ++x) {
-        for (int y = -kSampleRadius; y <= kSampleRadius; ++y) {
-            vec2 coord = vec2(x * multiplierX, y * multiplierY);
-            int index = int(rand(coord) * 15.0);
-            shadowFactor += texture_proj(shadowCoord / shadowCoord.w, coord + poissonDisk[index] * invRes, cascadeIndex, 0.001f);
-            sampleCount++;
+    for (int x = -k_sample_radius; x <= k_sample_radius; ++x) {
+        for (int y = -k_sample_radius; y <= k_sample_radius; ++y) {
+            vec2 coord = vec2(x * mx, y * my);
+            int index = int(rand(coord));
+
+            vec4 shadow_coord = shadow_coord / shadow_coord.w;
+            shadow_coord.xy = (cascade_uv + clamp(shadow_coord.xy, 0.0, 1.0)) * 0.5;
+            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res, 0.001f);
+            sample_count++;
         }
     }
-    return shadowFactor / sampleCount;
+    return shadow_factor / sample_count;
 }
 
-float calculate_shadow_factor(vec3 worldPos, float camDist, out int cascadeIndex) {
+float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_index) {
 
-    cascadeIndex = -1;
-    float zRange = cascade_info.dims[0];
+    cascade_index = -1;
+    float z_range = cascade_info.dims[0];
     for (int i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
-        if (camDist <= cascade_info.split_distances[i] * zRange) {
-            cascadeIndex = i;
+        if (cam_dist <= cascade_info.split_distances[i] * z_range) {
+            cascade_index = i;
             break;
         }
     }
-    if (cascadeIndex == -1)
+    if (cascade_index == -1)
         return 1.0f;
-    return calculate_shadow_from_texture(worldPos, cascadeIndex);
+    return calculate_shadow_from_texture(world_pos, cascade_index);
 }
 
 #endif

@@ -27,7 +27,7 @@ namespace mirai {
         std::shared_ptr<ShaderMaterial> shader;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {10.0f, 20.0f, 50.0f, 100.0f};
-        bool calculate_distance_automatic = true;
+        bool calculate_distance_automatic = false;
 
       private:
         std::vector<DrawData> transparent_batches;

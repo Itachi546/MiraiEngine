@@ -5,6 +5,7 @@
 #include "utils/shadow.glsl"
 #include "utils/pbr.glsl"
 #include "utils/bindless.glsl"
+#include "utils/color.glsl"
 
 layout(location = 0) out vec4 fragColor;
 
@@ -55,16 +56,13 @@ void main() {
     float ndotv = max(dot(normal, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
     float ldoth = max(dot(light_direction.xyz, halfway_vector), 0.0);
-    float ao = texture(ssao_texture, uv).r;
-    // DEBUG SHADOW CASCADE
-#if 0
-    albedo.rgb = cascade_index == -1 ? vec3(1.0) : u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
-#endif
+    float ao = 1.0f; // texture(ssao_texture, uv).r;
+
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 #if 1
-    float shadow_factor = 1.0f; // light_direction.w < 0.5 ? 1.0f : max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);
+    float shadow_factor = light_direction.w < 0.5 ? 1.0f : max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);
     {
         vec3 diffuse = albedo.rgb / PI;
 
@@ -82,6 +80,11 @@ void main() {
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * ao;
     }
 #endif
+    // DEBUG SHADOW CASCADE
+#if 0
+    albedo.rgb = cascade_index == -1 ? vec3(1.0) : u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
+#endif
+
     vec3 Ks = F_SchlickRoughness(ndotv, F0, roughness);
     vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
 
