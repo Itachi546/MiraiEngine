@@ -4,7 +4,7 @@
 #include <vector>
 
 #define ScopedCpuProfiling(name) mirai::miProfiler::ScopeRangeCPU MI_PROFILER_CONCAT(_wi_profiler_cpu_range, __LINE__)(name)
-#define ScopedGpuProfiling(command_buffer, name) mirai::miProfiler::ScopeRangeGPU MI_PROFILER_CONCAT(_wi_profiler_cpu_range, __LINE__)(command_buffer, name)
+#define ScopedGpuProfiling(command_buffer, name) mirai::miProfiler::ScopeRangeGPU MI_PROFILER_CONCAT(_wi_profiler_gpu_range, __LINE__)(command_buffer, name)
 #define MI_PROFILER_CONCAT(x, y) x##y
 
 namespace mirai {
@@ -12,6 +12,11 @@ namespace mirai {
 }
 
 namespace mirai::miProfiler {
+
+    struct ProfilerOutput {
+        std::string name;
+        float time_in_ms;
+    };
 
     void Initialize();
 
@@ -21,7 +26,7 @@ namespace mirai::miProfiler {
 
     void EndFrame();
 
-    void GetProfilerOutput(std::vector<std::pair<std::string, float>> &profiler_output);
+    void GetProfilerOutput(std::vector<ProfilerOutput>& cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output);
 
     void Destroy();
 

@@ -78,6 +78,7 @@ namespace mirai {
     }
 
     void SSAOPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+        ScopedCpuProfiling("SSAO Update");
         ScopedGpuProfiling(command_buffer, "SSAO Pass");
         device->begin_debug_utils_label(command_buffer, "SSAO Pass", nullptr);
 

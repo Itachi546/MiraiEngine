@@ -99,14 +99,24 @@ class TestApplication : public App {
     void add_profiler_ui() {
         if (!miProfiler::IsEnabled())
             return;
-        std::vector<std::pair<std::string, float>> profiler_data;
-        miProfiler::GetProfilerOutput(profiler_data);
-        if (profiler_data.size() == 0)
-            return;
+        std::vector<miProfiler::ProfilerOutput> cpu, gpu;
+        miProfiler::GetProfilerOutput(cpu, gpu);
 
         if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
-            for (auto &[name, time] : profiler_data) {
-                ImGui::Text("%s: %.2fms", name.c_str(), time);
+            if (cpu.size() > 0) {
+                ImGui::Text("CPU Time");
+                ImGui::Separator();
+                for (auto &[name, time] : cpu) {
+                    ImGui::Text("%s: %.2fms", name.c_str(), time);
+                }
+            }
+
+            if (gpu.size() > 0) {
+                ImGui::Text("GPU Time");
+                ImGui::Separator();
+                for (auto &[name, time] : gpu) {
+                    ImGui::Text("%s: %.2fms", name.c_str(), time);
+                }
             }
         }
     }

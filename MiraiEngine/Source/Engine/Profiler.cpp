@@ -115,23 +115,20 @@ namespace mirai::miProfiler {
             RenderingDevice::get()->resolve_query(gpu_query_pools[prev_frame], query_results, 0, query_count);
     }
 
-    void GetProfilerOutput(std::vector<std::pair<std::string, float>> &profiler_output) {
+    void GetProfilerOutput(std::vector<ProfilerOutput>& cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
         for (auto &[key, val] : ranges) {
             // Skip for first frame
             if (val.avg_counter == 1)
                 continue;
 
-            float avg_time = 0.0f;
             if (val.is_cpu_profiler()) {
-                avg_time = val.time;
+                cpu_profiler_output.emplace_back(val.name, val.time);
             } else {
                 // GPU is always one frame behind
                 float delta = (float(query_results[val.query_index_end] - query_results[val.query_index_begin]) * gpu_timestamp_period) / 1000000.0f;
                 val.time += delta;
-                avg_time = delta;
+                gpu_profiler_output.emplace_back(val.name, delta);
             }
-
-            profiler_output.push_back(std::make_pair(val.name, avg_time));
         }
     }
 
@@ -144,10 +141,17 @@ namespace mirai::miProfiler {
         glm::vec2 position = {5.0f, 34.0f};
         float font_size = 14.0f;
 
-        std::vector<std::pair<std::string, float>> profiler_output;
-        GetProfilerOutput(profiler_output);
+        std::vector<ProfilerOutput> cpu, gpu;
+        GetProfilerOutput(cpu, gpu);
 
-        for (auto &[name, time] : profiler_output) {
+        for (auto &[name, time] : cpu) {
+            ss << name << "(" << std::fixed << std::setprecision(2) << time << "ms)";
+            renderer->AddText(ss.str(), position, font_size);
+            ss.str("");
+            position.y += font_size + 2.0f;
+        }
+
+        for (auto &[name, time] : gpu) {
             ss << name << "(" << std::fixed << std::setprecision(2) << time << "ms)";
             renderer->AddText(ss.str(), position, font_size);
             ss.str("");

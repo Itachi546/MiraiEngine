@@ -54,6 +54,8 @@ namespace mirai {
     }
 
     void CascadedShadowPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+        ScopedCpuProfiling("CSM Update");
+
         Light *light = scene->get_sun();
         Camera *camera = scene->get_camera();
 
@@ -105,14 +107,14 @@ namespace mirai {
         DirectionalLightInfo &light_info = scene->directional_light_info;
         std::memcpy(light_info.cascade_buffer_ptr, &cascade_info, sizeof(cascade_info));
 
-        // @TODO Generate draw batches
-        if (opaque_batches.size() == 0)
-            scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
+        // if (opaque_batches.size() == 0)
+        // scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
     }
 
     void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
-        device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
+        ScopedCpuProfiling("CSM Render");
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
+        device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
 
         UniformBinding binding = {.resource_id = scene->transform_buffer};
         device->update_uniform_set(mesh_instance_set, &binding, 1);
@@ -150,11 +152,12 @@ namespace mirai {
 
         Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
 
-        // DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
-        // Frustum frustum;
+        DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
+        Frustum frustum;
 
-        // std::vector<DrawData> transparent_batches;
-        // std::vector<DrawData> opaque_batches;
+        std::vector<DrawData> transparent_batches, opaque_batches;
+        transparent_batches.reserve(100);
+        opaque_batches.reserve(1000);
 
         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
             device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
@@ -164,15 +167,19 @@ namespace mirai {
             viewport.x = x * shadow_map_size;
             viewport.y = y * shadow_map_size;
 
-            // glm::mat4 &VP = cascade_info.VP[i];
-            // frustum.create_from_matrix(VP, glm::inverse(VP));
-            // scene->generate_draw_batch(opaque_batches, transparent_batches, &frustum);
+            // @TODO optimize the culling, remove transparent objects
+            glm::mat4 &VP = cascade_info.VP[i];
+            frustum.create_from_matrix(VP, glm::inverse(VP));
+            scene->generate_draw_batch(opaque_batches, transparent_batches, &frustum);
 
             command_buffer->begin_render_pass(node, frame_graph, &viewport);
-
-            draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get(), i);
+            if (opaque_batches.size() > 0)
+                draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get(), i);
 
             command_buffer->end_render_pass();
+
+            opaque_batches.clear();
+            transparent_batches.clear();
 
             device->end_debug_utils_label(command_buffer);
         }
