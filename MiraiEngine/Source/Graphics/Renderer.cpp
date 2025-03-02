@@ -34,6 +34,31 @@ namespace mirai {
         line_renderer = std::make_unique<LineRenderer>();
     }
 
+    void Renderer::copy_buffers(CommandBuffer *cb) {
+        // @TODO do it here for now
+
+        // Copy per frame uniform data
+        uint32_t offset = 0;
+        uint8_t *staging_buffer_ptr = scene->per_frame_staging_buffer_ptr;
+
+        std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));
+        cb->copy_buffer(scene->per_frame_uniform_buffer, scene->per_frame_staging_buffer, {
+                                                                                              .src_offset = offset,
+                                                                                              .dst_offset = 0,
+                                                                                              .size = sizeof(scene->per_frame_data),
+                                                                                          });
+        offset += sizeof(scene->per_frame_data);
+
+        // Copy cascade info
+        DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
+        std::memcpy(staging_buffer_ptr + offset, &cascade_info, sizeof(cascade_info));
+        cb->copy_buffer(scene->cascade_uniform_buffer, scene->per_frame_staging_buffer, {
+                                                                                            .src_offset = offset,
+                                                                                            .dst_offset = 0,
+                                                                                            .size = sizeof(cascade_info),
+                                                                                        });
+    }
+
     void Renderer::compile_passes() {
     }
 
@@ -49,9 +74,13 @@ namespace mirai {
 
         CommandBuffer *cb = device->get_command_buffer();
         cb->begin();
+
         miProfiler::BeginFrame(cb);
         {
             ScopedGpuProfiling(cb, "Gpu Time");
+
+            // Copy per frame data from staging buffer to gpu uniform buffer
+            copy_buffers(cb);
 
             frame_graph->render(cb, scene.get());
 
@@ -60,12 +89,9 @@ namespace mirai {
         miProfiler::EndFrame();
 
         device->present();
-        // @TODO Mirai::Replace all cpu visible uniform buffer
-        device->wait();
     }
 
     Renderer::~Renderer() {
-        device->wait();
         miProfiler::Destroy();
         scene.reset();
     }

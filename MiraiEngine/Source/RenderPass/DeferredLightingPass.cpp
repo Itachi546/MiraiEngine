@@ -99,7 +99,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        UniformBinding cascade_binding = {.resource_id = scene->directional_light_info.cascade_uniform_buffer};
+        UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
         device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
 
         UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};

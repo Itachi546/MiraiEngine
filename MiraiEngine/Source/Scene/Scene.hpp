@@ -28,9 +28,6 @@ namespace mirai {
         DirectionalLightCascadeInfo cascade_info;
         UniformSetID cascade_uniform_set;
         uint32_t cascade_set_binding_id;
-
-        BufferID cascade_uniform_buffer;
-        uint8_t *cascade_buffer_ptr;
     };
 
     struct DrawData {
@@ -125,8 +122,11 @@ namespace mirai {
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
-        BufferID per_frame_data_buffer;
-        uint8_t *per_frame_data_ptr;
+        // Uniform Buffer
+        BufferID cascade_uniform_buffer;
+        BufferID per_frame_uniform_buffer;
+        BufferID per_frame_staging_buffer;
+        uint8_t *per_frame_staging_buffer_ptr;
 
         UniformSetID per_frame_uniform_set;
         DirectionalLightInfo directional_light_info;

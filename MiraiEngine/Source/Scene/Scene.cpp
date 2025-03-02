@@ -8,6 +8,7 @@
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/Math.hpp"
+#include "Math/MathUtils.hpp"
 
 #include <execution>
 #include <algorithm>
@@ -37,14 +38,19 @@ namespace mirai {
         material_buffer = device->create_buffer(&buffer_desc, "material_buffer");
         material_array = device->map_buffer(material_buffer);
 
+        // Per frame staging buffer
+        buffer_desc.size = cast_u32(utils::mb_to_bytes(16));
+        buffer_desc.usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
+        per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
+
         // Initialize PerFrame Resources
         buffer_desc = {
             .size = sizeof(FrameData),
-            .usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+            .usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
-        per_frame_data_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-        per_frame_data_ptr = device->map_buffer(per_frame_data_buffer);
+        per_frame_uniform_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
 
         UniformLayout layout = {
             .binding = 0,
@@ -54,7 +60,7 @@ namespace mirai {
         per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
 
         UniformBinding binding = {
-            .resource_id = per_frame_data_buffer,
+            .resource_id = per_frame_uniform_buffer,
             .buffer_info = {
                 .offset = 0,
                 .range = sizeof(FrameData),
@@ -62,14 +68,12 @@ namespace mirai {
         };
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 
-        // Initialize CascadeShadowInfo
-        // @TODO mirai
-        // fix it
+        // Initialize cascade info
+        buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
+        cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
+
         directional_light_info.enable_shadow = true;
         if (directional_light_info.enable_shadow) {
-            buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
-            directional_light_info.cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
-            directional_light_info.cascade_buffer_ptr = device->map_buffer(directional_light_info.cascade_uniform_buffer);
 
             UniformLayout cascade_buffer_layout = {
                 .binding = 0,
@@ -80,7 +84,7 @@ namespace mirai {
 
             uint32_t set_id = 1;
             directional_light_info.cascade_set_binding_id = set_id;
-            UniformBinding cascade_uniform_binding = {.resource_id = directional_light_info.cascade_uniform_buffer};
+            UniformBinding cascade_uniform_binding = {.resource_id = cascade_uniform_buffer};
             device->update_uniform_set(directional_light_info.cascade_uniform_set, &cascade_uniform_binding, set_id);
         }
 
@@ -119,8 +123,6 @@ namespace mirai {
         per_frame_data.V = V;
         per_frame_data.VP = VP;
         per_frame_data.window_size = glm::vec2((float)width, (float)height);
-
-        std::memcpy(per_frame_data_ptr, &per_frame_data, sizeof(FrameData));
     }
 
     void Scene::remove_entity_tree(Entity entity) {
@@ -283,7 +285,7 @@ namespace mirai {
         }
         ecs::destroy(component_manager.get());
 
-        BufferID buffers[] = {per_frame_data_buffer, transform_buffer, material_buffer, directional_light_info.cascade_uniform_buffer};
+        BufferID buffers[] = {per_frame_uniform_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_staging_buffer};
         RenderingDevice::get()->destroy_buffers(buffers, static_cast<uint32_t>(std::size(buffers)));
     }
 

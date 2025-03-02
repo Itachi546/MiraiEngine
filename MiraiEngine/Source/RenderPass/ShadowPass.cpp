@@ -104,11 +104,6 @@ namespace mirai {
 
         cascade_info.width = static_cast<float>(shadow_map_size);
         cascade_info.height = static_cast<float>(shadow_map_size);
-        DirectionalLightInfo &light_info = scene->directional_light_info;
-        std::memcpy(light_info.cascade_buffer_ptr, &cascade_info, sizeof(cascade_info));
-
-        // if (opaque_batches.size() == 0)
-        // scene->generate_draw_batch(opaque_batches, transparent_batches, nullptr);
     }
 
     void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {

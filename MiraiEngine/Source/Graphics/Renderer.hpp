@@ -58,5 +58,7 @@ namespace mirai {
         std::unique_ptr<TextRenderManager> text_render_manager;
         std::unique_ptr<Font> default_font;
         std::unique_ptr<LineRenderer> line_renderer;
+
+        void copy_buffers(CommandBuffer *cb);
     };
 } // namespace mirai

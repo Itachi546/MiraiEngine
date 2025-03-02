@@ -135,7 +135,7 @@ namespace mirai {
             command_buffer->queue_family_indices = graphics_queue;
 
             VK_CHECK(vkAllocateCommandBuffers(device, &command_buffer_allocate_info, &command_buffer->command_buffer));
-
+            set_debug_marker_object_name(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)command_buffer->command_buffer, "pooled_command_buffer");
             command_buffer->fence = create_fence("command_buffer_fence");
         }
 
@@ -1239,11 +1239,13 @@ namespace mirai {
         for (auto &fence : in_flight_fences)
             vkDestroyFence(device, fence, nullptr);
 
+        for (auto &command_buffer : command_buffers) {
+            vkDestroyFence(device, command_buffer->fence, nullptr);
+            // vkFreeCommandBuffers(device, command_buffer->command_pool, 1, &command_buffer->command_buffer);
+        }
+
         for (auto &command_pool : command_pools)
             vkDestroyCommandPool(device, command_pool, nullptr);
-
-        for (auto &command_buffer : command_buffers)
-            vkDestroyFence(device, command_buffer->fence, nullptr);
 
         for (auto &semaphore : image_acquire_semaphore)
             vkDestroySemaphore(device, semaphore, nullptr);

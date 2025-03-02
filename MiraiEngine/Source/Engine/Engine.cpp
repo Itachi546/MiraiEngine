@@ -58,7 +58,9 @@ namespace mirai {
     }
 
     Engine::~Engine() {
+        RenderingDevice::get()->wait();
         app = nullptr;
+        renderer = nullptr;
         window = nullptr;
     }
 
