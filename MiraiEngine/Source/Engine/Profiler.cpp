@@ -5,7 +5,7 @@
 #include "Math/Math.hpp"
 
 #include <iomanip>
-#include <unordered_map>
+#include <map>
 #include <sstream>
 #include <cstring>
 
@@ -37,7 +37,7 @@ namespace mirai::miProfiler {
     QueryID gpu_query_pools[2];
 
     bool enabled = true;
-    std::unordered_map<uint32_t, Range> ranges;
+    std::map<uint32_t, Range> ranges;
 
     void Initialize() {
         if (!enabled)
@@ -115,7 +115,7 @@ namespace mirai::miProfiler {
             RenderingDevice::get()->resolve_query(gpu_query_pools[prev_frame], query_results, 0, query_count);
     }
 
-    void GetProfilerOutput(std::vector<ProfilerOutput>& cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
+    void GetProfilerOutput(std::vector<ProfilerOutput> &cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
         for (auto &[key, val] : ranges) {
             // Skip for first frame
             if (val.avg_counter == 1)

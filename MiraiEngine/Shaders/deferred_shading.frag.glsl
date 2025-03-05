@@ -56,7 +56,7 @@ void main() {
     float ndotv = max(dot(normal, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
     float ldoth = max(dot(light_direction.xyz, halfway_vector), 0.0);
-    float ao = 1.0f; // texture(ssao_texture, uv).r;
+    float ao = 0.1f; // texture(ssao_texture, uv).r;
 
     int cascade_index = 0;
     vec3 Lo = vec3(0.0f);
@@ -77,7 +77,7 @@ void main() {
         vec3 kD = (1.0 - F) * (1.0 - metallic);
 
         // Apply AO to direction light too
-        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * ao;
+        Lo += (kD * diffuse /*+ specular*/) * shadow_factor * radiance * ndotl * ao;
     }
 #endif
     // DEBUG SHADOW CASCADE

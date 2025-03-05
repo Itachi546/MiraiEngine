@@ -11,10 +11,10 @@
 
 namespace mirai {
 
-    constexpr uint32_t K_MAX_ENTITIES = 4'000;
+    constexpr uint32_t K_MAX_ENTITIES = 6'000;
     constexpr uint32_t K_INVALID_ENTITY = 0;
     using ComponentType = std::uint8_t;
-    const uint8_t MAX_COMPONENTS = 64;
+    const uint8_t K_MAX_COMPONENTS = 64;
 
     using Entity = std::uint32_t;
 
@@ -27,6 +27,7 @@ namespace mirai {
      */
     static uint32_t GetId() {
         static uint32_t g_component_id = 0;
+        ASSERT_MSG(g_component_id < K_MAX_COMPONENTS, "Component count exceed the max limit");
         return g_component_id++;
     }
 
@@ -111,7 +112,7 @@ namespace mirai {
                 return found->second;
             return UINT32_MAX;
         }
-        
+
         std::size_t size() const override {
             return components.size();
         }
@@ -150,7 +151,7 @@ namespace mirai {
         template <typename T>
         inline std::shared_ptr<ComponentArray<T>> get_component_array() {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
             return std::static_pointer_cast<ComponentArray<T>>(component_array[comp_id]);
         }
 
@@ -160,7 +161,7 @@ namespace mirai {
         }
 
         inline std::shared_ptr<IComponentArray> get_base_component_array(uint64_t index) {
-            ASSERT(index < MAX_COMPONENTS);
+            ASSERT(index < K_MAX_COMPONENTS);
 
             return component_array[index];
         }
@@ -180,7 +181,7 @@ namespace mirai {
         template <typename T>
         T &add_component(Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
             auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->add_component(entity);
@@ -189,7 +190,7 @@ namespace mirai {
         template <typename T, typename... Args>
         T &add_component(Entity &entity, Args &&...args) {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
             auto comp = get_component_array<T>();
             ASSERT(comp != nullptr);
             return comp->add_component(entity, std::forward<Args>(args)...);
@@ -198,7 +199,7 @@ namespace mirai {
         template <typename T>
         T *get_component(const Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
 
             auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
@@ -208,7 +209,7 @@ namespace mirai {
         template <typename T>
         uint32_t get_component_index(const Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
 
             auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
@@ -218,20 +219,21 @@ namespace mirai {
         template <typename T>
         bool remove_component(Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
-            ASSERT(comp_id < MAX_COMPONENTS);
+            ASSERT(comp_id < K_MAX_COMPONENTS);
             auto comp = get_component_array<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->remove_component(entity);
         }
 
         // Global Component Array
-        std::array<std::shared_ptr<IComponentArray>, MAX_COMPONENTS> component_array;
+        std::array<std::shared_ptr<IComponentArray>, K_MAX_COMPONENTS> component_array;
         std::unordered_map<std::size_t, uint32_t> component_id_map;
     };
 
     namespace ecs {
         inline Entity create_entity() {
             static uint32_t id = 0;
+            ASSERT_MSG(id < K_MAX_ENTITIES, "Entity count exceed the max limit");
             return ++id;
         }
 

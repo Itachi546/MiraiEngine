@@ -2,7 +2,7 @@
 
 namespace mirai::ecs {
     void destroy_entity(ComponentManager *mgr, Entity &entity) {
-        for (uint32_t i = 0; i < MAX_COMPONENTS; ++i) {
+        for (uint32_t i = 0; i < K_MAX_COMPONENTS; ++i) {
             std::shared_ptr<IComponentArray> comp = mgr->get_base_component_array(i);
             if (comp)
                 comp->remove_entity(entity);
@@ -11,7 +11,7 @@ namespace mirai::ecs {
     }
 
     void destroy(ComponentManager *mgr) {
-        for (uint32_t i = 0; i < MAX_COMPONENTS; ++i) {
+        for (uint32_t i = 0; i < K_MAX_COMPONENTS; ++i) {
             std::shared_ptr<IComponentArray> comp = mgr->get_base_component_array(i);
             comp.reset();
         }

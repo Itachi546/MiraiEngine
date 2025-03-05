@@ -31,7 +31,7 @@ namespace mirai {
 
     void DeferredPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
-
+        ScopedCpuProfiling("Deferred Render");
         ScopedGpuProfiling(command_buffer, "Deferred Pass");
 
         device->begin_debug_utils_label(command_buffer, "Deferred Pass", nullptr);

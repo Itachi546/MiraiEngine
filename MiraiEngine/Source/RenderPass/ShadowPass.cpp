@@ -162,7 +162,6 @@ namespace mirai {
             viewport.x = x * shadow_map_size;
             viewport.y = y * shadow_map_size;
 
-            // @TODO optimize the culling, remove transparent objects
             glm::mat4 &VP = cascade_info.VP[i];
             frustum.create_from_matrix(VP, glm::inverse(VP));
             scene->generate_draw_batch(opaque_batches, transparent_batches, &frustum);
