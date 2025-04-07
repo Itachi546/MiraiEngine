@@ -151,7 +151,7 @@ class TestApplication : public App {
             Light *light = scene->get_sun();
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
             ImGui::DragFloat3("Direction", &light->rotation[0], 1.0f, -360.0f, 360.0f);
-            ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 2.0f, 20.0f);
+            ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
             ImGui::ColorPicker3("Color", &light->color[0]);
         }
 

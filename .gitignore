@@ -48,8 +48,6 @@ CMakeUserPresets.json
 
 .vscode
 
-*.md
-
 TestApplication/SPIRV
 /renderdoc
 
