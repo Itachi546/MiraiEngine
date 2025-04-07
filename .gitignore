@@ -52,8 +52,6 @@ CMakeUserPresets.json
 
 TestApplication/SPIRV
 /renderdoc
-MiraiEngine/Assets/
-TestApplication/Assets/Envmap
 
 *.org
 .cache/

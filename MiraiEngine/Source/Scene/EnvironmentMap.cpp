@@ -54,7 +54,7 @@ namespace mirai {
         int width, height, n_channel;
         float *data = utils::load_image_float(hdri_path.c_str(), &width, &height, &n_channel, 4);
         if (data == nullptr) {
-            Log::Error("Failed to load hdri", hdri_path);
+            Log::Error("Failed to load hdri: ", hdri_path);
         }
 
         RenderingDevice *device = RenderingDevice::get();
