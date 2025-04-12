@@ -5,7 +5,6 @@
 #include "Swapchain.h"
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
-#include "VulkanRaytracing.hpp"
 #include "Common/Hash.hpp"
 #include "Math/MathUtils.hpp"
 
@@ -1332,6 +1331,74 @@ namespace mirai {
 
         Log::Info("Scratch Buffer Size: ", utils::bytes_to_mb(size_info.buildScratchSize), " mb");
         Log::Info("BLAS Buffer Size: ", utils::bytes_to_mb(size_info.accelerationStructureSize), " mb");
+
+        BufferDescription buffer_desc = {
+            .size = cast_u32(size_info.buildScratchSize),
+            .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+        };
+        BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
+        VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
+
+        buffer_desc.size = cast_u32(size_info.accelerationStructureSize);
+        buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        BufferID blas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
+        VulkanBuffer *blas_buffer = resource_pool_buffers.access(blas_buffer_id);
+
+        const VkAccelerationStructureBuildRangeInfoKHR build_range_info = {
+            .primitiveCount = max_primitives,
+            .primitiveOffset = 0,
+            .firstVertex = 0,
+            .transformOffset = 0,
+        };
+
+        // Create Acceleration structure
+        VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
+            .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+            .buffer = blas_buffer->buffer,
+            .size = blas_buffer->size,
+            .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+        };
+
+        VkAccelerationStructureKHR acceleration_structure = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateAccelerationStructureKHR(device, &acceleration_create_info, nullptr, &acceleration_structure));
+
+        VkQueryPool query_pool = VK_NULL_HANDLE;
+        VkQueryPoolCreateInfo blas_query_create_info = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+            .queryCount = 1,
+        };
+        VK_CHECK(vkCreateQueryPool(device, &blas_query_create_info, nullptr, &query_pool));
+
+        CommandBuffer *command_buffer = get_command_buffer();
+        command_buffer->begin();
+
+        vkCmdResetQueryPool(command_buffer->command_buffer, query_pool, 0, 1);
+
+        const VkAccelerationStructureBuildRangeInfoKHR *build_range_info_ptr = &build_range_info;
+        build_info.dstAccelerationStructure = acceleration_structure;
+
+        buffer_address_info.buffer = scratch_buffer->buffer;
+        build_info.scratchData.deviceAddress = vkGetBufferDeviceAddress(device, &buffer_address_info);
+
+        vkCmdBuildAccelerationStructuresKHR(command_buffer->command_buffer, 1, &build_info, &build_range_info_ptr);
+
+        vkCmdWriteAccelerationStructuresPropertiesKHR(command_buffer->command_buffer, 1, &acceleration_structure, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, query_pool, 0);
+
+        submit_command_buffer_immediate(command_buffer);
+
+        command_buffer->wait();
+
+        VkDeviceSize compacted_size = 0;
+        VK_CHECK(vkGetQueryPoolResults(device, query_pool, 0, 1, sizeof(VkDeviceSize), &compacted_size, sizeof(VkDeviceSize), VK_QUERY_RESULT_WAIT_BIT));
+        Log::Info("Compacted Size: ", utils::bytes_to_mb(compacted_size), " mb");
+
+        vkDestroyBuffer(device, scratch_buffer->buffer, nullptr);
+        vkDestroyBuffer(device, blas_buffer->buffer, nullptr);
+        resource_pool_buffers.release(scratch_buffer_id);
+        resource_pool_buffers.release(blas_buffer_id);
+        vkDestroyQueryPool(device, query_pool, nullptr);
     }
 
     VulkanRenderingDevice::~VulkanRenderingDevice() {

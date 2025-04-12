@@ -232,7 +232,7 @@ namespace mirai {
         uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
         BufferDescription buffer_desc = {
             .size = vertex_buffer_size,
-            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
 
@@ -245,7 +245,7 @@ namespace mirai {
         });
 
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
         BufferID index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
         load_state->async_loader->add_buffer_copy_task({
             .dst = index_buffer,
