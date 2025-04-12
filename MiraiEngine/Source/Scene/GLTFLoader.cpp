@@ -232,7 +232,7 @@ namespace mirai {
         uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
         BufferDescription buffer_desc = {
             .size = vertex_buffer_size,
-            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
 
@@ -245,7 +245,7 @@ namespace mirai {
         });
 
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         BufferID index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
         load_state->async_loader->add_buffer_copy_task({
             .dst = index_buffer,
@@ -499,6 +499,10 @@ namespace mirai {
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
         Log::Info("meshes: ", load_state.mesh_components.size());
+
+        // @TODO Maybe not the right place to do so but for now
+        Log::Info("Creating acceleration structure ...");
+        RenderingDevice::get()->create_blas(mesh.vertex_buffer, mesh.vertex_buffer_size, cast_u32(sizeof(Vertex)), mesh.index_buffer, mesh.index_buffer_size);
 
         RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));
 

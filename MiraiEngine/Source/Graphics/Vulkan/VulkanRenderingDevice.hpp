@@ -103,6 +103,9 @@ namespace mirai {
 
         VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
 
+        // Raytracing utilities
+        void create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) override;
+
         ~VulkanRenderingDevice();
 
         VkInstance instance;

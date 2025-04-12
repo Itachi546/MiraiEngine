@@ -5,6 +5,7 @@
 #include "Swapchain.h"
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
+#include "VulkanRaytracing.hpp"
 #include "Common/Hash.hpp"
 
 #define VMA_IMPLEMENTATION
@@ -273,11 +274,13 @@ namespace mirai {
         vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
         VmaAllocatorCreateInfo create_info = {
+            .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
             .physicalDevice = physical_device,
             .device = device,
             .pVulkanFunctions = &vulkan_functions,
             .instance = instance,
-            .vulkanApiVersion = VULKAN_API_VERSION};
+            .vulkanApiVersion = VULKAN_API_VERSION,
+        };
 
         VmaAllocator allocator = VK_NULL_HANDLE;
         VK_CHECK(vmaCreateAllocator(&create_info, &allocator));
@@ -1274,6 +1277,12 @@ namespace mirai {
         }
 
         vkUpdateDescriptorSets(device, texture_count, write_set.data(), 0, nullptr);
+    }
+
+    void VulkanRenderingDevice::create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) {
+        VulkanBuffer *vb = resource_pool_buffers.access(vertex_buffer);
+        VulkanBuffer *ib = resource_pool_buffers.access(index_buffer);
+        CreateBVH_BLAS(device, vb->buffer, vertex_buffer_size, vertex_stride, ib->buffer, index_buffer_size);
     }
 
     VulkanRenderingDevice::~VulkanRenderingDevice() {

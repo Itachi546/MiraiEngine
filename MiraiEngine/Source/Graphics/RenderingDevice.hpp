@@ -382,7 +382,8 @@ namespace mirai {
         BUFFER_USAGE_STORAGE_BUFFER_BIT = (1 << 5),
         BUFFER_USAGE_INDEX_BUFFER_BIT = (1 << 6),
         BUFFER_USAGE_VERTEX_BUFFER_BIT = (1 << 7),
-        BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8)
+        BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8),
+        BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT = 0x00020000,
     };
 
     enum MemoryAllocationType {
@@ -553,6 +554,9 @@ namespace mirai {
         uint64_t get_memory_usage() {
             return total_memory_usage;
         }
+
+        // Raytracing stuff
+        virtual void create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) = 0;
 
         virtual ~RenderingDevice() = default;
 

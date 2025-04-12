@@ -138,11 +138,17 @@ namespace mirai {
         device_features11.pNext = &device_features12;
         device_features12.pNext = &device_features13;
 
+        VkPhysicalDeviceRayQueryFeaturesKHR ray_query_feature = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+            .pNext = &acceleration_structure_features,
+            .rayQuery = true,
+        };
+
         if (support_raytracing) {
             // Required by raytracing
             device_features12.descriptorIndexing = true;
             device_features12.bufferDeviceAddress = true;
-            device_features13.pNext = &acceleration_structure_features;
+            device_features13.pNext = &ray_query_feature;
         }
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
