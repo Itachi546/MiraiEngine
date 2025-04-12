@@ -2,70 +2,55 @@
 #include <string.h>
 
 #define GPU_TYPE_INTEGRATED 0
+
 namespace mirai {
-    bool is_device_extensions_available(VkPhysicalDevice physical_device, const std::vector<const char *> &requested_extensions) {
-        uint32_t extension_count = 0;
-        VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr));
-        std::vector<VkExtensionProperties> supported_extensions(extension_count);
-        VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, supported_extensions.data()));
 
-        for (auto &requested : requested_extensions) {
-            bool available = false;
-            for (auto &supported : supported_extensions) {
-                if (strcmp(requested, supported.extensionName) == 0) {
-                    available = true;
-                    break;
-                }
+    bool IsExtensionAvailable(const std::vector<VkExtensionProperties> &supported_extensions, const char *required_extension) {
+        for (auto &supported : supported_extensions) {
+            if (strcmp(required_extension, supported.extensionName) == 0) {
+                return true;
             }
+        }
+        return false;
+    }
 
-            if (!available) {
-                Log::Error("VULKAN::Failed to find device extension: " + std::string(requested));
+    bool IsExtensionsAvailable(const std::vector<VkExtensionProperties> &supported_extensions, const std::vector<const char *> &required_extensions) {
+        for (auto &requested : required_extensions) {
+            if (!IsExtensionAvailable(supported_extensions, requested)) {
+                Log::Warn("Extension not supported: ", requested);
                 return false;
             }
         }
-
         return true;
     }
 
-    VkPhysicalDevice SelectPhysicalDevice(VkInstance instance, std::vector<GpuDevice> &gpus, const std::vector<const char *> &required_device_extensions) {
+    void EnumeratePhysicalDevices(VkInstance instance, std::vector<PhysicalDeviceInfo> &device_infos) {
         uint32_t device_count = 0;
         VK_CHECK(vkEnumeratePhysicalDevices(instance, &device_count, nullptr));
         if (device_count == 0)
             Log::Fatal("VULKAN::No Vulkan Supported GPU Found");
 
-        std::vector<VkPhysicalDevice> physical_devices(device_count);
-        gpus.resize(device_count);
+        device_infos.resize(device_count);
 
+        std::vector<VkPhysicalDevice> physical_devices(device_count);
         VK_CHECK(vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data()));
 
         for (uint32_t i = 0; i < device_count; ++i) {
             VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
             vkGetPhysicalDeviceProperties2(physical_devices[i], &properties);
-            gpus[i].device_type = static_cast<DeviceType>(properties.properties.deviceType);
-            gpus[i].vendor = properties.properties.vendorID;
-            gpus[i].name = properties.properties.deviceName;
 
+            PhysicalDeviceInfo &device_info = device_infos[i];
+            device_info.vendor_info.device_type = static_cast<DeviceType>(properties.properties.deviceType);
+            device_info.vendor_info.vendor = properties.properties.vendorID;
+            device_info.vendor_info.name = properties.properties.deviceName;
+            device_info.physical_device = physical_devices[i];
             Log::Info("VULKAN::DeviceName: ", properties.properties.deviceName);
+
+            uint32_t extension_count = 0;
+            VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_devices[i], nullptr, &extension_count, nullptr));
+            device_info.supported_extensions.resize(extension_count);
+            VK_CHECK(vkEnumerateDeviceExtensionProperties(physical_devices[i], nullptr, &extension_count, device_info.supported_extensions.data()));
         }
-
-#if GPU_TYPE_INTEGRATED
-        DeviceType device_type = DeviceType::DEVICE_TYPE_INTEGRATED_GPU;
-#else
-        DeviceType device_type = DeviceType::DEVICE_TYPE_DISCRETE_GPU;
-#endif
-        VkPhysicalDevice physical_device = physical_devices[0];
-        for (uint32_t i = 0; i < physical_devices.size(); ++i) {
-            if (gpus[i].device_type == device_type) {
-                Log::Info("VULKAN::Selected Device: ", gpus[i].name);
-                physical_device = physical_devices[i];
-                break;
-            }
-        }
-
-        if (!is_device_extensions_available(physical_device, required_device_extensions))
-            Log::Fatal("VULKAN::Physical device doesn't support required extensions...");
-
-        return physical_device;
     }
 
     void GetDeviceQueueFamilies(VkPhysicalDevice physical_device, std::vector<uint32_t> &queue_family_indices) {

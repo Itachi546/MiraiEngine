@@ -125,9 +125,9 @@ namespace mirai {
 
         VkFence create_fence(const std::string &name, bool signalled = false);
 
-        std::vector<const char *> instance_extensions;
-        std::vector<const char *> validation_layers;
-        std::vector<const char *> device_extensions;
+        std::vector<const char *> requested_instance_extensions;
+        std::vector<const char *> requested_validation_layers;
+        std::vector<const char *> requested_device_extensions;
 
         ResourcePool<VulkanShader> resource_pool_shaders;
         ResourcePool<VulkanPipeline> resource_pool_pipelines;
@@ -142,7 +142,9 @@ namespace mirai {
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 1;
         uint32_t current_frame = 0;
+
         bool vsync = true;
+        bool supportRaytracing = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
         VmaAllocator vma_allocator;
@@ -159,7 +161,7 @@ namespace mirai {
         VkSemaphore render_finished_semaphore[K_MAX_FRAME_IN_FLIGHTS];
         VkFence in_flight_fences[K_MAX_FRAME_IN_FLIGHTS];
 
-        std::vector<GpuDevice> gpus;
+        std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;
     };
 } // namespace mirai

@@ -61,7 +61,7 @@ namespace mirai {
         QUEUE_TYPE_TRANSFER = 2,
     };
 
-    struct GpuDevice {
+    struct GpuVendorInfo {
         std::string name;
         uint32_t vendor;
         DeviceType device_type;

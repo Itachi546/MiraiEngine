@@ -35,7 +35,7 @@ namespace mirai {
                                                      resource_pool_buffers(256, "Buffer"),
                                                      resource_pool_uniform_sets(256, "UniformSet"),
                                                      resource_pool_queries(32, "Query") {
-        instance_extensions = {
+        requested_instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
             VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
@@ -44,19 +44,15 @@ namespace mirai {
 #endif
         };
 
-        device_extensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        };
-
 #if ENABLE_VALIDATION
-        validation_layers = {
+        requested_validation_layers = {
             "VK_LAYER_KHRONOS_validation",
             "VK_LAYER_KHRONOS_synchronization2",
         };
-        instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        requested_instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
-        instance = CreateInstance(validation_layers, instance_extensions);
+        instance = CreateInstance(requested_validation_layers, requested_instance_extensions);
         volkLoadInstance(instance);
 
 #if ENABLE_VALIDATION
@@ -64,8 +60,51 @@ namespace mirai {
 #else
         debug_report_callback = VK_NULL_HANDLE;
 #endif
+        std::vector<PhysicalDeviceInfo> physical_device_infos;
+        EnumeratePhysicalDevices(instance, physical_device_infos);
 
-        physical_device = SelectPhysicalDevice(instance, gpus, device_extensions);
+        // Compulsary extension required to run the engine
+        requested_device_extensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        };
+
+        const std::vector<const char *> raytracing_extensions = {
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        };
+
+        uint32_t max_score = 0;
+        uint32_t max_score_index = 0;
+        for (uint32_t i = 0; i < physical_device_infos.size(); ++i) {
+            const PhysicalDeviceInfo &physical_device_info = physical_device_infos[i];
+            all_vendor_infos.push_back(physical_device_info.vendor_info);
+
+            uint32_t score = 0;
+            // Skip integrated GPU for now
+            if (physical_device_info.vendor_info.device_type == DeviceType::DEVICE_TYPE_INTEGRATED_GPU)
+                continue;
+            // All compulsary extensions must be available
+            if (!IsExtensionsAvailable(physical_device_info.supported_extensions, requested_device_extensions))
+                continue;
+
+            score += cast_u32(requested_device_extensions.size());
+
+            if (IsExtensionsAvailable(physical_device_info.supported_extensions, raytracing_extensions)) {
+                supportRaytracing = true;
+                score += 3;
+            }
+
+            if (score > max_score) {
+                max_score_index = i;
+                max_score = score;
+            }
+        }
+
+        if (supportRaytracing)
+            requested_device_extensions.insert(requested_device_extensions.end(), raytracing_extensions.begin(), raytracing_extensions.end());
+
+        physical_device = physical_device_infos[max_score_index].physical_device;
 
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
         vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
@@ -76,7 +115,7 @@ namespace mirai {
         if (!PhysicalDeviceSupportPresentation(instance, physical_device, graphics_queue))
             Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
-        device = CreateDevice(instance, physical_device, queue_family_indices, device_extensions);
+        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions);
 
         vma_allocator = create_allocator();
 
