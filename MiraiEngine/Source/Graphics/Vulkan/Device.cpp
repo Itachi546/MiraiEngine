@@ -1,8 +1,6 @@
 #include "Device.hpp"
 #include <string.h>
 
-#define GPU_TYPE_INTEGRATED 0
-
 namespace mirai {
 
     bool IsExtensionAvailable(const std::vector<VkExtensionProperties> &supported_extensions, const char *required_extension) {
@@ -85,16 +83,21 @@ namespace mirai {
         ASSERT_MSG(queue_family_indices[QUEUE_TYPE_GRAPHICS] != K_INVALID_QUEUE_ID, "Graphics Queue is not supported...");
     }
 
-    VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions) {
+    VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
         VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr};
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
         vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);
 
         bool bindless_supported = indexing_features.descriptorBindingPartiallyBound && indexing_features.runtimeDescriptorArray;
         if (!bindless_supported) {
-            Log::Fatal("VULKAN::Bindless resources is not supported ...");
+            Log::Fatal("VULKAN::FEATURE::Bindless Resource (Not Supported)");
         }
-        Log::Info("VULKAN::Bindless Resources: Supported");
+
+        Log::Info("VULKAN::FEATURE::Bindless Resource (Supported)");
+        if (support_raytracing)
+            Log::Info("VULKAN::FEATURE::Raytracing (Supported)");
+        else
+            Log::Warn("VULKAN::FEATURE::Raytracing (Not Supported)");
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
         device_features2.features.fragmentStoresAndAtomics = true;
@@ -120,16 +123,27 @@ namespace mirai {
         device_features12.descriptorBindingVariableDescriptorCount = true;
         device_features12.runtimeDescriptorArray = true;
         device_features12.shaderSampledImageArrayNonUniformIndexing = true;
-        //  device_features12.shaderBufferInt64Atomics = true;
 
         VkPhysicalDeviceVulkan13Features device_features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         device_features13.dynamicRendering = true;
         device_features13.synchronization2 = true;
 
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+            .pNext = nullptr,
+            .accelerationStructure = true,
+            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
+        };
         device_features2.pNext = &device_features11;
         device_features11.pNext = &device_features12;
         device_features12.pNext = &device_features13;
-        device_features13.pNext = nullptr;
+
+        if (support_raytracing) {
+            // Required by raytracing
+            device_features12.descriptorIndexing = true;
+            device_features12.bufferDeviceAddress = true;
+            device_features13.pNext = &acceleration_structure_features;
+        }
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
         float queue_priorities[] = {0.0f};
@@ -159,6 +173,6 @@ namespace mirai {
         VkDevice device = VK_NULL_HANDLE;
         VK_CHECK(vkCreateDevice(physical_device, &createInfo, nullptr, &device));
         return device;
-    }
+    } // namespace mirai
 
 } // namespace mirai

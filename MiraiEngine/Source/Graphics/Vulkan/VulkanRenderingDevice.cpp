@@ -82,8 +82,10 @@ namespace mirai {
 
             uint32_t score = 0;
             // Skip integrated GPU for now
-            if (physical_device_info.vendor_info.device_type == DeviceType::DEVICE_TYPE_INTEGRATED_GPU)
+            if (physical_device_info.vendor_info.device_type == DeviceType::DEVICE_TYPE_INTEGRATED_GPU) {
                 continue;
+            }
+
             // All compulsary extensions must be available
             if (!IsExtensionsAvailable(physical_device_info.supported_extensions, requested_device_extensions))
                 continue;
@@ -104,6 +106,7 @@ namespace mirai {
         if (supportRaytracing)
             requested_device_extensions.insert(requested_device_extensions.end(), raytracing_extensions.begin(), raytracing_extensions.end());
 
+        Log::Info("VULKAN::SELECTED DEVICE:: ", all_vendor_infos[max_score_index].name);
         physical_device = physical_device_infos[max_score_index].physical_device;
 
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
@@ -115,7 +118,7 @@ namespace mirai {
         if (!PhysicalDeviceSupportPresentation(instance, physical_device, graphics_queue))
             Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
-        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions);
+        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions, supportRaytracing);
 
         vma_allocator = create_allocator();
 
