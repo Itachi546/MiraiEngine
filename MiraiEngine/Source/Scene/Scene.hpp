@@ -3,6 +3,7 @@
 #include "ECS.hpp"
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
+#include "RenderBatch.hpp"
 #include <string>
 #include <mutex>
 
@@ -29,7 +30,24 @@ namespace mirai {
         UniformSetID cascade_uniform_set;
         uint32_t cascade_set_binding_id;
     };
+    struct RenderableObjectData {
+        uint32_t transform_index;
+        uint32_t material_index;
 
+        BufferID vertex_buffer;
+        BufferID index_buffer;
+
+        uint32_t vertex_offset;
+        uint32_t vertex_count;
+
+        uint32_t index_offset;
+        uint32_t index_count;
+
+        AABB aabb;
+
+        UniformSetID vertex_binding_set;
+    };
+    /*
     struct DrawData {
         uint32_t transform_index;
         uint32_t material_index;
@@ -43,7 +61,7 @@ namespace mirai {
         uint32_t index_count;
         UniformSetID vertex_binding_set;
     };
-
+    */
     struct GpuMesh {
         BufferID vertex_buffer;
         BufferID index_buffer;
@@ -60,6 +78,9 @@ namespace mirai {
     class Scene {
       public:
         Scene(const std::string &name);
+
+        // Called after everything is initialized
+        void on_initialize();
 
         Camera *get_camera() {
             return camera.get();
@@ -93,16 +114,11 @@ namespace mirai {
 
         void release_all_entities();
 
-        void generate_draw_batch(std::vector<DrawData> &opaque_batch, std::vector<DrawData> &transparent_batch, const Frustum *frustum);
-
         virtual ~Scene();
 
         std::unique_ptr<ComponentManager> component_manager;
         std::vector<Material> materials;
         std::vector<Entity> entities;
-
-        std::vector<DrawData> main_opaque_draw_batch;
-        std::vector<DrawData> main_transparent_draw_batch;
 
         BufferID transform_buffer;
         glm::mat4 *transform_array;
@@ -132,6 +148,8 @@ namespace mirai {
         DirectionalLightInfo directional_light_info;
 
         std::vector<GpuMesh> gpu_meshes;
+        std::vector<RenderableObjectData> render_object_list;
+        std::vector<RenderBatch> main_render_batches;
 
       protected:
         bool dirty;
@@ -147,10 +165,17 @@ namespace mirai {
         void update_transform_components();
         void update_hierarchy_component();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
-        void update_draw_data();
 
-        void update_main_draw_batch();
+        // Generate list of renderable object with their properties like transform
+        // and material
+        // This is called only when entity is added or removed from the scene
+        void generate_render_object_list();
 
+        // void update_draw_data();
+
+        // void update_main_draw_batch();
+
+        /*
         struct ObjectDrawData {
             BufferID vertex_buffer;
             BufferID index_buffer;
@@ -160,6 +185,7 @@ namespace mirai {
             std::vector<AABB> aabbs;
             MeshComponent::MeshSubset *subsets;
         };
-        std::vector<ObjectDrawData> scene_draw_data;
+        */
+        // std::vector<ObjectDrawData> scene_draw_data;
     };
 } // namespace mirai

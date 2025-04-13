@@ -1282,6 +1282,7 @@ namespace mirai {
     void VulkanRenderingDevice::create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) {
         VulkanBuffer *vb = resource_pool_buffers.access(vertex_buffer);
         VulkanBuffer *ib = resource_pool_buffers.access(index_buffer);
+
         VkBufferDeviceAddressInfo buffer_address_info = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
             .pNext = nullptr,
@@ -1303,11 +1304,11 @@ namespace mirai {
                 .triangles = {
                     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
                     .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-                    .vertexData = vertex_address,
+                    .vertexData = {.deviceAddress = vertex_address},
                     .vertexStride = vertex_stride,
-                    .maxVertex = max_vertices,
+                    .maxVertex = max_vertices - 1,
                     .indexType = VK_INDEX_TYPE_UINT32,
-                    .indexData = index_address,
+                    .indexData = {.deviceAddress = index_address},
                     .transformData = {},
                 },
             },
@@ -1390,16 +1391,21 @@ namespace mirai {
 
         command_buffer->wait();
 
+        vkQueueWaitIdle(device_queues[command_buffer->queue_family_indices]);
+
         VkDeviceSize compacted_size = 0;
         VK_CHECK(vkGetQueryPoolResults(device, query_pool, 0, 1, sizeof(VkDeviceSize), &compacted_size, sizeof(VkDeviceSize), VK_QUERY_RESULT_WAIT_BIT));
         Log::Info("Compacted Size: ", utils::bytes_to_mb(compacted_size), " mb");
 
+        vmaFreeMemory(vma_allocator, scratch_buffer->allocation);
+        vmaFreeMemory(vma_allocator, blas_buffer->allocation);
         vkDestroyBuffer(device, scratch_buffer->buffer, nullptr);
         vkDestroyBuffer(device, blas_buffer->buffer, nullptr);
         resource_pool_buffers.release(scratch_buffer_id);
         resource_pool_buffers.release(blas_buffer_id);
+        vkDestroyAccelerationStructureKHR(device, acceleration_structure, nullptr);
         vkDestroyQueryPool(device, query_pool, nullptr);
-    }
+    } // namespace mirai
 
     VulkanRenderingDevice::~VulkanRenderingDevice() {
         VK_CHECK(vkDeviceWaitIdle(device));

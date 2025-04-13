@@ -24,6 +24,9 @@ namespace mirai {
         Renderer(const Renderer &) = delete;
         Renderer operator=(const Renderer &) = delete;
 
+        // call after initialization of everything
+        void on_initialize();
+
         static Renderer *get() {
             return Instance;
         }

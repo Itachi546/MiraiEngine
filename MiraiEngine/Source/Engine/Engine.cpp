@@ -30,6 +30,7 @@ namespace mirai {
             if (app)
                 app->start();
             Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
+            renderer->on_initialize();
         }
 
         auto start = std::chrono::steady_clock::now();

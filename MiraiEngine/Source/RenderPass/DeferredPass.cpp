@@ -38,9 +38,9 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        std::vector<DrawData> &draw_infos = scene->main_opaque_draw_batch;
-        if (draw_infos.size() > 0) {
-            // Update Per Pipeline Data (Transform/Material)
+        std::vector<RenderBatch> &render_batches = scene->main_render_batches;
+
+        if (render_batches.size() > 0) {
             UniformBinding per_shader_bindings[] = {
                 {.resource_id = scene->transform_buffer, .buffer_info{.offset = 0}},
                 {.resource_id = scene->material_buffer, .buffer_info{.offset = 0}},
@@ -54,25 +54,24 @@ namespace mirai {
 
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-
             PipelineID pipeline_id = shader->get_pipeline_id();
-            uint32_t last_buffer_id = K_INVALID_ID;
-            for (uint32_t i = 0; i < draw_infos.size(); ++i) {
-                BufferID current_buffer = draw_infos[i].vertex_buffer;
-                if (current_buffer.id != last_buffer_id) {
-                    command_buffer->set_index_buffer(draw_infos[i].index_buffer);
-                    last_buffer_id = current_buffer.id;
-                    command_buffer->set_uniform_sets(pipeline_id, &draw_infos[i].vertex_binding_set, 1);
-                }
 
-                instance_data[0] = draw_infos[i].transform_index;
-                instance_data[1] = draw_infos[i].material_index;
-                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-                command_buffer->draw_indexed(draw_infos[i].index_count,
-                                             1,
-                                             draw_infos[i].index_offset,
-                                             draw_infos[i].vertex_offset,
-                                             0);
+            for (auto &batch : render_batches) {
+                if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
+                    continue;
+
+                command_buffer->set_index_buffer(batch.index_buffer);
+                command_buffer->set_uniform_sets(pipeline_id, &batch.vertex_binding_set, 1);
+                for (uint32_t i = 0; i < batch.transform_indices.size(); ++i) {
+                    instance_data[0] = batch.transform_indices[i];
+                    instance_data[1] = batch.material_indices[i];
+                    command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+                    command_buffer->draw_indexed(batch.index_counts[i],
+                                                 1,
+                                                 batch.index_offsets[i],
+                                                 batch.vertex_offsets[i],
+                                                 0);
+                }
             }
         }
         command_buffer->end_render_pass();

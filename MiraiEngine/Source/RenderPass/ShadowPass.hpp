@@ -30,10 +30,7 @@ namespace mirai {
         bool calculate_distance_automatic = false;
 
       private:
-        std::vector<DrawData> transparent_batches;
-        std::vector<DrawData> opaque_batches;
         void calculate_split_distances(float znear, float zfar, Scene *scene);
-
         UniformSetID mesh_instance_set;
     };
 } // namespace mirai

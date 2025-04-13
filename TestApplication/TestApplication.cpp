@@ -134,7 +134,10 @@ class TestApplication : public App {
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
-            uint32_t total_entities = cast_u32(scene->main_opaque_draw_batch.size() + scene->main_transparent_draw_batch.size());
+            uint32_t total_entities = 0;
+            for (auto &batch : scene->main_render_batches) {
+                total_entities += cast_u32(batch.transform_indices.size());
+            }
             ImGui::Text("Total Visible Entities: %u", total_entities);
 
             uint32_t total_materials = cast_u32(scene->materials.size());

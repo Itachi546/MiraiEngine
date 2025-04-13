@@ -97,6 +97,16 @@ namespace mirai {
         sun->cast_shadow = true;
     }
 
+    void Scene::on_initialize() {
+        // @NOTE This mustn't be done once we bake the transform matrix into position, rotation, scale
+        // and apply it at the beginning of everything
+        // update_transform_components();
+
+        // update_hierarchy_component();
+
+        // generate_render_object_list();
+    }
+
     void Scene::update() {
         ScopedCpuProfiling("Scene Update");
 
@@ -105,10 +115,6 @@ namespace mirai {
         update_transform_components();
 
         update_hierarchy_component();
-
-        update_draw_data();
-
-        update_main_draw_batch();
 
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
@@ -123,6 +129,13 @@ namespace mirai {
         per_frame_data.V = V;
         per_frame_data.VP = VP;
         per_frame_data.window_size = glm::vec2((float)width, (float)height);
+
+        generate_render_object_list();
+
+        Frustum &frustum = camera->get_frustum();
+
+        main_render_batches.clear();
+        DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, true);
     }
 
     void Scene::remove_entity_tree(Entity entity) {
@@ -166,7 +179,8 @@ namespace mirai {
             transform_array[i] = transforms[i].world_transform;
     }
 
-    void Scene::update_draw_data() {
+    void Scene::generate_render_object_list() {
+
         // Calculated only when object is added or removed
         // @TODO calculate it only once if possible
         if (!dirty)
@@ -179,78 +193,46 @@ namespace mirai {
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
-        scene_draw_data.clear();
-        scene_draw_data.resize(component_count);
+        render_object_list.clear();
+        // Initially reserve some space
+        render_object_list.reserve(1000);
+
         for (uint32_t i = 0; i < component_count; ++i) {
             MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
 
             GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
-            scene_draw_data[i].vertex_buffer = gpu_mesh.vertex_buffer;
-            scene_draw_data[i].index_buffer = gpu_mesh.index_buffer;
-            scene_draw_data[i].vertex_binding_set = gpu_mesh.vertex_binding_set;
-            scene_draw_data[i].transform_index = component_manager->get_component_index<TransformComponent>(entity);
-            scene_draw_data[i].subsets = mesh_component.mesh_subsets.data();
-
             TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-            scene_draw_data[i].aabbs.resize(mesh_component.aabbs.size());
-            for (uint32_t j = 0; j < mesh_component.aabbs.size(); ++j) {
-                AABB &aabb = scene_draw_data[i].aabbs[j];
-                aabb = mesh_component.aabbs[j];
+            uint32_t transform_index = component_manager->get_component_index<TransformComponent>(entity);
+            for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
+                MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
+
+                AABB aabb = mesh_component.aabbs[s];
                 aabb.transform(transform->world_transform);
+
+                RenderableObjectData render_data = {
+                    .transform_index = transform_index,
+                    .material_index = subset.material_index,
+                    .vertex_buffer = gpu_mesh.vertex_buffer,
+                    .index_buffer = gpu_mesh.index_buffer,
+                    .vertex_offset = subset.vertex_buffer.offset,
+                    .vertex_count = subset.vertex_buffer.count,
+                    .index_offset = subset.index_buffer.offset,
+                    .index_count = subset.index_buffer.count,
+                    .aabb = std::move(aabb),
+                    .vertex_binding_set = gpu_mesh.vertex_binding_set,
+                };
+
+                render_object_list.push_back(std::move(render_data));
             }
+
+            // Sort by the buffer
+            std::sort(render_object_list.begin(), render_object_list.end(), [](const RenderableObjectData &lhs, const RenderableObjectData &rhs) {
+                return lhs.vertex_buffer.id < rhs.vertex_buffer.id;
+            });
         }
 
         dirty = false;
-    }
-
-    void Scene::generate_draw_batch(std::vector<DrawData> &opaque_batch, std::vector<DrawData> &transparent_batch, const Frustum *frustum) {
-        std::for_each(std::execution::par_unseq, scene_draw_data.begin(), scene_draw_data.end(), [this, frustum, &opaque_batch, &transparent_batch](const ObjectDrawData &object_data) {
-            uint32_t num_submesh = static_cast<uint32_t>(object_data.aabbs.size());
-            for (uint32_t i = 0; i < num_submesh; ++i) {
-                bool intersect = true;
-                if (frustum != nullptr) {
-                    const AABB &aabb = object_data.aabbs[i];
-                    intersect = frustum->intersect(aabb);
-                }
-
-                if (intersect) {
-                    const MeshComponent::MeshSubset &subset = object_data.subsets[i];
-                    const Material &material = materials[subset.material_index];
-
-                    std::unique_lock lk{mu};
-                    DrawData *draw_data;
-                    if (material.is_transparent())
-                        draw_data = &transparent_batch.emplace_back(DrawData{});
-                    else
-                        draw_data = &opaque_batch.emplace_back(DrawData{});
-
-                    draw_data->transform_index = object_data.transform_index;
-                    draw_data->material_index = subset.material_index;
-                    draw_data->vertex_buffer = object_data.vertex_buffer;
-                    draw_data->index_buffer = object_data.index_buffer;
-                    draw_data->vertex_binding_set = object_data.vertex_binding_set;
-                    draw_data->vertex_offset = subset.vertex_buffer.offset;
-                    draw_data->index_offset = subset.index_buffer.offset;
-                    draw_data->index_count = subset.index_buffer.count;
-                    lk.unlock();
-                }
-            }
-        });
-
-        std::sort(opaque_batch.begin(), opaque_batch.end(),
-                  [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-        std::sort(transparent_batch.begin(), transparent_batch.end(),
-                  [](const DrawData &lhs, const DrawData &rhs) { return lhs.vertex_buffer < rhs.vertex_buffer; });
-    }
-
-    void Scene::update_main_draw_batch() {
-
-        main_transparent_draw_batch.clear();
-        main_opaque_draw_batch.clear();
-
-        const Frustum &frustum = camera->get_frustum();
-        generate_draw_batch(main_opaque_draw_batch, main_transparent_draw_batch, &frustum);
     }
 
     void Scene::remove_entity(Entity entity) {

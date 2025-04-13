@@ -94,6 +94,8 @@ namespace mirai {
         glm::fquat rotation;
         glm::vec3 scale;
 
+        // @TODO: Create only one transform
+        // Bake world_transform into position, rotation and scale as well as AABB
         glm::mat4 local_transform;
         glm::mat4 world_transform;
 

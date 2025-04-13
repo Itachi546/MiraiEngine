@@ -3,6 +3,7 @@
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/Camera.hpp"
+#include "Scene/RenderBatch.hpp"
 #include "Graphics/LineRenderer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -116,43 +117,26 @@ namespace mirai {
 
         UniformSetID cascade_uniform_set = scene->directional_light_info.cascade_uniform_set;
 
-        auto draw_batch = [&](DrawData *batches, uint32_t count, ShaderMaterial *shader, uint32_t cascade_index) {
-            // Set Per Frame Data
-            UniformSetID uniform_sets[] = {cascade_uniform_set, mesh_instance_set};
-            shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-            shader->bind(command_buffer, &node->renderpass_info);
+        auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id, uint32_t cascade_index) {
+            command_buffer->set_index_buffer(batch->index_buffer);
+            command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
 
             uint32_t instance_data[] = {0, cascade_index, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-
-            PipelineID pipeline_id = shader->get_pipeline_id();
-            uint32_t last_buffer_id = K_INVALID_ID;
-            for (uint32_t i = 0; i < count; ++i) {
-                BufferID current_buffer = batches[i].vertex_buffer;
-                if (current_buffer.id != last_buffer_id) {
-                    command_buffer->set_index_buffer(batches[i].index_buffer);
-                    last_buffer_id = current_buffer.id;
-                    command_buffer->set_uniform_sets(pipeline_id, &batches[i].vertex_binding_set, 1);
-                }
-
-                instance_data[0] = batches[i].transform_index;
+            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
+                instance_data[0] = batch->transform_indices[i];
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-                command_buffer->draw_indexed(batches[i].index_count,
+                command_buffer->draw_indexed(batch->index_counts[i],
                                              1,
-                                             batches[i].index_offset,
-                                             batches[i].vertex_offset,
+                                             batch->index_offsets[i],
+                                             batch->vertex_offsets[i],
                                              0);
             }
         };
 
         Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
-
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
         Frustum frustum;
-
-        std::vector<DrawData> transparent_batches, opaque_batches;
-        transparent_batches.reserve(100);
-        opaque_batches.reserve(1000);
 
         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
             device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
@@ -164,17 +148,20 @@ namespace mirai {
 
             glm::mat4 &VP = cascade_info.VP[i];
             frustum.create_from_matrix(VP, glm::inverse(VP));
-            scene->generate_draw_batch(opaque_batches, transparent_batches, &frustum);
+
+            std::vector<RenderBatch> render_batches;
+            DrawBatchGenerator::CreateBatch(scene, &frustum, render_batches, true);
 
             command_buffer->begin_render_pass(node, frame_graph, &viewport);
-            if (opaque_batches.size() > 0)
-                draw_batch(opaque_batches.data(), static_cast<uint32_t>(opaque_batches.size()), shader.get(), i);
+            if (render_batches.size() > 0) {
+                UniformSetID uniform_sets[] = {cascade_uniform_set, mesh_instance_set};
+                shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
+                shader->bind(command_buffer, &node->renderpass_info);
 
+                for (auto &batch : render_batches)
+                    draw_batch(&batch, shader->get_pipeline_id(), i);
+            }
             command_buffer->end_render_pass();
-
-            opaque_batches.clear();
-            transparent_batches.clear();
-
             device->end_debug_utils_label(command_buffer);
         }
 

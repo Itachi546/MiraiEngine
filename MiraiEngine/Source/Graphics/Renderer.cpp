@@ -4,6 +4,7 @@
 #include "Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderMaterialCache.hpp"
 #include "Scene/TextureCache.hpp"
+#include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
 #include "TextRenderManager.hpp"
@@ -32,6 +33,10 @@ namespace mirai {
         text_render_manager->get_renderer_by_font(default_font.get());
 
         line_renderer = std::make_unique<LineRenderer>();
+    }
+
+    void Renderer::on_initialize() {
+        this->scene->on_initialize();
     }
 
     void Renderer::copy_buffers(CommandBuffer *cb) {
