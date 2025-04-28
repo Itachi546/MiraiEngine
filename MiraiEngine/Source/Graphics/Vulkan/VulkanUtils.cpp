@@ -69,6 +69,28 @@ namespace mirai {
         };
     }
 
+    VkBufferMemoryBarrier2 CreateBufferMemoryBarrier2(VkBuffer buffer,
+                                                      VkPipelineStageFlags2 src_stage,
+                                                      VkAccessFlagBits2 src_access,
+                                                      VkPipelineStageFlags2 dst_stage,
+                                                      VkAccessFlags2 dst_access,
+                                                      uint64_t offset,
+                                                      uint64_t size) {
+        return {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .pNext = nullptr,
+            .srcStageMask = src_stage,
+            .srcAccessMask = src_access,
+            .dstStageMask = dst_stage,
+            .dstAccessMask = dst_access,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer,
+            .offset = offset,
+            .size = size,
+        };
+    }
+
     uint64_t CalculateSamplerHash(const SamplerDescription *desc) {
         uint64_t hash = 0;
         utils::hash_combine(hash, cast_u32(desc->address_mode_u),

@@ -37,8 +37,32 @@ namespace mirai {
 
     void Renderer::on_initialize() {
         this->scene->on_initialize();
-    }
 
+        // Create acceleration structure for scene
+        auto &render_list = scene->render_object_list;
+
+        std::vector<AccelerationStructureBufferInfo> vertex_buffers;
+        std::vector<AccelerationStructureBufferInfo> index_buffers;
+        for (auto &object : render_list) {
+            AccelerationStructureBufferInfo vb = {
+                .buffer = object.vertex_buffer,
+                .offset = object.vertex_offset * sizeof(Vertex),
+                .count = object.vertex_count,
+                .stride = sizeof(Vertex),
+            };
+
+            AccelerationStructureBufferInfo ib = {
+                .buffer = object.index_buffer,
+                .offset = object.index_offset * sizeof(uint32_t),
+                .count = object.index_count,
+                .stride = sizeof(uint32_t),
+            };
+
+            vertex_buffers.push_back(std::move(vb));
+            index_buffers.push_back(std::move(ib));
+        }
+        device->create_blas(vertex_buffers.data(), cast_u32(vertex_buffers.size()), index_buffers.data(), cast_u32(index_buffers.size()));
+    }
     void Renderer::copy_buffers(CommandBuffer *cb) {
         // @TODO do it here for now
 

@@ -33,5 +33,13 @@ namespace mirai {
                                                     uint32_t level_count = VK_REMAINING_MIP_LEVELS,
                                                     uint32_t layer_count = VK_REMAINING_ARRAY_LAYERS);
 
+    VkBufferMemoryBarrier2 CreateBufferMemoryBarrier2(VkBuffer buffer,
+                                                      VkPipelineStageFlags2 src_stage,
+                                                      VkAccessFlagBits2 src_access,
+                                                      VkPipelineStageFlags2 dst_stage,
+                                                      VkAccessFlags2 dst_access,
+                                                      uint64_t offset = 0,
+                                                      uint64_t size = VK_WHOLE_SIZE);
+
     uint64_t CalculateSamplerHash(const SamplerDescription *desc);
 } // namespace mirai

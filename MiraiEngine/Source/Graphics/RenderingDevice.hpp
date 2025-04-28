@@ -61,6 +61,13 @@ namespace mirai {
         QUEUE_TYPE_TRANSFER = 2,
     };
 
+    struct AccelerationStructureBufferInfo {
+        BufferID buffer;
+        uint32_t offset;
+        uint32_t count;
+        uint32_t stride;
+    };
+
     struct GpuVendorInfo {
         std::string name;
         uint32_t vendor;
@@ -557,7 +564,7 @@ namespace mirai {
         }
 
         // Raytracing stuff
-        virtual void create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) = 0;
+        virtual void create_blas(AccelerationStructureBufferInfo *vertex_buffers, uint32_t vertex_buffer_count, AccelerationStructureBufferInfo *index_buffers, uint32_t index_buffer_count) = 0;
 
         virtual ~RenderingDevice() = default;
 

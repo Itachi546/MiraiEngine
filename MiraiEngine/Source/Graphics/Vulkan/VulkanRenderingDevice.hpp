@@ -104,7 +104,7 @@ namespace mirai {
         VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
 
         // Raytracing utilities
-        void create_blas(BufferID vertex_buffer, uint32_t vertex_buffer_size, uint32_t vertex_stride, BufferID index_buffer, uint32_t index_buffer_size) override;
+        void create_blas(AccelerationStructureBufferInfo *vertex_buffers, uint32_t vertex_buffer_count, AccelerationStructureBufferInfo *index_buffers, uint32_t index_buffer_count) override;
 
         ~VulkanRenderingDevice();
 
@@ -127,6 +127,8 @@ namespace mirai {
         VmaAllocator create_allocator();
 
         VkFence create_fence(const std::string &name, bool signalled = false);
+
+        void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
 
         std::vector<const char *> requested_instance_extensions;
         std::vector<const char *> requested_validation_layers;

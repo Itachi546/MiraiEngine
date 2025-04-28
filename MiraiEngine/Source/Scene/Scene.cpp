@@ -98,13 +98,14 @@ namespace mirai {
     }
 
     void Scene::on_initialize() {
-        // @NOTE This mustn't be done once we bake the transform matrix into position, rotation, scale
+        // @TODO This mustn't be done once we bake the transform matrix into position, rotation, scale
         // and apply it at the beginning of everything
-        // update_transform_components();
+        // Maybe we should update hierarchy when we create mesh and initialize it
+        update_transform_components();
 
-        // update_hierarchy_component();
+        update_hierarchy_component();
 
-        // generate_render_object_list();
+        generate_render_object_list();
     }
 
     void Scene::update() {

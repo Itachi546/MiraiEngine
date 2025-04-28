@@ -63,5 +63,7 @@ namespace mirai {
         std::unique_ptr<LineRenderer> line_renderer;
 
         void copy_buffers(CommandBuffer *cb);
+
+        BufferID blas;
     };
 } // namespace mirai
