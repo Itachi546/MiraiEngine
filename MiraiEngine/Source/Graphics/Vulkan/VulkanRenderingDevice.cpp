@@ -1283,18 +1283,9 @@ namespace mirai {
         VulkanBuffer *vb = resource_pool_buffers.access(vertex_buffer.buffer);
         VulkanBuffer *ib = resource_pool_buffers.access(index_buffer.buffer);
 
-        VkBufferDeviceAddressInfo buffer_address_info = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .pNext = nullptr,
-            .buffer = vb->buffer,
-        };
-
         uint32_t num_vertices = vertex_buffer.count;
-
-        VkDeviceAddress vertex_address = vkGetBufferDeviceAddress(device, &buffer_address_info) + vertex_buffer.offset;
-
-        buffer_address_info.buffer = ib->buffer;
-        VkDeviceAddress index_address = vkGetBufferDeviceAddress(device, &buffer_address_info) + index_buffer.offset;
+        VkDeviceAddress vertex_address = GetBufferDeviceAddress(device, vb->buffer) + vertex_buffer.offset;
+        VkDeviceAddress index_address = GetBufferDeviceAddress(device, ib->buffer) + index_buffer.offset;
 
         geometry = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -1316,14 +1307,15 @@ namespace mirai {
         };
     }
 
-    void VulkanRenderingDevice::create_blas(AccelerationStructureBufferInfo *vertex_buffers, uint32_t vertex_buffer_count, AccelerationStructureBufferInfo *index_buffers, uint32_t index_buffer_count) {
+    void VulkanRenderingDevice::create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &blas_offsets) {
         // For each model we create a blas structure and cache it
-        std::vector<VkAccelerationStructureGeometryKHR> geometries(vertex_buffer_count);
-        std::vector<VkAccelerationStructureBuildGeometryInfoKHR> build_infos(vertex_buffer_count);
-        std::vector<VkAccelerationStructureBuildRangeInfoKHR> build_ranges(vertex_buffer_count);
-        std::vector<VkDeviceSize> acceleration_offsets(vertex_buffer_count);
-        std::vector<VkDeviceSize> acceleration_sizes(vertex_buffer_count);
-        std::vector<VkDeviceSize> scratch_sizes(vertex_buffer_count);
+        std::vector<VkAccelerationStructureGeometryKHR> geometries(mesh_count);
+        std::vector<VkAccelerationStructureBuildGeometryInfoKHR> build_infos(mesh_count);
+        std::vector<VkAccelerationStructureBuildRangeInfoKHR> build_ranges(mesh_count);
+        std::vector<VkDeviceSize> acceleration_sizes(mesh_count);
+        std::vector<VkDeviceSize> scratch_sizes(mesh_count);
+        blas.resize(mesh_count);
+        blas_offsets.resize(mesh_count);
 
         const size_t k_alignment = 256;
         uint32_t total_primitives = 0;
@@ -1331,8 +1323,8 @@ namespace mirai {
         VkDeviceSize scratch_buffer_size = 0;
 
         // Determine memory needed for scratch buffer and blas
-        for (uint32_t i = 0; i < vertex_buffer_count; ++i) {
-            create_acceleration_structure_geometry_info(vertex_buffers[i], index_buffers[i], geometries[i]);
+        for (uint32_t i = 0; i < mesh_count; ++i) {
+            create_acceleration_structure_geometry_info(meshes[i].vertex_buffer, meshes[i].index_buffer, geometries[i]);
 
             build_infos[i].sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             build_infos[i].pNext = nullptr;
@@ -1341,14 +1333,14 @@ namespace mirai {
             build_infos[i].mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             build_infos[i].geometryCount = 1;
             build_infos[i].pGeometries = &geometries[i];
-            uint32_t max_primitives = index_buffers[i].count / 3;
+            uint32_t max_primitives = meshes[i].index_buffer.count / 3;
 
             build_ranges[i].primitiveCount = max_primitives;
 
             VkAccelerationStructureBuildSizesInfoKHR size_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
             vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_infos[i], &max_primitives, &size_info);
 
-            acceleration_offsets[i] = blas_buffer_size;
+            blas_offsets[i] = blas_buffer_size;
             acceleration_sizes[i] = size_info.accelerationStructureSize;
             scratch_sizes[i] = size_info.buildScratchSize;
 
@@ -1368,28 +1360,21 @@ namespace mirai {
         };
         BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
         VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
-
-        VkBufferDeviceAddressInfo buffer_address_info = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .pNext = nullptr,
-            .buffer = scratch_buffer->buffer,
-        };
-        VkDeviceAddress scratch_buffer_address = vkGetBufferDeviceAddress(device, &buffer_address_info);
+        VkDeviceAddress scratch_buffer_address = GetBufferDeviceAddress(device, scratch_buffer->buffer);
 
         buffer_desc.size = cast_u32(blas_buffer_size);
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        BufferID blas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
+        blas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
+
         VulkanBuffer *blas_buffer = resource_pool_buffers.access(blas_buffer_id);
-        buffer_address_info.buffer = blas_buffer->buffer;
-        VkDeviceAddress blas_buffer_address = vkGetBufferDeviceAddress(device, &buffer_address_info);
+        VkDeviceAddress blas_buffer_address = GetBufferDeviceAddress(device, blas_buffer->buffer);
 
         // Create acceleration structures
-        std::vector<VkAccelerationStructureKHR> blas(vertex_buffer_count);
-        for (uint32_t i = 0; i < vertex_buffer_count; ++i) {
+        for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
                 .buffer = blas_buffer->buffer,
-                .offset = acceleration_offsets[i],
+                .offset = blas_offsets[i],
                 .size = acceleration_sizes[i],
                 .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
             };
@@ -1401,7 +1386,7 @@ namespace mirai {
         VkQueryPoolCreateInfo blas_query_create_info = {
             .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
             .queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
-            .queryCount = vertex_buffer_count,
+            .queryCount = mesh_count,
         };
         VK_CHECK(vkCreateQueryPool(device, &blas_query_create_info, nullptr, &query_pool));
 
@@ -1420,11 +1405,11 @@ namespace mirai {
             .imageMemoryBarrierCount = 0,
         };
 
-        std::vector<const VkAccelerationStructureBuildRangeInfoKHR *> build_range_ptrs(vertex_buffer_count);
-        for (uint32_t start = 0; start < vertex_buffer_count;) {
+        std::vector<const VkAccelerationStructureBuildRangeInfoKHR *> build_range_ptrs(mesh_count);
+        for (uint32_t start = 0; start < mesh_count;) {
             size_t scratch_offset = 0;
             size_t i = start;
-            while (i < vertex_buffer_count && scratch_offset + scratch_sizes[i] <= scratch_buffer_size) {
+            while (i < mesh_count && scratch_offset + scratch_sizes[i] <= scratch_buffer_size) {
                 build_infos[i].scratchData.deviceAddress = scratch_buffer_address + scratch_offset;
                 build_infos[i].dstAccelerationStructure = blas[i];
 
@@ -1438,7 +1423,7 @@ namespace mirai {
             vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
         }
 
-        vkCmdResetQueryPool(command_buffer->command_buffer, query_pool, 0, vertex_buffer_count);
+        vkCmdResetQueryPool(command_buffer->command_buffer, query_pool, 0, mesh_count);
 
         vkCmdWriteAccelerationStructuresPropertiesKHR(command_buffer->command_buffer, cast_u32(blas.size()), blas.data(), VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, query_pool, 0);
 
@@ -1446,7 +1431,7 @@ namespace mirai {
 
         command_buffer->wait();
 
-        std::vector<uint64_t> compacted_sizes(vertex_buffer_count);
+        std::vector<uint64_t> compacted_sizes(mesh_count);
         VK_CHECK(vkGetQueryPoolResults(device, query_pool, 0, cast_u32(blas.size()), blas.size() * sizeof(uint64_t), compacted_sizes.data(), sizeof(uint64_t), VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_64_BIT));
 
         uint64_t total_compacted_size = 0;
@@ -1454,16 +1439,121 @@ namespace mirai {
             total_compacted_size += size;
         Log::Info("Compacted Size: ", utils::bytes_to_mb(total_compacted_size), " mb");
 
-        vmaFreeMemory(vma_allocator, scratch_buffer->allocation);
-        vmaFreeMemory(vma_allocator, blas_buffer->allocation);
-        vkDestroyBuffer(device, scratch_buffer->buffer, nullptr);
-        vkDestroyBuffer(device, blas_buffer->buffer, nullptr);
-        resource_pool_buffers.release(scratch_buffer_id);
-        resource_pool_buffers.release(blas_buffer_id);
-        for (auto &s : blas)
-            vkDestroyAccelerationStructureKHR(device, s, nullptr);
+        destroy_buffers(&scratch_buffer_id, 1);
         vkDestroyQueryPool(device, query_pool, nullptr);
-    } // namespace mirai
+    }
+
+    void VulkanRenderingDevice::create_tlas(BufferID instance_buffer_id, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id) {
+        // @TODO implement
+        VulkanBuffer *instance_buffer = resource_pool_buffers.access(instance_buffer_id);
+        VkDeviceAddress instance_buffer_device_ptr = GetBufferDeviceAddress(device, instance_buffer->buffer);
+
+        VkAccelerationStructureGeometryKHR geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+        geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+        geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        geometry.geometry.instances.data.deviceAddress = instance_buffer_device_ptr;
+
+        VkAccelerationStructureBuildGeometryInfoKHR build_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
+        build_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        build_info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        build_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        build_info.geometryCount = 1;
+        build_info.pGeometries = &geometry;
+
+        VkAccelerationStructureBuildSizesInfoKHR size_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+        vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
+        Log::Info("TLAS Scratch Buffer Size: ", utils::bytes_to_mb(size_info.buildScratchSize), " mb");
+        Log::Info("TLAS Buffer Size: ", utils::bytes_to_mb(size_info.accelerationStructureSize), " mb");
+
+        // Allocate memory for scratch buffer and blas
+        BufferDescription buffer_desc = {
+            .size = cast_u32(size_info.buildScratchSize),
+            .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+        };
+
+        BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
+        VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
+        VkDeviceAddress scratch_buffer_address = GetBufferDeviceAddress(device, scratch_buffer->buffer);
+
+        buffer_desc.size = cast_u32(size_info.accelerationStructureSize);
+        buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        tlas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
+        VulkanBuffer *tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
+
+        // Create Acceleration Structure
+        VkAccelerationStructureCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
+        create_info.buffer = tlas_buffer->buffer;
+        create_info.size = size_info.accelerationStructureSize;
+        create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        VK_CHECK(vkCreateAccelerationStructureKHR(device, &create_info, nullptr, &tlas));
+
+        // Build TLAS
+        CommandBuffer *command_buffer = get_command_buffer();
+        command_buffer->begin();
+
+        build_info.dstAccelerationStructure = tlas;
+        build_info.srcAccelerationStructure = tlas;
+        build_info.scratchData.deviceAddress = scratch_buffer_address;
+
+        VkAccelerationStructureBuildRangeInfoKHR build_range = {};
+        build_range.primitiveCount = primitive_count;
+        const VkAccelerationStructureBuildRangeInfoKHR *build_range_ptr = &build_range;
+
+        vkCmdBuildAccelerationStructuresKHR(command_buffer->command_buffer, 1, &build_info, &build_range_ptr);
+
+        VkBufferMemoryBarrier2 buffer_barrier = CreateBufferMemoryBarrier2(tlas_buffer->buffer,
+                                                                           VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+                                                                           VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+        VkDependencyInfo dependency_info = {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .memoryBarrierCount = 0,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers = &buffer_barrier,
+            .imageMemoryBarrierCount = 0,
+        };
+
+        vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
+
+        submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
+
+        destroy_buffers(&scratch_buffer_id, 1);
+    }
+
+    void VulkanRenderingDevice::create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) {
+        // Create bottom level acceleration structure
+        std::vector<VkDeviceAddress> blas_offsets;
+        create_blas(meshes, mesh_count, acceleration_structure.blas, acceleration_structure.blas_buffer, blas_offsets);
+
+        // Allocate TLAS instance buffer
+        BufferDescription buffer_desc = {
+            .size = sizeof(VkAccelerationStructureInstanceKHR) * mesh_count,
+            .usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            // @TODO this might not be the right type of memory
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        acceleration_structure.tlas_instance_buffer = create_buffer(&buffer_desc, "tlas_instance_buffer");
+        void *instance_buffer_ptr = map_buffer(acceleration_structure.tlas_instance_buffer);
+
+        // Populate TLAS Instance Buffer
+        VulkanBuffer *buffer = resource_pool_buffers.access(acceleration_structure.blas_buffer);
+        VkDeviceAddress blas_device_address = GetBufferDeviceAddress(device, buffer->buffer);
+        for (uint32_t i = 0; i < mesh_count; ++i) {
+            VkAccelerationStructureInstanceKHR instance_info{};
+            instance_info.transform = {};
+            instance_info.instanceCustomIndex = 0;
+            instance_info.mask = 0xFF;
+            instance_info.instanceShaderBindingTableRecordOffset = 0;
+            instance_info.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            instance_info.accelerationStructureReference = blas_device_address + blas_offsets[i];
+            std::memcpy(reinterpret_cast<VkAccelerationStructureInstanceKHR *>(instance_buffer_ptr) + i, &instance_info, sizeof(VkAccelerationStructureInstanceKHR));
+        }
+
+        create_tlas(acceleration_structure.tlas_instance_buffer, mesh_count, acceleration_structure.tlas, acceleration_structure.tlas_buffer);
+    }
 
     VulkanRenderingDevice::~VulkanRenderingDevice() {
         VK_CHECK(vkDeviceWaitIdle(device));
@@ -1473,6 +1563,15 @@ namespace mirai {
         for (auto &command_buffer : command_buffers) {
             vkDestroyFence(device, command_buffer->fence, nullptr);
             // vkFreeCommandBuffers(device, command_buffer->command_pool, 1, &command_buffer->command_buffer);
+        }
+
+        if (supportRaytracing && acceleration_structure.blas_buffer) {
+            BufferID buffers[] = {acceleration_structure.blas_buffer, acceleration_structure.tlas_buffer, acceleration_structure.tlas_instance_buffer};
+            destroy_buffers(buffers, cast_u32(std::size(buffers)));
+
+            for (auto &blas : acceleration_structure.blas)
+                vkDestroyAccelerationStructureKHR(device, blas, nullptr);
+            vkDestroyAccelerationStructureKHR(device, acceleration_structure.tlas, nullptr);
         }
 
         for (auto &command_pool : command_pools)

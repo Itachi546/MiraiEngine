@@ -43,6 +43,7 @@ namespace mirai {
     DEFINE_ID(Buffer)
     DEFINE_ID(UniformSet)
     DEFINE_ID(Query)
+    DEFINE_ID(AccelerationStructure)
 
     using SamplerID = uint64_t;
 
@@ -66,6 +67,15 @@ namespace mirai {
         uint32_t offset;
         uint32_t count;
         uint32_t stride;
+    };
+
+    struct AccelerationStructureMeshInfo {
+        AccelerationStructureBufferInfo vertex_buffer;
+        AccelerationStructureBufferInfo index_buffer;
+        // @TODO Copying a data at the moment, but a ptr might be sufficient
+        // Trying to avoid using pointer, because the transform matrix is a part
+        // of vector, in which pointer is not a best way to index to it
+        float transform[4][4];
     };
 
     struct GpuVendorInfo {
@@ -564,7 +574,7 @@ namespace mirai {
         }
 
         // Raytracing stuff
-        virtual void create_blas(AccelerationStructureBufferInfo *vertex_buffers, uint32_t vertex_buffer_count, AccelerationStructureBufferInfo *index_buffers, uint32_t index_buffer_count) = 0;
+        virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
 
         virtual ~RenderingDevice() = default;
 

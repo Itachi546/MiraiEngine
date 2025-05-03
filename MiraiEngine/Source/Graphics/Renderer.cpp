@@ -41,27 +41,29 @@ namespace mirai {
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
 
-        std::vector<AccelerationStructureBufferInfo> vertex_buffers;
-        std::vector<AccelerationStructureBufferInfo> index_buffers;
-        for (auto &object : render_list) {
-            AccelerationStructureBufferInfo vb = {
+        std::vector<AccelerationStructureMeshInfo> mesh_infos(render_list.size());
+        for (uint32_t i = 0; i < render_list.size(); ++i) {
+            RenderableObjectData &object = render_list[i];
+
+            mesh_infos[i].vertex_buffer = {
                 .buffer = object.vertex_buffer,
                 .offset = object.vertex_offset * sizeof(Vertex),
                 .count = object.vertex_count,
                 .stride = sizeof(Vertex),
             };
 
-            AccelerationStructureBufferInfo ib = {
+            mesh_infos[i].index_buffer = {
                 .buffer = object.index_buffer,
                 .offset = object.index_offset * sizeof(uint32_t),
                 .count = object.index_count,
                 .stride = sizeof(uint32_t),
             };
 
-            vertex_buffers.push_back(std::move(vb));
-            index_buffers.push_back(std::move(ib));
+            // @TODO a very long function :D
+            auto transform_component = scene->component_manager->get_component_array<TransformComponent>()->components[object.transform_index];
+            std::memcpy(&mesh_infos[i].transform[0], &transform_component.world_transform[0], sizeof(glm::mat4));
         }
-        device->create_blas(vertex_buffers.data(), cast_u32(vertex_buffers.size()), index_buffers.data(), cast_u32(index_buffers.size()));
+        device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
     }
     void Renderer::copy_buffers(CommandBuffer *cb) {
         // @TODO do it here for now

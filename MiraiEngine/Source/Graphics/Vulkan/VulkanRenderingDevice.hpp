@@ -16,6 +16,14 @@ namespace mirai {
     struct VulkanSwapchain;
     class CommandBuffer;
 
+    struct VulkanAccelerationStructure {
+        BufferID blas_buffer{K_INVALID_ID};
+        BufferID tlas_buffer{K_INVALID_ID};
+        BufferID tlas_instance_buffer{K_INVALID_ID};
+        std::vector<VkAccelerationStructureKHR> blas;
+        VkAccelerationStructureKHR tlas;
+    };
+
     class VulkanRenderingDevice : public RenderingDevice {
       public:
         VulkanRenderingDevice();
@@ -104,7 +112,7 @@ namespace mirai {
         VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
 
         // Raytracing utilities
-        void create_blas(AccelerationStructureBufferInfo *vertex_buffers, uint32_t vertex_buffer_count, AccelerationStructureBufferInfo *index_buffers, uint32_t index_buffer_count) override;
+        void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count);
 
         ~VulkanRenderingDevice();
 
@@ -129,6 +137,8 @@ namespace mirai {
         VkFence create_fence(const std::string &name, bool signalled = false);
 
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
+        void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &blas_addresses);
+        void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
 
         std::vector<const char *> requested_instance_extensions;
         std::vector<const char *> requested_validation_layers;
@@ -168,5 +178,7 @@ namespace mirai {
 
         std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;
+
+        VulkanAccelerationStructure acceleration_structure;
     };
 } // namespace mirai

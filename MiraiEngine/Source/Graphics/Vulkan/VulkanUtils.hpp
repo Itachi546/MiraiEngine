@@ -42,4 +42,13 @@ namespace mirai {
                                                       uint64_t size = VK_WHOLE_SIZE);
 
     uint64_t CalculateSamplerHash(const SamplerDescription *desc);
+
+    inline VkDeviceAddress GetBufferDeviceAddress(VkDevice device, VkBuffer buffer) {
+        VkBufferDeviceAddressInfo buffer_address_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .pNext = nullptr,
+            .buffer = buffer,
+        };
+        return vkGetBufferDeviceAddress(device, &buffer_address_info);
+    }
 } // namespace mirai
