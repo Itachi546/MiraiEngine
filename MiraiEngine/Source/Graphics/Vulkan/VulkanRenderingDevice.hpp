@@ -134,6 +134,8 @@ namespace mirai {
 
         VmaAllocator create_allocator();
 
+        void initialize_bindless_descriptor();
+
         VkFence create_fence(const std::string &name, bool signalled = false);
 
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
@@ -164,6 +166,7 @@ namespace mirai {
         VkPhysicalDeviceProperties2 physical_device_properties;
         VmaAllocator vma_allocator;
 
+        // Bindless descriptor set
         VkDescriptorSetLayout bindless_descriptor_layout;
         VkDescriptorSet bindless_descriptor_set;
         VkDescriptorPool bindless_descriptor_pool;

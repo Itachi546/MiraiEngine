@@ -61,9 +61,15 @@ namespace mirai {
 
             // @TODO a very long function :D
             auto transform_component = scene->component_manager->get_component_array<TransformComponent>()->components[object.transform_index];
-            std::memcpy(&mesh_infos[i].transform[0], &transform_component.world_transform[0], sizeof(glm::mat4));
+            for (int x = 0; x < 3; ++x) {
+                for (int y = 0; y < 4; ++y) {
+                    mesh_infos[i].transform[x][y] = transform_component.world_transform[x][y];
+                }
+            }
         }
         device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
+
+        frame_graph->compile();
     }
     void Renderer::copy_buffers(CommandBuffer *cb) {
         // @TODO do it here for now

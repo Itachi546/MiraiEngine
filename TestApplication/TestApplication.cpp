@@ -62,7 +62,6 @@ class TestApplication : public App {
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
-        frame_graph->compile();
 
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)

@@ -30,6 +30,50 @@ namespace mirai {
 #endif
     }
 
+    void VulkanRenderingDevice::initialize_bindless_descriptor() {
+        // Create Bindless descriptor set
+        VkDescriptorPoolSize pools[] = {
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, K_MAX_BINDLESS_RESOURCE},
+        };
+
+        bindless_descriptor_pool = create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT, pools, 1, 1);
+
+        VkDescriptorSetLayoutBinding bindless_binding = {
+            .binding = K_BINDLESS_TEXTURE_BINDING,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = K_MAX_BINDLESS_RESOURCE,
+            .stageFlags = VK_SHADER_STAGE_ALL,
+        };
+
+        VkDescriptorBindingFlags bindless_flag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                                                 VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+                                                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flag = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindingFlags = &bindless_flag,
+        };
+        bindless_descriptor_layout = CreateDescriptorSetLayout(device, &bindless_binding, 1, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, &binding_flag);
+
+        uint32_t max_binding = K_MAX_BINDLESS_RESOURCE - 1;
+        VkDescriptorSetVariableDescriptorCountAllocateInfo count_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
+            .descriptorSetCount = 1,
+            .pDescriptorCounts = &max_binding,
+        };
+
+        VkDescriptorSetAllocateInfo bindless_set_allocate_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext = &count_info,
+            .descriptorPool = bindless_descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &bindless_descriptor_layout,
+        };
+
+        VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
+    }
+
     VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
                                                      resource_pool_shaders(32, "Shader"),
                                                      resource_pool_textures(1024, "Texture"),
@@ -190,48 +234,7 @@ namespace mirai {
         }
 
         descriptor_pools.push_back(create_descriptor_pool(0));
-
-        // Create Bindless descriptor set
-        VkDescriptorPoolSize pools[] = {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, K_MAX_BINDLESS_RESOURCE},
-        };
-
-        bindless_descriptor_pool = create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT, pools, 1, 1);
-
-        VkDescriptorSetLayoutBinding bindless_binding = {
-            .binding = K_BINDLESS_TEXTURE_BINDING,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = K_MAX_BINDLESS_RESOURCE,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-        };
-
-        VkDescriptorBindingFlags bindless_flag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-                                                 VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
-                                                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-
-        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flag = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindingFlags = &bindless_flag,
-        };
-        bindless_descriptor_layout = CreateDescriptorSetLayout(device, &bindless_binding, 1, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, &binding_flag);
-
-        uint32_t max_binding = K_MAX_BINDLESS_RESOURCE - 1;
-        VkDescriptorSetVariableDescriptorCountAllocateInfo count_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-            .descriptorSetCount = 1,
-            .pDescriptorCounts = &max_binding,
-        };
-
-        VkDescriptorSetAllocateInfo bindless_set_allocate_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext = &count_info,
-            .descriptorPool = bindless_descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &bindless_descriptor_layout,
-        };
-
-        VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
+        initialize_bindless_descriptor();
     }
 
     VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
@@ -240,6 +243,7 @@ namespace mirai {
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
+            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32},
         };
 
         uint32_t maxSets = pool_count > 0 ? max_sets : 512;
@@ -649,6 +653,8 @@ namespace mirai {
 
     void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) {
         std::vector<VkWriteDescriptorSet> write_sets(binding_count);
+        VkWriteDescriptorSetAccelerationStructureKHR acceleration_structure_write_info = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+
         // @TODO replace with custom allocator
         std::vector<VkDescriptorImageInfo> image_infos;
         std::vector<VkDescriptorBufferInfo> buffer_infos;
@@ -710,8 +716,19 @@ namespace mirai {
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write_sets[i].pImageInfo = &image_info;
             } break;
+            case BINDING_TYPE_ACCELERATION_STRUCTURE: {
+                if (!supportRaytracing) {
+                    ASSERT("Raytracing is not supported");
+                    continue;
+                }
+                acceleration_structure_write_info.accelerationStructureCount = 1;
+                acceleration_structure_write_info.pAccelerationStructures = &acceleration_structure.tlas;
+                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+                write_sets[i].pNext = &acceleration_structure_write_info;
+                break;
+            }
             default:
-                assert(0 && "Undefined Binding Type");
+                ASSERT(0 && "Undefined Binding Type");
                 break;
             }
         }
@@ -1543,7 +1560,7 @@ namespace mirai {
         VkDeviceAddress blas_device_address = GetBufferDeviceAddress(device, buffer->buffer);
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureInstanceKHR instance_info{};
-            instance_info.transform = {};
+            std::memcpy(&instance_info.transform.matrix[0][0], &meshes[i].transform[0][0], sizeof(float) * 12);
             instance_info.instanceCustomIndex = 0;
             instance_info.mask = 0xFF;
             instance_info.instanceShaderBindingTableRecordOffset = 0;

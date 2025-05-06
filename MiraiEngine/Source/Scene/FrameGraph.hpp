@@ -175,10 +175,6 @@ namespace mirai {
 
         void load_from_file(const std::string &filename);
 
-        // Renderer must be set for each pass before calling compile function
-        // use set_renderer() function
-        void compile();
-
         void render(CommandBuffer *command_buffer, Scene *scene);
         void update(Scene *scene);
 
@@ -229,5 +225,11 @@ namespace mirai {
         FrameGraphBuilder *builder;
         std::vector<FrameGraphNodeDescription> node_descriptions;
         std::vector<FrameGraphNodeHandle> node_handles;
+
+        // Renderer must be set for each pass before calling compile function
+        // use set_renderer() function
+        void compile();
+
+        friend class Renderer;
     };
 } // namespace mirai

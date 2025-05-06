@@ -75,7 +75,7 @@ namespace mirai {
         // @TODO Copying a data at the moment, but a ptr might be sufficient
         // Trying to avoid using pointer, because the transform matrix is a part
         // of vector, in which pointer is not a best way to index to it
-        float transform[4][4];
+        float transform[3][4];
     };
 
     struct GpuVendorInfo {
@@ -467,6 +467,7 @@ namespace mirai {
         BINDING_TYPE_STORAGE_IMAGE = 3,
         BINDING_TYPE_UNIFORM_BUFFER = 6,
         BINDING_TYPE_STORAGE_BUFFER = 7,
+        BINDING_TYPE_ACCELERATION_STRUCTURE = 1000150000,
     };
 
     struct UniformLayout {

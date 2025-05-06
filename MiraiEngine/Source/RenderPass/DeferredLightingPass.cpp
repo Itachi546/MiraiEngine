@@ -21,6 +21,14 @@ namespace mirai {
         shader->set_depth_write(false);
         shader->set_depth_test(false);
 
+        rt_shader = std::make_shared<ShaderMaterial>("DeferredRTLightingPassMaterial");
+        rt_shader->create_from_file({
+            "SPIRV/fullscreen.vert.spv",
+            "SPIRV/deferred_shading_rt.frag.spv",
+        });
+        rt_shader->set_depth_write(false);
+        rt_shader->set_depth_test(false);
+
         // Deferred Shading Textures
         uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
 
@@ -48,16 +56,20 @@ namespace mirai {
             {.resource_id = frame_graph->get_resource("ssao_texture")->handle, .texture_info = {.sampler = default_sampler}},
         };
 
-        /*
-        for (uint32_t i = 0; i < binding_count; ++i) {
-            FrameGraphResource *resource = frame_graph->get_resource(node->inputs[i]);
-            binding_layout[i] = UniformLayout{.binding = i, .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER, .shader_stage = SHADER_STAGE_FRAGMENT};
-            bindings[i] = UniformBinding{.resource_id = resource->handle};
-        }
-        */
+        // Create normal uniform set
         uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_binding_set");
         device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
 
+        // Create raytraced uniform set
+        // For binding acceleration structure, we can only specify the descriptor type without actual
+        // resources. The acceleration structure for now is single global entity and a type of ACCELRATION_STRUCTURE
+        // is enough to distinguish it
+        layouts[4].binding_type = BINDING_TYPE_ACCELERATION_STRUCTURE;
+        rt_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_rt_binding_set");
+        bindings[4].resource_id = {K_INVALID_ID};
+        device->update_uniform_set(rt_uniform_set, bindings, cast_u32(std::size(bindings)));
+
+        // Create cascade uniform set
         UniformLayout cascade_data = {
             .binding = 0,
             .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
@@ -84,7 +96,7 @@ namespace mirai {
         push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
 
         Light *sun = scene->get_sun();
-        glm::vec3 light_direction = sun->get_direction(); 
+        glm::vec3 light_direction = sun->get_direction();
         push_constant_data.light_direction = glm::vec4(light_direction, (float)sun->cast_shadow);
         push_constant_data.light_color = glm::vec4(sun->color, sun->intensity);
 
@@ -95,20 +107,25 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
+        std::shared_ptr<ShaderMaterial> active_shader = rt_shader;
+
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
+        if (active_shader == shader) {
+            UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
+            device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
 
-        UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
-        device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
-
-        UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
-        shader->set_uniform_sets(uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
+            UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
+            active_shader->set_uniform_sets(uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
+        } else if (active_shader == rt_shader) {
+            active_shader->set_uniform_sets(&rt_uniform_set, 1);
+        }
 
         PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(push_constant_data), .offset = 0};
-        shader->set_push_constant(&push_constant, 1);
+        active_shader->set_push_constant(&push_constant, 1);
 
-        shader->bind(command_buffer, &node->renderpass_info);
+        active_shader->bind(command_buffer, &node->renderpass_info);
 
         command_buffer->draw(3, 1, 0, 0);
 
