@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_ray_tracing : enable
@@ -59,6 +59,11 @@ void main() {
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 #if 1
     float shadow_factor = 1.0f;
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, world_pos, 0.01, light_direction.xyz, 1000.0);
+    rayQueryProceedEXT(ray_query);
+    if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
+        shadow_factor = 0.1f;
     {
         vec3 diffuse = albedo.rgb / PI;
 
