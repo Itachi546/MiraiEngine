@@ -140,6 +140,7 @@ namespace mirai {
 
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
         void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &blas_addresses);
+        void compact_blas(VkCommandBuffer command_buffer, VkAccelerationStructureKHR src, VkAccelerationStructureKHR dst);
         void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
 
         std::vector<const char *> requested_instance_extensions;
