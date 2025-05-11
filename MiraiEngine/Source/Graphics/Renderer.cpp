@@ -61,9 +61,12 @@ namespace mirai {
 
             // @TODO a very long function :D
             auto transform_component = scene->component_manager->get_component_array<TransformComponent>()->components[object.transform_index];
-            for (int x = 0; x < 3; ++x) {
-                for (int y = 0; y < 4; ++y) {
-                    mesh_infos[i].transform[x][y] = transform_component.world_transform[x][y];
+            // The default representation of glm is column major while the VkTransformKHR uses row major
+            // glm::mat4 transform = glm::transpose(transform_component.world_transform);
+            glm::mat4 transform = transform_component.world_transform;
+            for (int y = 0; y < 4; ++y) {
+                for (int x = 0; x < 4; ++x) {
+                    mesh_infos[i].transform[x][y] = transform[y][x];
                 }
             }
         }

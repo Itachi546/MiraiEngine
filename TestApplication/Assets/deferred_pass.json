@@ -49,7 +49,7 @@
     },
     {
       "name": "cascaded_shadow_pass",
-      "enabled": true,
+      "enabled": false,
       "outputs": [
         {
           "type": "attachment",
@@ -105,10 +105,6 @@
         {
           "type": "texture",
           "name": "gbuffer_emissive"
-        },
-        {
-          "type": "texture",
-          "name": "cascaded_shadow_map"
         },
         {
           "type": "texture",
