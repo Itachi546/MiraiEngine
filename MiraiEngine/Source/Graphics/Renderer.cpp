@@ -64,9 +64,9 @@ namespace mirai {
             // The default representation of glm is column major while the VkTransformKHR uses row major
             // glm::mat4 transform = glm::transpose(transform_component.world_transform);
             glm::mat4 transform = transform_component.world_transform;
-            for (int y = 0; y < 4; ++y) {
+            for (int y = 0; y < 3; ++y) {
                 for (int x = 0; x < 4; ++x) {
-                    mesh_infos[i].transform[x][y] = transform[y][x];
+                    mesh_infos[i].transform[y][x] = transform[x][y];
                 }
             }
         }
