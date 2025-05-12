@@ -136,7 +136,7 @@ namespace mirai {
         Frustum &frustum = camera->get_frustum();
 
         main_render_batches.clear();
-        DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, true);
+        DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, false);
     }
 
     void Scene::remove_entity_tree(Entity entity) {

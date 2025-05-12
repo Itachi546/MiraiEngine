@@ -29,7 +29,7 @@ namespace mirai {
         shader_manager->load("overlay_skybox", {"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"}, {.depth_test = true});
         shader_manager->load("depth_prepass", {"SPIRV/depth_prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
         shader_manager->load("pbr_forward", {"SPIRV/forward_pass.vert.spv", "SPIRV/forward_pass.frag.spv"}, {.depth_test = true, .depth_write = false});
-        shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .blend = true});
+        shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = false, .blend = true});
         shader_manager->load("gbuffer_pass", {"SPIRV/gbuffer.vert.spv", "SPIRV/gbuffer.frag.spv"}, {.depth_test = true, .depth_write = true});
         shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
         shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});

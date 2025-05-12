@@ -125,6 +125,26 @@
       ]
     },
     {
+      "name": "deferred_transparent_pass",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "attachment",
+          "name": "gbuffer_lighting"
+        },
+        {
+          "type": "attachment",
+          "name": "gbuffer_depth"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "reference",
+          "name": "gbuffer_lighting"
+        }
+      ]
+    },
+    {
       "name": "overlay3D",
       "enabled": true,
       "inputs": [

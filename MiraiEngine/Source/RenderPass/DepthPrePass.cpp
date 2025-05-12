@@ -67,7 +67,5 @@ namespace mirai {
     }
 
     DepthPrePass::~DepthPrePass() {
-        if (shader)
-            shader = nullptr;
     }
 } // namespace mirai

@@ -7,3 +7,4 @@
 #include "SwapchainCopyPass.hpp"
 #include "ShadowPass.hpp"
 #include "SSAOPass.hpp"
+#include "DeferredTransparentPass.hpp"

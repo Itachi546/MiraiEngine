@@ -67,7 +67,6 @@ namespace mirai {
     }
 
     SwapchainCopyPass::~SwapchainCopyPass() {
-        material = nullptr;
     }
 
 } // namespace mirai

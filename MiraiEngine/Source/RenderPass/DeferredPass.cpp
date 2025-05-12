@@ -74,7 +74,5 @@ namespace mirai {
     }
 
     DeferredPass::~DeferredPass() {
-        if (shader)
-            shader = nullptr;
     }
 } // namespace mirai

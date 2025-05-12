@@ -1,4 +1,4 @@
-#include "ForwardPass.hpp"
+#include "DeferredTransparentPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/ShaderMaterial.hpp"
@@ -8,11 +8,10 @@
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
+    DeferredTransparentPass::DeferredTransparentPass() : FrameGraphRenderer("forward_pass"), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
     }
 
-    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node) {
-        opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
+    void DeferredTransparentPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node) {
         transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
 
         // Mesh Data
@@ -29,7 +28,7 @@ namespace mirai {
         mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
     }
 
-    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void DeferredTransparentPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
         auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
@@ -50,9 +49,9 @@ namespace mirai {
             }
         };
 
-        ScopedGpuProfiling(command_buffer, "Forward Pass");
+        ScopedGpuProfiling(command_buffer, "Deferred TransparentPass");
 
-        device->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
+        device->begin_debug_utils_label(command_buffer, "DeferredTransparent", nullptr);
 
         // Update Per Pipeline Data (Transform/Material)
         UniformBinding per_shader_bindings[] = {
@@ -67,14 +66,6 @@ namespace mirai {
         if (render_batches.size() > 0) {
             UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
             for (auto &batch : render_batches) {
-                if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
-                    opaque_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-                    opaque_shader->bind(command_buffer, &node->renderpass_info);
-                    draw_batch(&batch, opaque_shader->get_pipeline_id());
-                }
-            }
-
-            for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
                     transparent_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
                     transparent_shader->bind(command_buffer, &node->renderpass_info);
@@ -87,6 +78,6 @@ namespace mirai {
         device->end_debug_utils_label(command_buffer);
     }
 
-    ForwardPass::~ForwardPass() {
+    DeferredTransparentPass::~DeferredTransparentPass() {
     }
 } // namespace mirai
