@@ -22,7 +22,7 @@ namespace mirai {
 
         BufferID buffer;
         UniformSetID uniform_set;
-        std::shared_ptr<ShaderMaterial> shader_material;
+        ShaderMaterial* shader_material;
         uint32_t line_count = 0;
 
         static LineRenderer *get() {

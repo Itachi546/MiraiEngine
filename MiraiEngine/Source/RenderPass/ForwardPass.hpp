@@ -14,8 +14,8 @@ namespace mirai {
         ~ForwardPass();
 
       private:
-        std::shared_ptr<ShaderMaterial> opaque_shader;
-        std::shared_ptr<ShaderMaterial> transparent_shader;
+        ShaderMaterial* opaque_shader;
+        ShaderMaterial* transparent_shader;
         UniformSetID mesh_instance_set;
     };
 } // namespace mirai

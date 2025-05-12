@@ -1,6 +1,7 @@
 #include "DepthPrePass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
@@ -10,14 +11,7 @@ namespace mirai {
     }
 
     void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-
-        shader = std::make_shared<ShaderMaterial>("DepthPrePass");
-        shader->create_from_file({
-            "SPIRV/depth_prepass.vert.spv",
-        });
-        shader->set_depth_write(true);
-        shader->set_depth_test(true);
-
+        shader = ShaderManager::get()->get_shader("depth_prepass");
         // Mesh Data
         UniformLayout transform_layout[] = {
             {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},

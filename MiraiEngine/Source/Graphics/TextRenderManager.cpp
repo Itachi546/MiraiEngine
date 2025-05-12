@@ -1,5 +1,6 @@
 #include "TextRenderManager.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Common/Font.hpp"
 
 #include <algorithm>
@@ -97,14 +98,7 @@ namespace mirai {
 
     TextRenderManager::TextRenderManager() {
         Instance = this;
-        shader = std::make_shared<ShaderMaterial>("FontShader");
-        shader->create_from_file({
-            "SPIRV/font.vert.spv",
-            "SPIRV/font.frag.spv",
-        });
-        shader->set_depth_test(false);
-        shader->set_depth_write(false);
-        shader->set_enable_blend(true);
+        shader = ShaderManager::get()->get_shader("text_render_2d");
     }
 
     TextRenderManager::~TextRenderManager() {

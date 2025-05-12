@@ -1,5 +1,6 @@
 #include "SwapchainCopyPass.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
@@ -15,12 +16,7 @@ namespace mirai {
     }
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        material = std::make_shared<ShaderMaterial>("FullScreenTextureMaterial");
-        material->create_from_file(std::vector<std::string>{
-            "SPIRV/fullscreen.vert.spv",
-            "SPIRV/fullscreen.frag.spv",
-        });
-        material->set_cull_mode(CULL_MODE_BACK);
+        material = ShaderManager::get()->get_shader("swapchain_copy_rgba");
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
 

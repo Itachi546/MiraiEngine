@@ -1,5 +1,5 @@
 #include "SkyMaterial.hpp"
-
+/*
 namespace mirai {
     ProceduralSkyMaterial::ProceduralSkyMaterial() : ShaderMaterial("ProceduralSky") {
         create_from_file({
@@ -35,3 +35,4 @@ namespace mirai {
         ShaderMaterial::bind(command_buffer, renderpass);
     }
 } // namespace mirai
+ */

@@ -14,7 +14,7 @@ namespace mirai {
         ~DeferredPass();
 
       private:
-        std::shared_ptr<ShaderMaterial> shader;
+        ShaderMaterial* shader;
         UniformSetID mesh_instance_set;
     };
 } // namespace mirai

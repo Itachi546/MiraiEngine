@@ -51,5 +51,6 @@ CMakeUserPresets.json
 TestApplication/SPIRV
 /renderdoc
 
+TODO.md
 *.org
 .cache/

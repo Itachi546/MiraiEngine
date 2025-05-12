@@ -2,6 +2,7 @@
 
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include <vector>
 
 namespace mirai {
@@ -19,11 +20,7 @@ namespace mirai {
         buffer = device->create_buffer(&buffer_desc, "line_vertex_buffer");
         line_array = (Line *)device->map_buffer(buffer);
 
-        shader_material = std::make_shared<ShaderMaterial>("line_material");
-        shader_material->create_from_file({"SPIRV/line.vert.spv",
-                                           "SPIRV/line.frag.spv"});
-        shader_material->set_depth_test(true);
-        shader_material->set_topology(TOPOLOGY_LINE_LIST);
+        shader_material = ShaderManager::get()->get_shader("line_3d");
 
         UniformLayout vertex_layout = {
             .binding = 0,
@@ -96,7 +93,6 @@ namespace mirai {
     }
 
     LineRenderer::~LineRenderer() {
-        shader_material.reset();
         shader_material = nullptr;
         RenderingDevice::get()->destroy_buffers(&buffer, 1);
     }

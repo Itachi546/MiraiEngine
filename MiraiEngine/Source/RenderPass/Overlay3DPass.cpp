@@ -4,7 +4,8 @@
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/LineRenderer.hpp"
-#include "Scene/SkyMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
+#include "Scene/ShaderMaterial.hpp"
 #include "Scene/EnvironmentMap.hpp"
 
 namespace mirai {
@@ -12,10 +13,7 @@ namespace mirai {
     }
 
     void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        skybox_material = std::make_shared<SkyboxMaterial>();
-        skybox_material->set_depth_test(true);
-        skybox_material->set_depth_write(false);
-        skybox_material->set_depth_compare_op(COMPARE_OP_EQUAL);
+        skybox_material = ShaderManager::get()->get_shader("overlay_skybox");
 
         SamplerDescription sampler_desc = SamplerDescription::create();
         default_sampler = device->create_sampler(&sampler_desc);
@@ -46,20 +44,18 @@ namespace mirai {
 
     void Overlay3DPass::render_skybox(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass) {
         Camera *camera = scene->get_camera();
-        skybox_material->set_inv_projection_matrix(camera->get_inv_projection_transform());
-
-#if 1
-        TextureID skybox = scene->get_environment_map()->get_cubemap();
-#else
 
         TextureID skybox = scene->get_environment_map()->get_cubemap();
-#endif
         UniformBinding binding = {.resource_id = skybox, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
 
         // Draw Sky
         skybox_material->set_uniform_sets(&skybox_uniform_set, 1);
-        skybox_material->set_inv_view_matrix(camera->get_inv_view_transform());
+
+        glm::mat4 push_constant_data[] = {camera->get_inv_projection_transform(), camera->get_inv_view_transform()};
+        PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4) * 2, .offset = 0};
+
+        skybox_material->set_push_constant(&push_constant, 1);
         skybox_material->bind(command_buffer, render_pass);
         command_buffer->draw(3, 1, 0, 0);
     }

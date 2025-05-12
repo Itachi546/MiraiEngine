@@ -3,7 +3,7 @@
 #include "Scene/FrameGraph.hpp"
 
 namespace mirai {
-    class SkyboxMaterial;
+    class ShaderMaterial;
 
     class Overlay3DPass : public FrameGraphRenderer {
       public:
@@ -14,7 +14,7 @@ namespace mirai {
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 
       private:
-        std::shared_ptr<SkyboxMaterial> skybox_material;
+        ShaderMaterial* skybox_material;
         UniformSetID skybox_uniform_set;
         SamplerID default_sampler;
 

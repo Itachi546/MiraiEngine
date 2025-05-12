@@ -28,7 +28,7 @@ namespace mirai {
 
       private:
         UniformSetID uniform_set;
-        std::shared_ptr<ShaderMaterial> material;
+        ShaderMaterial* material;
         bool enable_aa;
     };
 } // namespace mirai

@@ -53,7 +53,7 @@ void main() {
     float ndotv = max(dot(normal, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
     float ldoth = max(dot(light_direction.xyz, halfway_vector), 0.0);
-    float ao = texture(ssao_texture, uv).r;
+    float ao = 1.0f;//texture(ssao_texture, uv).r;
 
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);

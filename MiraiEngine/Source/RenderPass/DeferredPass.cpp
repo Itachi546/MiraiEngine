@@ -1,6 +1,7 @@
 #include "DeferredPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 
@@ -11,14 +12,7 @@ namespace mirai {
     }
 
     void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        shader = std::make_shared<ShaderMaterial>("GBufferMaterial");
-        shader->create_from_file({
-            "SPIRV/gbuffer.vert.spv",
-            "SPIRV/gbuffer.frag.spv",
-        });
-
-        shader->set_depth_write(true);
-        shader->set_depth_test(true);
+        shader = ShaderManager::get()->get_shader("gbuffer_pass");
 
         // Mesh Instance Data (Transform/Material)
         UniformLayout mesh_instance_layout[] = {

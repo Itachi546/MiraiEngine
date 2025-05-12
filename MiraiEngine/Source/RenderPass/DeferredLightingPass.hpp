@@ -14,8 +14,8 @@ namespace mirai {
         ~DeferredLightingPass();
 
       private:
-        std::shared_ptr<ShaderMaterial> shader;
-        std::shared_ptr<ShaderMaterial> rt_shader;
+        ShaderMaterial* shader;
+        ShaderMaterial* rt_shader;
         UniformSetID uniform_set, cascade_uniform_set, rt_uniform_set;
     };
 } // namespace mirai

@@ -11,6 +11,7 @@
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
+#include "Scene/ShaderManager.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"

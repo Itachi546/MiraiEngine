@@ -2,6 +2,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
@@ -11,24 +12,8 @@ namespace mirai {
     }
 
     void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node) {
-        opaque_shader = std::make_shared<ShaderMaterial>("ForwardPassMaterial");
-        opaque_shader->create_from_file({
-            "SPIRV/forward_pass.vert.spv",
-            "SPIRV/forward_pass.frag.spv",
-        });
-        opaque_shader->set_depth_write(false);
-        opaque_shader->set_depth_test(true);
-        opaque_shader->set_depth_compare_op(COMPARE_OP_EQUAL);
-
-        transparent_shader = std::make_shared<ShaderMaterial>("TransparentMaterial");
-        transparent_shader->create_from_file({
-            "SPIRV/forward_pass.vert.spv",
-            "SPIRV/transparent.frag.spv",
-        });
-        transparent_shader->set_enable_blend(true);
-        transparent_shader->set_cull_mode(CULL_MODE_NONE);
-        transparent_shader->set_depth_write(true);
-        transparent_shader->set_depth_test(true);
+        opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
+        transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
 
         // Mesh Data
         UniformLayout mesh_data_layout[] = {

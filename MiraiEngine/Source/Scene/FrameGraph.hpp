@@ -80,7 +80,6 @@ namespace mirai {
         Format format;
         AttachmentLoadOp load_op;
         TextureID texture;
-        // FrameGraphResourceHandle resource_handle;
     };
 
     struct FrameGraphRenderpassInfo {

@@ -2,6 +2,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
@@ -13,21 +14,8 @@ namespace mirai {
 
     void DeferredLightingPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
 
-        shader = std::make_shared<ShaderMaterial>("DeferredLightingPasMaterial");
-        shader->create_from_file({
-            "SPIRV/fullscreen.vert.spv",
-            "SPIRV/deferred_shading.frag.spv",
-        });
-        shader->set_depth_write(false);
-        shader->set_depth_test(false);
-
-        rt_shader = std::make_shared<ShaderMaterial>("DeferredRTLightingPassMaterial");
-        rt_shader->create_from_file({
-            "SPIRV/fullscreen.vert.spv",
-            "SPIRV/deferred_shading_rt.frag.spv",
-        });
-        rt_shader->set_depth_write(false);
-        rt_shader->set_depth_test(false);
+        shader = ShaderManager::get()->get_shader("pbr_deferred");
+        rt_shader = ShaderManager::get()->get_shader("pbr_deferred_rt");
 
         // Deferred Shading Textures
         uint32_t binding_count = static_cast<uint32_t>(node->inputs.size());
@@ -107,7 +95,7 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
-        std::shared_ptr<ShaderMaterial> active_shader = rt_shader;
+        ShaderMaterial* active_shader = rt_shader;
 
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 

@@ -12,7 +12,7 @@ namespace mirai {
     struct TextRenderManager;
     struct LineRenderer;
     class CommandBuffer;
-    class ShaderMaterialCache;
+    class ShaderManager;
     class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
@@ -53,14 +53,13 @@ namespace mirai {
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;
-        std::unique_ptr<ShaderMaterialCache> material_cache;
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
-
         std::unique_ptr<TextRenderManager> text_render_manager;
         std::unique_ptr<Font> default_font;
         std::unique_ptr<LineRenderer> line_renderer;
+        std::unique_ptr<ShaderManager> shader_manager;
 
         void copy_buffers(CommandBuffer *cb);
 

@@ -2,7 +2,8 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderMaterialCache.hpp"
+#include "Scene/ShaderManager.hpp"
+#include "Scene/ShaderMaterial.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -20,15 +21,27 @@ namespace mirai {
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>();
         scene = std::make_unique<Scene>("default");
-        material_cache = std::make_unique<ShaderMaterialCache>();
         texture_cache = std::make_unique<TextureCache>();
         miProfiler::Initialize();
+
+        // Preload shaders
+        shader_manager = std::make_unique<ShaderManager>();
+        shader_manager->load("overlay_skybox", {"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"}, {.depth_test = true});
+        shader_manager->load("depth_prepass", {"SPIRV/depth_prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
+        shader_manager->load("pbr_forward", {"SPIRV/forward_pass.vert.spv", "SPIRV/forward_pass.frag.spv"}, {.depth_test = true, .depth_write = false});
+        shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .blend = true});
+        shader_manager->load("gbuffer_pass", {"SPIRV/gbuffer.vert.spv", "SPIRV/gbuffer.frag.spv"}, {.depth_test = true, .depth_write = true});
+        shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
+        shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
+        shader_manager->load("csm_shadow", {"SPIRV/cascaded_shadow.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .depth_clamp = true});
+        shader_manager->load("swapchain_copy_rgba", {"SPIRV/fullscreen.vert.spv", "SPIRV/fullscreen.frag.spv"}, {.cull_mode = CULL_MODE_BACK});
+        shader_manager->load("text_render_2d", {"SPIRV/font.vert.spv", "SPIRV/font.frag.spv"}, {.blend = true});
+        shader_manager->load("line_3d", {"SPIRV/line.vert.spv", "SPIRV/line.frag.spv"}, {.depth_test = true, .topology = TOPOLOGY_LINE_LIST});
 
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
 
         text_render_manager = std::make_unique<TextRenderManager>();
-
         default_font = LoadFont("Georgia");
         text_render_manager->get_renderer_by_font(default_font.get());
 
@@ -132,6 +145,7 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
+        shader_manager.reset();
         miProfiler::Destroy();
         scene.reset();
     }

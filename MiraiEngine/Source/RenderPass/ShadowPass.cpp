@@ -1,6 +1,7 @@
 #include "ShadowPass.hpp"
 
 #include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderManager.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/RenderBatch.hpp"
@@ -11,14 +12,7 @@
 namespace mirai {
 
     void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        shader = std::make_shared<ShaderMaterial>("cascaded_shadow_material");
-        shader->create_from_file({
-            "SPIRV/cascaded_shadow.vert.spv",
-        });
-        shader->set_depth_write(true);
-        shader->set_depth_test(true);
-        shader->set_depth_clamp(true);
-        shader->set_cull_mode(CULL_MODE_NONE);
+        shader = ShaderManager::get()->get_shader("csm_shadow");
 
         shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
 

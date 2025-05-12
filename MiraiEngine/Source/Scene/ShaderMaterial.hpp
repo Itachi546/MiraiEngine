@@ -5,77 +5,28 @@
 
 namespace mirai {
     struct FrameGraphRenderpassInfo;
+    struct ShaderMaterialProperties {
+        CullMode cull_mode = CULL_MODE_BACK;
+        FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
+        bool depth_test = false;
+        bool depth_write = false;
+        bool depth_clamp = false;
+        bool blend = false;
+        CompareOp depth_op = COMPARE_OP_LESS_OR_EQUAL;
+        Topology topology = TOPOLOGY_TRIANGLE_LIST;
+    };
 
     class ShaderMaterial {
       public:
         ShaderMaterial(const std::string &name);
 
-        virtual ~ShaderMaterial() = default;
+        virtual ~ShaderMaterial();
 
         std::string &get_name() {
             return name;
         }
-        void create_from_file(const std::vector<std::string> &shader_files);
 
-        void set_cull_mode(CullMode cull_mode) {
-            if (this->cull_mode == cull_mode)
-                return;
-
-            this->cull_mode = cull_mode;
-            clear_pipeline_state();
-        }
-
-        void set_depth_compare_op(CompareOp compare_op) {
-            if (this->depth_compare_op == compare_op)
-                return;
-            depth_compare_op = compare_op;
-            clear_pipeline_state();
-        }
-
-        void set_front_face(FrontFace front_face) {
-            if (this->front_face == front_face)
-                return;
-
-            this->front_face = front_face;
-            clear_pipeline_state();
-        }
-
-        void set_depth_test(bool depth_test) {
-            if (this->enable_depth_test == depth_test)
-                return;
-
-            this->enable_depth_test = depth_test;
-            clear_pipeline_state();
-        }
-
-        void set_depth_clamp(bool depth_clamp) {
-            if (this->enable_depth_clamp == depth_clamp)
-                return;
-            this->enable_depth_clamp = depth_clamp;
-            clear_pipeline_state();
-        }
-
-        void set_enable_blend(bool blend) {
-            if (this->enable_blend == blend)
-                return;
-            this->enable_blend = blend;
-            clear_pipeline_state();
-        }
-
-        void set_depth_write(bool depth_write) {
-            if (this->enable_depth_write == depth_write)
-                return;
-
-            this->enable_depth_write = depth_write;
-            clear_pipeline_state();
-        }
-
-        void set_topology(Topology topology) {
-            if (this->topology == topology)
-                return;
-            this->topology = topology;
-            clear_pipeline_state();
-        }
+        void create_from_file(const std::vector<std::string> &shader_files, const ShaderMaterialProperties &properties);
 
         virtual void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass);
 
@@ -89,49 +40,18 @@ namespace mirai {
             this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
         }
 
-        uint64_t get_hash() {
-            return hash;
-        }
-
         PipelineID get_pipeline_id() const {
             return pipeline;
         }
 
       protected:
-        std::vector<ShaderID> shaders;
         std::string name;
-
-        uint64_t shader_hash;
-        uint64_t hash;
         PipelineID pipeline;
 
-        CullMode cull_mode;
-        FrontFace front_face;
-
-        bool dirty = true;
-        bool enable_depth_test;
-        bool enable_depth_write;
-        bool enable_depth_clamp;
-        bool enable_blend;
-        CompareOp depth_compare_op;
-        Topology topology;
-
-        void calculate_hash();
-
-        void clear_pipeline_state() {
-            pipeline.id = K_INVALID_ID;
-            dirty = true;
-        }
-
-        struct Resource {
-            std::string name;
-            ID resource_id;
-            bool dirty;
-        };
-
-        bool is_resource_updated;
+        std::vector<std::string> shader_files;
         std::vector<UniformSetID> uniform_sets;
         std::vector<PushConstant> push_constants;
+        ShaderMaterialProperties properties;
 
         PipelineID create_pipeline(const FrameGraphRenderpassInfo *renderpass);
     };

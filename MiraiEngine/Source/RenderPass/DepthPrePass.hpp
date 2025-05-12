@@ -15,7 +15,7 @@ namespace mirai {
         ~DepthPrePass();
 
       private:
-        std::shared_ptr<ShaderMaterial> shader;
+        ShaderMaterial* shader;
         UniformSetID transform_set;
     };
 } // namespace mirai

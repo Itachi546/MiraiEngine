@@ -57,7 +57,7 @@ namespace mirai {
 
         static TextRenderManager *Instance;
         std::vector<std::shared_ptr<TextRenderer>> renderers;
-        std::shared_ptr<ShaderMaterial> shader;
+        ShaderMaterial* shader;
     };
 
 }; // namespace mirai
