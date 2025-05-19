@@ -14,6 +14,8 @@
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 
+#include <cstring>
+
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
 
@@ -60,14 +62,14 @@ namespace mirai {
 
             mesh_infos[i].vertex_buffer = {
                 .buffer = object.vertex_buffer,
-                .offset = object.vertex_offset * sizeof(Vertex),
+                .offset = cast_u32(object.vertex_offset * sizeof(Vertex)),
                 .count = object.vertex_count,
                 .stride = sizeof(Vertex),
             };
 
             mesh_infos[i].index_buffer = {
                 .buffer = object.index_buffer,
-                .offset = object.index_offset * sizeof(uint32_t),
+                .offset = cast_u32(object.index_offset * sizeof(uint32_t)),
                 .count = object.index_count,
                 .stride = sizeof(uint32_t),
             };

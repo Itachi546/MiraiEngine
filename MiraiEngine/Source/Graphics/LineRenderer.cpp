@@ -11,7 +11,7 @@ namespace mirai {
     LineRenderer::LineRenderer() {
         Instance = this;
         BufferDescription buffer_desc = {
-            .size = K_MAX_LINE_COUNT * sizeof(Line),
+            .size = cast_u32(K_MAX_LINE_COUNT * sizeof(Line)),
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };

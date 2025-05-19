@@ -2,6 +2,7 @@
 #include "Common/FileUtils.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include <cmath>
 
 namespace mirai {
 
