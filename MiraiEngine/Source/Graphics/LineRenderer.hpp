@@ -11,6 +11,8 @@ namespace mirai {
     struct LineRenderer {
 
         LineRenderer();
+        LineRenderer(const LineRenderer &) = delete;
+        void operator=(const LineRenderer &) = delete;
 
         void NewFrame();
 
@@ -22,7 +24,7 @@ namespace mirai {
 
         BufferID buffer;
         UniformSetID uniform_set;
-        ShaderMaterial* shader_material;
+        ShaderMaterial *shader_material;
         uint32_t line_count = 0;
 
         static LineRenderer *get() {

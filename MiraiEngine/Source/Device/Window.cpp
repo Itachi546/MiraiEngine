@@ -50,6 +50,9 @@ namespace mirai {
                                                                                 mouse_scroll(0.0f, 0.0f),
                                                                                 mouse_scroll_delta(0.0f, 0.0f),
                                                                                 minimized(false) {
+        ASSERT(Instance == nullptr);
+        Instance = this;
+
         if (!glfwInit()) {
             glfwInit();
         }
@@ -82,8 +85,6 @@ namespace mirai {
         double x, y;
         glfwGetCursorPos(glfw_window, &x, &y);
         mouse_pos = {static_cast<float>(x), static_cast<float>(y)};
-
-        Instance = this;
     }
 
     void Window::set_title(const std::string &title) {

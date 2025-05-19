@@ -14,13 +14,15 @@ namespace mirai {
     Engine *Engine::Instance = nullptr;
 
     Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
+        ASSERT(Instance == nullptr);
+
+        Instance = this;
         Timer timer;
         Log::Info("Working Directory: ", std::filesystem::current_path());
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
 
         renderer = std::make_unique<Renderer>();
-        Instance = this;
         Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
     }
 

@@ -9,6 +9,7 @@ namespace mirai {
     LineRenderer *LineRenderer::Instance = nullptr;
 
     LineRenderer::LineRenderer() {
+        ASSERT(Instance == nullptr);
         Instance = this;
         BufferDescription buffer_desc = {
             .size = cast_u32(K_MAX_LINE_COUNT * sizeof(Line)),

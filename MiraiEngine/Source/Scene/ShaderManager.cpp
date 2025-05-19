@@ -5,6 +5,7 @@
 namespace mirai {
     ShaderManager* ShaderManager::Instance = nullptr;
     ShaderManager::ShaderManager() {
+        ASSERT(Instance == nullptr);
         Instance = this;
     }
 

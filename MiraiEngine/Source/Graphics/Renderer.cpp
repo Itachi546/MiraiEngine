@@ -20,6 +20,7 @@ namespace mirai {
     Renderer *Renderer::Instance = nullptr;
 
     Renderer::Renderer() {
+        ASSERT(Instance == nullptr);
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>();
         scene = std::make_unique<Scene>("default");

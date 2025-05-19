@@ -11,6 +11,9 @@ namespace mirai {
 
       public:
         ShaderManager();
+        ShaderManager(const ShaderManager&) = delete;
+        void operator=(const ShaderManager&) = delete;
+
         ~ShaderManager();
 
         ShaderMaterial *load(const std::string &name, const std::vector<std::string> &shaders, const ShaderMaterialProperties &props);

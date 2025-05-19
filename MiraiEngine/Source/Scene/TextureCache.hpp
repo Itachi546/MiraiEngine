@@ -9,6 +9,8 @@ namespace mirai {
     class TextureCache {
       public:
         TextureCache();
+        TextureCache(const TextureCache&) = delete;
+        void operator=(const TextureCache&) = delete;
 
         static TextureCache *get() {
             return Instance;

@@ -519,6 +519,9 @@ namespace mirai {
             Instance = this;
         }
 
+        RenderingDevice(const RenderingDevice&) = delete;
+        void operator=(const RenderingDevice&) = delete;
+
         static RenderingDevice *get() {
             return Instance;
         }
@@ -574,7 +577,7 @@ namespace mirai {
             return total_memory_usage;
         }
 
-        virtual bool supports_raytracing()  {
+        virtual bool supports_raytracing() {
             return false;
         }
 

@@ -42,6 +42,8 @@ namespace mirai {
     struct TextRenderManager {
 
         TextRenderManager();
+        TextRenderManager(const TextRenderManager &) = delete;
+        void operator=(const TextRenderManager &) = delete;
 
         ~TextRenderManager();
 
@@ -57,7 +59,7 @@ namespace mirai {
 
         static TextRenderManager *Instance;
         std::vector<std::shared_ptr<TextRenderer>> renderers;
-        ShaderMaterial* shader;
+        ShaderMaterial *shader;
     };
 
 }; // namespace mirai

@@ -6,6 +6,7 @@ namespace mirai {
     TextureCache *TextureCache::Instance = nullptr;
 
     TextureCache::TextureCache() {
+        ASSERT(Instance == nullptr);
         Instance = this;
     }
 

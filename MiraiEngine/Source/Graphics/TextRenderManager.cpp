@@ -97,6 +97,7 @@ namespace mirai {
     }
 
     TextRenderManager::TextRenderManager() {
+        ASSERT(Instance == nullptr);
         Instance = this;
         shader = ShaderManager::get()->get_shader("text_render_2d");
     }
