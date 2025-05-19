@@ -32,9 +32,9 @@ namespace mirai {
         shader_manager->load("depth_prepass", {"SPIRV/depth_prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
         shader_manager->load("pbr_forward", {"SPIRV/forward_pass.vert.spv", "SPIRV/forward_pass.frag.spv"}, {.depth_test = true, .depth_write = false});
         shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = false, .blend = true});
-        shader_manager->load("gbuffer_pass", {"SPIRV/gbuffer.vert.spv", "SPIRV/gbuffer.frag.spv"}, {.depth_test = true, .depth_write = true});
-        shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
-        shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_shading_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
+        shader_manager->load("gbuffer_pass", {"SPIRV/deferred.vert.spv", "SPIRV/deferred.frag.spv"}, {.depth_test = true, .depth_write = true});
+        shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
+        shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
         shader_manager->load("csm_shadow", {"SPIRV/cascaded_shadow.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .depth_clamp = true});
         shader_manager->load("swapchain_copy_rgba", {"SPIRV/fullscreen.vert.spv", "SPIRV/fullscreen.frag.spv"}, {.cull_mode = CULL_MODE_BACK});
         shader_manager->load("text_render_2d", {"SPIRV/font.vert.spv", "SPIRV/font.frag.spv"}, {.blend = true});
