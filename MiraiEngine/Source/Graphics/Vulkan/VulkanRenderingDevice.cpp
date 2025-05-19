@@ -138,7 +138,7 @@ namespace mirai {
             score += cast_u32(requested_device_extensions.size());
 
             if (IsExtensionsAvailable(physical_device_info.supported_extensions, raytracing_extensions)) {
-                supportRaytracing = true;
+                has_rt_support = true;
                 score += 3;
             }
 
@@ -148,7 +148,7 @@ namespace mirai {
             }
         }
 
-        if (supportRaytracing)
+        if (has_rt_support)
             requested_device_extensions.insert(requested_device_extensions.end(), raytracing_extensions.begin(), raytracing_extensions.end());
 
         Log::Info("VULKAN::SELECTED DEVICE:: ", all_vendor_infos[max_score_index].name);
@@ -163,7 +163,7 @@ namespace mirai {
         if (!PhysicalDeviceSupportPresentation(instance, physical_device, graphics_queue))
             Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
-        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions, supportRaytracing);
+        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions, has_rt_support);
 
         vma_allocator = create_allocator();
 
@@ -717,7 +717,7 @@ namespace mirai {
                 write_sets[i].pImageInfo = &image_info;
             } break;
             case BINDING_TYPE_ACCELERATION_STRUCTURE: {
-                if (!supportRaytracing) {
+                if (!has_rt_support) {
                     ASSERT("Raytracing is not supported");
                     continue;
                 }
@@ -1632,7 +1632,7 @@ namespace mirai {
             // vkFreeCommandBuffers(device, command_buffer->command_pool, 1, &command_buffer->command_buffer);
         }
 
-        if (supportRaytracing && acceleration_structure.blas_buffer) {
+        if (has_rt_support && acceleration_structure.blas_buffer) {
             BufferID buffers[] = {acceleration_structure.blas_buffer, acceleration_structure.tlas_buffer, acceleration_structure.tlas_instance_buffer};
             destroy_buffers(buffers, cast_u32(std::size(buffers)));
 

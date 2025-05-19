@@ -49,6 +49,8 @@ namespace mirai {
 
         ~Renderer();
 
+        bool enable_rt_shadow = false;
+
       private:
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;

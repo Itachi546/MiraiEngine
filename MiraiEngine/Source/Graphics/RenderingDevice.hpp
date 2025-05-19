@@ -574,6 +574,10 @@ namespace mirai {
             return total_memory_usage;
         }
 
+        virtual bool supports_raytracing()  {
+            return false;
+        }
+
         // Raytracing stuff
         virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
 

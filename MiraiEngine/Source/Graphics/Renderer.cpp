@@ -121,6 +121,9 @@ namespace mirai {
         line_renderer->NewFrame();
         scene->update();
         frame_graph->update(scene.get());
+
+        FrameGraphNode *node = frame_graph->get_node("cascaded_shadow_pass");
+        node->enabled = !enable_rt_shadow;
     }
 
     void Renderer::render() {

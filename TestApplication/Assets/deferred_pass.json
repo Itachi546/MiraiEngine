@@ -49,7 +49,7 @@
     },
     {
       "name": "cascaded_shadow_pass",
-      "enabled": false,
+      "enabled": true,
       "outputs": [
         {
           "type": "attachment",
@@ -109,6 +109,10 @@
         {
           "type": "texture",
           "name": "ssao_texture"
+        },
+        {
+          "type": "texture",
+          "name": "cascaded_shadow_map"
         }
       ],
       "outputs": [

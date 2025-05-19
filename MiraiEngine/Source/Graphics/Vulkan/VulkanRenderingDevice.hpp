@@ -113,6 +113,9 @@ namespace mirai {
 
         // Raytracing utilities
         void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count);
+        bool supports_raytracing() override {
+            return has_rt_support;
+        }
 
         ~VulkanRenderingDevice();
 
@@ -161,7 +164,7 @@ namespace mirai {
         uint32_t current_frame = 0;
 
         bool vsync = true;
-        bool supportRaytracing = false;
+        bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
         VmaAllocator vma_allocator;

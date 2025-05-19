@@ -13,9 +13,7 @@ namespace mirai {
 
     void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
         shader = ShaderManager::get()->get_shader("csm_shadow");
-
         shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
-
         UniformLayout mesh_instance_layout = {
             .binding = 0,
             .binding_type = BINDING_TYPE_STORAGE_BUFFER,
