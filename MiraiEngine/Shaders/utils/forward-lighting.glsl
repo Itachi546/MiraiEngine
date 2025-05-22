@@ -84,8 +84,7 @@ void main() {
         vec3 radiance = light_color.xyz * light_color.w;
         vec3 kD = (1.0 - F) * (1.0 - metallic);
 
-        // Apply AO to direction light too
-        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * ao;
+        Lo += (kD * diffuse /*+ specular*/) * shadow_factor * radiance * ndotl * ao;
     }
 
     vec3 Ks = F_SchlickRoughness(ndotv, F0, roughness);
@@ -97,7 +96,7 @@ void main() {
     vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
-    vec3 ambient = (Kd * diffuse + specular) * ao;
+    vec3 ambient = (Kd * diffuse /*+ specular*/) * ao;
     Lo += ambient + emissive;
     fragColor = vec4(Lo, 1.0f);
 }
