@@ -199,7 +199,7 @@ class TestApplication : public App {
             auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("cascaded_shadow_pass");
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
             if (cascaded_shadow_pass != nullptr) {
-                if (ImGui::CollapsingHeader("Cascaded Shadow Pass")) {
+                if (ImGui::CollapsingHeader("Shadow Pass")) {
                     ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
                     if (supports_raytracing) {
                         bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
