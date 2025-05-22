@@ -5,6 +5,7 @@
 #include "Scene/ShaderManager.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Scene/EnvironmentMap.hpp"
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
@@ -34,13 +35,13 @@ namespace mirai {
         auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
             // Set Per Frame Data
             uint32_t instance_data[] = {0, 0, 0, 0};
-            PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
+            PushConstant push_constant_vert = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
             command_buffer->set_index_buffer(batch->index_buffer);
             command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
             for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
                 instance_data[0] = batch->transform_indices[i];
                 instance_data[1] = batch->material_indices[i];
-                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+                command_buffer->set_push_constants(pipeline_id, &push_constant_vert, 1);
                 command_buffer->draw_indexed(batch->index_counts[i],
                                              1,
                                              batch->index_offsets[i],
@@ -65,11 +66,21 @@ namespace mirai {
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
             UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
+            transparent_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
+            transparent_shader->bind(command_buffer, &node->renderpass_info);
+
+            PushConstant push_constant_frag = {
+                .data = &scene->scene_data,
+                .shader_stage = SHADER_STAGE_FRAGMENT,
+                .size = sizeof(scene->scene_data),
+                .offset = sizeof(uint32_t) * 4,
+            };
+            PipelineID pipeline_id = transparent_shader->get_pipeline_id();
+            command_buffer->set_push_constants(pipeline_id, &push_constant_frag, 1);
+
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
-                    transparent_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-                    transparent_shader->bind(command_buffer, &node->renderpass_info);
-                    draw_batch(&batch, transparent_shader->get_pipeline_id());
+                    draw_batch(&batch, pipeline_id);
                 }
             }
         }

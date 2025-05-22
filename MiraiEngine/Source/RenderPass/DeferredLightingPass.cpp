@@ -70,33 +70,9 @@ namespace mirai {
     void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ASSERT(node != nullptr);
 
-        Camera *camera = scene->get_camera();
-        struct {
-            glm::mat4 inv_VP;
-            glm::vec4 camera_position;
-            glm::vec4 light_direction;
-            glm::vec4 light_color;
-            uint32_t irradiance_map;
-            uint32_t prefilter_map;
-            uint32_t brdf_texture;
-        } push_constant_data;
-
-        push_constant_data.inv_VP = camera->get_inv_view_projection_transform();
-        push_constant_data.camera_position = glm::vec4(camera->position, 0.0f);
-
-        Light *sun = scene->get_sun();
-        glm::vec3 light_direction = sun->get_direction();
-        push_constant_data.light_direction = glm::vec4(light_direction, (float)sun->cast_shadow);
-        push_constant_data.light_color = glm::vec4(sun->color, sun->intensity);
-
-        EnvironmentMap *env_map = scene->get_environment_map();
-        push_constant_data.irradiance_map = env_map->get_irradiance_map().id;
-        push_constant_data.prefilter_map = env_map->get_prefilter_map().id;
-        push_constant_data.brdf_texture = env_map->get_brdf_texture().id;
-
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
-        ShaderMaterial* active_shader = Renderer::get()->enable_rt_shadow ? rt_shader : shader;
+        ShaderMaterial *active_shader = Renderer::get()->enable_rt_shadow ? rt_shader : shader;
 
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 
@@ -111,7 +87,7 @@ namespace mirai {
             active_shader->set_uniform_sets(&rt_uniform_set, 1);
         }
 
-        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(push_constant_data), .offset = 0};
+        PushConstant push_constant = {.data = &scene->scene_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(scene->scene_data), .offset = 0};
         active_shader->set_push_constant(&push_constant, 1);
 
         active_shader->bind(command_buffer, &node->renderpass_info);

@@ -75,6 +75,16 @@ namespace mirai {
         UniformSetID vertex_binding_set;
     };
 
+    struct SceneData {
+        glm::mat4 inv_VP;
+        glm::vec4 camera_position;
+        glm::vec4 light_direction;
+        glm::vec4 light_color;
+        uint32_t irradiance_map;
+        uint32_t prefilter_map;
+        uint32_t brdf_texture;
+    };
+
     class Scene {
       public:
         Scene(const std::string &name);
@@ -146,6 +156,7 @@ namespace mirai {
 
         UniformSetID per_frame_uniform_set;
         DirectionalLightInfo directional_light_info;
+        SceneData scene_data;
 
         std::vector<GpuMesh> gpu_meshes;
         std::vector<RenderableObjectData> render_object_list;

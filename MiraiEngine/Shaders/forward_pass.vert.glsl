@@ -4,11 +4,9 @@ layout(location = 0) out VS_OUT {
     vec3 normal;
     vec3 tangent;
     vec3 bitangent;
-    vec3 worldPos;
-    vec3 lsPos;
-    vec3 viewDir;
+    vec3 world_pos;
     vec2 uv;
-    flat uint matId;
+    flat uint mat_id;
 }
 vs_out;
 
@@ -48,13 +46,14 @@ void main() {
     mat4 M = transforms[transform_id];
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
-    vec4 worldPos = M * vec4(position, 1.0f);
-    gl_Position = VP * worldPos;
+    vec4 world_pos = M * vec4(position, 1.0f);
+    gl_Position = VP * world_pos;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);
-    vs_out.uv = vec2(vertex.tu, vertex.tv);
     vs_out.tangent = normal_matrix * u32_to_vec3(vertex.tangent);
     vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
-    vs_out.matId = material_id;
+    vs_out.world_pos = world_pos.xyz;
+    vs_out.uv = vec2(vertex.tu, vertex.tv);
+    vs_out.mat_id = material_id;
 }

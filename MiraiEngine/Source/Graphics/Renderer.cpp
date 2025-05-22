@@ -89,6 +89,9 @@ namespace mirai {
         device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
 
         frame_graph->compile();
+
+        if (device->supports_raytracing())
+            enable_rt_shadow = true;
     }
     void Renderer::copy_buffers(CommandBuffer *cb) {
         // @TODO do it here for now
