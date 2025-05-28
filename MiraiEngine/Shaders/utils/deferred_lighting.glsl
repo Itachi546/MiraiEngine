@@ -14,7 +14,7 @@ layout(set = 0, binding = 3) uniform sampler2D emissive_texture;
 layout(set = 0, binding = 5) uniform sampler2D ssao_texture;
 
 #if ENABLE_RT_SHADOW
-layout(set = 0, binding = 4) uniform accelerationStructureEXT tlas;
+layout(set = 0, binding = 4) uniform sampler2D shadow_texture;
 #else
 layout(set = 0, binding = 4) uniform sampler2D shadow_depth_texture;
 layout(set = 2, binding = 0) uniform CascadeInfoUniform {
@@ -58,12 +58,7 @@ void main() {
     float ao = texture(ssao_texture, uv).r;
 
 #if ENABLE_RT_SHADOW
-    float shadow_factor = 1.0f;
-    rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, world_pos, 0.01, light_direction.xyz, 1000.0);
-    rayQueryProceedEXT(ray_query);
-    if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
-        shadow_factor = 0.1f;
+    float shadow_factor = texture(shadow_texture, uv).r;
 #else
     int cascade_index = 0;
     float shadow_factor = light_direction.w < 0.5 ? 1.0f : max(calculate_shadow_factor(world_pos, cam_dist, cascade_index), 0.0f);

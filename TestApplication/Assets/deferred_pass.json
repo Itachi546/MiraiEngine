@@ -140,6 +140,10 @@
         {
           "type": "texture",
           "name": "cascaded_shadow_map"
+        },
+        {
+          "type": "texture",
+          "name": "rt_directional_shadow_map"
         }
       ],
       "outputs": [

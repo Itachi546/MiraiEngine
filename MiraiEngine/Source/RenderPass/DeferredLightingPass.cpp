@@ -53,9 +53,11 @@ namespace mirai {
         // For binding acceleration structure, we can only specify the descriptor type without actual
         // resources. The acceleration structure for now is single global entity and a type of ACCELRATION_STRUCTURE
         // is enough to distinguish it
-        layouts[4].binding_type = BINDING_TYPE_ACCELERATION_STRUCTURE;
         rt_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_rt_binding_set");
-        bindings[4].resource_id = {K_INVALID_ID};
+        bindings[4].resource_id = frame_graph->get_resource("rt_directional_shadow_map")->handle;
+        desc.address_mode_u = desc.address_mode_v = desc.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        SamplerID no_repeat_sampler = device->create_sampler(&desc);
+        bindings[4].texture_info = {.sampler = no_repeat_sampler};
         device->update_uniform_set(rt_uniform_set, bindings, cast_u32(std::size(bindings)));
 
         // Create cascade uniform set

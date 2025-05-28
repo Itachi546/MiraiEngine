@@ -13,7 +13,7 @@ namespace mirai {
         UniformLayout layouts[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
-            {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+            {2, BINDING_TYPE_ACCELERATION_STRUCTURE, SHADER_STAGE_COMPUTE},
         };
 
         ASSERT(node->outputs.size() == 1);
@@ -21,16 +21,18 @@ namespace mirai {
 
         TextureID rt_shadow_texture = frame_graph->get_resource(node->outputs[0])->handle;
         TextureID depth_texture = frame_graph->get_resource(node->inputs[0])->handle;
-        TextureID normal_texture = frame_graph->get_resource(node->inputs[0])->handle;
+        TextureID normal_texture = frame_graph->get_resource(node->inputs[1])->handle;
 
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
-        SamplerID default_sampler = device->create_sampler(&sampler_desc);
+        sampler_desc.address_mode_w = sampler_desc.address_mode_v = sampler_desc.address_mode_u = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        SamplerID depth_sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {
             {.resource_id = rt_shadow_texture},
-            {.resource_id = depth_texture, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = normal_texture, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = depth_texture, .texture_info = {.sampler = depth_sampler}},
+            // Acceleration structure is global and populated by the vulkan device
+            {.resource_id = K_INVALID_ID},
         };
 
         // SSAO Uniform Set
@@ -45,13 +47,15 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "RT Shadow Pass", nullptr);
 
         struct ShaderData {
-            glm::mat4 inv_projection_matrix;
+            glm::mat4 invVP;
+            glm::vec3 light_direction;
             float width;
             float height;
         } shader_data;
 
         Camera *camera = scene->get_camera();
-        shader_data.inv_projection_matrix = camera->get_inv_projection_transform();
+        shader_data.invVP = camera->get_inv_view_projection_transform();
+        shader_data.light_direction = scene->get_sun()->get_direction();
         shader_data.width = cast_float(node->width);
         shader_data.height = cast_float(node->height);
 
