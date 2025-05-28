@@ -60,7 +60,8 @@ class TestApplication : public App {
         frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
 #endif
         frame_graph->set_renderer("ssao_pass", std::make_shared<SSAOPass>());
-        frame_graph->set_renderer("cascaded_shadow_pass", std::make_shared<CascadedShadowPass>());
+        frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());
+        frame_graph->set_renderer("rt_directional_shadow_pass", std::make_shared<DirectionalShadowPassRT>());
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
@@ -196,26 +197,25 @@ class TestApplication : public App {
     void add_pass_ui() {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
-            auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("cascaded_shadow_pass");
+
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
-            if (cascaded_shadow_pass != nullptr) {
-                if (ImGui::CollapsingHeader("Shadow Pass")) {
-                    ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
-                    if (supports_raytracing) {
-                        bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
-                        ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
-                    }
-                    if (!Renderer::get()->enable_rt_shadow) {
-                        ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
-                        ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
-                        if (cascaded_shadow_pass->calculate_distance_automatic) {
-                            ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
-                            ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
-                        } else {
-                            for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
-                                std::string cascadeName = "Cascade" + std::to_string(i);
-                                ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i]);
-                            }
+            if (ImGui::CollapsingHeader("Shadow Pass")) {
+                if (supports_raytracing) {
+                    bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
+                    ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
+                }
+                if (!Renderer::get()->enable_rt_shadow) {
+                    auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
+                    ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
+                    ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
+                    if (cascaded_shadow_pass->calculate_distance_automatic) {
+                        ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
+                        ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
+                    } else {
+                        ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
+                        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                            std::string cascadeName = "Cascade" + std::to_string(i);
+                            ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i]);
                         }
                     }
                 }

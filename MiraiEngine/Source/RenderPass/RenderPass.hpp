@@ -5,6 +5,7 @@
 #include "ForwardPass.hpp"
 #include "DeferredPass.hpp"
 #include "SwapchainCopyPass.hpp"
-#include "ShadowPass.hpp"
+#include "CascadedShadowPass.hpp"
+#include "DirectionalShadowPassRT.hpp"
 #include "SSAOPass.hpp"
 #include "DeferredTransparentPass.hpp"

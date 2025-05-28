@@ -10,7 +10,7 @@ namespace mirai {
 
     class CascadedShadowPass : public FrameGraphRenderer {
       public:
-        CascadedShadowPass() : FrameGraphRenderer("cascaded_shadow_pass") {
+        CascadedShadowPass() : FrameGraphRenderer("directional_shadow_pass") {
         }
 
         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;

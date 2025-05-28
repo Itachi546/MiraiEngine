@@ -1,4 +1,4 @@
-#include "ShadowPass.hpp"
+#include "CascadedShadowPass.hpp"
 
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/ShaderManager.hpp"

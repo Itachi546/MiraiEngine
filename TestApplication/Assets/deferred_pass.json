@@ -48,7 +48,7 @@
       ]
     },
     {
-      "name": "cascaded_shadow_pass",
+      "name": "directional_shadow_pass",
       "enabled": true,
       "outputs": [
         {
@@ -58,6 +58,33 @@
           "resolution": [
             4096,
             4096
+          ],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
+      "name": "rt_directional_shadow_pass",
+      "enabled": true,
+      "type": "compute",
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "gbuffer_depth"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_normal"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "rt_directional_shadow_map",
+          "format": "R16_SFLOAT",
+          "resolution": [
+            1920,
+            1080
           ],
           "op": "LOAD_OP_CLEAR"
         }
