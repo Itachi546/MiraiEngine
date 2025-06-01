@@ -70,6 +70,8 @@ namespace mirai {
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
+                material.flags |= Material::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
+
                 if (ext->second.Has("diffuseTexture"))
                     material.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>());
                 if (ext->second.Has("specularGlossinessTexture"))

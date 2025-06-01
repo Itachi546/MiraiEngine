@@ -12,7 +12,7 @@ layout(set = 0, binding = 0, r16f) uniform image2D u_rt_shadow_texture;
 layout(set = 0, binding = 1) uniform sampler2D u_depth_texture;
 layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
 
-layout(push_constant) uniform HBAOPushConstants {
+layout(push_constant) uniform RTShadowPushConstants {
     mat4 invVP;
 
     vec3 light_direction;
@@ -20,7 +20,7 @@ layout(push_constant) uniform HBAOPushConstants {
     float height;
 };
 
-const float SUN_JITTER = 0.001f;
+const float SUN_JITTER = 0.01f;
 
 void main() {
     ivec3 id = ivec3(gl_GlobalInvocationID.xyz);
@@ -38,9 +38,9 @@ void main() {
     float dir1 = gradientNoise(vec2(id.yx));
 
     vec3 dir = light_direction;
-    //dir.x += (dir0 * 2 - 1) * SUN_JITTER;
-    //dir.z += (dir1 * 2 - 1) * SUN_JITTER;
-    //dir = normalize(dir);
+    dir.x += (dir0 * 2 - 1) * SUN_JITTER;
+    dir.z += (dir1 * 2 - 1) * SUN_JITTER;
+    dir = normalize(dir);
 
     float shadow_factor = 1.0f;
     rayQueryEXT ray_query;

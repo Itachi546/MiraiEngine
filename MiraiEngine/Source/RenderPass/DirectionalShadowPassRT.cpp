@@ -24,8 +24,6 @@ namespace mirai {
         TextureID normal_texture = frame_graph->get_resource(node->inputs[1])->handle;
 
         SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
-        sampler_desc.address_mode_w = sampler_desc.address_mode_v = sampler_desc.address_mode_u = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         SamplerID depth_sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {

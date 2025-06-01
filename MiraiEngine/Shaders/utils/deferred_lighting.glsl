@@ -43,6 +43,7 @@ void main() {
 
     vec3 normal = octahedral_decode(normal_pbr.xy * 2.0 - 1.0);
     float metallic = normal_pbr.z;
+
     float roughness = normal_pbr.w;
 
     vec3 view_dir = camera_position.xyz - world_pos;

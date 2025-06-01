@@ -138,6 +138,7 @@ namespace mirai {
             FLAG_ALPHA_BLEND = 1 << 1,
             FLAG_ALPHA_MASK = 1 << 2,
             FLAG_DOUBLE_SIDED = 1 << 3,
+            FLAG_SPECULAR_GLOSSINESS_WORKFLOW = 1 << 4,
         };
 
         glm::vec4 albedo;
