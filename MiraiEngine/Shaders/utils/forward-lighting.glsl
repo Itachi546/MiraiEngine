@@ -51,8 +51,9 @@ void main() {
     if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
         vec2 mr = sample_texture(material.metallic_roughness_texture, fs_in.uv).bg;
         metallic = mr.x;
-        roughness = is_specular_glossiness_workflow(material.flags) ? 1.0 - mr.y : mr.y;
+        roughness = mr.y;
     }
+    roughness = is_specular_glossiness_workflow(material.flags) ? 1.0 - roughness : roughness;
 
     vec3 emissive = material.emissive_factor;
     if (material.emissive_texture != K_INVALID_TEXTURE)

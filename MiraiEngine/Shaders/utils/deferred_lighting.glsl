@@ -79,7 +79,7 @@ void main() {
         // For directional light
         vec3 radiance = light_color.xyz * light_color.w;
         vec3 kD = (1.0 - F) * (1.0 - metallic);
-
+    
         // Apply AO to direction light too
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * ao;
     }

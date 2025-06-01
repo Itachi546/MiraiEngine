@@ -48,12 +48,10 @@ namespace mirai {
             // material].name = name.size() > 0 ? std::move(name) : "Unnamed" + std::to_string(i);
             Material &material = materials.emplace_back(Material{});
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
-            material.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
-            material.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
-            material.metallic_factor = static_cast<float>(pbr.metallicFactor);
-            material.roughness_factor = static_cast<float>(pbr.roughnessFactor);
+
             material.transmission = static_cast<float>(pbr.baseColorFactor[3]);
             material.flags = 0;
+            material.transmission = 0.0f;
 
             const std::string &alpha_mode = gltf_material->alphaMode;
             if (alpha_mode == "OPAQUE")
@@ -71,11 +69,28 @@ namespace mirai {
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
                 material.flags |= Material::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
-
                 if (ext->second.Has("diffuseTexture"))
                     material.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>());
+                else
+                    material.albedo_texture = K_INVALID_ID;
+
                 if (ext->second.Has("specularGlossinessTexture"))
                     material.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>());
+                else
+                    material.metallic_roughness_texture = K_INVALID_ID;
+
+                if (ext->second.Has("glossinessFactor")) {
+                    material.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
+                } else {
+                    material.roughness_factor = 1.0f;
+                }
+
+                if (ext->second.Has("specularFactor")) {
+                    material.metallic_factor = cast_float(ext->second.Get("specularFactor").Get<double>());
+                } else {
+                    material.metallic_factor = 0.01f;
+                }
+
                 if (ext->second.Has("diffuseFactor")) {
                     auto factor = ext->second.Get("diffuseFactor");
                     for (uint32_t d = 0; d < factor.ArrayLen(); ++d) {
@@ -87,8 +102,12 @@ namespace mirai {
                 // Process Textures
                 material.albedo_texture = LoadTexture(pbr.baseColorTexture.index);
                 material.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index);
+                material.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
+                material.metallic_factor = static_cast<float>(pbr.metallicFactor);
+                material.roughness_factor = static_cast<float>(pbr.roughnessFactor);
             }
 
+            material.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
             material.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index);
 
             const tinygltf::NormalTextureInfo &normal_texture = gltf_material->normalTexture;
