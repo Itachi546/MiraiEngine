@@ -24,8 +24,8 @@ namespace mirai {
         std::unique_ptr<ComputeShader> dir_shadow_shader;
         std::unique_ptr<ComputeShader> blur_shader;
 
-        float blur_radius = 1.0f;
-        float blur_sample_count = 3.0f;
+        float sigma = 1.0f;
+        float blur_sample_count = 10.0f;
 
       private:
         UniformSetID rt_uniform_set, blur_uniform_set_x, blur_uniform_set_y;

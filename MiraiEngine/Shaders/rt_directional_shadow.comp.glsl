@@ -20,7 +20,7 @@ layout(push_constant) uniform RTShadowPushConstants {
     float height;
 };
 
-const float SUN_JITTER = 0.01f;
+const float SUN_JITTER = 0.0001f;
 
 void main() {
     ivec3 id = ivec3(gl_GlobalInvocationID.xyz);

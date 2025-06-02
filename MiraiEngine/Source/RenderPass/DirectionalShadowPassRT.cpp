@@ -132,7 +132,7 @@ namespace mirai {
 
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
-        float blur_data[] = {cast_float(node->width), cast_float(node->height), 0.0f, blur_radius, blur_sample_count};
+        float blur_data[] = {cast_float(node->width), cast_float(node->height), 0.0f, sigma, blur_sample_count};
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
         PushConstant push_constant = {
