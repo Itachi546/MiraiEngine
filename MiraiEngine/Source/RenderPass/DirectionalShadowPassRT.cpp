@@ -7,8 +7,11 @@
 
 namespace mirai {
     void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        shader = std::make_unique<ComputeShader>("rt_directional_light");
-        shader->create_from_file("SPIRV/rt_directional_shadow.comp.spv");
+        dir_shadow_shader = std::make_unique<ComputeShader>("rt_directional_light");
+        dir_shadow_shader->create_from_file("SPIRV/rt_directional_shadow.comp.spv");
+
+        blur_shader = std::make_unique<ComputeShader>("rt_shadow_blur");
+        blur_shader->create_from_file("SPIRV/gaussian-blur.comp.spv");
 
         UniformLayout layouts[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
@@ -17,33 +20,66 @@ namespace mirai {
         };
 
         ASSERT(node->outputs.size() == 1);
-        ASSERT(node->inputs.size() == 2);
+        ASSERT(node->inputs.size() == 1);
 
         TextureID rt_shadow_texture = frame_graph->get_resource(node->outputs[0])->handle;
         TextureID depth_texture = frame_graph->get_resource(node->inputs[0])->handle;
-        TextureID normal_texture = frame_graph->get_resource(node->inputs[1])->handle;
 
         SamplerDescription sampler_desc = SamplerDescription::create();
-        SamplerID depth_sampler = device->create_sampler(&sampler_desc);
+        sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {
             {.resource_id = rt_shadow_texture},
-            {.resource_id = depth_texture, .texture_info = {.sampler = depth_sampler}},
+            {.resource_id = depth_texture, .texture_info = {.sampler = sampler}},
             // Acceleration structure is global and populated by the vulkan device
             {.resource_id = K_INVALID_ID},
         };
 
-        // SSAO Uniform Set
-        rt_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "ssao_uniform_set");
-        device->update_uniform_set(rt_set, bindings, cast_u32(std::size(bindings)));
-        shader->set_uniform_sets(&rt_set, 1);
+        rt_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "rt_shadow_set");
+        device->update_uniform_set(rt_uniform_set, bindings, cast_u32(std::size(bindings)));
+        dir_shadow_shader->set_uniform_sets(&rt_uniform_set, 1);
+
+        // Create blur intermediate texture
+        TextureDescription texture_desc = {
+            .create_flags = 0,
+            .width = node->width,
+            .height = node->height,
+            .depth = 1,
+            .mip_levels = 1,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = FORMAT_R16_SFLOAT,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+        };
+
+        blur_intermediate_texture = device->create_texture(&texture_desc, "blur_intermediate_texture");
+
+        // Create blur uniform sets
+        bindings[0].resource_id = blur_intermediate_texture;
+        bindings[1].resource_id = rt_shadow_texture;
+        blur_uniform_set_x = device->create_uniform_set(layouts, 2, 0, "rt_shadow_blur_set");
+        device->update_uniform_set(blur_uniform_set_x, bindings, 2);
+
+        bindings[0].resource_id = rt_shadow_texture;
+        bindings[1].resource_id = blur_intermediate_texture;
+        blur_uniform_set_y = device->create_uniform_set(layouts, 2, 0, "rt_shadow_blur_set");
+        device->update_uniform_set(blur_uniform_set_y, bindings, 2);
     }
 
     void DirectionalShadowPassRT::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         ScopedCpuProfiling("RT Shadow Pass");
-        ScopedGpuProfiling(command_buffer, "RT Shadow Pass");
-        device->begin_debug_utils_label(command_buffer, "RT Shadow Pass", nullptr);
 
+        device->begin_debug_utils_label(command_buffer, "RT Shadow Pass", nullptr);
+        render_shadow(command_buffer, frame_graph, node, scene);
+        device->end_debug_utils_label(command_buffer);
+
+        device->begin_debug_utils_label(command_buffer, "RT Shadow Blur Pass", nullptr);
+        blur_shadow(command_buffer, frame_graph, node, scene);
+        device->end_debug_utils_label(command_buffer);
+    }
+
+    void DirectionalShadowPassRT::render_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+        ScopedGpuProfiling(command_buffer, "RT Shadow Render Pass");
         struct ShaderData {
             glm::mat4 invVP;
             glm::vec3 light_direction;
@@ -65,17 +101,72 @@ namespace mirai {
             .offset = 0,
         };
 
-        shader->set_push_constant(&push_constant, 1);
-        shader->bind(command_buffer);
+        dir_shadow_shader->set_push_constant(&push_constant, 1);
+        dir_shadow_shader->bind(command_buffer);
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
 
         command_buffer->dispatch(work_size_x, work_size_y, 1);
+    }
 
-        device->end_debug_utils_label(command_buffer);
-    } // namespace mirai
+    void DirectionalShadowPassRT::blur_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+        ScopedGpuProfiling(command_buffer, "RT Shadow Blur Pass");
+        TextureID rt_shadow_texture = frame_graph->get_resource(node->outputs[0])->handle;
+
+        // Transition layout
+        TextureBarrierInfo barrier_infos[] = {
+            {
+                .texture_id = rt_shadow_texture,
+                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .access_mask = ACCESS_FLAG_SHADER_READ,
+                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            },
+            {
+                .texture_id = blur_intermediate_texture,
+                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .access_mask = ACCESS_FLAG_SHADER_WRITE,
+                .layout = IMAGE_LAYOUT_GENERAL,
+            },
+        };
+
+        command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
+
+        float blur_data[] = {cast_float(node->width), cast_float(node->height), 0.0f, blur_radius, blur_sample_count};
+        uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
+        uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
+        PushConstant push_constant = {
+            .data = blur_data,
+            .shader_stage = SHADER_STAGE_COMPUTE,
+            .size = sizeof(blur_data),
+            .offset = 0,
+        };
+
+        // Blur in X-direction
+        blur_shader->set_uniform_sets(&blur_uniform_set_x, 1);
+        blur_shader->set_push_constant(&push_constant, 1);
+        blur_shader->bind(command_buffer);
+        command_buffer->dispatch(work_size_x, work_size_y, 1);
+
+        // Blur in Y-Direction
+        blur_data[2] = 1.0f;
+
+        barrier_infos[0].access_mask = ACCESS_FLAG_SHADER_WRITE;
+        barrier_infos[0].layout = IMAGE_LAYOUT_GENERAL;
+
+        barrier_infos[1].access_mask = ACCESS_FLAG_SHADER_READ;
+        barrier_infos[1].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
+
+        blur_shader->set_uniform_sets(&blur_uniform_set_y, 1);
+        blur_shader->set_push_constant(&push_constant, 1);
+        blur_shader->bind(command_buffer);
+        command_buffer->dispatch(work_size_x, work_size_y, 1);
+    }
 
     DirectionalShadowPassRT::~DirectionalShadowPassRT() {
+        if (blur_intermediate_texture.is_valid())
+            device->destroy_textures(&blur_intermediate_texture, 1);
     }
 } // namespace mirai

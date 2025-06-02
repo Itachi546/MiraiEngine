@@ -71,10 +71,6 @@
         {
           "type": "texture",
           "name": "gbuffer_depth"
-        },
-        {
-          "type": "texture",
-          "name": "gbuffer_normal"
         }
       ],
       "outputs": [

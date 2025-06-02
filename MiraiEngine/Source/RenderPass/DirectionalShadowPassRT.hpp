@@ -21,9 +21,18 @@ namespace mirai {
 
         ~DirectionalShadowPassRT();
 
-        std::unique_ptr<ComputeShader> shader;
+        std::unique_ptr<ComputeShader> dir_shadow_shader;
+        std::unique_ptr<ComputeShader> blur_shader;
+
+        float blur_radius = 1.0f;
+        float blur_sample_count = 3.0f;
 
       private:
-        UniformSetID rt_set;
+        UniformSetID rt_uniform_set, blur_uniform_set_x, blur_uniform_set_y;
+        TextureID blur_intermediate_texture;
+        SamplerID sampler;
+
+        void render_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
+        void blur_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
     };
 } // namespace mirai

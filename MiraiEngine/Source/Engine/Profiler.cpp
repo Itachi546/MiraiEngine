@@ -23,6 +23,7 @@ namespace mirai::miProfiler {
 
         int query_index_begin = -1;
         int query_index_end = -1;
+        bool updated_last_frame = false;
 
         CommandBuffer *command_buffer;
 
@@ -72,6 +73,7 @@ namespace mirai::miProfiler {
         ranges[id].avg_counter += 1;
         ranges[id].cpu_timer.record();
         ranges[id].command_buffer = nullptr;
+        ranges[id].updated_last_frame = true;
         return id;
     }
 
@@ -83,6 +85,7 @@ namespace mirai::miProfiler {
         ranges[id].name = name;
         ranges[id].avg_counter += 1;
         ranges[id].command_buffer = command_buffer;
+        ranges[id].updated_last_frame = true;
 
         uint32_t current_query_index = query_indices[frame_id]++;
         RenderingDevice::get()->query(command_buffer, gpu_query_pools[frame_id], current_query_index);
@@ -118,7 +121,7 @@ namespace mirai::miProfiler {
     void GetProfilerOutput(std::vector<ProfilerOutput> &cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
         for (auto &[key, val] : ranges) {
             // Skip for first frame
-            if (val.avg_counter == 1)
+            if (val.avg_counter == 1 || !val.updated_last_frame)
                 continue;
 
             if (val.is_cpu_profiler()) {
@@ -129,6 +132,7 @@ namespace mirai::miProfiler {
                 val.time += delta;
                 gpu_profiler_output.emplace_back(val.name, delta);
             }
+            val.updated_last_frame = false;
         }
     }
 
