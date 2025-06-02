@@ -34,12 +34,27 @@ void main() {
     vec2 direction = direction == 0 ? vec2(1.0f, 0.0f) : vec2(0.0f, 1.0f);
     direction = direction * inv_res;
 
+    bool enable_hardware_filtering = true;
     float col = texture(u_input_texture, uv).r * gaussianDistribution(0);
-    for (float i = 1; i <= sample_count; ++i) {
-        vec2 offset = direction * i;
-        float weight = gaussianDistribution(i);
-        col += weight * texture(u_input_texture, uv + offset).r;
-        col += weight * texture(u_input_texture, uv - offset).r;
+    // https://lisyarus.github.io/blog/posts/compute-blur.html#section-separable
+    if (enable_hardware_filtering) {
+        for (float i = 1; i <= sample_count; i += 2) {
+            float w0 = gaussianDistribution(i);
+            float w1 = gaussianDistribution(i + 1);
+            float w = w0 + w1;
+            float t = w1 / w;
+
+            vec2 offset = direction * (i + t);
+            col += w * texture(u_input_texture, uv + offset).r;
+            col += w * texture(u_input_texture, uv - offset).r;
+        }
+    } else {
+        for (float i = 1; i <= sample_count; ++i) {
+            vec2 offset = direction * i;
+            float weight = gaussianDistribution(i);
+            col += weight * texture(u_input_texture, uv + offset).r;
+            col += weight * texture(u_input_texture, uv - offset).r;
+        }
     }
     imageStore(u_output_texture, coord, vec4(col));
 }

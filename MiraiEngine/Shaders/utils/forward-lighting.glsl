@@ -97,7 +97,7 @@ void main() {
     vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
-    vec3 ambient = (Kd * diffuse /*+ specular*/) * ao;
+    vec3 ambient = (Kd * diffuse + specular * 0.2f) * ao;
     Lo += ambient + emissive;
     fragColor = vec4(Lo, 1.0f);
 }
