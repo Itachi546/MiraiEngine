@@ -21,7 +21,7 @@ namespace mirai {
         BufferID tlas_buffer{K_INVALID_ID};
         BufferID tlas_instance_buffer{K_INVALID_ID};
         std::vector<VkAccelerationStructureKHR> blas;
-        VkAccelerationStructureKHR tlas;
+        VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     };
 
     class VulkanRenderingDevice : public RenderingDevice {

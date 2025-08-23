@@ -86,7 +86,8 @@ namespace mirai {
                 }
             }
         }
-        device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
+        if (mesh_infos.size() > 0)
+            device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
 
         frame_graph->compile();
 
@@ -128,8 +129,10 @@ namespace mirai {
 
         FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");
         FrameGraphNode *rt_shadow_pass = frame_graph->get_node("rt_directional_shadow_pass");
-        rt_shadow_pass->enabled = enable_rt_shadow;
-        shadow_pass->enabled = !enable_rt_shadow;
+        if (rt_shadow_pass)
+            rt_shadow_pass->enabled = enable_rt_shadow;
+        if (shadow_pass)
+            shadow_pass->enabled = !enable_rt_shadow;
     }
 
     void Renderer::render() {

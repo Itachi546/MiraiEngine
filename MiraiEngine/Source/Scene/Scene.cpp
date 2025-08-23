@@ -135,9 +135,11 @@ namespace mirai {
         scene_data.camera_position = glm::vec4(camera->position, 0.0f);
         scene_data.light_direction = glm::vec4(sun->get_direction(), (float)sun->cast_shadow);
         scene_data.light_color = glm::vec4(sun->color, sun->intensity);
-        scene_data.irradiance_map = env_map->get_irradiance_map().id;
-        scene_data.prefilter_map = env_map->get_prefilter_map().id;
-        scene_data.brdf_texture = env_map->get_brdf_texture().id;
+        if (env_map) {
+            scene_data.irradiance_map = env_map->get_irradiance_map().id;
+            scene_data.prefilter_map = env_map->get_prefilter_map().id;
+            scene_data.brdf_texture = env_map->get_brdf_texture().id;
+        }
 
         generate_render_object_list();
 

@@ -131,6 +131,8 @@ namespace mirai {
 
         FrameGraphNode *get_node(const std::string &name) {
             auto found = nodes_maps.find(utils::djb2_hash_string(name));
+            if (found == nodes_maps.end())
+                return nullptr;
             return resource_pool_nodes.access(found->second);
         }
 

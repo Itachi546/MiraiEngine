@@ -1191,7 +1191,8 @@ namespace mirai {
 
     void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            VulkanBuffer *buffer = resource_pool_buffers.access(buffers[i]);
+            BufferID bufferId = buffers[i];
+            VulkanBuffer *buffer = resource_pool_buffers.access(bufferId);
             if (buffer->buffer_ptr)
                 vmaUnmapMemory(vma_allocator, buffer->allocation);
 
@@ -1634,11 +1635,16 @@ namespace mirai {
 
         if (has_rt_support && acceleration_structure.blas_buffer) {
             BufferID buffers[] = {acceleration_structure.blas_buffer, acceleration_structure.tlas_buffer, acceleration_structure.tlas_instance_buffer};
-            destroy_buffers(buffers, cast_u32(std::size(buffers)));
+            for (BufferID buffer : buffers) {
+                if (buffer.is_valid())
+                    destroy_buffers(&buffer, 1);
+            }
 
             for (auto &blas : acceleration_structure.blas)
                 vkDestroyAccelerationStructureKHR(device, blas, nullptr);
-            vkDestroyAccelerationStructureKHR(device, acceleration_structure.tlas, nullptr);
+
+            if (acceleration_structure.tlas != VK_NULL_HANDLE)
+                vkDestroyAccelerationStructureKHR(device, acceleration_structure.tlas, nullptr);
         }
 
         for (auto &command_pool : command_pools)
