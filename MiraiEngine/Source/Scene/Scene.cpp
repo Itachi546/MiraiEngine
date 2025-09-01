@@ -14,6 +14,7 @@
 #include <algorithm>
 
 namespace mirai {
+
     Scene::Scene(const std::string &name) : name(name), dirty(true) {
         component_manager = std::make_unique<ComponentManager>();
         component_manager->register_component<NameComponent>();

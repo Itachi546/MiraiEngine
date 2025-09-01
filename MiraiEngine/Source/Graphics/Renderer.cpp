@@ -94,6 +94,7 @@ namespace mirai {
         if (device->supports_raytracing())
             enable_rt_shadow = true;
     }
+
     void Renderer::copy_buffers(CommandBuffer *cb) {
         // @TODO do it here for now
 

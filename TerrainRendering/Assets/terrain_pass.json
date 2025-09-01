@@ -1,0 +1,69 @@
+{
+  "name": "gltf_graph",
+  "passes": [
+    {
+      "name": "terrain_pass",
+      "enabled": true,
+      "inputs": [],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "texture_color",
+          "format": "B8G8R8A8_UNORM",
+          "resolution": [
+            1920,
+            1080
+          ],
+          "op": "LOAD_OP_CLEAR"
+        },
+        {
+          "type": "attachment",
+          "name": "texture_depth",
+          "format": "D32_SFLOAT",
+          "resolution": [
+            1920,
+            1080
+          ],
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    },
+    {
+      "name": "sky_pass",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "attachment",
+          "name": "texture_color"
+        },
+        {
+          "type": "attachment",
+          "name": "texture_depth"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "reference",
+          "name": "texture_color"
+        }
+      ]
+    },
+    {
+      "name": "swapchain_copy",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "texture_color"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "swapchain",
+          "op": "LOAD_OP_CLEAR"
+        }
+      ]
+    }
+  ]
+}

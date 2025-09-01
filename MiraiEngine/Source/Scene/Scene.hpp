@@ -47,21 +47,7 @@ namespace mirai {
 
         UniformSetID vertex_binding_set;
     };
-    /*
-    struct DrawData {
-        uint32_t transform_index;
-        uint32_t material_index;
-
-        BufferID vertex_buffer;
-        BufferID index_buffer;
-
-        uint32_t vertex_offset;
-        uint32_t index_offset;
-
-        uint32_t index_count;
-        UniformSetID vertex_binding_set;
-    };
-    */
+  
     struct GpuMesh {
         BufferID vertex_buffer;
         BufferID index_buffer;
@@ -176,27 +162,6 @@ namespace mirai {
         void update_transform_components();
         void update_hierarchy_component();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
-
-        // Generate list of renderable object with their properties like transform
-        // and material
-        // This is called only when entity is added or removed from the scene
         void generate_render_object_list();
-
-        // void update_draw_data();
-
-        // void update_main_draw_batch();
-
-        /*
-        struct ObjectDrawData {
-            BufferID vertex_buffer;
-            BufferID index_buffer;
-            UniformSetID vertex_binding_set;
-            uint32_t transform_index;
-
-            std::vector<AABB> aabbs;
-            MeshComponent::MeshSubset *subsets;
-        };
-        */
-        // std::vector<ObjectDrawData> scene_draw_data;
     };
 } // namespace mirai

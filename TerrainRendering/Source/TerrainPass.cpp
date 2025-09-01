@@ -1,0 +1,144 @@
+#include "TerrainPass.hpp"
+#include "Engine/Profiler.hpp"
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Scene/ShaderManager.hpp"
+
+#define CBT_IMPLEMENTATION
+#include "CBT.hpp"
+
+namespace mirai {
+    TerrainPass::TerrainPass(uint32_t width, uint32_t height, uint32_t cbt_depth) : FrameGraphRenderer("terrain_pass"),
+                                                                                    width(width), height(height), cbt_depth(cbt_depth) {
+        device = RenderingDevice::get();
+    }
+
+    void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+        // Allocate CBT Buffer
+        uint32_t allocation_size = (1 << (cbt_depth - 1));
+        BufferDescription buffer_desc = {
+            .size = allocation_size,
+            .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+        };
+        cbt_buffer = device->create_buffer(&buffer_desc, "CBT Node Buffer");
+
+        UniformBinding bindings = {cbt_buffer};
+        UniformLayout layout = {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_VERTEX};
+        cbt_buffer_vert_set = device->create_uniform_set(&layout, 1, 0, "cbt_buffer_vert_set");
+        device->update_uniform_set(cbt_buffer_vert_set, &bindings, 1);
+
+        layout.shader_stage = SHADER_STAGE_COMPUTE;
+        cbt_buffer_comp_set = device->create_uniform_set(&layout, 1, 0, "cbt_buffer_comp_set");
+        device->update_uniform_set(cbt_buffer_comp_set, &bindings, 1);
+
+        cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
+        cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
+        cbt_init_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
+
+        cbt_sum_reduction_program = std::make_unique<ComputeShader>("cbt_sumreduction");
+        cbt_sum_reduction_program->create_from_file("SPIRV/sum_reduction.comp.spv");
+        cbt_sum_reduction_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
+
+        // Initialize Terrain Shader
+        terrain_shader = std::make_unique<ShaderMaterial>("Terrain Shader");
+        terrain_shader->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {.depth_test = true, .depth_write = true});
+        terrain_shader->set_uniform_sets(&cbt_buffer_vert_set, 1);
+
+        // Initialize CBT Buffer
+        reset_at_depth(2);
+    }
+
+    void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
+        uint32_t num_dispatches = cbt_depth - 1;
+        cbt_sum_reduction_program->bind(command_buffer);
+
+        // Proper buffer access transition from vertex shader input to compute shader
+        BufferBarrierInfo barrier_info = {
+            .buffer_id = cbt_buffer,
+            .offset = 0,
+            .size = UINT64_MAX,
+            .src_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
+            .src_access_mask = ACCESS_FLAG_SHADER_READ,
+            .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+        };
+        command_buffer->prepare_buffer(&barrier_info, 1);
+
+        // For subsequent pass, it will be compute to compute dependency
+        barrier_info.src_access_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        barrier_info.src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE;
+
+        for (int level = num_dispatches; level >= 0; level--) {
+            PushConstant push_constants = {
+                .data = &level,
+                .shader_stage = SHADER_STAGE_COMPUTE,
+                .size = sizeof(uint32_t),
+                .offset = 0,
+            };
+            command_buffer->set_push_constants(cbt_sum_reduction_program->get_pipeline_id(), &push_constants, 1);
+            uint32_t local_work_size = rendering_utils::get_workgroup_size(1 << level, 256);
+            command_buffer->dispatch(local_work_size, 1, 1);
+
+            // At last level we prepare the cbt_buffer for vertex shader
+            if (level > 0) {
+                command_buffer->prepare_buffer(&barrier_info, 1);
+            }
+        }
+    }
+
+    void TerrainPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    }
+
+    void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+        // ScopedGpuProfiling("Terrain");
+        device->begin_debug_utils_label(command_buffer, "TerrainPass", nullptr);
+
+        compute_sum_reduction(command_buffer);
+
+        // Prepare cbt_buffer for vertex read
+        BufferBarrierInfo barrier_info = {
+            .buffer_id = cbt_buffer,
+            .offset = 0,
+            .size = UINT64_MAX,
+            .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+            .dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
+            .dst_access_mask = ACCESS_FLAG_SHADER_READ,
+        };
+        command_buffer->prepare_buffer(&barrier_info, 1);
+
+        command_buffer->begin_render_pass(node, frame_graph);
+        terrain_shader->bind(command_buffer, &node->renderpass_info);
+        command_buffer->draw(3, 1, 0, 0);
+        command_buffer->end_render_pass();
+
+        device->end_debug_utils_label(command_buffer);
+    }
+
+    void TerrainPass::reset_at_depth(uint32_t initDepth) {
+        CommandBuffer *command_buffer = device->get_command_buffer(0);
+        command_buffer->begin();
+
+        uint32_t push_constant_data[] = {cbt_depth, initDepth};
+        PushConstant push_constant = {
+            .data = &push_constant_data,
+            .shader_stage = SHADER_STAGE_COMPUTE,
+            .size = sizeof(uint32_t) * cast_u32(std::size(push_constant_data)),
+            .offset = 0,
+        };
+
+        cbt_init_program->set_push_constant(&push_constant, 1);
+        cbt_init_program->bind(command_buffer);
+
+        uint32_t work_group_size = 1;
+        command_buffer->dispatch(1, 1, 1);
+
+        device->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
+    } // namespace mirai
+
+    TerrainPass::~TerrainPass() {
+        device->destroy_buffers(&cbt_buffer, 1);
+    }
+
+} // namespace mirai

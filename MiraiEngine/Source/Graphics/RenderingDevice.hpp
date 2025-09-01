@@ -473,7 +473,7 @@ namespace mirai {
     struct UniformLayout {
         uint32_t binding;
         BindingType binding_type;
-        ShaderStage shader_stage;
+        uint32_t shader_stage;
     };
 
     struct UniformBinding {
