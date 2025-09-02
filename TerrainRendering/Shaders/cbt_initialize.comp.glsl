@@ -8,6 +8,10 @@ layout(set = 0, binding = 0) buffer cbtTree {
     uint heap[];
 };
 
+layout(set = 0, binding = 1) buffer cbtDrawIndirect {
+    uint drawCount;
+};
+
 #include "cbt.glsl"
 
 layout(push_constant) uniform PushConstant {
@@ -21,14 +25,13 @@ void main() {
     for (int i = 0; i < bufferCount; ++i) {
         heap[i] = 0;
     }
+    heap[0] = 1 << depth;
 
     uint minID = 1 << initDepth;
     uint maxID = 2 << (initDepth);
-
     for (uint n = minID; n < maxID; ++n) {
         cbtNode node = {n, initDepth};
         cbt_WriteBitField(node, 1u);
     }
-
-    heap[0] = depth;
+    drawCount = 0;
 }

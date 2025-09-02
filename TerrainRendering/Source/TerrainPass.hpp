@@ -23,12 +23,13 @@ namespace mirai {
       private:
         RenderingDevice *device;
         uint32_t width, height, cbt_depth;
-        BufferID cbt_buffer;
+        BufferID cbt_buffer, cbt_draw_count_buffer;
         std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
         UniformSetID cbt_buffer_comp_set, cbt_buffer_vert_set;
+        uint32_t *draw_count_buffer_ptr = nullptr;
 
-        void reset_at_depth(uint32_t depth);
+        void init_at_depth(uint32_t depth);
 
         void compute_sum_reduction(CommandBuffer *command_buffer);
     };

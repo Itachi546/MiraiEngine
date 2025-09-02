@@ -7,7 +7,7 @@ struct cbtNode {
 };
 
 uint cbt_MaxDepth(uint data) {
-    return findMSB(data);
+    return findLSB(data);
 }
 
 uint cbt_GetAllocationSizeByte(uint depth) {
@@ -22,6 +22,14 @@ uint cbt_GetBitIndex(cbtNode node) {
     // Given a node, find the position of it's leafIndex
     uint ndk = cbt_MaxDepth(heap[0]) - node.depth + 1;
     return (2 << node.depth) + node.id * ndk;
+}
+
+cbtNode cbt_HeapToBitIndex(cbtNode node) {
+    uint maxDepth = cbt_MaxDepth(heap[0]);
+    cbtNode leaf;
+    leaf.id = node.id * (1 << (maxDepth - node.depth));
+    leaf.depth = maxDepth;
+    return leaf;
 }
 
 // Only used to update the state of leaf
@@ -41,7 +49,9 @@ uint cbt_GetBitValue(uint bufferID, uint bitID) {
 
 // Used to write directly to the leaf, only 1 bit
 void cbt_WriteBitField(cbtNode node, uint value) {
-    uint bitIndex = cbt_GetBitIndex(node);
+    // @TODO refactor this
+    cbtNode leafNode = cbt_HeapToBitIndex(node);
+    uint bitIndex = cbt_GetBitIndex(leafNode);
     // Divide bitIndex by 32 to get the index in uint8 array
     // Calculate the remainder when divided by 31
     cbt_SetBitValue(bitIndex >> 5, bitIndex & 31, value);
@@ -49,7 +59,8 @@ void cbt_WriteBitField(cbtNode node, uint value) {
 
 // Used to read the value of leaf node, only 1 bit
 uint cbt_ReadBitField(cbtNode node, uint value) {
-    uint bitIndex = cbt_GetBitIndex(node);
+    cbtNode leafNode = cbt_HeapToBitIndex(node);
+    uint bitIndex = cbt_GetBitIndex(leafNode);
     return cbt_GetBitValue(bitIndex >> 5, bitIndex & 31);
 }
 
@@ -96,5 +107,4 @@ uint cbt_HeapRead(cbtNode node) {
     uint msb = cbt_BitFieldExtract(heap[heapIndexMSB], 0, bitCountMSB);
     return lsb | (msb << bitCountLSB);
 }
-
 #endif

@@ -22,21 +22,31 @@ namespace mirai {
         };
         cbt_buffer = device->create_buffer(&buffer_desc, "CBT Node Buffer");
 
-        UniformBinding bindings = {cbt_buffer};
-        UniformLayout layout = {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_VERTEX};
-        cbt_buffer_vert_set = device->create_uniform_set(&layout, 1, 0, "cbt_buffer_vert_set");
-        device->update_uniform_set(cbt_buffer_vert_set, &bindings, 1);
+        buffer_desc.size = sizeof(uint32_t) * 2;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_CPU;
+        cbt_draw_count_buffer = device->create_buffer(&buffer_desc, "CBT Indirect Buffer");
+        draw_count_buffer_ptr = reinterpret_cast<uint32_t *>(device->map_buffer(cbt_draw_count_buffer));
 
-        layout.shader_stage = SHADER_STAGE_COMPUTE;
-        cbt_buffer_comp_set = device->create_uniform_set(&layout, 1, 0, "cbt_buffer_comp_set");
-        device->update_uniform_set(cbt_buffer_comp_set, &bindings, 1);
+        UniformBinding bindings[] = {{cbt_buffer}, {cbt_draw_count_buffer}};
+        UniformLayout layouts[] = {
+            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_VERTEX},
+            {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+        };
+
+        cbt_buffer_vert_set = device->create_uniform_set(&layouts[0], 1, 0, "cbt_buffer_vert_set");
+        device->update_uniform_set(cbt_buffer_vert_set, &bindings[0], 1);
+
+        layouts[0].shader_stage = SHADER_STAGE_COMPUTE;
+        cbt_buffer_comp_set = device->create_uniform_set(layouts, std::size(layouts), 0, "cbt_buffer_comp_set");
+        device->update_uniform_set(cbt_buffer_comp_set, bindings, cast_u32(std::size(bindings)));
 
         cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
         cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
         cbt_init_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
 
         cbt_sum_reduction_program = std::make_unique<ComputeShader>("cbt_sumreduction");
-        cbt_sum_reduction_program->create_from_file("SPIRV/sum_reduction.comp.spv");
+        cbt_sum_reduction_program->create_from_file("SPIRV/cbt_sum_reduction.comp.spv");
         cbt_sum_reduction_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
 
         // Initialize Terrain Shader
@@ -45,15 +55,16 @@ namespace mirai {
         terrain_shader->set_uniform_sets(&cbt_buffer_vert_set, 1);
 
         // Initialize CBT Buffer
-        reset_at_depth(2);
+        init_at_depth(2);
     }
 
     void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
+        device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction", nullptr);
         uint32_t num_dispatches = cbt_depth - 1;
         cbt_sum_reduction_program->bind(command_buffer);
 
         // Proper buffer access transition from vertex shader input to compute shader
-        BufferBarrierInfo barrier_info = {
+        BufferBarrierInfo cbt_buffer_barrier_info = {
             .buffer_id = cbt_buffer,
             .offset = 0,
             .size = UINT64_MAX,
@@ -62,11 +73,12 @@ namespace mirai {
             .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
         };
-        command_buffer->prepare_buffer(&barrier_info, 1);
+
+        command_buffer->prepare_buffer(&cbt_buffer_barrier_info, 1);
 
         // For subsequent pass, it will be compute to compute dependency
-        barrier_info.src_access_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        barrier_info.src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE;
+        cbt_buffer_barrier_info.src_access_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        cbt_buffer_barrier_info.src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE;
 
         for (int level = num_dispatches; level >= 0; level--) {
             PushConstant push_constants = {
@@ -81,31 +93,34 @@ namespace mirai {
 
             // At last level we prepare the cbt_buffer for vertex shader
             if (level > 0) {
-                command_buffer->prepare_buffer(&barrier_info, 1);
+                command_buffer->prepare_buffer(&cbt_buffer_barrier_info, 1);
             }
         }
+        device->end_debug_utils_label(command_buffer);
     }
 
     void TerrainPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
     }
 
     void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
-        // ScopedGpuProfiling("Terrain");
         device->begin_debug_utils_label(command_buffer, "TerrainPass", nullptr);
 
         compute_sum_reduction(command_buffer);
 
         // Prepare cbt_buffer for vertex read
-        BufferBarrierInfo barrier_info = {
-            .buffer_id = cbt_buffer,
-            .offset = 0,
-            .size = UINT64_MAX,
-            .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
-            .dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
-            .dst_access_mask = ACCESS_FLAG_SHADER_READ,
+        BufferBarrierInfo barrier_infos[] = {
+            {
+                .buffer_id = cbt_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+                .dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_READ,
+            },
         };
-        command_buffer->prepare_buffer(&barrier_info, 1);
+
+        command_buffer->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         command_buffer->begin_render_pass(node, frame_graph);
         terrain_shader->bind(command_buffer, &node->renderpass_info);
@@ -115,9 +130,11 @@ namespace mirai {
         device->end_debug_utils_label(command_buffer);
     }
 
-    void TerrainPass::reset_at_depth(uint32_t initDepth) {
+    void TerrainPass::init_at_depth(uint32_t initDepth) {
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
+
+        device->begin_debug_utils_label(command_buffer, "Reset CBT Buffer", nullptr);
 
         uint32_t push_constant_data[] = {cbt_depth, initDepth};
         PushConstant push_constant = {
@@ -133,12 +150,14 @@ namespace mirai {
         uint32_t work_group_size = 1;
         command_buffer->dispatch(1, 1, 1);
 
+        device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
-    } // namespace mirai
+    }
 
     TerrainPass::~TerrainPass() {
-        device->destroy_buffers(&cbt_buffer, 1);
+        BufferID buffers[] = {cbt_buffer, cbt_draw_count_buffer};
+        device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
     }
 
 } // namespace mirai

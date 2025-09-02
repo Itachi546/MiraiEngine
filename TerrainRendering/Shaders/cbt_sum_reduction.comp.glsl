@@ -8,6 +8,10 @@ layout(set = 0, binding = 0) buffer CBTNode {
     uint heap[];
 };
 
+layout(set = 0, binding = 1) buffer CBTDrawIndirect {
+    uint drawCount;
+};
+
 layout(push_constant) uniform PushConstant {
     uint u_Level;
 };
@@ -20,7 +24,10 @@ void main() {
     if (threadID < cnt) {
         uint nodeID = threadID + cnt;
         uint x0 = cbt_HeapRead(cbtNode(nodeID << 1, u_Level + 1));
-        uint x1 = cbt_HeapRead(cbtNode(nodeID << 1 | 1u, u_Level + 1));
+        uint x1 = cbt_HeapRead(cbtNode((nodeID << 1) | 1u, u_Level + 1));
         cbt_HeapWrite(cbtNode(nodeID, u_Level), x0 + x1);
+        if (u_Level == 0) {
+            drawCount = x0 + x1;
+        }
     }
 }
