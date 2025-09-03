@@ -12,6 +12,7 @@ layout(set = 0, binding = 1) buffer cbtDrawIndirect {
     uint drawCount;
 };
 
+#define CBT_ENABLE_WRITE
 #include "cbt.glsl"
 
 layout(push_constant) uniform PushConstant {

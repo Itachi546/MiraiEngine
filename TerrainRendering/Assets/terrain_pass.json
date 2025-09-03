@@ -30,7 +30,7 @@
     },
     {
       "name": "sky_pass",
-      "enabled": true,
+      "enabled": false,
       "inputs": [
         {
           "type": "attachment",

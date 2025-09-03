@@ -32,6 +32,11 @@ cbtNode cbt_HeapToBitIndex(cbtNode node) {
     return leaf;
 }
 
+uint cbt_GetBitValue(uint bufferID, uint bitID) {
+    return (bufferID >> bitID) & 1u;
+}
+
+#ifdef CBT_ENABLE_WRITE
 // Only used to update the state of leaf
 void cbt_SetBitValue(uint bufferID, uint bitID, uint value) {
     uint bitMask = ~(1u << bitID);
@@ -42,11 +47,6 @@ void cbt_SetBitValue(uint bufferID, uint bitID, uint value) {
     // Set the value at the location
     atomicOr(heap[bufferID], value << bitID);
 }
-
-uint cbt_GetBitValue(uint bufferID, uint bitID) {
-    return (bufferID >> bitID) & 1u;
-}
-
 // Used to write directly to the leaf, only 1 bit
 void cbt_WriteBitField(cbtNode node, uint value) {
     // @TODO refactor this
@@ -56,6 +56,7 @@ void cbt_WriteBitField(cbtNode node, uint value) {
     // Calculate the remainder when divided by 31
     cbt_SetBitValue(bitIndex >> 5, bitIndex & 31, value);
 }
+#endif
 
 // Used to read the value of leaf node, only 1 bit
 uint cbt_ReadBitField(cbtNode node, uint value) {
@@ -63,6 +64,8 @@ uint cbt_ReadBitField(cbtNode node, uint value) {
     uint bitIndex = cbt_GetBitIndex(leafNode);
     return cbt_GetBitValue(bitIndex >> 5, bitIndex & 31);
 }
+
+#ifdef CBT_ENABLE_WRITE
 
 void cbt_BitFieldInsert(uint bufferID, uint bitOffset, uint bitCount, uint bitData) {
     uint bitMask = ~(~(0xFFFFFFFFu << bitCount) << bitOffset);
@@ -86,7 +89,7 @@ void cbt_HeapWrite(cbtNode node, uint bitData) {
     cbt_BitFieldInsert(heapIndexLSB, bitOffsetLSB, bitCountLSB, bitData);
     cbt_BitFieldInsert(heapIndexMSB, 0u, bitCountMSB, bitData >> bitCountLSB);
 }
-
+#endif
 uint cbt_BitFieldExtract(uint bitField, uint bitOffset, uint bitCount) {
     uint bitMask = ~(0xFFFFFFFFu << bitCount);
     return (bitField >> bitOffset) & bitMask;
@@ -108,3 +111,21 @@ uint cbt_HeapRead(cbtNode node) {
     return lsb | (msb << bitCountLSB);
 }
 #endif
+
+cbtNode cbt_LeafToHeapIndex(uint nodeID) {
+    cbtNode node;
+    node.id = 1u;
+    node.depth = 0u;
+
+    while (cbt_HeapRead(node) > 1u) {
+        cbtNode leftChild;
+        leftChild.id = node.id << 1;
+        leftChild.depth = node.depth + 1;
+        uint cmp = cbt_HeapRead(leftChild);
+        uint b = nodeID < cmp ? 0u : 1u;
+        node = leftChild;
+        node.id |= b;
+        nodeID -= cmp * b;
+    }
+    return node;
+}

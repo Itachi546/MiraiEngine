@@ -24,7 +24,7 @@ class TerrainApplication : public App {
 
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         frame_graph->load_from_file("Assets/terrain_pass.json");
-        frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 5));
+        frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 20));
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<Overlay3DPass>());
     }

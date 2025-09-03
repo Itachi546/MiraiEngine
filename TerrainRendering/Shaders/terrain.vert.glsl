@@ -1,15 +1,31 @@
 #version 450
 
-layout(set = 0, binding = 0) buffer CBTBuffer {
+layout(set = 0, binding = 0) readonly buffer CBTBuffer {
     uint heap[];
 };
 
-const vec2 VERTICES[] = vec2[3](
-    vec2(0.0f, 0.0f),
-    vec2(0.0f, 1.0f),
-    vec2(1.0f, 1.0f));
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_ARB_shader_draw_parameters : enable
+
+#include "cbt.glsl"
+#include "leb.glsl"
+
+layout(location = 0) out vec3 vColor;
+
+mat2x3 faceVertices = mat2x3(vec3(0, 0, 1), vec3(1, 0, 0));
 
 void main() {
-    vec2 position = VERTICES[gl_VertexIndex];
-    gl_Position = vec4(position, 0.0f, 1.0f);
+    uint nodeID = gl_InstanceIndex;
+    cbtNode node = cbt_LeafToHeapIndex(nodeID);
+    mat3 transformMatrix = GetTransformationMatrix(node.id, int(node.depth));
+    mat2x3 positionMatrix = transformMatrix * faceVertices;
+
+    vec2 position = vec2(positionMatrix[0][gl_VertexIndex], positionMatrix[1][gl_VertexIndex]);
+    position -= vec2(0.5f);
+    position *= 2.0f;
+    gl_Position = vec4(position.x, position.y, 0.0f, 1.0f);
+    vColor = vec3(
+        float(node.id % 3 == 0),
+        float(node.id % 3 == 1),
+        float(node.id % 3 == 2));
 }

@@ -51,11 +51,16 @@ namespace mirai {
 
         // Initialize Terrain Shader
         terrain_shader = std::make_unique<ShaderMaterial>("Terrain Shader");
-        terrain_shader->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {.depth_test = true, .depth_write = true});
+        terrain_shader->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {
+                                                                                                   .cull_mode = CULL_MODE_NONE,
+                                                                                                   .depth_test = true,
+                                                                                                   .depth_write = true,
+                                                                                                   .polygon_mode = POLYGON_MODE_LINE,
+                                                                                               });
         terrain_shader->set_uniform_sets(&cbt_buffer_vert_set, 1);
 
         // Initialize CBT Buffer
-        init_at_depth(2);
+        init_at_depth(9);
     }
 
     void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
@@ -124,7 +129,9 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
         terrain_shader->bind(command_buffer, &node->renderpass_info);
-        command_buffer->draw(3, 1, 0, 0);
+        // @TODO may cause synchronization issue
+        uint32_t instanceCount = draw_count_buffer_ptr[0];
+        command_buffer->draw(3, instanceCount, 0, 0);
         command_buffer->end_render_pass();
 
         device->end_debug_utils_label(command_buffer);
