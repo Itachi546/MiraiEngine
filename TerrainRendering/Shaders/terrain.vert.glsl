@@ -1,6 +1,18 @@
 #version 450
 
-layout(set = 0, binding = 0) readonly buffer CBTBuffer {
+layout(set = 0, binding = 0) uniform PerFrameData {
+    mat4 P;
+    mat4 V;
+    mat4 VP;
+
+    vec3 camera_position;
+    float elapsed_time;
+
+    vec2 window_size;
+    vec2 _padding;
+};
+
+layout(set = 1, binding = 0) readonly buffer CBTBuffer {
     uint heap[];
 };
 

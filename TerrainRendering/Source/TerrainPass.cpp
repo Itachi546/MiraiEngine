@@ -2,6 +2,7 @@
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderManager.hpp"
+#include "Scene/Scene.hpp"
 
 #define CBT_IMPLEMENTATION
 #include "CBT.hpp"
@@ -34,7 +35,7 @@ namespace mirai {
             {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
         };
 
-        cbt_buffer_vert_set = device->create_uniform_set(&layouts[0], 1, 0, "cbt_buffer_vert_set");
+        cbt_buffer_vert_set = device->create_uniform_set(&layouts[0], 1, 1, "cbt_buffer_vert_set");
         device->update_uniform_set(cbt_buffer_vert_set, &bindings[0], 1);
 
         layouts[0].shader_stage = SHADER_STAGE_COMPUTE;
@@ -57,10 +58,9 @@ namespace mirai {
                                                                                                    .depth_write = true,
                                                                                                    .polygon_mode = POLYGON_MODE_LINE,
                                                                                                });
-        terrain_shader->set_uniform_sets(&cbt_buffer_vert_set, 1);
 
         // Initialize CBT Buffer
-        init_at_depth(9);
+        init_at_depth(5);
     }
 
     void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
@@ -128,6 +128,12 @@ namespace mirai {
         command_buffer->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         command_buffer->begin_render_pass(node, frame_graph);
+
+        UniformSetID uniform_sets[] = {
+            scene->per_frame_uniform_set,
+            cbt_buffer_vert_set,
+        };
+        terrain_shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
         terrain_shader->bind(command_buffer, &node->renderpass_info);
         // @TODO may cause synchronization issue
         uint32_t instanceCount = draw_count_buffer_ptr[0];
