@@ -8,7 +8,7 @@ layout(set = 0, binding = 0) buffer CBTNode {
 };
 
 layout(set = 0, binding = 1) buffer CBTDrawIndirect {
-    uint drawCount;
+    uint leafCount;
 };
 
 layout(push_constant) uniform PushConstant {
@@ -28,7 +28,7 @@ void main() {
         uint x1 = cbt_HeapRead(cbtNode((nodeID << 1) | 1u, u_Level + 1));
         cbt_HeapWrite(cbtNode(nodeID, u_Level), x0 + x1);
         if (u_Level == 0) {
-            drawCount = x0 + x1;
+            leafCount = x0 + x1;
         }
     }
 }

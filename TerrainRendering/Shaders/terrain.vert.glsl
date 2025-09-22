@@ -21,21 +21,17 @@ layout(set = 1, binding = 0) readonly buffer CBTBuffer {
 
 #include "cbt.glsl"
 #include "leb.glsl"
+#include "terrain.glsl"
 
 layout(location = 0) out vec3 vColor;
 
-mat2x3 faceVertices = mat2x3(vec3(0, 0, 1), vec3(1, 0, 0));
-
 void main() {
     uint nodeID = gl_InstanceIndex;
-    cbtNode node = cbt_LeafToHeapIndex(nodeID);
-    mat3 transformMatrix = GetTransformationMatrix(node.id, int(node.depth));
-    mat2x3 positionMatrix = transformMatrix * faceVertices;
+    cbtNode node = cbt_BinarySearch(nodeID);
 
-    vec2 position = vec2(positionMatrix[0][gl_VertexIndex], positionMatrix[1][gl_VertexIndex]);
-    position -= vec2(0.5f);
-    position *= 2.0f;
-    gl_Position = vec4(position.x, position.y, 0.0f, 1.0f);
+    vec4[3] vertices = DecodeTriangleVertices(node);
+
+    gl_Position = VP * vertices[gl_VertexIndex];
     vColor = vec3(
         float(node.id % 3 == 0),
         float(node.id % 3 == 1),

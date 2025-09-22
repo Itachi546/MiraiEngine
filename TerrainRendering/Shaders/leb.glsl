@@ -1,6 +1,8 @@
 #ifndef LEB_GLSL
 #define LEB_GLSL
 
+#include "cbt.glsl"
+
 mat3 GetSquareMatrix(uint splitBit) {
     float b = float(splitBit);
     float c = 1.0f - b;
@@ -10,6 +12,7 @@ mat3 GetSquareMatrix(uint splitBit) {
         b, c, b,
         b, 0, c));
 }
+
 mat3 GetSplitMatrix(uint splitBit) {
     float b = float(splitBit);
     float c = 1.0f - b;
@@ -34,5 +37,82 @@ mat3 GetTransformationMatrix(uint nodeId, int depth) {
     }
     return transform;
 }
+
+uint leb_GetBitValue(uint bitField, uint bitID) {
+    return (bitField >> bitID) & 1u;
+}
+
+uvec4 leb_SplitNodeIDs(uvec4 neighbours, uint b) {
+    uint c = b ^ 1u;
+    bool cb = bool(c);
+    return uvec4(
+        (neighbours[2 + b] << 1u) | uint(cb && bool(neighbours[2 + b])),
+        (neighbours[2 + c] << 1u) | uint(cb && bool(neighbours[2 + c])),
+        (neighbours[b] << 1u) | uint(cb && bool(neighbours[b])),
+        (neighbours[3] << 1u) | b);
+}
+
+cbtNode leb_EdgeNeighbour(cbtNode node) {
+    uint b = leb_GetBitValue(node.id, max(0, node.depth - 1));
+    uvec4 neighbours = uvec4(0u, 0u, 3u - b, 2u + b);
+    for (int bitID = int(node.depth) - 2; bitID >= 0; --bitID) {
+        neighbours = leb_SplitNodeIDs(neighbours, leb_GetBitValue(node.id, bitID));
+    }
+    // Create edge node
+    cbtNode edge;
+    edge.id = neighbours[2];
+    edge.depth = edge.id == 0u ? 0 : node.depth;
+    return edge;
+}
+
+struct lebDiamondParent {
+    cbtNode base;
+    cbtNode top;
+};
+
+lebDiamondParent leb_DecodeDiamondParent(cbtNode node) {
+    cbtNode parent;
+    parent.id = node.id >> 1u;
+    parent.depth = node.depth - 1;
+
+    cbtNode edgeNeighbour = leb_EdgeNeighbour(parent);
+
+    return lebDiamondParent(parent, edgeNeighbour);
+}
+
+bool leb_HasDiamondParent(lebDiamondParent diamondParent) {
+    bool canMergeBase = cbt_HeapRead(diamondParent.base) <= 2u;
+    bool canMergeTop = cbt_HeapRead(diamondParent.top) <= 2u;
+    return canMergeBase && canMergeTop;
+}
+
+#ifdef CBT_ENABLE_WRITE
+
+void leb_MergeNodeSquare(const cbtNode node, const lebDiamondParent diamondParent) {
+    if ((node.depth > 1) && leb_HasDiamondParent(diamondParent)) {
+        cbt_MergeNode(node);
+    }
+}
+
+void leb_SplitNodeSquare(cbtNode node) {
+    if (!cbt_IsCeilNode(node)) {
+        const uint minNodeID = 1u;
+        cbtNode iterator = node;
+        cbt_SplitNode(iterator);
+
+        iterator = leb_EdgeNeighbour(iterator);
+
+        while (iterator.id > minNodeID) {
+            cbt_SplitNode(iterator);
+
+            // Calculate parent node
+            iterator.id = iterator.id >> 1;
+            iterator.depth = iterator.depth - 1;
+            cbt_SplitNode(iterator);
+            iterator = leb_EdgeNeighbour(iterator);
+        }
+    }
+}
+#endif
 
 #endif

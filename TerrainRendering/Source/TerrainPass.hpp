@@ -4,8 +4,11 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/FrameGraph.hpp"
+#include "Math/Math.hpp"
 
 namespace mirai {
+
+    class Camera;
 
     class TerrainPass : public FrameGraphRenderer {
 
@@ -23,14 +26,19 @@ namespace mirai {
       private:
         RenderingDevice *device;
         uint32_t width, height, cbt_depth;
-        BufferID cbt_buffer, cbt_draw_count_buffer;
-        std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program;
+        BufferID cbt_buffer, cbt_leaf_count_buffer;
+        std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_subdivision_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
         UniformSetID cbt_buffer_comp_set, cbt_buffer_vert_set;
-        uint32_t *draw_count_buffer_ptr = nullptr;
+        uint32_t *cbt_leaf_count_ptr = nullptr;
+
+        // Merge - 0, Split - 1
+        float subdivision_mode = 0.0f;
 
         void init_at_depth(uint32_t depth);
 
         void compute_sum_reduction(CommandBuffer *command_buffer);
+
+        void update_subdivision(CommandBuffer *command_buffer, Camera *camera);
     };
 } // namespace mirai

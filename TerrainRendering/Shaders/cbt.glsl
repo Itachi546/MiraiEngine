@@ -65,6 +65,53 @@ uint cbt_ReadBitField(cbtNode node, uint value) {
     return cbt_GetBitValue(bitIndex >> 5, bitIndex & 31);
 }
 
+uint cbt_BitFieldExtract(uint bitField, uint bitOffset, uint bitCount) {
+    uint bitMask = ~(0xFFFFFFFFu << bitCount);
+    return (bitField >> bitOffset) & bitMask;
+}
+
+uint cbt_HeapRead(cbtNode node) {
+    uint bitCount = cbt_MaxDepth(heap[0]) - node.depth + 1;
+    uint alignedBitOffset = cbt_GetBitIndex(node);
+    uint maxHeapIndex = cbt_GetAllocationSizeU32(heap[0]);
+    uint heapIndexLSB = alignedBitOffset >> 5u;
+    uint heapIndexMSB = min(heapIndexLSB + 1, maxHeapIndex);
+
+    uint bitOffsetLSB = alignedBitOffset & 31;
+    uint bitCountLSB = min(32 - bitOffsetLSB, bitCount);
+    uint bitCountMSB = bitCount - bitCountLSB;
+
+    uint lsb = cbt_BitFieldExtract(heap[heapIndexLSB], bitOffsetLSB, bitCountLSB);
+    uint msb = cbt_BitFieldExtract(heap[heapIndexMSB], 0, bitCountMSB);
+    return lsb | (msb << bitCountLSB);
+}
+
+cbtNode cbt_BinarySearch(uint nodeID) {
+    cbtNode node;
+    node.id = 1u;
+    node.depth = 0u;
+
+    while (cbt_HeapRead(node) > 1u) {
+        cbtNode leftChild;
+        leftChild.id = node.id << 1;
+        leftChild.depth = node.depth + 1;
+        uint cmp = cbt_HeapRead(leftChild);
+        uint b = nodeID < cmp ? 0u : 1u;
+        node = leftChild;
+        node.id |= b;
+        nodeID -= cmp * b;
+    }
+    return node;
+}
+
+bool cbt_IsCeilNode(cbtNode node) {
+    return node.depth == cbt_MaxDepth(heap[0]);
+}
+
+bool cbt_IsRootNode(cbtNode node) {
+    return node.id == 1u;
+}
+
 #ifdef CBT_ENABLE_WRITE
 
 void cbt_BitFieldInsert(uint bufferID, uint bitOffset, uint bitCount, uint bitData) {
@@ -89,43 +136,25 @@ void cbt_HeapWrite(cbtNode node, uint bitData) {
     cbt_BitFieldInsert(heapIndexLSB, bitOffsetLSB, bitCountLSB, bitData);
     cbt_BitFieldInsert(heapIndexMSB, 0u, bitCountMSB, bitData >> bitCountLSB);
 }
-#endif
-uint cbt_BitFieldExtract(uint bitField, uint bitOffset, uint bitCount) {
-    uint bitMask = ~(0xFFFFFFFFu << bitCount);
-    return (bitField >> bitOffset) & bitMask;
+
+void cbt_MergeNode(cbtNode node) {
+    if (cbt_IsRootNode(node))
+        return;
+    cbtNode rightSibling;
+    rightSibling.id = node.id | 1u;
+    rightSibling.depth = node.depth;
+    cbt_WriteBitField(rightSibling, 0u);
 }
 
-uint cbt_HeapRead(cbtNode node) {
-    uint bitCount = cbt_MaxDepth(heap[0]) - node.depth + 1;
-    uint alignedBitOffset = cbt_GetBitIndex(node);
-    uint maxHeapIndex = cbt_GetAllocationSizeU32(heap[0]);
-    uint heapIndexLSB = alignedBitOffset >> 5u;
-    uint heapIndexMSB = min(heapIndexLSB + 1, maxHeapIndex);
-
-    uint bitOffsetLSB = alignedBitOffset & 31;
-    uint bitCountLSB = min(32 - bitOffsetLSB, bitCount);
-    uint bitCountMSB = bitCount - bitCountLSB;
-
-    uint lsb = cbt_BitFieldExtract(heap[heapIndexLSB], bitOffsetLSB, bitCountLSB);
-    uint msb = cbt_BitFieldExtract(heap[heapIndexMSB], 0, bitCountMSB);
-    return lsb | (msb << bitCountLSB);
+void cbt_SplitNode(cbtNode node) {
+    if (cbt_IsCeilNode(node))
+        return;
+        
+    cbtNode rightChild;
+    rightChild.id = (node.id << 1) | 1;
+    rightChild.depth = node.depth + 1;
+    cbt_WriteBitField(rightChild, 1);
 }
 #endif
 
-cbtNode cbt_LeafToHeapIndex(uint nodeID) {
-    cbtNode node;
-    node.id = 1u;
-    node.depth = 0u;
-
-    while (cbt_HeapRead(node) > 1u) {
-        cbtNode leftChild;
-        leftChild.id = node.id << 1;
-        leftChild.depth = node.depth + 1;
-        uint cmp = cbt_HeapRead(leftChild);
-        uint b = nodeID < cmp ? 0u : 1u;
-        node = leftChild;
-        node.id |= b;
-        nodeID -= cmp * b;
-    }
-    return node;
-}
+#endif

@@ -27,9 +27,6 @@ void FirstPersonController::update(float dt) {
         target_position += direction * speed * dt;
     }
 
-    if (enable_smoothing) {
-    } else
-        camera->position = target_position;
     /*
     if (input->is_down(KB_P))
         camera->set_projection_mode(PROJECTION_MODE_PERSPECTIVE);

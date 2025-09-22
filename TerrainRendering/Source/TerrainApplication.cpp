@@ -31,11 +31,12 @@ class TerrainApplication : public App {
 
         Camera *camera = scene->get_camera();
         camera->set_near_plane(0.3f);
-        camera->set_far_plane(10000.0f);
+        camera->set_far_plane(1000.0f);
         camera->position = glm::vec3(0.0f, 50.0f, 0.0f);
         controller = std::make_unique<FirstPersonController>(camera);
-        controller->set_walk_speed(10.0f);
-        controller->set_run_speed(25.0f);
+        controller->set_walk_speed(1.0f);
+        controller->set_run_speed(10.0f);
+        controller->set_smoothing_enabled(false);
     }
 
     void update() override {

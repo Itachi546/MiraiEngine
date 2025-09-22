@@ -9,7 +9,7 @@ layout(set = 0, binding = 0) buffer cbtTree {
 };
 
 layout(set = 0, binding = 1) buffer cbtDrawIndirect {
-    uint drawCount;
+    uint leafCount;
 };
 
 #define CBT_ENABLE_WRITE
@@ -34,5 +34,5 @@ void main() {
         cbtNode node = {n, initDepth};
         cbt_WriteBitField(node, 1u);
     }
-    drawCount = 0;
+    leafCount = 0;
 }
