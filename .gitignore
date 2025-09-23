@@ -54,3 +54,5 @@ TestApplication/SPIRV
 TODO.md
 *.org
 .cache/
+
+TerrainRendering/Assets/*.png

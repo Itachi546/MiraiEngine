@@ -112,6 +112,28 @@ bool cbt_IsRootNode(cbtNode node) {
     return node.id == 1u;
 }
 
+bool cbt_IsNullNode(in const cbtNode node) {
+    return (node.id == 0u);
+}
+
+cbtNode cbt_ParentNode(cbtNode node) {
+    if (cbt_IsNullNode(node))
+        return node;
+    return cbtNode(node.id >> 1, node.depth - 1);
+}
+
+cbtNode cbt_RightSiblingNode(cbtNode node) {
+    if (cbt_IsNullNode(node))
+        return node;
+    return cbtNode(node.id | 1, node.depth);
+}
+
+cbtNode cbt_RightChildNode(cbtNode node) {
+    if (cbt_IsNullNode(node))
+        return node;
+    return cbtNode((node.id << 1) | 1u, node.depth + 1);
+}
+
 #ifdef CBT_ENABLE_WRITE
 
 void cbt_BitFieldInsert(uint bufferID, uint bitOffset, uint bitCount, uint bitData) {
@@ -140,19 +162,15 @@ void cbt_HeapWrite(cbtNode node, uint bitData) {
 void cbt_MergeNode(cbtNode node) {
     if (cbt_IsRootNode(node))
         return;
-    cbtNode rightSibling;
-    rightSibling.id = node.id | 1u;
-    rightSibling.depth = node.depth;
+    cbtNode rightSibling = cbt_RightSiblingNode(node);
     cbt_WriteBitField(rightSibling, 0u);
 }
 
 void cbt_SplitNode(cbtNode node) {
     if (cbt_IsCeilNode(node))
         return;
-        
-    cbtNode rightChild;
-    rightChild.id = (node.id << 1) | 1;
-    rightChild.depth = node.depth + 1;
+
+    cbtNode rightChild = cbt_RightChildNode(node);
     cbt_WriteBitField(rightChild, 1);
 }
 #endif

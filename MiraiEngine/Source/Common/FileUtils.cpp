@@ -46,8 +46,11 @@ namespace utils {
     }
 
     unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
-        unsigned char *data = stbi_load(filename, width, height, n_channel, req_channel);
-        return data;
+        return stbi_load(filename, width, height, n_channel, req_channel);
+    }
+
+    uint16_t *load_image16(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
+        return stbi_load_16(filename, width, height, n_channel, req_channel);
     }
 
     float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel) {

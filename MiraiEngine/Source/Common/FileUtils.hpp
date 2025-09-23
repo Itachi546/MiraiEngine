@@ -14,6 +14,7 @@ namespace utils {
     std::string get_base_path(const std::string &path);
 
     unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel = 0);
+    uint16_t *load_image16(const char *filename, int *width, int *height, int *n_channel, int req_channel = 0);
     float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel = 0);
     void free_image(void *data);
 }

@@ -39,6 +39,7 @@ namespace mirai {
         VK_FORMAT_R8G8B8_UNORM,
         VK_FORMAT_R8G8_UNORM,
         VK_FORMAT_R8_UNORM,
+        VK_FORMAT_R16_UNORM,
         VK_FORMAT_R16_SFLOAT,
         VK_FORMAT_R32_SFLOAT,
         VK_FORMAT_R16G16_SFLOAT,

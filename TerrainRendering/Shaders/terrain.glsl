@@ -5,9 +5,29 @@
 
 const mat2x3 faceVertices = mat2x3(vec3(0, 0, 1), vec3(1, 0, 0));
 
+vec2 get_uv(vec2 position) {
+    vec2 world_size = vec2(32000.0f);
+    return (position / world_size) * 0.5 + 0.5;
+}
+
+float get_height(vec2 position) {
+    vec2 uv = get_uv(position);
+    return (texture(uHeightmap, uv).r * 2.0f - 1.0f) * 2500.0f;
+}
+
+vec3 get_normal(vec2 p) {
+    vec2 delta = vec2(1.0f);
+    float left = get_height(p - vec2(delta.x, 0.0f));
+    float right = get_height(p + vec2(delta.x, 0.0f));
+    float up = get_height(p + vec2(0.0f, delta.y));
+    float down = get_height(p - vec2(0.0f, delta.y));
+    return normalize(vec3(left - right, 1.0f, down - up));
+}
+
 vec4 toWorldPos(vec4 p) {
-    p.xz -= 0.5f;
-    p.xz *= 2048.0f;
+    p.xz = 2.0f * p.xz - 1.0f;
+    p.xz *= 32000.0f;
+    p.y += get_height(p.xz);
     return p;
 }
 

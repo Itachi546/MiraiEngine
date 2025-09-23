@@ -16,6 +16,8 @@ layout(set = 1, binding = 0) readonly buffer CBTBuffer {
     uint heap[];
 };
 
+layout(set = 1, binding = 1) uniform sampler2D uHeightmap;
+
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
 
@@ -30,10 +32,8 @@ void main() {
     cbtNode node = cbt_BinarySearch(nodeID);
 
     vec4[3] vertices = DecodeTriangleVertices(node);
+    vec4 position = vertices[gl_VertexIndex];
 
-    gl_Position = VP * vertices[gl_VertexIndex];
-    vColor = vec3(
-        float(node.id % 3 == 0),
-        float(node.id % 3 == 1),
-        float(node.id % 3 == 2));
+    gl_Position = VP * position;
+    vColor = get_normal(position.xz);
 }

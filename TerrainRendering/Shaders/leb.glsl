@@ -71,12 +71,8 @@ struct lebDiamondParent {
 };
 
 lebDiamondParent leb_DecodeDiamondParent(cbtNode node) {
-    cbtNode parent;
-    parent.id = node.id >> 1u;
-    parent.depth = node.depth - 1;
-
+    cbtNode parent = cbt_ParentNode(node);
     cbtNode edgeNeighbour = leb_EdgeNeighbour(parent);
-
     return lebDiamondParent(parent, edgeNeighbour);
 }
 
@@ -106,8 +102,7 @@ void leb_SplitNodeSquare(cbtNode node) {
             cbt_SplitNode(iterator);
 
             // Calculate parent node
-            iterator.id = iterator.id >> 1;
-            iterator.depth = iterator.depth - 1;
+            iterator = cbt_ParentNode(iterator);
             cbt_SplitNode(iterator);
             iterator = leb_EdgeNeighbour(iterator);
         }

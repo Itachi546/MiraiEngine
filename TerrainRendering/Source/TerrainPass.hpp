@@ -29,8 +29,10 @@ namespace mirai {
         BufferID cbt_buffer, cbt_leaf_count_buffer;
         std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_subdivision_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
-        UniformSetID cbt_buffer_comp_set, cbt_buffer_vert_set;
+        UniformSetID cbt_comp_set, cbt_vert_set, cbt_subdivision_set;
         uint32_t *cbt_leaf_count_ptr = nullptr;
+
+        TextureID texture_heightmap;
 
         // Merge - 0, Split - 1
         float subdivision_mode = 0.0f;

@@ -4,6 +4,7 @@
 #include "Scene/ShaderManager.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
+#include "Common/FileUtils.hpp"
 
 #define CBT_IMPLEMENTATION
 #include "CBT.hpp"
@@ -15,6 +16,26 @@ namespace mirai {
     }
 
     void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+        // Load heightmap
+        int width, height, n_channel;
+        uint16_t *data = utils::load_image16("Assets/botw.png", &width, &height, &n_channel, 1);
+        ASSERT(n_channel == 1);
+        ASSERT(data != nullptr);
+
+        TextureDescription texture_desc = {
+            .create_flags = 0,
+            .width = (uint32_t)width,
+            .height = (uint32_t)height,
+            .depth = 1,
+            .mip_levels = 1,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = FORMAT_R16_UNORM,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
+        };
+        texture_heightmap = device->create_texture(&texture_desc, "heightmap");
+        rendering_utils::copy_texture_immediate(texture_heightmap, data, width * height * sizeof(uint16_t));
+
         // Allocate CBT Buffer
         uint32_t allocation_size = (1 << (cbt_depth - 1));
         BufferDescription buffer_desc = {
@@ -30,30 +51,50 @@ namespace mirai {
         cbt_leaf_count_buffer = device->create_buffer(&buffer_desc, "CBT Indirect Buffer");
         cbt_leaf_count_ptr = reinterpret_cast<uint32_t *>(device->map_buffer(cbt_leaf_count_buffer));
 
-        UniformBinding bindings[] = {{cbt_buffer}, {cbt_leaf_count_buffer}};
-        UniformLayout layouts[] = {
-            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_VERTEX},
-            {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        SamplerID heightmap_sampler = device->create_sampler(&sampler_desc);
+
+        UniformBinding vertex_bindings[] = {
+            {cbt_buffer},
+            {.resource_id = texture_heightmap, .texture_info = {.sampler = heightmap_sampler}},
         };
 
-        cbt_buffer_vert_set = device->create_uniform_set(&layouts[0], 1, 1, "cbt_buffer_vert_set");
-        device->update_uniform_set(cbt_buffer_vert_set, &bindings[0], 1);
+        UniformLayout vertex_layouts[] = {
+            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_VERTEX},
+            {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_VERTEX},
+        };
 
-        layouts[0].shader_stage = SHADER_STAGE_COMPUTE;
-        cbt_buffer_comp_set = device->create_uniform_set(layouts, std::size(layouts), 0, "cbt_buffer_comp_set");
-        device->update_uniform_set(cbt_buffer_comp_set, bindings, cast_u32(std::size(bindings)));
+        cbt_vert_set = device->create_uniform_set(&vertex_layouts[0], cast_u32(std::size(vertex_layouts)), 1, "cbt_vert_set");
+        device->update_uniform_set(cbt_vert_set, &vertex_bindings[0], cast_u32(std::size(vertex_bindings)));
+
+        UniformBinding compute_bindings[] = {
+            {cbt_buffer},
+            {cbt_leaf_count_buffer},
+            {.resource_id = texture_heightmap, .texture_info = {.sampler = heightmap_sampler}},
+        };
+
+        UniformLayout compute_layouts[] = {
+            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+            {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+        };
+        cbt_comp_set = device->create_uniform_set(compute_layouts, 2, 0, "cbt_comp_set");
+        device->update_uniform_set(cbt_comp_set, compute_bindings, 2);
+
+        cbt_subdivision_set = device->create_uniform_set(compute_layouts, 3, 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_subdivision_set, compute_bindings, 3);
 
         cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
         cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
-        cbt_init_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
+        cbt_init_program->set_uniform_sets(&cbt_comp_set, 1);
 
         cbt_sum_reduction_program = std::make_unique<ComputeShader>("cbt_sumreduction");
         cbt_sum_reduction_program->create_from_file("SPIRV/cbt_sum_reduction.comp.spv");
-        cbt_sum_reduction_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
+        cbt_sum_reduction_program->set_uniform_sets(&cbt_comp_set, 1);
 
         cbt_subdivision_program = std::make_unique<ComputeShader>("cbt_subdivision");
         cbt_subdivision_program->create_from_file("SPIRV/cbt_subdivision.comp.spv");
-        cbt_subdivision_program->set_uniform_sets(&cbt_buffer_comp_set, 1);
+        cbt_subdivision_program->set_uniform_sets(&cbt_subdivision_set, 1);
 
         // Initialize Terrain Shader
         terrain_shader = std::make_unique<ShaderMaterial>("Terrain Shader");
@@ -61,7 +102,7 @@ namespace mirai {
                                                                                                    .cull_mode = CULL_MODE_NONE,
                                                                                                    .depth_test = true,
                                                                                                    .depth_write = true,
-                                                                                                   .polygon_mode = POLYGON_MODE_LINE,
+                                                                                                   .polygon_mode = POLYGON_MODE_FILL,
                                                                                                });
 
         // Initialize CBT Buffer
@@ -223,7 +264,7 @@ namespace mirai {
 
         UniformSetID uniform_sets[] = {
             scene->per_frame_uniform_set,
-            cbt_buffer_vert_set,
+            cbt_vert_set,
         };
 
         terrain_shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
@@ -237,6 +278,7 @@ namespace mirai {
     }
 
     TerrainPass::~TerrainPass() {
+        device->destroy_textures(&texture_heightmap, 1);
         BufferID buffers[] = {cbt_buffer, cbt_leaf_count_buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
     }

@@ -7,13 +7,15 @@ layout(set = 0, binding = 0) buffer cbtTree {
     uint heap[];
 };
 
-#define CBT_ENABLE_WRITE
-#include "leb.glsl"
-#include "terrain.glsl"
-
 layout(set = 0, binding = 1) buffer cbtDrawIndirect {
     uint leafCount;
 };
+
+layout(set = 0, binding = 2) uniform sampler2D uHeightmap;
+
+#define CBT_ENABLE_WRITE
+#include "leb.glsl"
+#include "terrain.glsl"
 
 layout(push_constant) uniform PushConstants {
     vec4 frustumPlanes[6];
