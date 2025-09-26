@@ -160,6 +160,11 @@ namespace mirai {
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
+    void CommandBuffer::draw_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride) {
+        VulkanBuffer *buffer = device->access_buffer(indirect_buffer);
+        vkCmdDrawIndirect(command_buffer, buffer->buffer, offset, draw_count, stride);
+    }
+
     void CommandBuffer::dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z) {
         vkCmdDispatch(command_buffer, work_size_x, work_size_y, work_size_z);
     }

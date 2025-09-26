@@ -15,7 +15,7 @@ namespace mirai {
       public:
         TerrainPass(uint32_t width, uint32_t height, uint32_t cbt_depth);
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
         void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
@@ -26,10 +26,10 @@ namespace mirai {
       private:
         RenderingDevice *device;
         uint32_t width, height, cbt_depth;
-        BufferID cbt_buffer, cbt_leaf_count_buffer;
+        BufferID cbt_buffer, cbt_leaf_count_buffer, cbt_draw_indirect_buffer;
         std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_subdivision_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
-        UniformSetID cbt_comp_set, cbt_vert_set, cbt_subdivision_set;
+        UniformSetID cbt_init_set, cbt_vert_set, cbt_subdivision_set, cbt_sum_reduction_set;
         uint32_t *cbt_leaf_count_ptr = nullptr;
 
         TextureID texture_heightmap;

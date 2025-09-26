@@ -15,7 +15,7 @@ namespace mirai {
         device = RenderingDevice::get();
     }
 
-    void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         // Load heightmap
         int width, height, n_channel;
         uint16_t *data = utils::load_image16("Assets/botw.png", &width, &height, &n_channel, 1);
@@ -51,6 +51,11 @@ namespace mirai {
         cbt_leaf_count_buffer = device->create_buffer(&buffer_desc, "CBT Indirect Buffer");
         cbt_leaf_count_ptr = reinterpret_cast<uint32_t *>(device->map_buffer(cbt_leaf_count_buffer));
 
+        // Size of VkCmdDrawIndirectCommand
+        buffer_desc.size = sizeof(uint32_t) * 4;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        cbt_draw_indirect_buffer = device->create_buffer(&buffer_desc, "CBT Draw Indirect Buffer");
+
         SamplerDescription sampler_desc = SamplerDescription::create();
         SamplerID heightmap_sampler = device->create_sampler(&sampler_desc);
 
@@ -67,30 +72,37 @@ namespace mirai {
         cbt_vert_set = device->create_uniform_set(&vertex_layouts[0], cast_u32(std::size(vertex_layouts)), 1, "cbt_vert_set");
         device->update_uniform_set(cbt_vert_set, &vertex_bindings[0], cast_u32(std::size(vertex_bindings)));
 
-        UniformBinding compute_bindings[] = {
+        std::vector<UniformBinding> compute_bindings = {
             {cbt_buffer},
             {cbt_leaf_count_buffer},
             {.resource_id = texture_heightmap, .texture_info = {.sampler = heightmap_sampler}},
         };
 
-        UniformLayout compute_layouts[] = {
+        std::vector<UniformLayout> compute_layouts = {
             {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
             {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
         };
-        cbt_comp_set = device->create_uniform_set(compute_layouts, 2, 0, "cbt_comp_set");
-        device->update_uniform_set(cbt_comp_set, compute_bindings, 2);
 
-        cbt_subdivision_set = device->create_uniform_set(compute_layouts, 3, 0, "cbt_subdivision_set");
-        device->update_uniform_set(cbt_subdivision_set, compute_bindings, 3);
+        cbt_init_set = device->create_uniform_set(compute_layouts.data(), 2, 0, "cbt_comp_set");
+        device->update_uniform_set(cbt_init_set, compute_bindings.data(), 2);
+
+        cbt_subdivision_set = device->create_uniform_set(compute_layouts.data(), 3, 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_subdivision_set, compute_bindings.data(), 3);
+
+        compute_bindings[2] = {cbt_draw_indirect_buffer};
+        compute_layouts[2] = {2, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE};
+
+        cbt_sum_reduction_set = device->create_uniform_set(compute_layouts.data(), 3, 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_sum_reduction_set, compute_bindings.data(), 3);
 
         cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
         cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
-        cbt_init_program->set_uniform_sets(&cbt_comp_set, 1);
+        cbt_init_program->set_uniform_sets(&cbt_init_set, 1);
 
         cbt_sum_reduction_program = std::make_unique<ComputeShader>("cbt_sumreduction");
         cbt_sum_reduction_program->create_from_file("SPIRV/cbt_sum_reduction.comp.spv");
-        cbt_sum_reduction_program->set_uniform_sets(&cbt_comp_set, 1);
+        cbt_sum_reduction_program->set_uniform_sets(&cbt_sum_reduction_set, 1);
 
         cbt_subdivision_program = std::make_unique<ComputeShader>("cbt_subdivision");
         cbt_subdivision_program->create_from_file("SPIRV/cbt_subdivision.comp.spv");
@@ -159,9 +171,18 @@ namespace mirai {
                 .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
             },
+            {
+                .buffer_id = cbt_draw_indirect_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                .src_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
+            },
         };
 
-        command_buffer->prepare_buffer(cbt_buffer_barrier_info, 2);
+        command_buffer->prepare_buffer(cbt_buffer_barrier_info, cast_u32(std::size(cbt_buffer_barrier_info)));
 
         // For subsequent pass, it will be compute to compute dependency
         cbt_buffer_barrier_info[0].src_access_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
@@ -256,6 +277,16 @@ namespace mirai {
                 .dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
                 .dst_access_mask = ACCESS_FLAG_SHADER_READ,
             },
+            {
+                .buffer_id = cbt_draw_indirect_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_WRITE,
+                .dst_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                .dst_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
+            },
+
         };
 
         command_buffer->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
@@ -269,8 +300,10 @@ namespace mirai {
 
         terrain_shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
         terrain_shader->bind(command_buffer, &node->renderpass_info);
-        // @TODO may cause synchronization issue
+
+        // @TODO fix synchronization issues
         uint32_t instanceCount = cbt_leaf_count_ptr[0];
+        command_buffer->draw_indirect(cbt_draw_indirect_buffer, 0, 1, sizeof(uint32_t) * 4);
         command_buffer->draw(3, instanceCount, 0, 0);
         command_buffer->end_render_pass();
 
@@ -279,7 +312,7 @@ namespace mirai {
 
     TerrainPass::~TerrainPass() {
         device->destroy_textures(&texture_heightmap, 1);
-        BufferID buffers[] = {cbt_buffer, cbt_leaf_count_buffer};
+        BufferID buffers[] = {cbt_buffer, cbt_leaf_count_buffer, cbt_draw_indirect_buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
     }
 

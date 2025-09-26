@@ -11,6 +11,13 @@ layout(set = 0, binding = 1) buffer CBTDrawIndirect {
     uint leafCount;
 };
 
+layout(set = 0, binding = 2) buffer DrawIndirectCommand {
+    uint vertexCount;
+    uint instanceCount;
+    uint firstVertex;
+    uint firstInstance;
+};
+
 layout(push_constant) uniform PushConstant {
     uint u_Level;
 };
@@ -29,6 +36,10 @@ void main() {
         cbt_HeapWrite(cbtNode(nodeID, u_Level), x0 + x1);
         if (u_Level == 0) {
             leafCount = x0 + x1;
+            vertexCount = 3;
+            instanceCount = leafCount;
+            firstInstance = 0;
+            firstVertex = 0;
         }
     }
 }
