@@ -69,17 +69,29 @@ bool IsInside(mat2x3 faceVertices) {
 */
 void main() {
     uint id = gl_GlobalInvocationID.x;
-    if (id < leafCount) {
+    uint totalLeaves = cbt_HeapRead(cbtNode(1, 0));
+    if (id < leafCount && leafCount == totalLeaves) {
         cbtNode node = cbt_BinarySearch(id);
         vec4[3] faceVertices = DecodeTriangleVertices(node);
-        float mode = cameraPosition.w;
 
+        float mode = cameraPosition.w;
         if (mode > 0.5f) {
             // Split
-            vec2 targetLod = LevelOfDetail(faceVertices);
+
+            vec3 c = vec3(0.0f);
+            for (int i = 0; i < 3; ++i)
+                c += faceVertices[i].xyz;
+            c /= 3.0f;
+
+            float dist = length(cameraPosition.xyz - c);
+            // vec2 targetLod = LevelOfDetail(faceVertices);
+            /*
             if (targetLod.x > 0.5f) {
                 leb_SplitNodeSquare(node);
             }
+            */
+            if (dist < 5000.0f)
+                leb_SplitNodeSquare(node);
         } else {
             // Merge
             lebDiamondParent diamondParent = leb_DecodeDiamondParent(node);

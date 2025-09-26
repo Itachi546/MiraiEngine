@@ -128,6 +128,7 @@ namespace mirai {
         VkPhysicalDeviceVulkan13Features device_features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         device_features13.dynamicRendering = true;
         device_features13.synchronization2 = true;
+        device_features13.shaderDemoteToHelperInvocation = true;
 
         VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,

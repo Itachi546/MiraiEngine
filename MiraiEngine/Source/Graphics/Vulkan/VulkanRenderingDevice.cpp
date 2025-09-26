@@ -244,7 +244,7 @@ namespace mirai {
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
             {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32},
-        };
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32}};
 
         uint32_t maxSets = pool_count > 0 ? max_sets : 512;
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {

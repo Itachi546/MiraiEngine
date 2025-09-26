@@ -103,8 +103,10 @@ void leb_SplitNodeSquare(cbtNode node) {
 
             // Calculate parent node
             iterator = cbt_ParentNode(iterator);
-            cbt_SplitNode(iterator);
-            iterator = leb_EdgeNeighbour(iterator);
+            if (iterator.id > minNodeID) {
+                cbt_SplitNode(iterator);
+                iterator = leb_EdgeNeighbour(iterator);
+            }
         }
     }
 }

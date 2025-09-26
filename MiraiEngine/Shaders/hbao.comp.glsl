@@ -5,7 +5,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #extension GL_NV_compute_shader_derivatives : enable
 #include "utils/transform.glsl"
 
-layout(set = 0, binding = 0, r32f) uniform image2D u_ssao_texture;
+layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
 layout(set = 0, binding = 1) uniform sampler2D u_depth_texture;
 layout(set = 0, binding = 2) uniform sampler2D u_noise_texture;
 

@@ -34,5 +34,5 @@ void main() {
         cbtNode node = {n, initDepth};
         cbt_WriteBitField(node, 1u);
     }
-    leafCount = 0;
+    leafCount = maxID - minID;
 }
