@@ -94,7 +94,7 @@ namespace mirai {
             device = RenderingDevice::get();
         }
 
-        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {}
+        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
         virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
@@ -229,7 +229,7 @@ namespace mirai {
 
         // Renderer must be set for each pass before calling compile function
         // use set_renderer() function
-        void compile();
+        void compile(Scene* scene);
 
         friend class Renderer;
     };

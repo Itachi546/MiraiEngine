@@ -10,7 +10,7 @@ namespace mirai {
     DepthPrePass::DepthPrePass() : FrameGraphRenderer("depth_prepass"), shader(nullptr), transform_set(K_INVALID_ID) {
     }
 
-    void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         shader = ShaderManager::get()->get_shader("depth_prepass");
         // Mesh Data
         UniformLayout transform_layout[] = {
@@ -18,6 +18,11 @@ namespace mirai {
         };
 
         transform_set = device->create_uniform_set(transform_layout, 1, 1, "depth_prepass_uniform_set");
+        UniformBinding per_shader_bindings[] = {
+            {.resource_id = scene->transform_buffer},
+        };
+
+        device->update_uniform_set(transform_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -41,12 +46,6 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "DepthPrePass");
 
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);
-
-        UniformBinding per_shader_bindings[] = {
-            {.resource_id = scene->transform_buffer},
-        };
-
-        device->update_uniform_set(transform_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
         command_buffer->begin_render_pass(node, frame_graph);
 

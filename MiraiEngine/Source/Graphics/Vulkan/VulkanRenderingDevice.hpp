@@ -64,8 +64,6 @@ namespace mirai {
 
         void new_frame() override;
 
-        uint32_t get_max_frame_in_flights() { return K_MAX_FRAME_IN_FLIGHTS; }
-
         CommandBuffer *get_command_buffer(uint32_t thread_id = 0) override;
 
         void queue_command_buffer(CommandBuffer *command_buffer) override {
@@ -163,7 +161,7 @@ namespace mirai {
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
         uint32_t current_frame = 0;
 
-        bool vsync = true;
+        bool vsync = false;
         bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
@@ -178,9 +176,9 @@ namespace mirai {
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;
         std::vector<CommandBuffer *> queued_command_buffer;
 
-        VkSemaphore image_acquire_semaphore[K_MAX_FRAME_IN_FLIGHTS];
-        VkSemaphore render_finished_semaphore[K_MAX_FRAME_IN_FLIGHTS];
-        VkFence in_flight_fences[K_MAX_FRAME_IN_FLIGHTS];
+        std::vector<VkSemaphore> image_acquire_semaphore;
+        std::vector<VkSemaphore> render_finished_semaphore;
+        std::vector<VkFence> in_flight_fences;
 
         std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;

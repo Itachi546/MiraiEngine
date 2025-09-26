@@ -11,7 +11,7 @@ namespace mirai {
     ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
     }
 
-    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node) {
+    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Scene *scene) {
         opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
         transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
 
@@ -27,6 +27,12 @@ namespace mirai {
         };
 
         mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
+        // Update Per Pipeline Data (Transform/Material)
+        UniformBinding per_shader_bindings[] = {
+            {.resource_id = scene->transform_buffer},
+            {.resource_id = scene->material_buffer},
+        };
+        device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -53,13 +59,6 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "Forward Pass");
 
         device->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
-
-        // Update Per Pipeline Data (Transform/Material)
-        UniformBinding per_shader_bindings[] = {
-            {.resource_id = scene->transform_buffer},
-            {.resource_id = scene->material_buffer},
-        };
-        device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
 
         command_buffer->begin_render_pass(node, frame_graph);
 

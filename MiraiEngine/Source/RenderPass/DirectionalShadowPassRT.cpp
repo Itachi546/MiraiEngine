@@ -6,7 +6,7 @@
 #include "Engine/Profiler.hpp"
 
 namespace mirai {
-    void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
         dir_shadow_shader = std::make_unique<ComputeShader>("rt_directional_light");
         dir_shadow_shader->create_from_file("SPIRV/rt_directional_shadow.comp.spv");
 

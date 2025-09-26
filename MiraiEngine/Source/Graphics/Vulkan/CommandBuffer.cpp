@@ -1,6 +1,6 @@
 #include "CommandBuffer.hpp"
 #include "VulkanRenderingDevice.hpp"
-#include "Swapchain.h"
+#include "Swapchain.hpp"
 #include "VulkanUtils.hpp"
 #include "Scene/FrameGraph.hpp"
 

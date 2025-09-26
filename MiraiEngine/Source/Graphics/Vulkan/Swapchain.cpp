@@ -1,4 +1,4 @@
-#include "Swapchain.h"
+#include "Swapchain.hpp"
 
 #include "Device/Window.hpp"
 
@@ -9,8 +9,6 @@
 #endif
 
 namespace mirai {
-
-    constexpr uint32_t SWAPCHAIN_MIN_IMAGE_COUNT = 3;
 
     bool PhysicalDeviceSupportPresentation(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t graphics_queue_index) {
         static PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR vk_check_presentation_support = (PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR)VK_LOAD_FUNCTION(instance, "vkGetPhysicalDeviceWin32PresentationSupportKHR");
@@ -128,7 +126,7 @@ namespace mirai {
         }
     }
 
-    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync) {
+    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, uint32_t swapchain_image_count, bool vsync) {
         VkSurfaceCapabilitiesKHR surface_caps{};
         VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &surface_caps));
         if (surface_caps.currentExtent.width == 0 || surface_caps.currentExtent.height == 0)
@@ -150,7 +148,7 @@ namespace mirai {
                                         : VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
 
         swapchain->current_transform = surface_caps.currentTransform;
-        uint32_t min_image_count = std::min(std::max(SWAPCHAIN_MIN_IMAGE_COUNT, surface_caps.minImageCount), surface_caps.maxImageCount);
+        uint32_t min_image_count = std::min(std::max(swapchain_image_count, surface_caps.minImageCount), surface_caps.maxImageCount);
         create_swapchain(swapchain, device, surface, min_image_count);
 
         uint32_t image_count = 0;
@@ -165,7 +163,7 @@ namespace mirai {
         create_swapchain_image_views(device, swapchain);
     }
 
-    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, bool vsync) {
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, uint32_t swapchain_image_count, bool vsync) {
         VkSwapchainKHR old_swapchain = swapchain->swapchain;
         for (auto &image_view : swapchain->image_views)
             vkDestroyImageView(device, image_view, nullptr);
@@ -179,7 +177,7 @@ namespace mirai {
 
         VkSurfaceTransformFlagBitsKHR old_transform = swapchain->current_transform;
 
-        uint32_t min_image_count = std::min(std::max(SWAPCHAIN_MIN_IMAGE_COUNT, surface_caps.minImageCount), min_image_count);
+        uint32_t min_image_count = std::min(std::max(swapchain_image_count, surface_caps.minImageCount), min_image_count);
         create_swapchain(swapchain, device, surface, min_image_count);
 
         uint32_t image_count = 0;

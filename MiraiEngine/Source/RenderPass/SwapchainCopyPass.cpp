@@ -15,7 +15,7 @@ namespace mirai {
     SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(true), material(nullptr) {
     }
 
-    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
         material = ShaderManager::get()->get_shader("swapchain_copy_rgba");
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
