@@ -18,9 +18,10 @@ layout(set = 0, binding = 2) uniform sampler2D uHeightmap;
 #include "terrain.glsl"
 
 layout(push_constant) uniform PushConstants {
+    mat4 VP;
     vec4 frustumPlanes[6];
     // xyz consists of camera position, w consists of split/merge flag
-    vec4 cameraPosition;
+    vec4 subdivisionInfo;
 };
 
 bool IntersectFrustum(vec3 bmin, vec3 bmax) {
@@ -36,37 +37,33 @@ bool IntersectFrustum(vec3 bmin, vec3 bmax) {
     return true;
 }
 
+float TriangleLevelOfDetail(in const vec4[3] patchVertices) {
+    vec3 v0 = (VP * patchVertices[0]).xyz;
+    vec3 v2 = (VP * patchVertices[2]).xyz;
+
+    vec3 edgeCenter = (v0 + v2);
+    vec3 edgeVector = v2 - v0;
+    float distanceToEdgeSqr = dot(edgeCenter, edgeCenter);
+    float edgeLengthSqr = dot(edgeVector, edgeVector);
+
+    float lodFactor = subdivisionInfo.y;
+    return lodFactor + log2(edgeLengthSqr / distanceToEdgeSqr);
+}
+
 /*
 Compute the level of detail of associated triangle
 */
 vec2 LevelOfDetail(in const vec4[3] patchVertices) {
-
+    /*
     vec3 bmin = min(min(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
     vec3 bmax = max(max(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
-
     if (!IntersectFrustum(bmin, bmax)) {
         return vec2(0.0f);
     }
-    return vec2(1.0f);
+    */
+    return vec2(TriangleLevelOfDetail(patchVertices), 1.0f);
 }
 
-/*
-float Wedge(vec2 a, vec2 b) {
-    return a.x * b.y - a.y * b.x;
-}
-
-bool IsInside(mat2x3 faceVertices) {
-    vec2 v1 = vec2(faceVertices[0][0], faceVertices[1][0]);
-    vec2 v2 = vec2(faceVertices[0][1], faceVertices[1][1]);
-    vec2 v3 = vec2(faceVertices[0][2], faceVertices[1][2]);
-    float w1 = Wedge(v2 - v1, uTargetPosition - v1);
-    float w2 = Wedge(v3 - v2, uTargetPosition - v2);
-    float w3 = Wedge(v1 - v3, uTargetPosition - v3);
-    vec3 w = vec3(w1, w2, w3);
-    bvec3 wb = greaterThanEqual(w, vec3(0.0f));
-    return all(wb);
-}
-*/
 void main() {
     uint id = gl_GlobalInvocationID.x;
     uint totalLeaves = cbt_HeapRead(cbtNode(1, 0));
@@ -74,11 +71,11 @@ void main() {
         cbtNode node = cbt_BinarySearch(id);
         vec4[3] faceVertices = DecodeTriangleVertices(node);
 
-        float mode = cameraPosition.w;
+        float mode = subdivisionInfo.x;
         if (mode > 0.5f) {
             // Split
             vec2 targetLod = LevelOfDetail(faceVertices);
-            if (targetLod.x > 0.5f) {
+            if (targetLod.x > 1.0f) {
                 leb_SplitNodeSquare(node);
             }
         } else {

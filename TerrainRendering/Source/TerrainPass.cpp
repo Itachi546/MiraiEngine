@@ -5,6 +5,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Common/FileUtils.hpp"
+#include "Device/Window.hpp"
 
 #define CBT_IMPLEMENTATION
 #include "CBT.hpp"
@@ -210,17 +211,23 @@ namespace mirai {
     void TerrainPass::update_subdivision(CommandBuffer *command_buffer, Camera *camera) {
         device->begin_debug_utils_label(command_buffer, "CBT Update Subdivision", nullptr);
 
-        std::vector<glm::vec4> push_constant_data;
+        struct PushConstantData {
+            glm::mat4 VP;
+            glm::vec4 frustum_planes[6];
+            glm::vec4 subdivision_info;
+        } push_constant_data;
+        push_constant_data.VP = camera->get_view_projection_transform();
+
         Frustum &frustum = camera->get_frustum();
         for (int i = 0; i < 6; ++i) {
-            push_constant_data.push_back(glm::vec4(frustum.planes[i].normal, frustum.planes[i].distance));
+            push_constant_data.frustum_planes[i] = glm::vec4(frustum.planes[i].normal, frustum.planes[i].distance);
         }
-        push_constant_data.push_back(glm::vec4(camera->position, subdivision_mode));
+        push_constant_data.subdivision_info = glm::vec4(subdivision_mode, lod_factor, 0.0f, 0.0f);
 
         PushConstant push_constant = {
-            .data = push_constant_data.data(),
+            .data = &push_constant_data,
             .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * 4 * cast_u32(push_constant_data.size()),
+            .size = sizeof(push_constant_data),
             .offset = 0,
         };
 
@@ -257,6 +264,16 @@ namespace mirai {
 
     void TerrainPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         subdivision_mode = 1.0f - subdivision_mode;
+
+        Camera *camera = scene->get_camera();
+
+        uint32_t screenWidth, screenHeight;
+        Window::get()->get_size(&screenWidth, &screenHeight);
+
+        const uint32_t gpuSubdivision = 2;
+        const float pixelLengthTarget = 3.0f;
+        float tmp = 2.0f * tan(glm::radians(camera->get_fov()) / 2.0f) / screenHeight * (1 << gpuSubdivision) * pixelLengthTarget;
+        lod_factor = -2.0f * std::log2(tmp) + 2.0f;
     }
 
     void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {

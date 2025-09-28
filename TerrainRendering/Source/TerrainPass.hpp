@@ -31,6 +31,7 @@ namespace mirai {
         std::unique_ptr<ShaderMaterial> terrain_shader;
         UniformSetID cbt_init_set, cbt_vert_set, cbt_subdivision_set, cbt_sum_reduction_set;
         uint32_t *cbt_leaf_count_ptr = nullptr;
+        float lod_factor = 0.0f;
 
         TextureID texture_heightmap;
 

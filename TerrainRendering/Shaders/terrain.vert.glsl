@@ -25,7 +25,7 @@ layout(set = 1, binding = 1) uniform sampler2D uHeightmap;
 #include "leb.glsl"
 #include "terrain.glsl"
 
-layout(location = 0) out vec3 vColor;
+layout(location = 0) out vec3 vNormal;
 
 void main() {
     uint nodeID = gl_InstanceIndex;
@@ -35,5 +35,5 @@ void main() {
     vec4 position = vertices[gl_VertexIndex];
 
     gl_Position = VP * position;
-    vColor = get_normal(position.xz);
+    vNormal = get_normal(position.xz);
 }
