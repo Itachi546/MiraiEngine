@@ -64,6 +64,22 @@
           "op": "LOAD_OP_CLEAR"
         }
       ]
+    },
+    {
+      "name": "debug_pass",
+      "enabled": true,
+      "inputs": [
+        {
+          "type": "attachment",
+          "name": "swapchain"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "reference",
+          "name": "swapchain"
+        }
+      ]
     }
   ]
 }

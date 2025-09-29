@@ -6,6 +6,7 @@
 #include "Scene/Camera.hpp"
 #include "Common/FileUtils.hpp"
 #include "Device/Window.hpp"
+#include "Graphics/TextRenderManager.hpp"
 
 #define CBT_IMPLEMENTATION
 #include "CBT.hpp"
@@ -148,6 +149,7 @@ namespace mirai {
     }
 
     void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
+        ScopedGpuProfiling(command_buffer, "Sum Reduction");
         device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction", nullptr);
         uint32_t num_dispatches = cbt_depth - 1;
         cbt_sum_reduction_program->bind(command_buffer);
@@ -209,6 +211,7 @@ namespace mirai {
     }
 
     void TerrainPass::update_subdivision(CommandBuffer *command_buffer, Camera *camera) {
+        ScopedGpuProfiling(command_buffer, "Update Subdivision");
         device->begin_debug_utils_label(command_buffer, "CBT Update Subdivision", nullptr);
 
         struct PushConstantData {
@@ -283,6 +286,7 @@ namespace mirai {
 
         compute_sum_reduction(command_buffer);
 
+        ScopedGpuProfiling(command_buffer, "Render Terrain");
         // Prepare cbt_buffer for vertex read
         BufferBarrierInfo barrier_infos[] = {
             {

@@ -4,10 +4,11 @@
 #include "Device/Window.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/EnvironmentMap.hpp"
+#include "Graphics/TextRenderManager.hpp"
 #include "Graphics/Renderer.hpp"
 #include "RenderPass/RenderPass.hpp"
 #include "Utils/FirstPersonController.hpp"
-
+#include "Engine/Profiler.hpp"
 #include <memory>
 
 using namespace mirai;
@@ -28,6 +29,7 @@ class TerrainApplication : public App {
         frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 25));
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<Overlay3DPass>());
+        frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
 
         Camera *camera = scene->get_camera();
         camera->set_near_plane(1.0f);
@@ -45,6 +47,16 @@ class TerrainApplication : public App {
 
         float dt = Engine::get()->get_dt_seconds();
         controller->update(dt);
+
+        std::vector<miProfiler::ProfilerOutput> cpu_outputs, gpu_outputs;
+        miProfiler::GetProfilerOutput(cpu_outputs, gpu_outputs);
+        TextRenderer *renderer = TextRenderManager::get()->get_default();
+
+        glm::vec2 position{20.0f, 20.0f};
+        for (miProfiler::ProfilerOutput output : gpu_outputs) {
+            renderer->AddText(output.name + ": " + std::to_string(output.time_in_ms), position);
+            position.y += 20.0f;
+        }
     }
 
     ~TerrainApplication() {
