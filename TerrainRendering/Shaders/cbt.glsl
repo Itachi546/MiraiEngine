@@ -85,16 +85,89 @@ uint cbt_HeapRead(cbtNode node) {
     uint msb = cbt_BitFieldExtract(heap[heapIndexMSB], 0, bitCountMSB);
     return lsb | (msb << bitCountLSB);
 }
+/*
+uint heapRead(cbtNode leftChild, uint maxDepth) {
+    if (leftChild.depth < maxDepth - 5)
+        return cbt_HeapRead(leftChild);
+    uint numBits = maxDepth - leftChild.depth;
+    //uint firstLeaf = leftChild.id << 5;
+    //uint bufferIndex = cbt_GetBitIndex(firstLeaf) >> 5;
+    if (numBits == 5)
+        return 16;
+    else if (numBits == 4)
+        return 8;
+    else if (numBits == 3)
+        return 4;
+    else if (numBits == 2)
+        return 2;
+    else
+        return 1;
+}
+*/
+
+// Node index can be in between 1 and 63
+uint getBitCount(cbtNode node, uint value) {
+    if (node.depth == 0)
+        return bitCount(value);
+    // Given a relative node index (only depth 5) and value (u32) we calculate the bitCount for that node
+    // Calculate total no of bit required for this depth
+    uint numBits = 1 << (5 - node.depth);
+    // Calculate first child at this depth
+    uint firstChild = 1 << node.depth;
+    // Calculate relative distance of child at that level
+    uint childOffset = node.id - firstChild;
+
+    // Create numBit mask to mask out the value
+    uint mask = (1 << numBits) - 1u;
+
+    mask = mask << (childOffset * numBits);
+    return bitCount(value & mask);
+}
+
+// Node is always leftChild
+cbtNode cbt_BinarySearchFiner(cbtNode node, uint nodeID) {
+    uint firstLeaf = node.id << 5;
+    uint bufferIndex = cbt_GetBitIndex(cbtNode(firstLeaf, node.depth + 5)) >> 5;
+    uint value = heap[bufferIndex];
+    // Start a new binary search within u32, we don't store the sum reduction for last
+    // 5 depth, so we have to runtime calculation
+    cbtNode temp;
+    temp.id = 1;
+    temp.depth = 0;
+    while (getBitCount(temp, value) > 1u) {
+        cbtNode leftChild;
+        leftChild.id = temp.id << 1;
+        leftChild.depth = temp.depth + 1;
+
+        uint cmp = getBitCount(leftChild, value);
+        uint b = nodeID < cmp ? 0u : 1u;
+        temp = leftChild;
+        temp.id |= b;
+        nodeID -= cmp * b;
+    }
+    // Find the child index at given depth
+    // We calculate the childIndex relative to current coarse node, by using
+    // relative distance
+    uint tempNodeLeafStart = 1 << temp.depth;
+    node.id = (node.id << temp.depth) + (temp.id - tempNodeLeafStart);
+    node.depth += temp.depth;
+    return node;
+}
 
 cbtNode cbt_BinarySearch(uint nodeID) {
     cbtNode node;
     node.id = 1u;
     node.depth = 0u;
 
+    uint maxDepth = cbt_MaxDepth(heap[0]);
     while (cbt_HeapRead(node) > 1u) {
+        if (node.depth == maxDepth - 5)
+            return cbt_BinarySearchFiner(node, nodeID);
+
         cbtNode leftChild;
         leftChild.id = node.id << 1;
         leftChild.depth = node.depth + 1;
+
         uint cmp = cbt_HeapRead(leftChild);
         uint b = nodeID < cmp ? 0u : 1u;
         node = leftChild;

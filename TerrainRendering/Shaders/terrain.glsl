@@ -5,14 +5,17 @@
 
 const mat2x3 faceVertices = mat2x3(vec3(0, 0, 1), vec3(1, 0, 0));
 
+#define WORLD_SIZE 32000.0f
+#define HEIGHT_SCALE 2500.0f
+
 vec2 get_uv(vec2 position) {
-    vec2 world_size = vec2(32000.0f);
+    vec2 world_size = vec2(WORLD_SIZE);
     return (position / world_size) * 0.5 + 0.5;
 }
 
 float get_height(vec2 position) {
     vec2 uv = get_uv(position);
-    return (texture(uHeightmap, uv).r * 2.0f - 1.0f) * 2500.0f;
+    return (texture(uHeightmap, uv).r * 2.0f - 1.0f) * HEIGHT_SCALE;
 }
 
 vec3 get_normal(vec2 p) {
@@ -26,7 +29,7 @@ vec3 get_normal(vec2 p) {
 
 vec4 toWorldPos(vec4 p) {
     p.xz = 2.0f * p.xz - 1.0f;
-    p.xz *= 32000.0f;
+    p.xz *= WORLD_SIZE;
     p.y += get_height(p.xz);
     return p;
 }

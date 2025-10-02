@@ -106,6 +106,10 @@ namespace mirai {
         cbt_sum_reduction_program->create_from_file("SPIRV/cbt_sum_reduction.comp.spv");
         cbt_sum_reduction_program->set_uniform_sets(&cbt_sum_reduction_set, 1);
 
+        cbt_sum_reduction_prepass_program = std::make_unique<ComputeShader>("cbt_sumreduction_prepass");
+        cbt_sum_reduction_prepass_program->create_from_file("SPIRV/cbt_sum_reduction_prepass.comp.spv");
+        cbt_sum_reduction_prepass_program->set_uniform_sets(&cbt_sum_reduction_set, 1);
+
         cbt_subdivision_program = std::make_unique<ComputeShader>("cbt_subdivision");
         cbt_subdivision_program->create_from_file("SPIRV/cbt_subdivision.comp.spv");
         cbt_subdivision_program->set_uniform_sets(&cbt_subdivision_set, 1);
@@ -120,7 +124,7 @@ namespace mirai {
                                                                                                });
 
         // Initialize CBT Buffer
-        init_at_depth(13);
+        init_at_depth(cbt_depth - 1);
     }
 
     void TerrainPass::init_at_depth(uint32_t initDepth) {
@@ -148,11 +152,9 @@ namespace mirai {
         command_buffer->wait();
     }
 
-    void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
-        ScopedGpuProfiling(command_buffer, "Sum Reduction");
-        device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction", nullptr);
-        uint32_t num_dispatches = cbt_depth - 1;
-        cbt_sum_reduction_program->bind(command_buffer);
+    void TerrainPass::compute_sum_reduction_prepass(CommandBuffer *command_buffer) {
+        device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction Prepass", nullptr);
+        cbt_sum_reduction_prepass_program->bind(command_buffer);
 
         // Proper buffer access transition from vertex shader input to compute shader
         BufferBarrierInfo cbt_buffer_barrier_info[] = {
@@ -187,11 +189,45 @@ namespace mirai {
 
         command_buffer->prepare_buffer(cbt_buffer_barrier_info, cast_u32(std::size(cbt_buffer_barrier_info)));
 
-        // For subsequent pass, it will be compute to compute dependency
-        cbt_buffer_barrier_info[0].src_access_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        cbt_buffer_barrier_info[0].src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE;
+        ScopedGpuProfiling(command_buffer, "Sum Reduction Prepass");
+
+        uint32_t current_level = cbt_depth - 1;
+        PushConstant push_constants = {
+            .data = &current_level,
+            .shader_stage = SHADER_STAGE_COMPUTE,
+            .size = sizeof(uint32_t),
+            .offset = 0,
+        };
+
+        command_buffer->set_push_constants(cbt_sum_reduction_prepass_program->get_pipeline_id(), &push_constants, 1);
+        uint32_t local_work_size = rendering_utils::get_workgroup_size((1 << (cbt_depth - 4)), 256);
+        command_buffer->dispatch(local_work_size, 1, 1);
+        device->end_debug_utils_label(command_buffer);
+    }
+
+    void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
+        device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction", nullptr);
+        // cbt_depth = 8, so we start with 7 and 
+        uint32_t num_dispatches = cbt_depth - 7;
+        cbt_sum_reduction_program->bind(command_buffer);
+
+        // Proper buffer access transition from vertex shader input to compute shader
+        BufferBarrierInfo cbt_buffer_barrier_info[] = {
+            {
+                .buffer_id = cbt_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+            },
+        };
 
         for (int level = num_dispatches; level >= 0; level--) {
+            command_buffer->prepare_buffer(cbt_buffer_barrier_info, cast_u32(std::size(cbt_buffer_barrier_info)));
+            std::string name = "Sum Reduction" + std::to_string(level);
+            ScopedGpuProfiling(command_buffer, name.c_str());
             PushConstant push_constants = {
                 .data = &level,
                 .shader_stage = SHADER_STAGE_COMPUTE,
@@ -201,11 +237,6 @@ namespace mirai {
             command_buffer->set_push_constants(cbt_sum_reduction_program->get_pipeline_id(), &push_constants, 1);
             uint32_t local_work_size = rendering_utils::get_workgroup_size(1 << level, 256);
             command_buffer->dispatch(local_work_size, 1, 1);
-
-            // At last level we prepare the cbt_buffer for vertex shader
-            if (level > 0) {
-                command_buffer->prepare_buffer(cbt_buffer_barrier_info, 1);
-            }
         }
         device->end_debug_utils_label(command_buffer);
     }
@@ -274,15 +305,20 @@ namespace mirai {
         Window::get()->get_size(&screenWidth, &screenHeight);
 
         const uint32_t gpuSubdivision = 2;
-        const float pixelLengthTarget = 3.0f;
+        const float pixelLengthTarget = 7.0f;
         float tmp = 2.0f * tan(glm::radians(camera->get_fov()) / 2.0f) / screenHeight * (1 << gpuSubdivision) * pixelLengthTarget;
         lod_factor = -2.0f * std::log2(tmp) + 2.0f;
+        // TextRenderer *renderer = TextRenderManager::get()->get_default();
+        // renderer->AddText(std::to_string(cbt_leaf_count_ptr[0]), glm::vec2(20.0f, 140.0f));
+        Log::Info("Total leaves: ", cbt_leaf_count_ptr[0]);
     }
 
     void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
         device->begin_debug_utils_label(command_buffer, "TerrainPass", nullptr);
 
         update_subdivision(command_buffer, scene->get_camera());
+
+        compute_sum_reduction_prepass(command_buffer);
 
         compute_sum_reduction(command_buffer);
 

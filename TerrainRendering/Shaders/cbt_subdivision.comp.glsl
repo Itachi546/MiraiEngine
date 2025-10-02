@@ -54,13 +54,11 @@ float TriangleLevelOfDetail(in const vec4[3] patchVertices) {
 Compute the level of detail of associated triangle
 */
 vec2 LevelOfDetail(in const vec4[3] patchVertices) {
-    /*
     vec3 bmin = min(min(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
     vec3 bmax = max(max(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
     if (!IntersectFrustum(bmin, bmax)) {
         return vec2(0.0f);
     }
-    */
     return vec2(TriangleLevelOfDetail(patchVertices), 1.0f);
 }
 

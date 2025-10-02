@@ -28,7 +28,7 @@ layout(push_constant) uniform PushConstant {
 
 void main() {
     uint threadID = gl_GlobalInvocationID.x;
-    uint cnt = (1 << u_Level);
+    uint cnt = (1 << (u_Level));
     if (threadID < cnt) {
         uint nodeID = threadID + cnt;
         uint x0 = cbt_HeapRead(cbtNode(nodeID << 1, u_Level + 1));

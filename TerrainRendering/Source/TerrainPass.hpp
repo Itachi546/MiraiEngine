@@ -27,7 +27,7 @@ namespace mirai {
         RenderingDevice *device;
         uint32_t width, height, cbt_depth;
         BufferID cbt_buffer, cbt_leaf_count_buffer, cbt_draw_indirect_buffer;
-        std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_subdivision_program;
+        std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_sum_reduction_prepass_program, cbt_subdivision_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
         UniformSetID cbt_init_set, cbt_vert_set, cbt_subdivision_set, cbt_sum_reduction_set;
         uint32_t *cbt_leaf_count_ptr = nullptr;
@@ -39,6 +39,8 @@ namespace mirai {
         float subdivision_mode = 0.0f;
 
         void init_at_depth(uint32_t depth);
+
+        void compute_sum_reduction_prepass(CommandBuffer *command_buffer);
 
         void compute_sum_reduction(CommandBuffer *command_buffer);
 

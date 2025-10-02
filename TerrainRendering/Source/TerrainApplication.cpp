@@ -26,6 +26,7 @@ class TerrainApplication : public App {
 
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         frame_graph->load_from_file("Assets/terrain_pass.json");
+        // @TODO fix this
         frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 25));
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<Overlay3DPass>());
@@ -38,7 +39,6 @@ class TerrainApplication : public App {
         controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(100.0f);
         controller->set_run_speed(1000.0f);
-        controller->set_smoothing_enabled(false);
     }
 
     void update() override {

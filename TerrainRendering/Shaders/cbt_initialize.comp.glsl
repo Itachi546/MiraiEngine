@@ -26,10 +26,10 @@ void main() {
     for (int i = 0; i < bufferCount; ++i) {
         heap[i] = 0;
     }
-    heap[0] = 1 << depth;
+    heap[0] = 1 << (depth - 1);
 
     uint minID = 1 << initDepth;
-    uint maxID = 2 << (initDepth);
+    uint maxID = 2 << initDepth;
     for (uint n = minID; n < maxID; ++n) {
         cbtNode node = {n, initDepth};
         cbt_WriteBitField(node, 1u);
