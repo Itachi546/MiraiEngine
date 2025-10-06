@@ -34,6 +34,7 @@ void main() {
     uint leafCount = (1 << u_Level);
 
     uint totalDispatches = leafCount / 32;
+    uint prevLevelOffset = totalDispatches;
 
     // Corrected ID for writing/reading to shared storage
     uint i = threadID % LOCAL_WORK_SIZE;
@@ -43,6 +44,13 @@ void main() {
         uint leafStart = threadID * 32 + leafCount;
         uint bufferID = cbt_GetBitIndex(cbtNode(leafStart, u_Level)) >> 5;
         uint value = heap[bufferID];
+
+        // Copy the value of current level to previous level
+        // Current level is modified while updating the subdivision,
+        // so instead we backup the current level into previous level as they
+        // require same number of bit
+        heap[bufferID - prevLevelOffset] = value;
+
         uint total = bitCount(value);
         sum_reduction_outputs[i] = total;
     } else {

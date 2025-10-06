@@ -26,7 +26,7 @@ void main() {
     for (int i = 0; i < bufferCount; ++i) {
         heap[i] = 0;
     }
-    heap[0] = 1 << (depth - 1);
+    heap[0] = 1 << depth;
 
     uint minID = 1 << initDepth;
     uint maxID = 2 << initDepth;

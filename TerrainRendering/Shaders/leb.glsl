@@ -77,8 +77,9 @@ lebDiamondParent leb_DecodeDiamondParent(cbtNode node) {
 }
 
 bool leb_HasDiamondParent(lebDiamondParent diamondParent) {
-    bool canMergeBase = cbt_HeapRead(diamondParent.base) <= 2u;
-    bool canMergeTop = cbt_HeapRead(diamondParent.top) <= 2u;
+    uint maxDepth = cbt_MaxDepth(heap[0]);
+    bool canMergeBase = heapRead(diamondParent.base, maxDepth) <= 2u;
+    bool canMergeTop = heapRead(diamondParent.top, maxDepth) <= 2u;
     return canMergeBase && canMergeTop;
 }
 

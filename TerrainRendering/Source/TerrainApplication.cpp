@@ -27,18 +27,18 @@ class TerrainApplication : public App {
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         frame_graph->load_from_file("Assets/terrain_pass.json");
         // @TODO fix this
-        frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 25));
+        frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(512, 512, 27));
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
 
         Camera *camera = scene->get_camera();
-        camera->set_near_plane(1.0f);
+        camera->set_near_plane(3.0f);
         camera->set_far_plane(64000.0f);
         camera->position = glm::vec3(1000.0f, 500.0f, 1000.0f);
         controller = std::make_unique<FirstPersonController>(camera);
-        controller->set_walk_speed(100.0f);
-        controller->set_run_speed(1000.0f);
+        controller->set_walk_speed(1000.0f);
+        controller->set_run_speed(10000.0f);
     }
 
     void update() override {
@@ -54,6 +54,10 @@ class TerrainApplication : public App {
 
         glm::vec2 position{20.0f, 20.0f};
         for (miProfiler::ProfilerOutput output : gpu_outputs) {
+            renderer->AddText(output.name + ": " + std::to_string(output.time_in_ms), position);
+            position.y += 20.0f;
+        }
+        for (miProfiler::ProfilerOutput output : cpu_outputs) {
             renderer->AddText(output.name + ": " + std::to_string(output.time_in_ms), position);
             position.y += 20.0f;
         }

@@ -124,16 +124,34 @@ uint getBitCount(cbtNode node, uint value) {
     return bitCount(value & mask);
 }
 
+uint getBufferValueFiner(cbtNode node, uint maxDepth) {
+    uint firstLeaf = node.id << (maxDepth - node.depth);
+    uint prevLevelOffset = (1 << maxDepth) >> 5;
+    uint bufferIndex = (cbt_GetBitIndex(cbtNode(firstLeaf, maxDepth)) >> 5) - prevLevelOffset;
+    return heap[bufferIndex];
+}
+
+uint heapRead(cbtNode node, uint maxDepth) {
+    if (node.depth < maxDepth - 4)
+        return cbt_HeapRead(node);
+
+    uint value = getBufferValueFiner(node, maxDepth);
+
+    cbtNode temp;
+    temp.depth = 5 - (maxDepth - node.depth);
+    uint parent = node.id >> temp.depth;
+    temp.id = node.id - (parent << temp.depth) + (1 << (temp.depth));
+    return getBitCount(temp, value);
+}
+/*
 // Node is always leftChild
 cbtNode cbt_BinarySearchFiner(cbtNode node, uint nodeID) {
-    uint firstLeaf = node.id << 5;
-    uint bufferIndex = cbt_GetBitIndex(cbtNode(firstLeaf, node.depth + 5)) >> 5;
-    uint value = heap[bufferIndex];
     // Start a new binary search within u32, we don't store the sum reduction for last
     // 5 depth, so we have to runtime calculation
+    uint value = getBufferValueFiner(node);
     cbtNode temp;
     temp.id = 1;
-    temp.depth = 0;
+    temp.depth = 0u;
     while (getBitCount(temp, value) > 1u) {
         cbtNode leftChild;
         leftChild.id = temp.id << 1;
@@ -153,22 +171,19 @@ cbtNode cbt_BinarySearchFiner(cbtNode node, uint nodeID) {
     node.depth += temp.depth;
     return node;
 }
-
+*/
 cbtNode cbt_BinarySearch(uint nodeID) {
     cbtNode node;
     node.id = 1u;
     node.depth = 0u;
 
     uint maxDepth = cbt_MaxDepth(heap[0]);
-    while (cbt_HeapRead(node) > 1u) {
-        if (node.depth == maxDepth - 5)
-            return cbt_BinarySearchFiner(node, nodeID);
-
+    while (heapRead(node, maxDepth) > 1u) {
         cbtNode leftChild;
         leftChild.id = node.id << 1;
         leftChild.depth = node.depth + 1;
 
-        uint cmp = cbt_HeapRead(leftChild);
+        uint cmp = heapRead(leftChild, maxDepth);
         uint b = nodeID < cmp ? 0u : 1u;
         node = leftChild;
         node.id |= b;

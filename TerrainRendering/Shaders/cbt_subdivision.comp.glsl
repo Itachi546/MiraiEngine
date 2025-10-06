@@ -64,9 +64,9 @@ vec2 LevelOfDetail(in const vec4[3] patchVertices) {
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
-    uint totalLeaves = cbt_HeapRead(cbtNode(1, 0));
-    if (id < leafCount && leafCount == totalLeaves) {
+    if (id < leafCount) {
         cbtNode node = cbt_BinarySearch(id);
+        
         vec4[3] faceVertices = DecodeTriangleVertices(node);
 
         float mode = subdivisionInfo.x;
