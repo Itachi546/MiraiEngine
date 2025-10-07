@@ -6,22 +6,19 @@
 mat3 GetSquareMatrix(uint splitBit) {
     float b = float(splitBit);
     float c = 1.0f - b;
-    // return mat3([ c, 0, b ], [ b, c, b ], [ b, 0, c ]);
-    return transpose(mat3(
-        c, 0, b,
-        b, c, b,
-        b, 0, c));
+    return mat3(c, b, b, 0, c, 0, b, b, c);
 }
 
 mat3 GetSplitMatrix(uint splitBit) {
     float b = float(splitBit);
     float c = 1.0f - b;
-    // return mat3([ c, b, 0 ], [ 0.5, 0, 0.5 ], [ 0, c, b ]);
-    // @TODO fix this later
-    return transpose(mat3(
-        c, b, 0.0,
-        0.5, 0.0, 0.5,
-        0, c, b));
+    return mat3(c, 0.5f, 0, b, 0.0f, c, 0.0f, 0.5f, b);
+}
+
+mat3 GetWindingMatrix(uint mirrorBit) {
+    float b = float(mirrorBit);
+    float c = 1.0f - b;
+    return mat3(c, 0.0f, b, 0.0f, 1.0f, 0.0f, b, 0.0f, c);
 }
 
 uint getBit(uint nodeId, int bitId) {
@@ -35,7 +32,7 @@ mat3 GetTransformationMatrix(uint nodeId, int depth) {
         mat3 splitMatrix = GetSplitMatrix(getBit(nodeId, i));
         transform = splitMatrix * transform;
     }
-    return transform;
+    return GetWindingMatrix(depth & 1) * transform;
 }
 
 uint leb_GetBitValue(uint bitField, uint bitID) {

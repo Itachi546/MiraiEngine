@@ -20,7 +20,7 @@ namespace mirai {
     void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         // Load heightmap
         int width, height, n_channel;
-        uint16_t *data = utils::load_image16("Assets/botw.png", &width, &height, &n_channel, 1);
+        uint16_t *data = utils::load_image16("Assets/kauai.png", &width, &height, &n_channel, 1);
         if (data == nullptr)
             Log::Error("Failed to load terrain heightmap");
         ASSERT(n_channel == 1);
@@ -119,7 +119,7 @@ namespace mirai {
         // Initialize Terrain Shader
         terrain_shader = std::make_unique<ShaderMaterial>("Terrain Shader");
         terrain_shader->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {
-                                                                                                   .cull_mode = CULL_MODE_NONE,
+                                                                                                   .cull_mode = CULL_MODE_BACK,
                                                                                                    .depth_test = true,
                                                                                                    .depth_write = true,
                                                                                                    .polygon_mode = POLYGON_MODE_FILL,

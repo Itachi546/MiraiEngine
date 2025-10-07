@@ -6,7 +6,7 @@
 const mat2x3 faceVertices = mat2x3(vec3(0, 0, 1), vec3(1, 0, 0));
 
 #define WORLD_SIZE 32000.0f
-#define HEIGHT_SCALE 2500.0f
+#define HEIGHT_SCALE 2400.0f
 
 vec2 get_uv(vec2 position) {
     vec2 world_size = vec2(WORLD_SIZE);
@@ -19,12 +19,16 @@ float get_height(vec2 position) {
 }
 
 vec3 get_normal(vec2 p) {
-    vec2 delta = vec2(1.0f);
-    float left = get_height(p - vec2(delta.x, 0.0f));
-    float right = get_height(p + vec2(delta.x, 0.0f));
-    float up = get_height(p + vec2(0.0f, delta.y));
-    float down = get_height(p - vec2(0.0f, delta.y));
-    return normalize(vec3(left - right, 1.0f, down - up));
+    vec2 texCoord = get_uv(p);
+    float filterSize = 1.0f / float(textureSize(uHeightmap, 0).x); // sqrt(dot(dFdx(texCoord), dFdy(texCoord)));
+    float sx0 = textureLod(uHeightmap, texCoord - vec2(filterSize, 0.0), 0.0).r;
+    float sx1 = textureLod(uHeightmap, texCoord + vec2(filterSize, 0.0), 0.0).r;
+    float sy0 = textureLod(uHeightmap, texCoord - vec2(0.0, filterSize), 0.0).r;
+    float sy1 = textureLod(uHeightmap, texCoord + vec2(0.0, filterSize), 0.0).r;
+    float sx = sx1 - sx0;
+    float sy = sy1 - sy0;
+
+    return normalize(vec3(0.03 / filterSize * 0.5f * vec2(-sx, -sy), 1));
 }
 
 vec4 toWorldPos(vec4 p) {
