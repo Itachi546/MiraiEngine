@@ -7,6 +7,7 @@
 #include "Common/FileUtils.hpp"
 #include "Device/Window.hpp"
 #include "Graphics/TextRenderManager.hpp"
+#include "Device/InputDevice.hpp"
 
 #define CBT_IMPLEMENTATION
 #include "CBT.hpp"
@@ -124,6 +125,14 @@ namespace mirai {
                                                                                                    .depth_write = true,
                                                                                                    .polygon_mode = POLYGON_MODE_FILL,
                                                                                                });
+
+        terrain_shader_wireframe = std::make_unique<ShaderMaterial>("Terrain Shader Wireframe");
+        terrain_shader_wireframe->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {
+                                                                                                             .cull_mode = CULL_MODE_BACK,
+                                                                                                             .depth_test = true,
+                                                                                                             .depth_write = true,
+                                                                                                             .polygon_mode = POLYGON_MODE_LINE,
+                                                                                                         });
 
         // Initialize CBT Buffer
         init_at_depth(7);
@@ -245,16 +254,12 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "Update Subdivision");
         device->begin_debug_utils_label(command_buffer, "CBT Update Subdivision", nullptr);
 
-        struct PushConstantData {
-            glm::mat4 VP;
-            glm::vec4 frustum_planes[6];
-            glm::vec4 subdivision_info;
-        } push_constant_data;
-        push_constant_data.VP = camera->get_view_projection_transform();
-
-        Frustum &frustum = camera->get_frustum();
-        for (int i = 0; i < 6; ++i) {
-            push_constant_data.frustum_planes[i] = glm::vec4(frustum.planes[i].normal, frustum.planes[i].distance);
+        if (!freeze_frustum) {
+            push_constant_data.VP = camera->get_view_projection_transform();
+            Frustum &frustum = camera->get_frustum();
+            for (int i = 0; i < 6; ++i) {
+                push_constant_data.frustum_planes[i] = glm::vec4(frustum.planes[i].normal, frustum.planes[i].distance);
+            }
         }
         push_constant_data.subdivision_info = glm::vec4(subdivision_mode, lod_factor, 0.0f, 0.0f);
 
@@ -310,6 +315,11 @@ namespace mirai {
         lod_factor = -2.0f * std::log2(tmp) + 2.0f;
         TextRenderer *renderer = TextRenderManager::get()->get_default();
         renderer->AddText(std::to_string(cbt_leaf_count_ptr[0]), glm::vec2(20.0f, 600.0f));
+
+        if (Input::get()->was_down(Key::KB_SPACE))
+            enable_wireframe = !enable_wireframe;
+        if (Input::get()->was_down(Key::KB_F))
+            freeze_frustum = !freeze_frustum;
     }
 
     void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -349,13 +359,15 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
+        auto shader = enable_wireframe ? terrain_shader_wireframe.get() : terrain_shader.get();
+
         UniformSetID uniform_sets[] = {
             scene->per_frame_uniform_set,
             cbt_vert_set,
         };
 
-        terrain_shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
-        terrain_shader->bind(command_buffer, &node->renderpass_info);
+        shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
+        shader->bind(command_buffer, &node->renderpass_info);
 
         // @TODO fix synchronization issues
         uint32_t instanceCount = cbt_leaf_count_ptr[0];

@@ -161,7 +161,7 @@ namespace mirai {
         static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
         uint32_t current_frame = 0;
 
-        bool vsync = false;
+        bool vsync = true;
         bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
