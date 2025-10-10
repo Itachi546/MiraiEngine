@@ -8,8 +8,8 @@ layout(set = 0, binding = 0) buffer cbtTree {
     uint heap[];
 };
 
-layout(set = 0, binding = 1) buffer cbtDrawIndirect {
-    uint leafCount;
+layout(set = 0, binding = 1) buffer CBTDispatchIndirect {
+    uint dispatch_count[];
 };
 
 #define CBT_ENABLE_WRITE
@@ -34,5 +34,9 @@ void main() {
         cbtNode node = {n, initDepth};
         cbt_WriteBitField(node, 1u);
     }
-    leafCount = maxID - minID;
+
+    uint totalLeaves = maxID - minID;
+    dispatch_count[0] = (totalLeaves + 255) >> 8;
+    dispatch_count[1] = 1;
+    dispatch_count[2] = 1;
 }

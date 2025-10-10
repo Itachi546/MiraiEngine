@@ -51,6 +51,8 @@ namespace mirai {
 
         void dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z);
 
+        void dispatch_indirect(BufferID indirect_buffer, uint32_t offset);
+
         void set_vertex_buffer(BufferID buffer);
 
         void set_index_buffer(BufferID buffer);

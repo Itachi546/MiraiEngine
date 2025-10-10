@@ -49,17 +49,14 @@ uvec4 leb_SplitNodeIDs(uvec4 neighbours, uint b) {
         (neighbours[3] << 1u) | b);
 }
 
-cbtNode leb_EdgeNeighbour(cbtNode node) {
+uvec4 leb_DecodeSameDepthNeighbourIDs(cbtNode node) {
     uint b = leb_GetBitValue(node.id, max(0, node.depth - 1));
+    // left, right, edge, node
     uvec4 neighbours = uvec4(0u, 0u, 3u - b, 2u + b);
     for (int bitID = int(node.depth) - 2; bitID >= 0; --bitID) {
         neighbours = leb_SplitNodeIDs(neighbours, leb_GetBitValue(node.id, bitID));
     }
-    // Create edge node
-    cbtNode edge;
-    edge.id = neighbours[2];
-    edge.depth = edge.id == 0u ? 0 : node.depth;
-    return edge;
+    return neighbours;
 }
 
 struct lebDiamondParent {
@@ -69,7 +66,10 @@ struct lebDiamondParent {
 
 lebDiamondParent leb_DecodeDiamondParent(cbtNode node) {
     cbtNode parent = cbt_ParentNode(node);
-    cbtNode edgeNeighbour = leb_EdgeNeighbour(parent);
+    uvec4 neighbours = leb_DecodeSameDepthNeighbourIDs(parent);
+    cbtNode edgeNeighbour;
+    edgeNeighbour.id = neighbours[2] > 0u ? neighbours[2] : parent.id;
+    edgeNeighbour.depth = parent.depth;
     return lebDiamondParent(parent, edgeNeighbour);
 }
 
@@ -86,6 +86,13 @@ void leb_MergeNodeSquare(const cbtNode node, const lebDiamondParent diamondParen
     if ((node.depth > 1) && leb_HasDiamondParent(diamondParent)) {
         cbt_MergeNode(node);
     }
+}
+
+cbtNode leb_EdgeNeighbour(cbtNode node) {
+    uvec4 neighbours = leb_DecodeSameDepthNeighbourIDs(node);
+    return cbtNode(
+        neighbours[2],
+        neighbours[2] == 0u ? 0 : node.depth);
 }
 
 void leb_SplitNodeSquare(cbtNode node) {

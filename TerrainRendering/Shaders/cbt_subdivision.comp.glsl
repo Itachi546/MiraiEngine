@@ -7,11 +7,7 @@ layout(set = 0, binding = 0) buffer cbtTree {
     uint heap[];
 };
 
-layout(set = 0, binding = 1) buffer cbtDrawIndirect {
-    uint leafCount;
-};
-
-layout(set = 0, binding = 2) uniform sampler2D uHeightmap;
+layout(set = 0, binding = 1) uniform sampler2D uHeightmap;
 
 #define CBT_ENABLE_WRITE
 #include "leb.glsl"
@@ -64,14 +60,13 @@ vec2 LevelOfDetail(in const vec4[3] patchVertices) {
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
+    uint leafCount = cbt_HeapRead(cbtNode(1u, 0u));
     if (id < leafCount) {
         cbtNode node = cbt_BinarySearch(id);
-        
-        vec4[3] faceVertices = DecodeTriangleVertices(node);
-
         float mode = subdivisionInfo.x;
         if (mode > 0.5f) {
             // Split
+            vec4[3] faceVertices = DecodeTriangleVertices(node);
             vec2 targetLod = LevelOfDetail(faceVertices);
             if (targetLod.x > 1.0f) {
                 leb_SplitNodeSquare(node);
@@ -80,10 +75,10 @@ void main() {
             // Merge
             lebDiamondParent diamondParent = leb_DecodeDiamondParent(node);
             vec4[3] baseFaceVertices = DecodeTriangleVertices(diamondParent.base);
-            bool shouldMergeBase = LevelOfDetail(baseFaceVertices).x < 0.5f;
+            bool shouldMergeBase = LevelOfDetail(baseFaceVertices).x < 1.0f;
 
             vec4[3] topFaceVertices = DecodeTriangleVertices(diamondParent.top);
-            bool shouldMergeTop = LevelOfDetail(topFaceVertices).x < 0.5f;
+            bool shouldMergeTop = LevelOfDetail(topFaceVertices).x < 1.0f;
 
             if (shouldMergeBase && shouldMergeBase) {
                 leb_MergeNodeSquare(node, diamondParent);

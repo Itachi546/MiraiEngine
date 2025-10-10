@@ -169,6 +169,11 @@ namespace mirai {
         vkCmdDispatch(command_buffer, work_size_x, work_size_y, work_size_z);
     }
 
+    void CommandBuffer::dispatch_indirect(BufferID indirect_buffer, uint32_t offset) {
+        VulkanBuffer *buffer = device->access_buffer(indirect_buffer);
+        vkCmdDispatchIndirect(command_buffer, buffer->buffer, offset);
+    }
+
     void CommandBuffer::set_vertex_buffer(BufferID buffer) {
         VulkanBuffer *vertex_buffer = device->access_buffer(buffer);
 

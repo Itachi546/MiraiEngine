@@ -50,11 +50,10 @@ namespace mirai {
         };
         cbt_buffer = device->create_buffer(&buffer_desc, "CBT Node Buffer");
 
-        buffer_desc.size = sizeof(uint32_t) * 2;
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_CPU;
-        cbt_leaf_count_buffer = device->create_buffer(&buffer_desc, "CBT Indirect Buffer");
-        cbt_leaf_count_ptr = reinterpret_cast<uint32_t *>(device->map_buffer(cbt_leaf_count_buffer));
+        buffer_desc.size = sizeof(uint32_t) * 3;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
+        cbt_dispatch_indirect_buffer = device->create_buffer(&buffer_desc, "CBT Dispatch Buffer");
 
         // Size of VkCmdDrawIndirectCommand
         buffer_desc.size = sizeof(uint32_t) * 4;
@@ -74,32 +73,58 @@ namespace mirai {
             {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_VERTEX},
         };
 
+        // Vertex shader bindings
         cbt_vert_set = device->create_uniform_set(&vertex_layouts[0], cast_u32(std::size(vertex_layouts)), 1, "cbt_vert_set");
         device->update_uniform_set(cbt_vert_set, &vertex_bindings[0], cast_u32(std::size(vertex_bindings)));
 
-        std::vector<UniformBinding> compute_bindings = {
+        std::vector<UniformLayout> cbt_init_layouts = {
+            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+            /*{1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},*/
+        };
+
+        std::vector<UniformBinding> cbt_init_bindings = {
             {cbt_buffer},
-            {cbt_leaf_count_buffer},
+            {cbt_dispatch_indirect_buffer},
+        };
+
+        // CBT Initialize Bindings
+        cbt_init_set = device->create_uniform_set(cbt_init_layouts.data(), cast_u32(cbt_init_layouts.size()), 0, "cbt_comp_set");
+        device->update_uniform_set(cbt_init_set, cbt_init_bindings.data(), cast_u32(cbt_init_bindings.size()));
+
+        std::vector<UniformLayout> cbt_update_subdivision_layouts = {
+            {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+        };
+
+        std::vector<UniformBinding> cbt_update_subdivision_bindings = {
+            {cbt_buffer},
             {.resource_id = texture_heightmap, .texture_info = {.sampler = heightmap_sampler}},
         };
 
-        std::vector<UniformLayout> compute_layouts = {
+        // CBT Subdivision Bindings
+        cbt_subdivision_set = device->create_uniform_set(cbt_update_subdivision_layouts.data(), cast_u32(cbt_update_subdivision_layouts.size()), 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_subdivision_set, cbt_update_subdivision_bindings.data(), cast_u32(cbt_update_subdivision_bindings.size()));
+
+        std::vector<UniformLayout> cbt_sum_reduction_layouts = {
             {0, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
-            {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+            {2, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE},
         };
 
-        cbt_init_set = device->create_uniform_set(compute_layouts.data(), 2, 0, "cbt_comp_set");
-        device->update_uniform_set(cbt_init_set, compute_bindings.data(), 2);
+        std::vector<UniformBinding> cbt_sum_reduction_bindings = {
+            {cbt_buffer},
+            {cbt_draw_indirect_buffer},
+            {cbt_dispatch_indirect_buffer},
+        };
 
-        cbt_subdivision_set = device->create_uniform_set(compute_layouts.data(), 3, 0, "cbt_subdivision_set");
-        device->update_uniform_set(cbt_subdivision_set, compute_bindings.data(), 3);
+        // CBT Sum reduction prepass bindings
+        cbt_sum_reduction_prepass_set = device->create_uniform_set(cbt_sum_reduction_layouts.data(), 1, 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_sum_reduction_prepass_set, cbt_sum_reduction_bindings.data(), 1);
 
-        compute_bindings[2] = {cbt_draw_indirect_buffer};
-        compute_layouts[2] = {2, BINDING_TYPE_STORAGE_BUFFER, SHADER_STAGE_COMPUTE};
-
-        cbt_sum_reduction_set = device->create_uniform_set(compute_layouts.data(), 3, 0, "cbt_subdivision_set");
-        device->update_uniform_set(cbt_sum_reduction_set, compute_bindings.data(), 3);
+        // CBT Sum reduction bindings
+        cbt_sum_reduction_set = device->create_uniform_set(cbt_sum_reduction_layouts.data(), cast_u32(cbt_sum_reduction_layouts.size()), 0, "cbt_subdivision_set");
+        device->update_uniform_set(cbt_sum_reduction_set, cbt_sum_reduction_bindings.data(), cast_u32(cbt_sum_reduction_layouts.size()));
 
         cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
         cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
@@ -111,7 +136,7 @@ namespace mirai {
 
         cbt_sum_reduction_prepass_program = std::make_unique<ComputeShader>("cbt_sumreduction_prepass");
         cbt_sum_reduction_prepass_program->create_from_file("SPIRV/cbt_sum_reduction_prepass.comp.spv");
-        cbt_sum_reduction_prepass_program->set_uniform_sets(&cbt_sum_reduction_set, 1);
+        cbt_sum_reduction_prepass_program->set_uniform_sets(&cbt_sum_reduction_prepass_set, 1);
 
         cbt_subdivision_program = std::make_unique<ComputeShader>("cbt_subdivision");
         cbt_subdivision_program->create_from_file("SPIRV/cbt_subdivision.comp.spv");
@@ -178,24 +203,6 @@ namespace mirai {
                 .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
             },
-            {
-                .buffer_id = cbt_leaf_count_buffer,
-                .offset = 0,
-                .size = UINT64_MAX,
-                .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .src_access_mask = ACCESS_FLAG_SHADER_READ,
-                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
-            },
-            {
-                .buffer_id = cbt_draw_indirect_buffer,
-                .offset = 0,
-                .size = UINT64_MAX,
-                .src_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-                .src_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
-                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
-            },
         };
 
         command_buffer->prepare_buffer(cbt_buffer_barrier_info, cast_u32(std::size(cbt_buffer_barrier_info)));
@@ -231,6 +238,24 @@ namespace mirai {
                 .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
                 .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+            },
+            {
+                .buffer_id = cbt_draw_indirect_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                .src_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
+            },
+            {
+                .buffer_id = cbt_dispatch_indirect_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                .src_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
             },
         };
 
@@ -285,19 +310,18 @@ namespace mirai {
                 .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
             },
             {
-                .buffer_id = cbt_leaf_count_buffer,
+                .buffer_id = cbt_dispatch_indirect_buffer,
                 .offset = 0,
                 .size = UINT64_MAX,
                 .src_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .src_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
-                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .dst_access_mask = ACCESS_FLAG_SHADER_READ,
+                .src_access_mask = ACCESS_FLAG_SHADER_WRITE,
+                .dst_stage_mask = PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                .dst_access_mask = ACCESS_FLAG_INDIRECT_COMMAND_READ,
             },
         };
 
         command_buffer->prepare_buffer(cbt_buffer_barrier_info, 2);
-        uint32_t work_count = rendering_utils::get_workgroup_size(cbt_leaf_count_ptr[0], 256);
-        command_buffer->dispatch(work_count, 1, 1);
+        command_buffer->dispatch_indirect(cbt_dispatch_indirect_buffer, 0);
         device->end_debug_utils_label(command_buffer);
     }
 
@@ -314,7 +338,6 @@ namespace mirai {
         float tmp = 2.0f * tan(glm::radians(camera->get_fov()) / 2.0f) / screenHeight * (1 << gpuSubdivision) * pixelLengthTarget;
         lod_factor = -2.0f * std::log2(tmp) + 2.0f;
         TextRenderer *renderer = TextRenderManager::get()->get_default();
-        renderer->AddText(std::to_string(cbt_leaf_count_ptr[0]), glm::vec2(20.0f, 600.0f));
 
         if (Input::get()->was_down(Key::KB_SPACE))
             enable_wireframe = !enable_wireframe;
@@ -369,10 +392,7 @@ namespace mirai {
         shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
         shader->bind(command_buffer, &node->renderpass_info);
 
-        // @TODO fix synchronization issues
-        uint32_t instanceCount = cbt_leaf_count_ptr[0];
         command_buffer->draw_indirect(cbt_draw_indirect_buffer, 0, 1, sizeof(uint32_t) * 4);
-        command_buffer->draw(3, instanceCount, 0, 0);
         command_buffer->end_render_pass();
 
         device->end_debug_utils_label(command_buffer);
@@ -380,7 +400,7 @@ namespace mirai {
 
     TerrainPass::~TerrainPass() {
         device->destroy_textures(&texture_heightmap, 1);
-        BufferID buffers[] = {cbt_buffer, cbt_leaf_count_buffer, cbt_draw_indirect_buffer};
+        BufferID buffers[] = {cbt_buffer, cbt_dispatch_indirect_buffer, cbt_draw_indirect_buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
     }
 

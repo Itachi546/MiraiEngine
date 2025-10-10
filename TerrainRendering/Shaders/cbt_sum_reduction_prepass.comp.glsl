@@ -8,17 +8,6 @@ layout(set = 0, binding = 0) buffer CBTNode {
     uint heap[];
 };
 
-layout(set = 0, binding = 1) buffer CBTDrawIndirect {
-    uint leafCount;
-};
-
-layout(set = 0, binding = 2) buffer DrawIndirectCommand {
-    uint vertexCount;
-    uint instanceCount;
-    uint firstVertex;
-    uint firstInstance;
-};
-
 layout(push_constant) uniform PushConstant {
     uint u_Level;
 };
