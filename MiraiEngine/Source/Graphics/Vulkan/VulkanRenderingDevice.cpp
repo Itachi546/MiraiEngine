@@ -1627,6 +1627,10 @@ namespace mirai {
         create_tlas(acceleration_structure.tlas_instance_buffer, mesh_count, acceleration_structure.tlas, acceleration_structure.tlas_buffer);
     }
 
+    uint32_t VulkanRenderingDevice::get_swapchain_image_count() {
+        return cast_u32(swapchain->images.size());
+    }
+
     VulkanRenderingDevice::~VulkanRenderingDevice() {
         VK_CHECK(vkDeviceWaitIdle(device));
         for (auto &fence : in_flight_fences)

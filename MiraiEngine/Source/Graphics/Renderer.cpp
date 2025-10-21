@@ -119,8 +119,10 @@ namespace mirai {
         cb->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         // Copy per frame uniform data
-        uint32_t offset = 0;
-        uint8_t *staging_buffer_ptr = scene->per_frame_staging_buffer_ptr;
+        uint32_t current_frame = device->get_current_frame();
+        uint32_t offset = current_frame * scene->staging_buffer_size_per_frame;
+
+        uint8_t *staging_buffer_ptr = scene->per_frame_staging_buffer_ptr + offset;
 
         std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));
         cb->copy_buffer(scene->per_frame_uniform_buffer, scene->per_frame_staging_buffer, {

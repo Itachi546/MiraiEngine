@@ -40,7 +40,9 @@ namespace mirai {
         material_array = device->map_buffer(material_buffer);
 
         // Per frame staging buffer
-        buffer_desc.size = cast_u32(utils::mb_to_bytes(16));
+        uint32_t total_frames = device->get_swapchain_image_count();
+        uint32_t total_mb_per_frame = cast_u32(utils::mb_to_bytes(4));
+        buffer_desc.size = cast_u32(total_frames * staging_buffer_size_per_frame);
         buffer_desc.usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT;
         per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
         per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);

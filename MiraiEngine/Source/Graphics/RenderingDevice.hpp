@@ -585,6 +585,9 @@ namespace mirai {
         // Raytracing stuff
         virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
 
+        virtual uint32_t get_current_frame()  = 0;
+        virtual uint32_t get_swapchain_image_count() = 0;
+
         virtual ~RenderingDevice() = default;
 
       protected:

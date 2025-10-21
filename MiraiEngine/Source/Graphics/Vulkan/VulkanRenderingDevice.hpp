@@ -115,6 +115,12 @@ namespace mirai {
             return has_rt_support;
         }
 
+        uint32_t get_current_frame() override {
+            return current_frame;
+        }
+
+        uint32_t get_swapchain_image_count() override;
+
         ~VulkanRenderingDevice();
 
         VkInstance instance;

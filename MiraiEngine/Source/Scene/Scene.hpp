@@ -47,7 +47,7 @@ namespace mirai {
 
         UniformSetID vertex_binding_set;
     };
-  
+
     struct GpuMesh {
         BufferID vertex_buffer;
         BufferID index_buffer;
@@ -120,6 +120,8 @@ namespace mirai {
         glm::mat4 *transform_array;
         BufferID material_buffer;
         uint8_t *material_array;
+
+        const uint32_t staging_buffer_size_per_frame = 4 * 1024 * 1024;
 
         struct FrameData {
             glm::mat4 P;
