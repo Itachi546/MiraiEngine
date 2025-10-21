@@ -17,12 +17,12 @@ layout(set = 0, binding = 1) buffer CBTDispatchIndirect {
 
 layout(push_constant) uniform PushConstant {
     uint depth;
-    uint initDepth;
+    int initDepth;
 };
 
 void main() {
     // Get total no of  buffer in u32
-    uint bufferCount = cbt_GetAllocationSizeU32(depth);
+    uint bufferCount = cbt_HeapUint32Size(depth);
     for (int i = 0; i < bufferCount; ++i) {
         heap[i] = 0;
     }
@@ -31,8 +31,8 @@ void main() {
     uint minID = 1 << initDepth;
     uint maxID = 2 << initDepth;
     for (uint n = minID; n < maxID; ++n) {
-        cbtNode node = {n, initDepth};
-        cbt_WriteBitField(node, 1u);
+        cbt_Node node = cbt_CreateNode(n, initDepth);
+        cbt_HeapWrite_BitField(node, 1u);
     }
 
     uint totalLeaves = maxID - minID;

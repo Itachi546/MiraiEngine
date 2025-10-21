@@ -163,6 +163,8 @@ namespace mirai {
         }
 
         void set_state(Key key, bool state) {
+            if (key == KB_UNKNOWN)
+                return;
             KeyboardState *keyPtr = &keys[key];
             keyPtr->isDown = state;
         }

@@ -13,7 +13,7 @@ namespace mirai {
     class TerrainPass : public FrameGraphRenderer {
 
       public:
-        TerrainPass(uint32_t width, uint32_t height, uint32_t cbt_depth);
+        TerrainPass(uint32_t width, uint32_t height, uint32_t maxHeight, uint32_t cbt_depth);
 
         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
 
@@ -25,7 +25,7 @@ namespace mirai {
 
       private:
         RenderingDevice *device;
-        uint32_t width, height, cbt_depth;
+        uint32_t width, height, maxHeight, cbt_depth;
         BufferID cbt_buffer, cbt_dispatch_indirect_buffer, cbt_draw_indirect_buffer;
         std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_sum_reduction_prepass_program, cbt_subdivision_program;
         std::unique_ptr<ShaderMaterial> terrain_shader;
@@ -37,13 +37,15 @@ namespace mirai {
         TextureID texture_heightmap;
 
         bool enable_wireframe = false;
+        bool freeze_frustum = false;
+        bool enable_sumreduction_prepass = true;
 
         struct PushConstantData {
             glm::mat4 VP;
             glm::vec4 frustum_planes[6];
             glm::vec4 subdivision_info;
+            glm::vec4 dims;
         } push_constant_data;
-        bool freeze_frustum = false;
         // Merge - 0, Split - 1
         float subdivision_mode = 0.0f;
 

@@ -1,8 +1,6 @@
 #ifndef LEB_GLSL
 #define LEB_GLSL
 
-#include "cbt.glsl"
-
 mat3 GetSquareMatrix(uint splitBit) {
     float b = float(splitBit);
     float c = 1.0f - b;
@@ -49,56 +47,56 @@ uvec4 leb_SplitNodeIDs(uvec4 neighbours, uint b) {
         (neighbours[3] << 1u) | b);
 }
 
-uvec4 leb_DecodeSameDepthNeighbourIDs(cbtNode node) {
+uvec4 leb_DecodeSameDepthNeighbourIDs(cbt_Node node) {
     uint b = leb_GetBitValue(node.id, max(0, node.depth - 1));
     // left, right, edge, node
     uvec4 neighbours = uvec4(0u, 0u, 3u - b, 2u + b);
-    for (int bitID = int(node.depth) - 2; bitID >= 0; --bitID) {
+    for (int bitID = node.depth - 2; bitID >= 0; --bitID) {
         neighbours = leb_SplitNodeIDs(neighbours, leb_GetBitValue(node.id, bitID));
     }
     return neighbours;
 }
 
 struct lebDiamondParent {
-    cbtNode base;
-    cbtNode top;
+    cbt_Node base;
+    cbt_Node top;
 };
 
-lebDiamondParent leb_DecodeDiamondParent(cbtNode node) {
-    cbtNode parent = cbt_ParentNode(node);
+lebDiamondParent leb_DecodeDiamondParent(cbt_Node node) {
+    cbt_Node parent = cbt_ParentNode(node);
     uvec4 neighbours = leb_DecodeSameDepthNeighbourIDs(parent);
-    cbtNode edgeNeighbour;
+    cbt_Node edgeNeighbour;
     edgeNeighbour.id = neighbours[2] > 0u ? neighbours[2] : parent.id;
     edgeNeighbour.depth = parent.depth;
     return lebDiamondParent(parent, edgeNeighbour);
 }
 
-bool leb_HasDiamondParent(lebDiamondParent diamondParent) {
-    uint maxDepth = cbt_MaxDepth(heap[0]);
-    bool canMergeBase = heapRead(diamondParent.base, maxDepth) <= 2u;
-    bool canMergeTop = heapRead(diamondParent.top, maxDepth) <= 2u;
+bool leb_HasDiamondParent(lebDiamondParent diamondParent, bool enable_sum_reduction_prepass) {
+    int maxDepth = cbt_MaxDepth();
+    bool canMergeBase = heapRead(diamondParent.base, maxDepth, enable_sum_reduction_prepass) <= 2u;
+    bool canMergeTop = heapRead(diamondParent.top, maxDepth, enable_sum_reduction_prepass) <= 2u;
     return canMergeBase && canMergeTop;
 }
 
 #ifdef CBT_ENABLE_WRITE
 
-void leb_MergeNodeSquare(const cbtNode node, const lebDiamondParent diamondParent) {
-    if ((node.depth > 1) && leb_HasDiamondParent(diamondParent)) {
+void leb_MergeNodeSquare(const cbt_Node node, const lebDiamondParent diamondParent, bool enable_sum_reduction_prepass) {
+    if ((node.depth > 1) && leb_HasDiamondParent(diamondParent, enable_sum_reduction_prepass)) {
         cbt_MergeNode(node);
     }
 }
 
-cbtNode leb_EdgeNeighbour(cbtNode node) {
+cbt_Node leb_EdgeNeighbour(cbt_Node node) {
     uvec4 neighbours = leb_DecodeSameDepthNeighbourIDs(node);
-    return cbtNode(
+    return cbt_CreateNode(
         neighbours[2],
         neighbours[2] == 0u ? 0 : node.depth);
 }
 
-void leb_SplitNodeSquare(cbtNode node) {
+void leb_SplitNodeSquare(cbt_Node node) {
     if (!cbt_IsCeilNode(node)) {
         const uint minNodeID = 1u;
-        cbtNode iterator = node;
+        cbt_Node iterator = node;
         cbt_SplitNode(iterator);
 
         iterator = leb_EdgeNeighbour(iterator);

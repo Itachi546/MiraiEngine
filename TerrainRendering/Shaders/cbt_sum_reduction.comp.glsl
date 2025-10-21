@@ -19,7 +19,7 @@ layout(set = 0, binding = 2) buffer CBTDispatchIndirect {
 };
 
 layout(push_constant) uniform PushConstant {
-    uint u_Level;
+    int u_Level;
 };
 
 #define CBT_ENABLE_WRITE
@@ -31,9 +31,9 @@ void main() {
     uint cnt = (1 << (u_Level));
     if (threadID < cnt) {
         uint nodeID = threadID + cnt;
-        uint x0 = cbt_HeapRead(cbtNode(nodeID << 1, u_Level + 1));
-        uint x1 = cbt_HeapRead(cbtNode((nodeID << 1) | 1u, u_Level + 1));
-        cbt_HeapWrite(cbtNode(nodeID, u_Level), x0 + x1);
+        uint x0 = cbt_HeapRead(cbt_CreateNode(nodeID << 1, u_Level + 1));
+        uint x1 = cbt_HeapRead(cbt_CreateNode((nodeID << 1) | 1u, u_Level + 1));
+        cbt_HeapWrite(cbt_CreateNode(nodeID, u_Level), x0 + x1);
         if (u_Level == 0) {
             uint totalLeaves = x0 + x1;
             dispatch_count[0] = (totalLeaves + 255) >> 8;

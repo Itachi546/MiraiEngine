@@ -9,12 +9,9 @@
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/InputDevice.hpp"
 
-#define CBT_IMPLEMENTATION
-#include "CBT.hpp"
-
 namespace mirai {
-    TerrainPass::TerrainPass(uint32_t width, uint32_t height, uint32_t cbt_depth) : FrameGraphRenderer("terrain_pass"),
-                                                                                    width(width), height(height), cbt_depth(cbt_depth) {
+    TerrainPass::TerrainPass(uint32_t width, uint32_t height, uint32_t maxHeight, uint32_t cbt_depth) : FrameGraphRenderer("terrain_pass"),
+                                                                                                        width(width), height(height), cbt_depth(cbt_depth), maxHeight(maxHeight) {
         device = RenderingDevice::get();
     }
 
@@ -74,7 +71,7 @@ namespace mirai {
         };
 
         // Vertex shader bindings
-        cbt_vert_set = device->create_uniform_set(&vertex_layouts[0], cast_u32(std::size(vertex_layouts)), 1, "cbt_vert_set");
+        cbt_vert_set = device->create_uniform_set(&vertex_layouts[0], cast_u32(std::size(vertex_layouts)), 0, "cbt_vert_set");
         device->update_uniform_set(cbt_vert_set, &vertex_bindings[0], cast_u32(std::size(vertex_bindings)));
 
         std::vector<UniformLayout> cbt_init_layouts = {
@@ -160,7 +157,7 @@ namespace mirai {
                                                                                                          });
 
         // Initialize CBT Buffer
-        init_at_depth(7);
+        init_at_depth(cbt_depth / 2);
     }
 
     void TerrainPass::init_at_depth(uint32_t initDepth) {
@@ -225,7 +222,7 @@ namespace mirai {
     void TerrainPass::compute_sum_reduction(CommandBuffer *command_buffer) {
         device->begin_debug_utils_label(command_buffer, "CBT Sum Reduction", nullptr);
         // cbt_depth = 8, so we start with 7 and
-        uint32_t num_dispatches = cbt_depth - 6;
+        uint32_t num_dispatches = enable_sumreduction_prepass ? cbt_depth - 6 : cbt_depth - 1;
         cbt_sum_reduction_program->bind(command_buffer);
 
         // Proper buffer access transition from vertex shader input to compute shader
@@ -287,6 +284,7 @@ namespace mirai {
             }
         }
         push_constant_data.subdivision_info = glm::vec4(subdivision_mode, lod_factor, 0.0f, 0.0f);
+        push_constant_data.dims = glm::vec4(float(width), float(height), float(maxHeight), float(enable_sumreduction_prepass));
 
         PushConstant push_constant = {
             .data = &push_constant_data,
@@ -337,12 +335,21 @@ namespace mirai {
         const float pixelLengthTarget = 3.0f;
         float tmp = 2.0f * tan(glm::radians(camera->get_fov()) / 2.0f) / screenHeight * (1 << gpuSubdivision) * pixelLengthTarget;
         lod_factor = -2.0f * std::log2(tmp) + 2.0f;
+
         TextRenderer *renderer = TextRenderManager::get()->get_default();
+
+        float startX = screenWidth * 0.85f;
+        float startY = 20.0f;
+        renderer->AddText("Freeze Frustum: " + std::string(freeze_frustum ? "true" : "false"), glm::vec2(startX, startY), 14);
+        renderer->AddText("Wireframe Mode: " + std::string(enable_wireframe ? "true" : "false"), glm::vec2(startX, startY + 18.0f), 14);
+        renderer->AddText("Sum Reduction Prepass: " + std::string(enable_sumreduction_prepass ? "true" : "false"), glm::vec2(startX, startY + 36.0f), 14);
 
         if (Input::get()->was_down(Key::KB_SPACE))
             enable_wireframe = !enable_wireframe;
         if (Input::get()->was_down(Key::KB_F))
             freeze_frustum = !freeze_frustum;
+        if (Input::get()->was_down(Key::KB_P))
+            enable_sumreduction_prepass = !enable_sumreduction_prepass;
     }
 
     void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -350,7 +357,8 @@ namespace mirai {
 
         update_subdivision(command_buffer, scene->get_camera());
 
-        compute_sum_reduction_prepass(command_buffer);
+        if (enable_sumreduction_prepass)
+            compute_sum_reduction_prepass(command_buffer);
 
         compute_sum_reduction(command_buffer);
 
@@ -385,13 +393,21 @@ namespace mirai {
         auto shader = enable_wireframe ? terrain_shader_wireframe.get() : terrain_shader.get();
 
         UniformSetID uniform_sets[] = {
-            scene->per_frame_uniform_set,
             cbt_vert_set,
         };
-
         shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
+
         shader->bind(command_buffer, &node->renderpass_info);
 
+        struct TerrainPushConstant {
+            glm::mat4 VP;
+            glm::vec4 dims;
+        } push_constant_data;
+        push_constant_data.VP = scene->get_camera()->get_view_projection_transform();
+        push_constant_data.dims = {float(width), float(height), float(maxHeight), float(enable_sumreduction_prepass)};
+        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(push_constant_data), .offset = 0};
+
+        command_buffer->set_push_constants(shader->get_pipeline_id(), &push_constant, 1);
         command_buffer->draw_indirect(cbt_draw_indirect_buffer, 0, 1, sizeof(uint32_t) * 4);
         command_buffer->end_render_pass();
 

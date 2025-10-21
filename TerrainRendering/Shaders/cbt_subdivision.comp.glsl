@@ -10,6 +10,8 @@ layout(set = 0, binding = 0) buffer cbtTree {
 layout(set = 0, binding = 1) uniform sampler2D uHeightmap;
 
 #define CBT_ENABLE_WRITE
+#define FLAG_DISPLACE
+#include "cbt.glsl"
 #include "leb.glsl"
 #include "terrain.glsl"
 
@@ -18,15 +20,17 @@ layout(push_constant) uniform PushConstants {
     vec4 frustumPlanes[6];
     // xyz consists of camera position, w consists of split/merge flag
     vec4 subdivisionInfo;
+    // width, height, maxHeight, enable_sum_reduction_prepass
+    vec4 dims;
 };
 
 bool IntersectFrustum(vec3 bmin, vec3 bmax) {
     for (int i = 0; i < 6; ++i) {
-        vec3 n = frustumPlanes[i].xyz;
-        bvec3 b = greaterThan(n, vec3(0.0));
-        vec3 p = mix(bmin, bmax, b);
+        vec3 normal = frustumPlanes[i].xyz;
+        bvec3 b = greaterThan(normal, vec3(0.0));
+        vec3 n = mix(bmin, bmax, b);
 
-        float distanceToPlane = dot(vec4(p, 1.0f), frustumPlanes[i]);
+        float distanceToPlane = dot(vec4(n, 1.0f), frustumPlanes[i]);
         if (distanceToPlane < 0.0f)
             return false;
     }
@@ -53,20 +57,21 @@ vec2 LevelOfDetail(in const vec4[3] patchVertices) {
     vec3 bmin = min(min(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
     vec3 bmax = max(max(patchVertices[0].xyz, patchVertices[1].xyz), patchVertices[2].xyz);
     if (!IntersectFrustum(bmin, bmax)) {
-        return vec2(0.0f);
+        return vec2(0.0f, 1.0f);
     }
     return vec2(TriangleLevelOfDetail(patchVertices), 1.0f);
 }
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
-    uint leafCount = cbt_HeapRead(cbtNode(1u, 0u));
+    uint leafCount = cbt_NodeCount();
+    bool enable_sum_reduction_prepass = dims.w > 0.5 ? true : false;
     if (id < leafCount) {
-        cbtNode node = cbt_BinarySearch(id);
+        cbt_Node node = cbt_DecodeNode(id, enable_sum_reduction_prepass);
         float mode = subdivisionInfo.x;
         if (mode > 0.5f) {
             // Split
-            vec4[3] faceVertices = DecodeTriangleVertices(node);
+            vec4[3] faceVertices = DecodeTriangleVertices(node, dims.xy, dims.z);
             vec2 targetLod = LevelOfDetail(faceVertices);
             if (targetLod.x > 1.0f) {
                 leb_SplitNodeSquare(node);
@@ -74,14 +79,14 @@ void main() {
         } else {
             // Merge
             lebDiamondParent diamondParent = leb_DecodeDiamondParent(node);
-            vec4[3] baseFaceVertices = DecodeTriangleVertices(diamondParent.base);
+            vec4[3] baseFaceVertices = DecodeTriangleVertices(diamondParent.base, dims.xy, dims.z);
             bool shouldMergeBase = LevelOfDetail(baseFaceVertices).x < 1.0f;
 
-            vec4[3] topFaceVertices = DecodeTriangleVertices(diamondParent.top);
+            vec4[3] topFaceVertices = DecodeTriangleVertices(diamondParent.top, dims.xy, dims.z);
             bool shouldMergeTop = LevelOfDetail(topFaceVertices).x < 1.0f;
 
             if (shouldMergeBase && shouldMergeBase) {
-                leb_MergeNodeSquare(node, diamondParent);
+                leb_MergeNodeSquare(node, diamondParent, enable_sum_reduction_prepass);
             }
         }
     }

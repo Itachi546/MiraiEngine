@@ -125,6 +125,8 @@ namespace mirai {
     }
 
     void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count) {
+        if (uniform_set_count == 0)
+            return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
         for (uint32_t i = 0; i < uniform_set_count; ++i) {
@@ -138,6 +140,8 @@ namespace mirai {
     }
 
     void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count) {
+        if (push_constant_count == 0)
+            return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             PushConstant *push_constant = &push_constants[i];

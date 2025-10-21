@@ -9,7 +9,7 @@ layout(set = 0, binding = 0) buffer CBTNode {
 };
 
 layout(push_constant) uniform PushConstant {
-    uint u_Level;
+    int u_Level;
 };
 
 shared uint sum_reduction_outputs[LOCAL_WORK_SIZE];
@@ -31,7 +31,7 @@ void main() {
     if (threadID < totalDispatches) {
         // For base pass, we combine 32 leaf into single dispatch
         uint leafStart = threadID * 32 + leafCount;
-        uint bufferID = cbt_GetBitIndex(cbtNode(leafStart, u_Level)) >> 5;
+        uint bufferID = cbt_NodeBitID(cbt_CreateNode(leafStart, u_Level)) >> 5;
         uint value = heap[bufferID];
 
         // Copy the value of current level to previous level
@@ -54,7 +54,7 @@ void main() {
     if (threadID % 16 == 0 && threadID < totalDispatches) {
         // Get buffer represented by this thread group of 16
         uint writeLeafStart = leafCount >> 5;
-        uint writeBitIndex = cbt_GetBitIndex(cbtNode(writeLeafStart, u_Level - 6));
+        uint writeBitIndex = cbt_NodeBitID(cbt_CreateNode(writeLeafStart, u_Level - 6));
         uint writeBufferID = (writeBitIndex >> 5) + 3 * (threadID >> 4);
 
         uint result = (sum_reduction_outputs[i + 5] << 30) |

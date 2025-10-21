@@ -56,3 +56,5 @@ TODO.md
 .cache/
 
 TerrainRendering/Assets/*.png
+
+.zed

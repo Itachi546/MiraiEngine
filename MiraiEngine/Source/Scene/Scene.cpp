@@ -107,6 +107,8 @@ namespace mirai {
         update_hierarchy_component();
 
         generate_render_object_list();
+
+        per_frame_data._padding = glm::vec2(0.0f);
     }
 
     void Scene::update() {
