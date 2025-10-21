@@ -13,7 +13,7 @@ namespace mirai {
     DeferredLightingPass::DeferredLightingPass() : FrameGraphRenderer("deferred_lighting_pass"), shader(nullptr), uniform_set(K_INVALID_ID) {
     }
 
-    void DeferredLightingPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void DeferredLightingPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
 
         shader = ShaderManager::get()->get_shader("pbr_deferred");
         rt_shader = ShaderManager::get()->get_shader("pbr_deferred_rt");
@@ -67,6 +67,8 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
         cascade_uniform_set = device->create_uniform_set(&cascade_data, 1, 2, "cascade_info_set");
+        UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
+        device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
     }
 
     void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
@@ -80,9 +82,6 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
         if (active_shader == shader) {
-            UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
-            device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
-
             UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
             active_shader->set_uniform_sets(uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
         } else if (active_shader == rt_shader) {

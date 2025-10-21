@@ -2,7 +2,7 @@
 #include "Device/Window.hpp"
 #ifdef MIRAI_BACKEND_VULKAN
 #include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
-#include "Graphics/Vulkan/Swapchain.h"
+#include "Graphics/Vulkan/Swapchain.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #endif
 

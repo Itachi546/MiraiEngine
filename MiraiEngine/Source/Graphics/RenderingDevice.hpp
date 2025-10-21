@@ -96,6 +96,7 @@ namespace mirai {
         FORMAT_R8G8B8_UNORM,
         FORMAT_R8G8_UNORM,
         FORMAT_R8_UNORM,
+        FORMAT_R16_UNORM,
         FORMAT_R16_SFLOAT,
         FORMAT_R32_SFLOAT,
         FORMAT_R16G16_SFLOAT,
@@ -473,7 +474,7 @@ namespace mirai {
     struct UniformLayout {
         uint32_t binding;
         BindingType binding_type;
-        ShaderStage shader_stage;
+        uint32_t shader_stage;
     };
 
     struct UniformBinding {
@@ -519,8 +520,8 @@ namespace mirai {
             Instance = this;
         }
 
-        RenderingDevice(const RenderingDevice&) = delete;
-        void operator=(const RenderingDevice&) = delete;
+        RenderingDevice(const RenderingDevice &) = delete;
+        void operator=(const RenderingDevice &) = delete;
 
         static RenderingDevice *get() {
             return Instance;
@@ -583,6 +584,9 @@ namespace mirai {
 
         // Raytracing stuff
         virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
+
+        virtual uint32_t get_current_frame()  = 0;
+        virtual uint32_t get_swapchain_image_count() = 0;
 
         virtual ~RenderingDevice() = default;
 

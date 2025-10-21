@@ -14,6 +14,7 @@
 #include <algorithm>
 
 namespace mirai {
+
     Scene::Scene(const std::string &name) : name(name), dirty(true) {
         component_manager = std::make_unique<ComponentManager>();
         component_manager->register_component<NameComponent>();
@@ -39,7 +40,9 @@ namespace mirai {
         material_array = device->map_buffer(material_buffer);
 
         // Per frame staging buffer
-        buffer_desc.size = cast_u32(utils::mb_to_bytes(16));
+        uint32_t total_frames = device->get_swapchain_image_count();
+        uint32_t total_mb_per_frame = cast_u32(utils::mb_to_bytes(4));
+        buffer_desc.size = cast_u32(total_frames * staging_buffer_size_per_frame);
         buffer_desc.usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT;
         per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
         per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
@@ -106,6 +109,8 @@ namespace mirai {
         update_hierarchy_component();
 
         generate_render_object_list();
+
+        per_frame_data._padding = glm::vec2(0.0f);
     }
 
     void Scene::update() {
@@ -135,9 +140,11 @@ namespace mirai {
         scene_data.camera_position = glm::vec4(camera->position, 0.0f);
         scene_data.light_direction = glm::vec4(sun->get_direction(), (float)sun->cast_shadow);
         scene_data.light_color = glm::vec4(sun->color, sun->intensity);
-        scene_data.irradiance_map = env_map->get_irradiance_map().id;
-        scene_data.prefilter_map = env_map->get_prefilter_map().id;
-        scene_data.brdf_texture = env_map->get_brdf_texture().id;
+        if (env_map) {
+            scene_data.irradiance_map = env_map->get_irradiance_map().id;
+            scene_data.prefilter_map = env_map->get_prefilter_map().id;
+            scene_data.brdf_texture = env_map->get_brdf_texture().id;
+        }
 
         generate_render_object_list();
 

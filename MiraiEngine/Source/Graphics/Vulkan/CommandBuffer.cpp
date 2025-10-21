@@ -1,6 +1,6 @@
 #include "CommandBuffer.hpp"
 #include "VulkanRenderingDevice.hpp"
-#include "Swapchain.h"
+#include "Swapchain.hpp"
 #include "VulkanUtils.hpp"
 #include "Scene/FrameGraph.hpp"
 
@@ -125,6 +125,8 @@ namespace mirai {
     }
 
     void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count) {
+        if (uniform_set_count == 0)
+            return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
         for (uint32_t i = 0; i < uniform_set_count; ++i) {
@@ -138,6 +140,8 @@ namespace mirai {
     }
 
     void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count) {
+        if (push_constant_count == 0)
+            return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         for (uint32_t i = 0; i < push_constant_count; ++i) {
             PushConstant *push_constant = &push_constants[i];
@@ -160,8 +164,18 @@ namespace mirai {
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
+    void CommandBuffer::draw_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride) {
+        VulkanBuffer *buffer = device->access_buffer(indirect_buffer);
+        vkCmdDrawIndirect(command_buffer, buffer->buffer, offset, draw_count, stride);
+    }
+
     void CommandBuffer::dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z) {
         vkCmdDispatch(command_buffer, work_size_x, work_size_y, work_size_z);
+    }
+
+    void CommandBuffer::dispatch_indirect(BufferID indirect_buffer, uint32_t offset) {
+        VulkanBuffer *buffer = device->access_buffer(indirect_buffer);
+        vkCmdDispatchIndirect(command_buffer, buffer->buffer, offset);
     }
 
     void CommandBuffer::set_vertex_buffer(BufferID buffer) {
@@ -208,7 +222,7 @@ namespace mirai {
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         };
-        pipeline_barrier(&transfer_dst_barrier, 1);
+        pipeline_barrier(&transfer_dst_barrier, 1, nullptr, 0);
 
         uint32_t mip_width = dst_image->width;
         uint32_t mip_height = dst_image->height;
@@ -258,7 +272,7 @@ namespace mirai {
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         };
-        pipeline_barrier(&shader_read_barrier, 1);
+        pipeline_barrier(&shader_read_barrier, 1, nullptr, 0);
         dst_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
@@ -280,7 +294,24 @@ namespace mirai {
             texture->current_layout = VkImageLayout(barrier_info->layout);
             texture->access_flags = VkAccessFlags(barrier_info->access_mask);
         }
-        pipeline_barrier(image_barriers.data(), (uint32_t)image_barriers.size());
+        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
+    }
+
+    void CommandBuffer::prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count) {
+        std::vector<VkBufferMemoryBarrier2> buffer_barriers(barrier_count);
+
+        for (uint32_t i = 0; i < barrier_count; ++i) {
+            const BufferBarrierInfo *barrier_info = barrier_infos + i;
+            VulkanBuffer *buffer = device->access_buffer(barrier_info->buffer_id);
+            buffer_barriers[i] = CreateBufferMemoryBarrier2(buffer->buffer,
+                                                            VkPipelineStageFlags2(barrier_info->src_stage_mask),
+                                                            VkAccessFlags(barrier_info->src_access_mask),
+                                                            VkPipelineStageFlags2(barrier_info->dst_stage_mask),
+                                                            VkAccessFlags(barrier_info->dst_access_mask),
+                                                            barrier_info->offset,
+                                                            barrier_info->size);
+        }
+        pipeline_barrier(nullptr, 0, buffer_barriers.data(), cast_u32(buffer_barriers.size()));
     }
 
     void CommandBuffer::end_render_pass() {
@@ -326,7 +357,7 @@ namespace mirai {
                 texture->stage_mask = VkPipelineStageFlags2(state.stage_mask);
             }
         }
-        pipeline_barrier(image_barriers.data(), static_cast<uint32_t>(image_barriers.size()));
+        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
     }
 
     void CommandBuffer::prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers) {
@@ -343,14 +374,14 @@ namespace mirai {
         }
     }
 
-    void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count) {
+    void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count) {
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
             .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
             .memoryBarrierCount = 0,
             .pMemoryBarriers = nullptr,
-            .bufferMemoryBarrierCount = 0,
-            .pBufferMemoryBarriers = nullptr,
+            .bufferMemoryBarrierCount = buffer_memory_barrier_count,
+            .pBufferMemoryBarriers = buffer_memory_barriers,
             .imageMemoryBarrierCount = image_memory_barrier_count,
             .pImageMemoryBarriers = image_memory_barriers,
         };

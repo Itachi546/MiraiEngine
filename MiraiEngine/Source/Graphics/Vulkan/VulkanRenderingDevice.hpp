@@ -21,7 +21,7 @@ namespace mirai {
         BufferID tlas_buffer{K_INVALID_ID};
         BufferID tlas_instance_buffer{K_INVALID_ID};
         std::vector<VkAccelerationStructureKHR> blas;
-        VkAccelerationStructureKHR tlas;
+        VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     };
 
     class VulkanRenderingDevice : public RenderingDevice {
@@ -63,8 +63,6 @@ namespace mirai {
         void add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) override;
 
         void new_frame() override;
-
-        uint32_t get_max_frame_in_flights() { return K_MAX_FRAME_IN_FLIGHTS; }
 
         CommandBuffer *get_command_buffer(uint32_t thread_id = 0) override;
 
@@ -117,6 +115,12 @@ namespace mirai {
             return has_rt_support;
         }
 
+        uint32_t get_current_frame() override {
+            return current_frame;
+        }
+
+        uint32_t get_swapchain_image_count() override;
+
         ~VulkanRenderingDevice();
 
         VkInstance instance;
@@ -160,7 +164,7 @@ namespace mirai {
 
         static const uint32_t K_NUM_THREAD = 2;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
-        static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 1;
+        static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
         uint32_t current_frame = 0;
 
         bool vsync = true;
@@ -178,9 +182,9 @@ namespace mirai {
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;
         std::vector<CommandBuffer *> queued_command_buffer;
 
-        VkSemaphore image_acquire_semaphore[K_MAX_FRAME_IN_FLIGHTS];
-        VkSemaphore render_finished_semaphore[K_MAX_FRAME_IN_FLIGHTS];
-        VkFence in_flight_fences[K_MAX_FRAME_IN_FLIGHTS];
+        std::vector<VkSemaphore> image_acquire_semaphore;
+        std::vector<VkSemaphore> render_finished_semaphore;
+        std::vector<VkFence> in_flight_fences;
 
         std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;

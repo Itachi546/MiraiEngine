@@ -38,8 +38,8 @@ namespace mirai {
 
     VkSurfaceKHR CreateSurface(VkInstance instance, VkPhysicalDevice physical_device, uint32_t graphics_queue_index);
 
-    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, bool vsync);
+    void CreateSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, uint32_t swapchain_image_count, bool vsync);
 
-    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, bool vsync);
+    void ResizeSwapchain(VulkanSwapchain *swapchain, VkPhysicalDevice physical_device, VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR &surface_caps, uint32_t swapchain_image_count, bool vsync);
 
 } // namespace mirai

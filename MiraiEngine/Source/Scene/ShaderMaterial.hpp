@@ -14,6 +14,7 @@ namespace mirai {
         bool blend = false;
         CompareOp depth_op = COMPARE_OP_LESS_OR_EQUAL;
         Topology topology = TOPOLOGY_TRIANGLE_LIST;
+        PolygonMode polygon_mode = POLYGON_MODE_FILL;
     };
 
     class ShaderMaterial {

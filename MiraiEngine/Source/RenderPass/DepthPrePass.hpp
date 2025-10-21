@@ -8,7 +8,7 @@ namespace mirai {
       public:
         DepthPrePass();
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) override;
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
 

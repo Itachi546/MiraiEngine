@@ -94,7 +94,7 @@ namespace mirai {
             device = RenderingDevice::get();
         }
 
-        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {}
+        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
         virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
 
@@ -131,6 +131,8 @@ namespace mirai {
 
         FrameGraphNode *get_node(const std::string &name) {
             auto found = nodes_maps.find(utils::djb2_hash_string(name));
+            if (found == nodes_maps.end())
+                return nullptr;
             return resource_pool_nodes.access(found->second);
         }
 
@@ -227,7 +229,7 @@ namespace mirai {
 
         // Renderer must be set for each pass before calling compile function
         // use set_renderer() function
-        void compile();
+        void compile(Scene* scene);
 
         friend class Renderer;
     };

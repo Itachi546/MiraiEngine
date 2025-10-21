@@ -86,19 +86,43 @@ namespace mirai {
                 }
             }
         }
-        device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
+        if (mesh_infos.size() > 0)
+            device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
 
-        frame_graph->compile();
+        frame_graph->compile(scene.get());
 
         if (device->supports_raytracing())
             enable_rt_shadow = true;
     }
+
     void Renderer::copy_buffers(CommandBuffer *cb) {
-        // @TODO do it here for now
+        // Prepare buffer for copying
+        BufferBarrierInfo barrier_infos[] = {
+            {
+                .buffer_id = scene->per_frame_uniform_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_READ,
+                .dst_stage_mask = PIPELINE_STAGE_TRANSFER_BIT,
+                .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
+            },
+            {
+                .buffer_id = scene->cascade_uniform_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+                .src_stage_mask = PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_READ,
+                .dst_stage_mask = PIPELINE_STAGE_TRANSFER_BIT,
+                .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
+            }};
+        cb->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         // Copy per frame uniform data
-        uint32_t offset = 0;
-        uint8_t *staging_buffer_ptr = scene->per_frame_staging_buffer_ptr;
+        uint32_t current_frame = device->get_current_frame();
+        uint32_t offset = current_frame * scene->staging_buffer_size_per_frame;
+
+        uint8_t *staging_buffer_ptr = scene->per_frame_staging_buffer_ptr + offset;
 
         std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));
         cb->copy_buffer(scene->per_frame_uniform_buffer, scene->per_frame_staging_buffer, {
@@ -116,6 +140,16 @@ namespace mirai {
                                                                                             .dst_offset = 0,
                                                                                             .size = sizeof(cascade_info),
                                                                                         });
+
+        // Prepare the buffer for shader read
+        for (uint32_t i = 0; i < std::size(barrier_infos); ++i) {
+            barrier_infos[i].src_stage_mask = PIPELINE_STAGE_TRANSFER_BIT;
+            barrier_infos[i].src_access_mask = ACCESS_FLAG_TRANSFER_WRITE;
+            barrier_infos[i].dst_stage_mask = PIPELINE_STAGE_ALL_COMMANDS_BIT;
+            barrier_infos[i].dst_access_mask = ACCESS_FLAG_SHADER_READ;
+        }
+
+        cb->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
     }
 
     void Renderer::compile_passes() {
@@ -128,8 +162,10 @@ namespace mirai {
 
         FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");
         FrameGraphNode *rt_shadow_pass = frame_graph->get_node("rt_directional_shadow_pass");
-        rt_shadow_pass->enabled = enable_rt_shadow;
-        shadow_pass->enabled = !enable_rt_shadow;
+        if (rt_shadow_pass)
+            rt_shadow_pass->enabled = enable_rt_shadow;
+        if (shadow_pass)
+            shadow_pass->enabled = !enable_rt_shadow;
     }
 
     void Renderer::render() {

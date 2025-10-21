@@ -32,4 +32,9 @@ vec3 ACESFilm(vec3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
+vec3 Filmic(const vec3 hdr) {
+    vec3 x = max(vec3(0.0f), hdr - 0.004f);
+    return (x * (6.2f * x + 0.5f)) / (x * (6.2f * x + 1.7f) + 0.06f);
+}
+
 #endif

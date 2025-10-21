@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(MIRAI_DYNAMIC_LIBRARY "Build MiraiEngine as dynamic library" OFF)
 
 add_subdirectory(MiraiEngine)
+add_subdirectory(TerrainRendering)
 add_subdirectory(TestApplication)

@@ -26,8 +26,8 @@ void main() {
 #if 1 
     // float exposure = 1.0f;
     //  col.rgb = vec3(1.0) - exp(-col.rgb * exposure);
-    col.rgb = ACESFilm(col.rgb);
-    col.rgb = pow(col.rgb, vec3(0.4545));
+    col.rgb = Filmic(col.rgb);
+    // col.rgb = pow(col.rgb, vec3(0.4545));
     fragColor = col;
 #else
     fragColor = col.rrra;

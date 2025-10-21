@@ -110,6 +110,7 @@ namespace mirai {
         device_features2.features.shaderInt64 = true;
         device_features2.features.depthClamp = true;
         device_features2.features.imageCubeArray = true;
+        device_features2.features.fillModeNonSolid = true;
 
         VkPhysicalDeviceVulkan11Features device_features11 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
         device_features11.shaderDrawParameters = true;
@@ -127,6 +128,7 @@ namespace mirai {
         VkPhysicalDeviceVulkan13Features device_features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         device_features13.dynamicRendering = true;
         device_features13.synchronization2 = true;
+        device_features13.shaderDemoteToHelperInvocation = true;
 
         VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,

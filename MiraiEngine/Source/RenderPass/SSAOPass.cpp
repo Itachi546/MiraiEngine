@@ -6,7 +6,7 @@
 
 namespace mirai {
 
-    void SSAOPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void SSAOPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
         ssao_shader = std::make_unique<ComputeShader>("hbao_shader");
         ssao_shader->create_from_file("SPIRV/hbao.comp.spv");
         blur_shader = std::make_unique<ComputeShader>("cross-bilateral-blur-shader");

@@ -11,7 +11,7 @@
 
 namespace mirai {
 
-    void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node) {
+    void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
         shader = ShaderManager::get()->get_shader("csm_shadow");
         shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
         UniformLayout mesh_instance_layout = {
@@ -19,7 +19,10 @@ namespace mirai {
             .binding_type = BINDING_TYPE_STORAGE_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
+
         mesh_instance_set = device->create_uniform_set(&mesh_instance_layout, 1, 1, "shadow_mesh_instance_set");
+        UniformBinding binding = {.resource_id = scene->transform_buffer};
+        device->update_uniform_set(mesh_instance_set, &binding, 1);
     }
 
     void CascadedShadowPass::calculate_split_distances(float znear, float zfar, Scene *scene) {
@@ -103,9 +106,6 @@ namespace mirai {
         ScopedCpuProfiling("CSM Render");
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
         device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
-
-        UniformBinding binding = {.resource_id = scene->transform_buffer};
-        device->update_uniform_set(mesh_instance_set, &binding, 1);
 
         UniformSetID cascade_uniform_set = scene->directional_light_info.cascade_uniform_set;
 

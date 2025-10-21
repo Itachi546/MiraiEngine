@@ -33,6 +33,7 @@ IMGUI_IMPL_VULKAN_USE_VOLK
 
 set_property(TARGET TestApplication PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Copy Assets folder
  add_custom_command(TARGET TestApplication
    POST_BUILD
    COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -17,6 +17,16 @@ namespace mirai {
         ImageLayout layout;
     };
 
+    struct BufferBarrierInfo {
+        BufferID buffer_id;
+        uint64_t offset = 0;
+        uint64_t size = UINT64_MAX;
+        uint32_t src_stage_mask;
+        uint32_t src_access_mask;
+        uint32_t dst_stage_mask;
+        uint32_t dst_access_mask;
+    };
+
     class CommandBuffer {
       public:
         CommandBuffer();
@@ -35,9 +45,13 @@ namespace mirai {
 
         void draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
-        void draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+        void draw_indexed_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+
+        void draw_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 
         void dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z);
+
+        void dispatch_indirect(BufferID indirect_buffer, uint32_t offset);
 
         void set_vertex_buffer(BufferID buffer);
 
@@ -47,7 +61,9 @@ namespace mirai {
 
         void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
 
-        void prepare_image(const TextureBarrierInfo *barrier_info, uint32_t barrier_count);
+        void prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count);
+
+        void prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count);
 
         VkCommandBuffer get_command_buffer() {
             return command_buffer;
@@ -62,7 +78,7 @@ namespace mirai {
       private:
         void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
         void prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
-        void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count);
+        void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count);
 
         friend class VulkanRenderingDevice;
         VulkanRenderingDevice *device;

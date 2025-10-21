@@ -21,7 +21,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
     add_custom_command(
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${SPIRV_OUTPUT_DIR}"
-        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${GLSL} -o ${SPIRV} -gVS # Generate debug information
+        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.4 ${GLSL} -o ${SPIRV} -gVS # Generate debug information
         DEPENDS ${GLSL}
         DEPENDS ${GLSL_INCLUDE_FILES}
     )

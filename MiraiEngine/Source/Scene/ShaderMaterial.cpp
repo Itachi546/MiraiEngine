@@ -9,8 +9,8 @@ namespace mirai {
     }
 
     ShaderMaterial::~ShaderMaterial() {
-        if(pipeline.is_valid())
-        RenderingDevice::get()->destroy_pipelines(&pipeline, 1);
+        if (pipeline.is_valid())
+            RenderingDevice::get()->destroy_pipelines(&pipeline, 1);
     }
 
     void ShaderMaterial::create_from_file(const std::vector<std::string> &shader_files, const ShaderMaterialProperties &properties) {
@@ -36,6 +36,7 @@ namespace mirai {
         rs.cull_mode = properties.cull_mode;
         rs.front_face = properties.front_face;
         rs.enable_depth_clamp = properties.depth_clamp;
+        rs.polygon_mode = properties.polygon_mode;
 
         BlendState bs = BlendState::create();
         if (properties.blend)
