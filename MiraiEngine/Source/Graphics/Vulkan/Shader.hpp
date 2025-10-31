@@ -1,23 +1,13 @@
 #include "Vulkan.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/ResourcePool.hpp"
+#include "Common/ShaderReflect.hpp"
 
 #include <vector>
 #include <unordered_map>
 
 VK_DEFINE_HANDLE(VmaAllocation);
 namespace mirai {
-    struct VkReflectionDescriptorBinding {
-        uint32_t binding;
-        VkDescriptorType descriptor_type;
-        VkShaderStageFlags shader_stage;
-    };
-
-    struct VkReflectionDescriptorSet {
-        uint32_t set;
-        std::vector<VkReflectionDescriptorBinding> bindings;
-    };
-
     struct VulkanTexture {
         uint32_t create_flags;
         uint32_t width, height, depth;
@@ -52,8 +42,8 @@ namespace mirai {
     struct VulkanShader {
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
-        std::vector<VkReflectionDescriptorSet> descriptor_sets;
-        std::unordered_map<uint32_t, VkPushConstantRange> push_constants;
+        std::vector<ShaderReflectionDescriptorSetInfo> descriptor_sets;
+        std::unordered_map<uint32_t, ShaderReflectionPushConstant> push_constants;
         bool support_bindless_texture;
     };
 
@@ -94,6 +84,7 @@ namespace mirai {
         VkPipeline pipeline;
         VkPipelineBindPoint bind_point;
         VkPipelineLayout pipeline_layout;
+        ShaderReflection shader_reflection;
         bool support_bindless_texture;
     };
 
@@ -101,12 +92,12 @@ namespace mirai {
 
     VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void *p_next);
 
-    uint64_t GetDescriptorSetLayoutHash(const std::vector<VkReflectionDescriptorBinding> &bindings, uint32_t set);
+    uint64_t GetDescriptorSetLayoutHash(const std::vector<ShaderReflectionDescriptorBinding> &bindings, uint32_t set);
     uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set);
 
-    void MergePushConstants(std::unordered_map<uint32_t, VkPushConstantRange> &dst, const std::unordered_map<uint32_t, VkPushConstantRange> &src);
+    void MergePushConstants(std::unordered_map<uint32_t, ShaderReflectionPushConstant>& dst, const std::unordered_map<uint32_t, ShaderReflectionPushConstant> &src);
 
-    void MergeShaderBindings(std::vector<VkReflectionDescriptorBinding> &dst, const std::vector<VkReflectionDescriptorBinding> src);
+    void MergeShaderBindings(std::vector<ShaderReflectionDescriptorBinding> &dst, const std::vector<ShaderReflectionDescriptorBinding> &src);
 
     void DestroyShader(VulkanShader *shader, VkDevice device);
 

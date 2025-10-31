@@ -344,8 +344,8 @@ namespace mirai {
 
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
-        std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> descriptor_sets_map;
-        std::unordered_map<uint32_t, VkPushConstantRange> push_constants_map;
+        std::unordered_map<uint32_t, std::vector<ShaderReflectionDescriptorBinding>> descriptor_sets_map;
+        std::unordered_map<uint32_t, ShaderReflectionPushConstant> push_constants_map;
         bool support_bindless_texture = false;
         for (uint32_t i = 0; i < pipeline_description->shader_count; ++i) {
             VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);
@@ -485,6 +485,20 @@ namespace mirai {
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
         pipeline->support_bindless_texture = support_bindless_texture;
 
+        std::vector<ShaderReflectionDescriptorSetInfo> refl_descriptor_set_info(descriptor_sets_map.size() + 1);
+        for (auto &[key, val] : descriptor_sets_map) {
+            refl_descriptor_set_info[key] = {
+                .set = key,
+                .bindings = val,
+            };
+        }
+        pipeline->shader_reflection.descriptor_infos = refl_descriptor_set_info;
+
+        pipeline->shader_reflection.push_constants.reserve(push_constants_map.size());
+        std::transform(push_constants_map.begin(), push_constants_map.end(), std::back_inserter(pipeline->shader_reflection.push_constants), [](const std::pair<uint32_t, ShaderReflectionPushConstant> &pair) {
+            return pair.second;
+        });
+
         uint32_t set_layouts_count = (pipeline->support_bindless_texture ? 1 : 0) + static_cast<uint32_t>(descriptor_sets_map.size());
         std::vector<VkDescriptorSetLayout> set_layouts(set_layouts_count);
         if (pipeline->support_bindless_texture)
@@ -501,7 +515,7 @@ namespace mirai {
                 for (uint32_t b = 0; b < val.size(); ++b) {
                     bindings[b].binding = val[b].binding;
                     bindings[b].descriptorCount = 1;
-                    bindings[b].descriptorType = val[b].descriptor_type;
+                    bindings[b].descriptorType = VkDescriptorType(val[b].binding_type);
                     bindings[b].stageFlags = val[b].shader_stage;
                 }
                 VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, bindings.data(), binding_count, 0, nullptr);
@@ -513,8 +527,13 @@ namespace mirai {
         }
 
         std::vector<VkPushConstantRange> push_constants;
-        for (const auto &entry : push_constants_map)
-            push_constants.push_back(entry.second);
+        for (const auto &entry : push_constants_map) {
+            push_constants.push_back(VkPushConstantRange{
+                .stageFlags = VkShaderStageFlags(entry.second.shader_stage),
+                .offset = entry.second.offset,
+                .size = entry.second.size,
+            });
+        }
 
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -571,7 +590,7 @@ namespace mirai {
                 for (uint32_t b = 0; b < descriptor_set.bindings.size(); ++b) {
                     bindings[b].binding = descriptor_set.bindings[b].binding;
                     bindings[b].descriptorCount = 1;
-                    bindings[b].descriptorType = descriptor_set.bindings[b].descriptor_type;
+                    bindings[b].descriptorType = VkDescriptorType(descriptor_set.bindings[b].binding_type);
                     bindings[b].stageFlags = descriptor_set.bindings[b].shader_stage;
                 }
                 VkDescriptorSetLayout set_layout = CreateDescriptorSetLayout(device, bindings.data(), binding_count, 0, nullptr);
@@ -583,8 +602,13 @@ namespace mirai {
         }
 
         std::vector<VkPushConstantRange> push_constants;
-        for (auto &entry : shader->push_constants)
-            push_constants.push_back(entry.second);
+        for (auto &entry : shader->push_constants) {
+            push_constants.push_back(VkPushConstantRange{
+                .stageFlags = VkShaderStageFlags(entry.second.shader_stage),
+                .offset = entry.second.offset,
+                .size = entry.second.size,
+            });
+        }
 
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,

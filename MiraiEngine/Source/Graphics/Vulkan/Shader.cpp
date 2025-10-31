@@ -14,7 +14,7 @@ namespace mirai {
         for (uint32_t s = 0; s < reflection.descriptor_set_count; ++s) {
             SpvReflectDescriptorSet &descriptor_set = reflection.descriptor_sets[s];
 
-            VkReflectionDescriptorSet vk_set;
+            ShaderReflectionDescriptorSetInfo vk_set;
             vk_set.set = descriptor_set.set;
             for (uint32_t b = 0; b < descriptor_set.binding_count; ++b) {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
@@ -24,10 +24,10 @@ namespace mirai {
                     continue;
                 }
 
-                VkReflectionDescriptorBinding &vk_binding = vk_set.bindings.emplace_back(VkReflectionDescriptorBinding{});
+                ShaderReflectionDescriptorBinding &vk_binding = vk_set.bindings.emplace_back(ShaderReflectionDescriptorBinding{});
                 vk_binding.binding = binding->binding;
-                vk_binding.descriptor_type = VkDescriptorType(binding->descriptor_type);
-                vk_binding.shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
+                vk_binding.binding_type = BindingType(binding->descriptor_type);
+                vk_binding.shader_stage = ShaderStage(reflection.shader_stage);
             }
             if (vk_set.bindings.size() > 0)
                 shader->descriptor_sets.push_back(std::move(vk_set));
@@ -36,12 +36,22 @@ namespace mirai {
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {
             SpvReflectBlockVariable &push_constant = reflection.push_constant_blocks[p];
 
-            VkPushConstantRange vk_push_constant = {
-                .stageFlags = VkShaderStageFlags(reflection.shader_stage),
+            std::unordered_map<std::string, ShaderReflectionPushConstantMember> field_info;
+            for (uint32_t m = 0; m < push_constant.member_count; ++m) {
+                field_info.insert(std::make_pair(push_constant.members[m].name, ShaderReflectionPushConstantMember{
+                                                                                    .offset = push_constant.members[m].offset,
+                                                                                    .size = push_constant.members[m].size,
+                                                                                    .padded_size = push_constant.members[m].padded_size,
+                                                                                }));
+            }
+
+            ShaderReflectionPushConstant vk_push_constant = {
+                .name = push_constant.type_description->type_name,
+                .shader_stage = cast_u32(ShaderStage(reflection.shader_stage)),
                 .offset = push_constant.offset,
                 .size = push_constant.size,
+                .field_info = field_info,
             };
-
             uint32_t hash = utils::djb2_hash_string(push_constant.type_description->type_name);
             shader->push_constants.insert(std::make_pair(hash, std::move(vk_push_constant)));
         }
@@ -59,9 +69,9 @@ namespace mirai {
         VK_CHECK(vkCreateShaderModule(device, &create_info, nullptr, &shader->shader));
     }
 
-    void MergeShaderBindings(std::vector<VkReflectionDescriptorBinding> &dst, const std::vector<VkReflectionDescriptorBinding> src) {
+    void MergeShaderBindings(std::vector<ShaderReflectionDescriptorBinding> &dst, const std::vector<ShaderReflectionDescriptorBinding> &src) {
         for (const auto &binding : src) {
-            auto found = std::find_if(dst.begin(), dst.end(), [&binding](const VkReflectionDescriptorBinding &entry) { return binding.binding == entry.binding; });
+            auto found = std::find_if(dst.begin(), dst.end(), [&binding](const ShaderReflectionDescriptorBinding &entry) { return binding.binding == entry.binding; });
             if (found != dst.end())
                 found->shader_stage |= binding.shader_stage;
             else
@@ -69,11 +79,11 @@ namespace mirai {
         }
     }
 
-    void MergePushConstants(std::unordered_map<uint32_t, VkPushConstantRange> &dst, const std::unordered_map<uint32_t, VkPushConstantRange> &src) {
+    void MergePushConstants(std::unordered_map<uint32_t, ShaderReflectionPushConstant> &dst, const std::unordered_map<uint32_t, ShaderReflectionPushConstant> &src) {
         for (const auto &[key, val] : src) {
             auto found = dst.find(key);
             if (found != dst.end())
-                found->second.stageFlags |= val.stageFlags;
+                found->second.shader_stage |= val.shader_stage;
             else
                 dst.insert(std::make_pair(key, val));
         }
@@ -88,12 +98,12 @@ namespace mirai {
         return hash;
     }
 
-    uint64_t GetDescriptorSetLayoutHash(const std::vector<VkReflectionDescriptorBinding> &bindings, uint32_t set) {
+    uint64_t GetDescriptorSetLayoutHash(const std::vector<ShaderReflectionDescriptorBinding> &bindings, uint32_t set) {
         uint64_t hash = 0;
         for (uint32_t i = 0; i < bindings.size(); ++i) {
-            const VkReflectionDescriptorBinding &binding = bindings[i];
+            const ShaderReflectionDescriptorBinding &binding = bindings[i];
             uint64_t input = uint64_t(binding.binding) << 60 |
-                             uint64_t(binding.descriptor_type) << 40 |
+                             uint64_t(binding.binding_type) << 40 |
                              uint64_t(set) << 36 |
                              uint64_t(binding.shader_stage);
             utils::hash_combine(hash, input);
