@@ -4,6 +4,8 @@
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "RenderBatch.hpp"
+#include "Material.hpp"
+
 #include <string>
 #include <mutex>
 
@@ -31,6 +33,7 @@ namespace mirai {
         uint32_t cascade_set_binding_id;
     };
     struct RenderableObjectData {
+        Entity entity;
         uint32_t transform_index;
         uint32_t material_index;
 
@@ -113,7 +116,7 @@ namespace mirai {
         virtual ~Scene();
 
         std::unique_ptr<ComponentManager> component_manager;
-        std::vector<Material> materials;
+        std::vector<std::unique_ptr<Material>> materials;
         std::vector<Entity> entities;
 
         BufferID transform_buffer;
@@ -163,7 +166,7 @@ namespace mirai {
         void remove_entity_tree(Entity entity);
         void update_transform_components();
         void update_hierarchy_component();
-        void update_hierarchy(Entity entity, const glm::mat4 &parent_transform);
+        void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
         void generate_render_object_list();
     };
 } // namespace mirai

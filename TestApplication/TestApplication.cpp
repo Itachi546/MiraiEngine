@@ -97,6 +97,10 @@ class TestApplication : public App {
         }
 
         add_debug_ui();
+
+        Entity entity = scene->entities[0];
+        auto *transform = scene->component_manager->get_component<TransformComponent>(entity);
+        transform->rotate(glm::vec3(0.0f, glm::radians(0.01f), 0.0f));
     }
 
     void add_profiler_ui() {

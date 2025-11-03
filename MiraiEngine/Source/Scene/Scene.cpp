@@ -174,16 +174,21 @@ namespace mirai {
                       [](TransformComponent &transform) { transform.update_local_transform(); });
     }
 
-    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform) {
+    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
         TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+        // If we have force update flag to set, we just update everything in hierarchy
+        if (force_update)
+            transform->dirty = force_update;
+
         if (transform->dirty) {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
 
             HierarchyComponent *hierarchy_component = component_manager->get_component<HierarchyComponent>(entity);
             if (hierarchy_component != nullptr) {
-                for (auto &child : hierarchy_component->childrens)
-                    update_hierarchy(child, transform->world_transform);
+                for (auto &child : hierarchy_component->childrens) {
+                    update_hierarchy(child, transform->world_transform, true);
+                }
             }
         }
     }
@@ -204,7 +209,10 @@ namespace mirai {
         if (!dirty)
             return;
 
-        memcpy(material_array, materials.data(), sizeof(Material) * materials.size());
+        uint32_t instance_data_size = materials[0]->get_instance_data_size();
+        for (uint32_t i = 0; i < materials.size(); ++i) {
+            memcpy(material_array + i * instance_data_size, materials[i]->get_instance_data(), instance_data_size);
+        }
         ScopedCpuProfiling("Update Draw Data");
 
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
@@ -226,8 +234,6 @@ namespace mirai {
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
 
                 AABB aabb = mesh_component.aabbs[s];
-                aabb.transform(transform->world_transform);
-
                 RenderableObjectData render_data = {
                     .transform_index = transform_index,
                     .material_index = subset.material_index,
