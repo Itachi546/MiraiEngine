@@ -8,10 +8,11 @@
 #include "Graphics/LineRenderer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
 
-    void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         shader = ShaderManager::get()->get_shader("csm_shadow");
         shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
         UniformLayout mesh_instance_layout = {
@@ -21,7 +22,7 @@ namespace mirai {
         };
 
         mesh_instance_set = device->create_uniform_set(&mesh_instance_layout, 1, 1, "shadow_mesh_instance_set");
-        UniformBinding binding = {.resource_id = scene->transform_buffer};
+        UniformBinding binding = {.resource_id = renderer->transform_buffer};
         device->update_uniform_set(mesh_instance_set, &binding, 1);
     }
 
@@ -49,9 +50,10 @@ namespace mirai {
         }
     }
 
-    void CascadedShadowPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void CascadedShadowPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("CSM Update");
 
+        Scene *scene = renderer->get_scene();
         Light *light = scene->get_sun();
         Camera *camera = scene->get_camera();
 
@@ -102,12 +104,12 @@ namespace mirai {
         cascade_info.height = static_cast<float>(shadow_map_size);
     }
 
-    void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("CSM Render");
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
         device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
 
-        UniformSetID cascade_uniform_set = scene->directional_light_info.cascade_uniform_set;
+        UniformSetID cascade_uniform_set = renderer->cascade_uniform_set;
 
         auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id, uint32_t cascade_index) {
             command_buffer->set_index_buffer(batch->index_buffer);
@@ -115,8 +117,8 @@ namespace mirai {
 
             uint32_t instance_data[] = {0, cascade_index, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
-                instance_data[0] = batch->transform_indices[i];
+            for (uint32_t i = 0; i < batch->entities.size(); ++i) {
+                instance_data[0] = batch->entities[i];
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(batch->index_counts[i],
                                              1,
@@ -126,6 +128,7 @@ namespace mirai {
             }
         };
 
+        Scene* scene = renderer->get_scene();
         Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
         Frustum frustum;

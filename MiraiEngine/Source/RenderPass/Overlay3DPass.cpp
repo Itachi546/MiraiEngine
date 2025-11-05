@@ -7,12 +7,13 @@
 #include "Scene/ShaderManager.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/EnvironmentMap.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
     Overlay3DPass::Overlay3DPass() : FrameGraphRenderer("sky_pass"), skybox_material(nullptr) {
     }
 
-    void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         skybox_material = ShaderManager::get()->get_shader("overlay_skybox");
 
         SamplerDescription sampler_desc = SamplerDescription::create();
@@ -24,17 +25,18 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
         skybox_uniform_set = device->create_uniform_set(&layout, 1, 0, "skybox_binding");
-        TextureID skybox = scene->get_environment_map()->get_cubemap();
+        TextureID skybox = renderer->get_scene()->get_environment_map()->get_cubemap();
         UniformBinding binding = {.resource_id = skybox, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
     }
 
-    void Overlay3DPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void Overlay3DPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         device->begin_debug_utils_label(command_buffer, "Overlay3D", nullptr);
         ScopedGpuProfiling(command_buffer, "Overlay3D");
 
         command_buffer->begin_render_pass(node, frame_graph);
 
+        Scene* scene = renderer->get_scene();
         if (scene->get_environment_map() != nullptr)
             render_skybox(command_buffer, scene, &node->renderpass_info);
 

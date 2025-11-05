@@ -402,30 +402,30 @@ namespace mirai {
         }
     }
 
-    void FrameGraph::compile(Scene *scene) {
+    void FrameGraph::compile(Renderer *renderer) {
         std::unordered_map<FrameGraphResourceHandle, FrameGraphResourceState *> resource_state_map;
         for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
             FrameGraphNode *node = builder->get_node(node_handle);
             ASSERT_MSG(node->renderer != nullptr, "Did you forgot to call set_renderer() before compile?");
-            node->renderer->initialize(this, node, scene);
+            node->renderer->initialize(this, node, renderer);
             node_handles.push_back(node_handle);
         }
     }
 
-    void FrameGraph::update(Scene *scene) {
+    void FrameGraph::update(Renderer *renderer) {
         for (auto handle : node_handles) {
             FrameGraphNode *node = builder->get_node(handle);
             if (node->enabled)
-                node->renderer->update(this, node, scene);
+                node->renderer->update(this, node, renderer);
         }
     }
 
-    void FrameGraph::render(CommandBuffer *command_buffer, Scene *scene) {
+    void FrameGraph::render(CommandBuffer *command_buffer, Renderer *renderer) {
         for (auto handle : node_handles) {
             FrameGraphNode *node = builder->get_node(handle);
             if (node->enabled)
-                node->renderer->render(command_buffer, this, node, scene);
+                node->renderer->render(command_buffer, this, node, renderer);
         }
     }
 } // namespace mirai

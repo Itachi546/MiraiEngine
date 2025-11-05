@@ -237,11 +237,11 @@ namespace mirai {
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
                 mesh_subset.vertex_buffer = {
                     .offset = vertex_offset,
-                    .count = (uint32_t)vertices.size() - vertex_offset,
+                    .size = cast_u32((vertices.size() - vertex_offset) * sizeof(Vertex)),
                 };
                 mesh_subset.index_buffer = {
                     .offset = index_offset,
-                    .count = (uint32_t)indices.size() - index_offset,
+                    .size = cast_u32((indices.size() - index_offset) * sizeof(uint32_t)),
                 };
                 mesh_subset.vertex_count = index_count;
 

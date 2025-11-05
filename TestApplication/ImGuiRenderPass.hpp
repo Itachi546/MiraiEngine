@@ -12,7 +12,7 @@ struct ImGuiRenderPass : public FrameGraphRenderer {
     ImGuiRenderPass() : FrameGraphRenderer("imgui_pass") {
     }
 
-    void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override {
+    void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) override {
         device->begin_debug_utils_label(command_buffer, "ImGui Pass", nullptr);
         ScopedGpuProfiling(command_buffer, "ImGui Pass");
         command_buffer->begin_render_pass(node, frame_graph);

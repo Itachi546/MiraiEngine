@@ -4,9 +4,10 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Engine/Profiler.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
-    void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
+    void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         dir_shadow_shader = std::make_unique<ComputeShader>("rt_directional_light");
         dir_shadow_shader->create_from_file("SPIRV/rt_directional_shadow.comp.spv");
 
@@ -66,8 +67,9 @@ namespace mirai {
         device->update_uniform_set(blur_uniform_set_y, bindings, 2);
     }
 
-    void DirectionalShadowPassRT::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void DirectionalShadowPassRT::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("RT Shadow Pass");
+        Scene *scene = renderer->get_scene();
 
         device->begin_debug_utils_label(command_buffer, "RT Shadow Pass", nullptr);
         render_shadow(command_buffer, frame_graph, node, scene);

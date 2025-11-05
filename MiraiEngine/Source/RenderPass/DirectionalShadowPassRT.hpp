@@ -15,9 +15,9 @@ namespace mirai {
         DirectionalShadowPassRT() : FrameGraphRenderer("rt_directional_shadow_pass") {
         }
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer* scene) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer*scene) override;
 
         ~DirectionalShadowPassRT();
 

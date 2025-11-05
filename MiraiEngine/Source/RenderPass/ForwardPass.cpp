@@ -6,12 +6,13 @@
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
     ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
     }
 
-    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Scene *scene) {
+    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer *renderer) {
         opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
         transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
 
@@ -29,13 +30,13 @@ namespace mirai {
         mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
         // Update Per Pipeline Data (Transform/Material)
         UniformBinding per_shader_bindings[] = {
-            {.resource_id = scene->transform_buffer},
-            {.resource_id = scene->material_buffer},
+            {.resource_id = renderer->transform_buffer},
+            {.resource_id = renderer->material_buffer},
         };
         device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
     }
 
-    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
 
         auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
@@ -44,8 +45,8 @@ namespace mirai {
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
             command_buffer->set_index_buffer(batch->index_buffer);
             command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
-            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
-                instance_data[0] = batch->transform_indices[i];
+            for (uint32_t i = 0; i < batch->entities.size(); ++i) {
+                instance_data[0] = batch->entities[i];
                 instance_data[1] = batch->material_indices[i];
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(batch->index_counts[i],
@@ -62,9 +63,10 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
+        Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
-            UniformSetID uniform_sets[] = {scene->per_frame_uniform_set, mesh_instance_set};
+            UniformSetID uniform_sets[] = {renderer->per_frame_uniform_set, mesh_instance_set};
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
                     opaque_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));

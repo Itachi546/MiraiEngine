@@ -37,11 +37,6 @@ namespace mirai {
         }
     };
 
-    struct BufferView {
-        uint32_t offset;
-        uint32_t count;
-    };
-
     struct Vertex {
         float px, py, pz;
         uint32_t normal;

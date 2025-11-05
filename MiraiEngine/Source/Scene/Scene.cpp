@@ -22,74 +22,8 @@ namespace mirai {
         component_manager->register_component<MeshComponent>();
         component_manager->register_component<TransformComponent>();
 
-        BufferDescription buffer_desc = {
-            .size = static_cast<uint32_t>(K_MAX_ENTITIES * sizeof(glm::mat4)),
-            .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
-        };
-
         RenderingDevice *device = RenderingDevice::get();
-
-        // Allocate transform buffer
-        transform_buffer = device->create_buffer(&buffer_desc, "transform_buffer");
-        transform_array = (glm::mat4 *)(device->map_buffer(transform_buffer));
-
-        // Allocate material buffer
-        buffer_desc.size = static_cast<uint32_t>(K_MAX_ENTITIES * sizeof(Material));
-        material_buffer = device->create_buffer(&buffer_desc, "material_buffer");
-        material_array = device->map_buffer(material_buffer);
-
-        // Per frame staging buffer
-        uint32_t total_frames = device->get_swapchain_image_count();
-        uint32_t total_mb_per_frame = cast_u32(utils::mb_to_bytes(4));
-        buffer_desc.size = cast_u32(total_frames * staging_buffer_size_per_frame);
-        buffer_desc.usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
-        per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
-
-        // Initialize PerFrame Resources
-        buffer_desc = {
-            .size = sizeof(FrameData),
-            .usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
-            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
-        };
-        per_frame_uniform_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
-
-        UniformBinding binding = {
-            .resource_id = per_frame_uniform_buffer,
-            .buffer_info = {
-                .offset = 0,
-                .range = sizeof(FrameData),
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
-
-        // Initialize cascade info
-        buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
-        cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
-
         directional_light_info.enable_shadow = true;
-        if (directional_light_info.enable_shadow) {
-
-            UniformLayout cascade_buffer_layout = {
-                .binding = 0,
-                .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-                .shader_stage = SHADER_STAGE_VERTEX,
-            };
-            directional_light_info.cascade_uniform_set = device->create_uniform_set(&cascade_buffer_layout, 1, 0, "cascade_uniform_set");
-
-            uint32_t set_id = 1;
-            directional_light_info.cascade_set_binding_id = set_id;
-            UniformBinding cascade_uniform_binding = {.resource_id = cascade_uniform_buffer};
-            device->update_uniform_set(directional_light_info.cascade_uniform_set, &cascade_uniform_binding, set_id);
-        }
 
         // Initialize camera/sun
         camera = std::make_unique<Camera>();
@@ -153,6 +87,9 @@ namespace mirai {
         main_render_batches.clear();
         DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, false);
 
+        for (auto &batch : main_render_batches) {
+        }
+
         glm::vec3 light_direction = sun->get_direction();
     }
 
@@ -198,8 +135,6 @@ namespace mirai {
             update_hierarchy(entity, glm::mat4(1.0f));
 
         std::vector<TransformComponent> &transforms = component_manager->get_component_array<TransformComponent>()->components;
-        for (uint32_t i = 0; i < transforms.size(); ++i)
-            transform_array[i] = transforms[i].world_transform;
     }
 
     void Scene::generate_render_object_list() {
@@ -209,10 +144,6 @@ namespace mirai {
         if (!dirty)
             return;
 
-        uint32_t instance_data_size = materials[0]->get_instance_data_size();
-        for (uint32_t i = 0; i < materials.size(); ++i) {
-            memcpy(material_array + i * instance_data_size, materials[i]->get_instance_data(), instance_data_size);
-        }
         ScopedCpuProfiling("Update Draw Data");
 
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
@@ -235,14 +166,14 @@ namespace mirai {
 
                 AABB aabb = mesh_component.aabbs[s];
                 RenderableObjectData render_data = {
-                    .transform_index = transform_index,
+                    .entity = entity,
                     .material_index = subset.material_index,
                     .vertex_buffer = gpu_mesh.vertex_buffer,
                     .index_buffer = gpu_mesh.index_buffer,
                     .vertex_offset = subset.vertex_buffer.offset,
-                    .vertex_count = subset.vertex_buffer.count,
+                    .vertex_count = subset.vertex_buffer.size / sizeof(Vertex),
                     .index_offset = subset.index_buffer.offset,
-                    .index_count = subset.index_buffer.count,
+                    .index_count = subset.index_buffer.size / sizeof(uint32_t),
                     .aabb = std::move(aabb),
                     .vertex_binding_set = gpu_mesh.vertex_binding_set,
                 };
@@ -290,9 +221,6 @@ namespace mirai {
                 ASSERT(comp_array->size() == 0);
         }
         ecs::destroy(component_manager.get());
-
-        BufferID buffers[] = {per_frame_uniform_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_staging_buffer};
-        RenderingDevice::get()->destroy_buffers(buffers, static_cast<uint32_t>(std::size(buffers)));
     }
 
 } // namespace mirai

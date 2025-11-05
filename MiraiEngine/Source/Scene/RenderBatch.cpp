@@ -39,7 +39,7 @@ namespace mirai {
             const Material *material = scene->materials[object.material_index].get();
 
             // Check if the AABB is visible or not in current frustum
-            TransformComponent *transform = &scene->component_manager->get_component_array<TransformComponent>()->components[object.transform_index];
+            TransformComponent *transform = scene->component_manager->get_component<TransformComponent>(object.entity);
             AABB aabb = object.aabb;
             aabb.transform(transform->world_transform);
             if (!frustum->intersect(aabb))
@@ -68,7 +68,7 @@ namespace mirai {
                         .batch_type = target_batch_info->batch_type});
                 }
             }
-            render_batches[target_batch_info->batch_index].add(object.transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
+            render_batches[target_batch_info->batch_index].add(object.entity, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
         }
     }
 } // namespace mirai

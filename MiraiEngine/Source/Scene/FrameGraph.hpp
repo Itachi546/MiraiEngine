@@ -14,6 +14,7 @@ namespace mirai {
 
     class CommandBuffer;
     class Scene;
+    class Renderer;
     class FrameGraph;
     struct FrameGraphNode;
 
@@ -94,11 +95,11 @@ namespace mirai {
             device = RenderingDevice::get();
         }
 
-        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
+        virtual void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {}
 
-        virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {}
+        virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {}
 
-        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) = 0;
+        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) = 0;
 
         virtual ~FrameGraphRenderer() = default;
 
@@ -176,8 +177,8 @@ namespace mirai {
 
         void load_from_file(const std::string &filename);
 
-        void render(CommandBuffer *command_buffer, Scene *scene);
-        void update(Scene *scene);
+        void render(CommandBuffer *command_buffer, Renderer* renderer);
+        void update(Renderer* renderer);
 
         void add_node(const FrameGraphNodeDescription &node) {
             node_descriptions.push_back(node);
@@ -229,7 +230,7 @@ namespace mirai {
 
         // Renderer must be set for each pass before calling compile function
         // use set_renderer() function
-        void compile(Scene* scene);
+        void compile(Renderer *renderer);
 
         friend class Renderer;
     };

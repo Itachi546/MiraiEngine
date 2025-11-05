@@ -7,6 +7,7 @@
 #include "Device/InputDevice.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/Math.hpp"
+#include "Graphics/Renderer.hpp"
 
 #include <string>
 
@@ -15,7 +16,7 @@ namespace mirai {
     SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(true), material(nullptr) {
     }
 
-    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
+    void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         material = ShaderManager::get()->get_shader("swapchain_copy_rgba");
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
@@ -35,7 +36,7 @@ namespace mirai {
         material->set_uniform_sets(&uniform_set, 1);
     }
 
-    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) {
         ASSERT(node != nullptr);
 
         device->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);

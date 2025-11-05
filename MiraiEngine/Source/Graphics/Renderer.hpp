@@ -50,6 +50,15 @@ namespace mirai {
         ~Renderer();
 
         bool enable_rt_shadow = false;
+        BufferID transform_buffer;
+        BufferID material_buffer;
+        // Uniform Buffer
+        BufferID cascade_uniform_buffer;
+        BufferID per_frame_uniform_buffer;
+
+        // Per frame Uniform Set
+        UniformSetID per_frame_uniform_set;
+        UniformSetID cascade_uniform_set;
 
       private:
         static Renderer *Instance;
@@ -65,6 +74,13 @@ namespace mirai {
 
         void copy_buffers(CommandBuffer *cb);
 
-        BufferID blas;
+        const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
+        const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
+        const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);
+        BufferID per_frame_staging_buffer;
+        uint8_t *per_frame_staging_buffer_ptr;
+        uint32_t per_frame_staging_buffer_offset = 0;
+
+        uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame);
     };
 } // namespace mirai

@@ -97,10 +97,6 @@ class TestApplication : public App {
         }
 
         add_debug_ui();
-
-        Entity entity = scene->entities[0];
-        auto *transform = scene->component_manager->get_component<TransformComponent>(entity);
-        transform->rotate(glm::vec3(0.0f, glm::radians(0.01f), 0.0f));
     }
 
     void add_profiler_ui() {
@@ -143,7 +139,7 @@ class TestApplication : public App {
 
             uint32_t total_entities = 0;
             for (auto &batch : scene->main_render_batches) {
-                total_entities += cast_u32(batch.transform_indices.size());
+                total_entities += cast_u32(batch.entities.size());
             }
             ImGui::Text("Total Visible Entities: %u", total_entities);
 
