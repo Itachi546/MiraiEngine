@@ -106,6 +106,14 @@ namespace mirai {
                                   glm::scale(glm::mat4(1.0f), scale);
             }
         }
+
+        // Increment current rotation by given euler angles
+        void rotate(glm::vec3 eulerAngles) {
+            glm::fquat delta{eulerAngles};
+            rotation *= delta;
+            rotation = glm::normalize(rotation);
+            dirty = true;
+        }
     };
 
     enum LightType {

@@ -174,23 +174,23 @@ namespace mirai {
                       [](TransformComponent &transform) { transform.update_local_transform(); });
     }
 
-    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform) {
+    void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
         TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-        if (transform->dirty) {
+        if (transform->dirty || force_update) {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
 
             HierarchyComponent *hierarchy_component = component_manager->get_component<HierarchyComponent>(entity);
             if (hierarchy_component != nullptr) {
                 for (auto &child : hierarchy_component->childrens)
-                    update_hierarchy(child, transform->world_transform);
+                    update_hierarchy(child, transform->world_transform, true);
             }
         }
     }
 
     void Scene::update_hierarchy_component() {
         for (auto &entity : entities)
-            update_hierarchy(entity, glm::mat4(1.0f));
+            update_hierarchy(entity, glm::mat4(1.0f), false);
 
         std::vector<TransformComponent> &transforms = component_manager->get_component_array<TransformComponent>()->components;
         for (uint32_t i = 0; i < transforms.size(); ++i)
