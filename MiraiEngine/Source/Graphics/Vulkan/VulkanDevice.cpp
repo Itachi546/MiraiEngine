@@ -1,4 +1,4 @@
-#include "Device.hpp"
+#include "VulkanDevice.hpp"
 #include <string.h>
 
 namespace mirai {

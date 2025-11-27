@@ -2,7 +2,7 @@
 
 #include "Graphics/RenderingDevice.hpp"
 #include "Vulkan.hpp"
-#include "Shader.hpp"
+#include "VulkanShader.hpp"
 #include "Common/ResourcePool.hpp"
 
 #include <vector>

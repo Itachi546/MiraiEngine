@@ -1,4 +1,4 @@
-#include "Instance.hpp"
+#include "VulkanInstance.hpp"
 
 #include <vector>
 #include <string.h>

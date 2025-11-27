@@ -1,8 +1,8 @@
 #include "VulkanRenderingDevice.hpp"
 
-#include "Instance.hpp"
-#include "Device.hpp"
-#include "Swapchain.hpp"
+#include "VulkanInstance.hpp"
+#include "VulkanDevice.hpp"
+#include "VulkanSwapchain.hpp"
 #include "CommandBuffer.hpp"
 #include "VulkanUtils.hpp"
 #include "Common/Hash.hpp"
