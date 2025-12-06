@@ -31,6 +31,98 @@ class TestApplication : public App {
         scene = nullptr;
     }
 
+    void initialize_frame_graph(FrameGraph *frame_graph) {
+        FrameGraphNodeDescription depth_prepass = {
+            .name = "depth_prepass",
+            .enabled = true,
+            .is_compute_pass = false,
+            .outputs = {
+                FrameGraphResourceOutput{
+                    .name = "texture_depth",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .width = 1920,
+                    .height = 1080,
+                    .array_layers = 1,
+                    .format = FORMAT_D32_SFLOAT,
+                    .load_op = LOAD_OP_CLEAR,
+                    .clear_color = Color{1.0f, 0.0f, 0.0f, 1.0f},
+                },
+
+            },
+            .renderer = std::make_shared<DepthPrePass>(),
+        };
+        frame_graph->add_node(depth_prepass);
+
+        FrameGraphNodeDescription forward_pass = {
+            .name = "forward_pass",
+            .enabled = true,
+            .is_compute_pass = false,
+            .inputs = {
+                FrameGraphResourceInput{
+                    .name = "texture_depth",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .load_op = LOAD_OP_LOAD,
+                },
+            },
+            .outputs = {
+                FrameGraphResourceOutput{
+                    .name = "texture_color",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .width = 1920,
+                    .height = 1080,
+                    .array_layers = 1,
+                    .format = FORMAT_B8G8R8A8_UNORM,
+                    .load_op = LOAD_OP_CLEAR,
+                    .clear_color = 0x000000ff,
+                },
+            },
+            .renderer = std::make_shared<ForwardPass>(),
+        };
+        frame_graph->add_node(forward_pass);
+
+        FrameGraphNodeDescription swapchain_copy_pass = {
+            .name = "swapchain_copy",
+            .enabled = true,
+            .is_compute_pass = false,
+            .inputs = {
+                FrameGraphResourceInput{
+                    .name = "texture_color",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
+                },
+            },
+            .outputs = {
+                FrameGraphResourceOutput{
+                    .name = "swapchain",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .load_op = LOAD_OP_CLEAR,
+                },
+            },
+            .renderer = std::make_shared<SwapchainCopyPass>(),
+        };
+        frame_graph->add_node(swapchain_copy_pass);
+
+        FrameGraphNodeDescription imgui_pass = {
+            .name = "imgui_pass",
+            .enabled = true,
+            .is_compute_pass = false,
+            .inputs = {
+                FrameGraphResourceInput{
+                    .name = "swapchain",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                },
+            },
+            .outputs = {
+                FrameGraphResourceOutput{
+                    .name = "swapchain",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
+                    .load_op = LOAD_OP_CLEAR,
+                },
+            },
+            .renderer = std::make_shared<ImGuiRenderPass>(),
+        };
+        frame_graph->add_node(imgui_pass);
+    }
+
     void start() override {
         ImGuiService::Initialize();
 
@@ -49,16 +141,18 @@ class TestApplication : public App {
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();
-#if 0
+        initialize_frame_graph(frame_graph);
+        /*
+    #if 0
         frame_graph->load_from_file("Assets/forward_pass.json");
         frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
         frame_graph->set_renderer("depth_prepass", std::make_shared<DepthPrePass>());
-#else
+    #else
         frame_graph->load_from_file("Assets/deferred_pass.json");
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
         frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
         frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
-#endif
+    #endif
         frame_graph->set_renderer("ssao_pass", std::make_shared<SSAOPass>());
         frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());
         frame_graph->set_renderer("rt_directional_shadow_pass", std::make_shared<DirectionalShadowPassRT>());
@@ -66,7 +160,7 @@ class TestApplication : public App {
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
-
+        */
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);

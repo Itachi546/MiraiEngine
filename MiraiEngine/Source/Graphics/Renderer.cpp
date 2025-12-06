@@ -246,18 +246,21 @@ namespace mirai {
             }
             offset += num_entity;
         }
+        if (transform_size_bytes > 0) {
+            cb->copy_buffer(transform_buffer, per_frame_staging_buffer, {
+                                                                            .src_offset = transform_buffer_offset,
+                                                                            .dst_offset = 0,
+                                                                            .size = transform_size_bytes,
+                                                                        });
+        }
 
-        cb->copy_buffer(transform_buffer, per_frame_staging_buffer, {
-                                                                        .src_offset = transform_buffer_offset,
-                                                                        .dst_offset = 0,
-                                                                        .size = transform_size_bytes,
-                                                                    });
-
-        cb->copy_buffer(material_buffer, per_frame_staging_buffer, {
-                                                                       .src_offset = material_buffer_offset,
-                                                                       .dst_offset = 0,
-                                                                       .size = material_size_bytes,
-                                                                   });
+        if (material_size_bytes > 0) {
+            cb->copy_buffer(material_buffer, per_frame_staging_buffer, {
+                                                                           .src_offset = material_buffer_offset,
+                                                                           .dst_offset = 0,
+                                                                           .size = material_size_bytes,
+                                                                       });
+        }
 
         // Prepare the buffer for shader read
         for (uint32_t i = 0; i < barrier_infos.size(); ++i) {

@@ -44,7 +44,7 @@ void main() {
     vec3 normal = vec3(0.0f, 0.0f, 1.0f);
     if (material.normal_texture != K_INVALID_TEXTURE)
         normal = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
-    normal = normalize(normal.x * fs_in.tangent + normal.y * fs_in.bitangent + normal.z * fs_in.normal);
+    normal = normalize(normal.x * normalize(fs_in.tangent) + normal.y * normalize(fs_in.bitangent) + normal.z * normalize(fs_in.normal));
 
     float metallic = material.metallic_factor;
     float roughness = material.roughness_factor;
@@ -99,5 +99,5 @@ void main() {
 
     vec3 ambient = (Kd * diffuse + specular * 0.2f) * ao;
     Lo += ambient + emissive;
-    fragColor = vec4(Lo, 1.0f);
+    fragColor = vec4(normalize(fs_in.normal) * 0.5 + 0.5, 1.0f);
 }
