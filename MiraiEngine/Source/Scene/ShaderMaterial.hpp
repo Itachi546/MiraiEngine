@@ -45,6 +45,11 @@ namespace mirai {
             return pipeline;
         }
 
+        // Used for sorting/batching
+        uint64_t get_id() {
+            return shader_material_id;
+        }
+
       protected:
         std::string name;
         PipelineID pipeline;
@@ -55,6 +60,9 @@ namespace mirai {
         ShaderMaterialProperties properties;
 
         PipelineID create_pipeline(const FrameGraphRenderpassInfo *renderpass);
+        uint64_t shader_material_id;
+
+        void update_shader_material_id();
     };
 
     class ComputeShader {

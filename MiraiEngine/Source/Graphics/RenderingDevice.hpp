@@ -410,6 +410,11 @@ namespace mirai {
         MEMORY_ALLOCATION_TYPE_GPU
     };
 
+    struct BufferView {
+        BufferID buffer;
+        uint32_t offset;
+        uint32_t size;
+    };
     struct BufferDescription {
         uint32_t size;
         uint32_t usage_flags;
@@ -585,7 +590,7 @@ namespace mirai {
         // Raytracing stuff
         virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
 
-        virtual uint32_t get_current_frame()  = 0;
+        virtual uint32_t get_current_frame() = 0;
         virtual uint32_t get_swapchain_image_count() = 0;
 
         virtual ~RenderingDevice() = default;

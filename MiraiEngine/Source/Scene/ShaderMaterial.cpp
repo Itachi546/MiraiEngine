@@ -6,6 +6,7 @@
 namespace mirai {
     ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
                                                               pipeline{K_INVALID_ID} {
+        update_shader_material_id();
     }
 
     ShaderMaterial::~ShaderMaterial() {
@@ -17,6 +18,7 @@ namespace mirai {
 
         this->shader_files = shader_files;
         this->properties = properties;
+        update_shader_material_id();
     }
 
     void ShaderMaterial::bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass) {
@@ -79,6 +81,20 @@ namespace mirai {
         RenderingDevice::get()->destroy_shaders(shader_modules.data(), cast_u32(shader_modules.size()));
 
         return pipeline;
+    }
+
+    void ShaderMaterial::update_shader_material_id() {
+        utils::hash_combine(shader_material_id,
+                            utils::djb2_hash_string(name),
+                            properties.cull_mode,
+                            properties.front_face,
+                            properties.depth_clamp,
+                            properties.depth_test,
+                            properties.depth_write,
+                            properties.blend,
+                            properties.depth_op,
+                            properties.topology,
+                            properties.polygon_mode);
     }
 
     ComputeShader::ComputeShader(const std::string &name) : name(name) {

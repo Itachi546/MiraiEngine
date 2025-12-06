@@ -4,6 +4,8 @@
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "RenderBatch.hpp"
+#include "Material.hpp"
+
 #include <string>
 #include <mutex>
 
@@ -27,11 +29,10 @@ namespace mirai {
     struct DirectionalLightInfo {
         bool enable_shadow;
         DirectionalLightCascadeInfo cascade_info;
-        UniformSetID cascade_uniform_set;
         uint32_t cascade_set_binding_id;
     };
     struct RenderableObjectData {
-        uint32_t transform_index;
+        Entity entity;
         uint32_t material_index;
 
         BufferID vertex_buffer;
@@ -113,15 +114,8 @@ namespace mirai {
         virtual ~Scene();
 
         std::unique_ptr<ComponentManager> component_manager;
-        std::vector<Material> materials;
+        std::vector<std::unique_ptr<Material>> materials;
         std::vector<Entity> entities;
-
-        BufferID transform_buffer;
-        glm::mat4 *transform_array;
-        BufferID material_buffer;
-        uint8_t *material_array;
-
-        const uint32_t staging_buffer_size_per_frame = 4 * 1024 * 1024;
 
         struct FrameData {
             glm::mat4 P;
@@ -136,13 +130,6 @@ namespace mirai {
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
-        // Uniform Buffer
-        BufferID cascade_uniform_buffer;
-        BufferID per_frame_uniform_buffer;
-        BufferID per_frame_staging_buffer;
-        uint8_t *per_frame_staging_buffer_ptr;
-
-        UniformSetID per_frame_uniform_set;
         DirectionalLightInfo directional_light_info;
         SceneData scene_data;
 
@@ -163,7 +150,7 @@ namespace mirai {
         void remove_entity_tree(Entity entity);
         void update_transform_components();
         void update_hierarchy_component();
-        void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update);
+        void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
         void generate_render_object_list();
     };
 } // namespace mirai

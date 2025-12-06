@@ -8,6 +8,6 @@ namespace mirai {
       public:
         DebugPass();
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
     };
 } // namespace mirai

@@ -3,10 +3,11 @@
 #include "Engine/Profiler.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
 
-    void SSAOPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) {
+    void SSAOPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         ssao_shader = std::make_unique<ComputeShader>("hbao_shader");
         ssao_shader->create_from_file("SPIRV/hbao.comp.spv");
         blur_shader = std::make_unique<ComputeShader>("cross-bilateral-blur-shader");
@@ -77,11 +78,12 @@ namespace mirai {
         constant_data.tangent_bias = 0.6f;
     }
 
-    void SSAOPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void SSAOPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("SSAO Update");
         ScopedGpuProfiling(command_buffer, "SSAO Pass");
         device->begin_debug_utils_label(command_buffer, "SSAO Pass", nullptr);
 
+        Scene* scene = renderer->get_scene();
         ssao_pass(command_buffer, frame_graph, node, scene);
 
         TextureID ssao_texture = frame_graph->get_resource(node->outputs[0])->handle;

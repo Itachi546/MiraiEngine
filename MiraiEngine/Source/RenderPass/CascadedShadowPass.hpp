@@ -13,18 +13,18 @@ namespace mirai {
         CascadedShadowPass() : FrameGraphRenderer("directional_shadow_pass") {
         }
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene* scene) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) override;
+        void update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         ~CascadedShadowPass();
 
         float split_lamda = 0.9f;
         float shadow_distance = 80.0f;
         uint32_t shadow_map_size = 2048;
-        ShaderMaterial* shader;
+        ShaderMaterial *shader;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
         bool calculate_distance_automatic = false;

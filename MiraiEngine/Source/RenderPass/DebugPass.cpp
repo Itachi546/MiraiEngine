@@ -10,7 +10,7 @@ namespace mirai {
     DebugPass::DebugPass() : FrameGraphRenderer("debug_pass") {
     }
 
-    void DebugPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void DebugPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
 
         TextRenderManager *text_render_manager = TextRenderManager::get();
         if (text_render_manager->renderers.size() == 0)

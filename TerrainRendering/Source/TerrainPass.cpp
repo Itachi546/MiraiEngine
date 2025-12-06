@@ -8,6 +8,7 @@
 #include "Device/Window.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/InputDevice.hpp"
+#include "Graphics/Renderer.hpp"
 
 namespace mirai {
     TerrainPass::TerrainPass(uint32_t width, uint32_t height, uint32_t maxHeight, uint32_t cbt_depth) : FrameGraphRenderer("terrain_pass"),
@@ -15,7 +16,7 @@ namespace mirai {
         device = RenderingDevice::get();
     }
 
-    void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         // Load heightmap
         int width, height, n_channel;
         uint16_t *data = utils::load_image16("Assets/kauai.png", &width, &height, &n_channel, 1);
@@ -323,10 +324,10 @@ namespace mirai {
         device->end_debug_utils_label(command_buffer);
     }
 
-    void TerrainPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void TerrainPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         subdivision_mode = 1.0f - subdivision_mode;
 
-        Camera *camera = scene->get_camera();
+        Camera *camera = renderer->get_scene()->get_camera();
 
         uint32_t screenWidth, screenHeight;
         Window::get()->get_size(&screenWidth, &screenHeight);
@@ -336,13 +337,13 @@ namespace mirai {
         float tmp = 2.0f * tan(glm::radians(camera->get_fov()) / 2.0f) / screenHeight * (1 << gpuSubdivision) * pixelLengthTarget;
         lod_factor = -2.0f * std::log2(tmp) + 2.0f;
 
-        TextRenderer *renderer = TextRenderManager::get()->get_default();
+        TextRenderer *text_renderer = TextRenderManager::get()->get_default();
 
         float startX = screenWidth * 0.85f;
         float startY = 20.0f;
-        renderer->AddText("Freeze Frustum: " + std::string(freeze_frustum ? "true" : "false"), glm::vec2(startX, startY), 14);
-        renderer->AddText("Wireframe Mode: " + std::string(enable_wireframe ? "true" : "false"), glm::vec2(startX, startY + 18.0f), 14);
-        renderer->AddText("Sum Reduction Prepass: " + std::string(enable_sumreduction_prepass ? "true" : "false"), glm::vec2(startX, startY + 36.0f), 14);
+        text_renderer->AddText("Freeze Frustum: " + std::string(freeze_frustum ? "true" : "false"), glm::vec2(startX, startY), 14);
+        text_renderer->AddText("Wireframe Mode: " + std::string(enable_wireframe ? "true" : "false"), glm::vec2(startX, startY + 18.0f), 14);
+        text_renderer->AddText("Sum Reduction Prepass: " + std::string(enable_sumreduction_prepass ? "true" : "false"), glm::vec2(startX, startY + 36.0f), 14);
 
         if (Input::get()->was_down(Key::KB_SPACE))
             enable_wireframe = !enable_wireframe;
@@ -352,9 +353,10 @@ namespace mirai {
             enable_sumreduction_prepass = !enable_sumreduction_prepass;
     }
 
-    void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void TerrainPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         device->begin_debug_utils_label(command_buffer, "TerrainPass", nullptr);
 
+        Scene *scene = renderer->get_scene();
         update_subdivision(command_buffer, scene->get_camera());
 
         if (enable_sumreduction_prepass)

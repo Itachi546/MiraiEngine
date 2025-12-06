@@ -13,7 +13,7 @@ namespace mirai {
     DeferredLightingPass::DeferredLightingPass() : FrameGraphRenderer("deferred_lighting_pass"), shader(nullptr), uniform_set(K_INVALID_ID) {
     }
 
-    void DeferredLightingPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Scene *scene) {
+    void DeferredLightingPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
 
         shader = ShaderManager::get()->get_shader("pbr_deferred");
         rt_shader = ShaderManager::get()->get_shader("pbr_deferred_rt");
@@ -67,16 +67,16 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
         cascade_uniform_set = device->create_uniform_set(&cascade_data, 1, 2, "cascade_info_set");
-        UniformBinding cascade_binding = {.resource_id = scene->cascade_uniform_buffer};
+        UniformBinding cascade_binding = {.resource_id = renderer->cascade_uniform_buffer};
         device->update_uniform_set(cascade_uniform_set, &cascade_binding, 1);
     }
 
-    void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene) {
+    void DeferredLightingPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
-        ShaderMaterial *active_shader = Renderer::get()->enable_rt_shadow ? rt_shader : shader;
+        ShaderMaterial *active_shader = renderer->enable_rt_shadow ? rt_shader : shader;
 
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 
@@ -88,6 +88,7 @@ namespace mirai {
             active_shader->set_uniform_sets(&rt_uniform_set, 1);
         }
 
+        Scene *scene = renderer->get_scene();
         PushConstant push_constant = {.data = &scene->scene_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(scene->scene_data), .offset = 0};
         active_shader->set_push_constant(&push_constant, 1);
 
