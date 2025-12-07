@@ -236,14 +236,10 @@ namespace mirai {
                 }
 
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
-                mesh_subset.vertex_buffer = {
-                    .offset = vertex_offset,
-                    .size = cast_u32((vertices.size() - vertex_offset) * sizeof(Vertex)),
-                };
-                mesh_subset.index_buffer = {
-                    .offset = index_offset,
-                    .size = cast_u32((indices.size() - index_offset) * sizeof(uint32_t)),
-                };
+                mesh_subset.vertex_offset = vertex_offset;
+                mesh_subset.index_offset = index_offset;
+                mesh_subset.vertex_size = cast_u32((vertices.size() - vertex_offset) * sizeof(Vertex));
+                mesh_subset.index_size = cast_u32((indices.size() - index_offset) * sizeof(uint32_t));
                 mesh_subset.vertex_count = index_count;
 
                 ASSERT(primitive.material >= 0);
@@ -285,12 +281,11 @@ namespace mirai {
         });
 
         for (auto &mesh_component : mesh_components) {
+            mesh_component.vertex_buffer = vertex_buffer;
+            mesh_component.index_buffer = index_buffer;
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
-                mesh_subset.vertex_buffer.buffer = vertex_buffer.buffer;
-                mesh_subset.vertex_buffer.offset += vertex_buffer.offset;
-
-                mesh_subset.index_buffer.buffer = index_buffer.buffer;
-                mesh_subset.index_buffer.offset += index_buffer.offset;
+                mesh_subset.vertex_offset += vertex_buffer.offset;
+                mesh_subset.index_offset += index_buffer.offset;
             }
         }
 

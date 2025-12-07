@@ -155,20 +155,21 @@ namespace mirai {
 
             GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
             TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-            uint32_t transform_index = component_manager->get_component_index<TransformComponent>(entity);
+
+            BufferView vertex_buffer = mesh_component.vertex_buffer;
+            BufferView index_buffer = mesh_component.index_buffer;
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
-
                 AABB aabb = mesh_component.aabbs[s];
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
-                    .vertex_buffer = subset.vertex_buffer.buffer,
-                    .index_buffer = subset.index_buffer.buffer,
-                    .vertex_offset = subset.vertex_buffer.offset,
-                    .vertex_count = subset.vertex_buffer.size / sizeof(Vertex),
-                    .index_offset = subset.index_buffer.offset,
-                    .index_count = subset.index_buffer.size / sizeof(uint32_t),
+                    .vertex_buffer = vertex_buffer.buffer,
+                    .index_buffer = index_buffer.buffer,
+                    .vertex_offset = subset.vertex_offset,
+                    .vertex_count = subset.vertex_size / sizeof(Vertex),
+                    .index_offset = subset.index_offset,
+                    .index_count = subset.index_size / sizeof(uint32_t),
                     .aabb = std::move(aabb),
                     .vertex_binding_set = gpu_mesh.vertex_binding_set,
                 };

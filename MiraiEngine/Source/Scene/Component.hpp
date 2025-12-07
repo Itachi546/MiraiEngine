@@ -60,10 +60,14 @@ namespace mirai {
         };
 
         uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
+        BufferView vertex_buffer;
+        BufferView index_buffer;
 
         struct MeshSubset {
-            BufferView vertex_buffer;
-            BufferView index_buffer;
+            uint32_t vertex_offset;
+            uint32_t vertex_size;
+            uint32_t index_offset;
+            uint32_t index_size;
             uint32_t vertex_count;
             uint32_t material_index;
             UniformSetID vertex_binding_set;
