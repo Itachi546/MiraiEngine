@@ -18,14 +18,42 @@ namespace mirai {
     class FrameGraphBuilder;
     struct Font;
 
+    struct GpuBufferSubAllocation {
+        BufferID buffer;
+        uint32_t offset;
+        uint32_t size;
+
+        void init(BufferID buffer, uint32_t size, uint32_t offset = 0) {
+            this->buffer = buffer;
+            this->size = size;
+            this->offset = offset;
+        }
+
+        bool can_allocate(uint32_t required_size) {
+            if (required_size >= (size - offset))
+                return false;
+            return true;
+        }
+
+        std::optional<BufferView> allocate(uint32_t required_size) {
+            if (!can_allocate(required_size))
+                return {};
+            BufferView buffer_view;
+            buffer_view.buffer = buffer;
+            buffer_view.offset = offset;
+            buffer_view.size = required_size;
+            offset += required_size;
+            return buffer_view;
+        }
+    };
+
     class Renderer {
       public:
         Renderer();
         Renderer(const Renderer &) = delete;
         Renderer operator=(const Renderer &) = delete;
 
-        // call after initialization of everything
-        void on_initialize();
+        void initialize();
 
         static Renderer *get() {
             return Instance;
@@ -55,6 +83,10 @@ namespace mirai {
         // Uniform Buffer
         BufferID cascade_uniform_buffer;
         BufferID per_frame_uniform_buffer;
+
+        // Global Geometry Buffer
+        const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;
+        GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
         UniformSetID per_frame_uniform_set;

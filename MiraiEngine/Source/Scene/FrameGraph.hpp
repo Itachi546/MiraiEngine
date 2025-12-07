@@ -99,7 +99,7 @@ namespace mirai {
 
         virtual void update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {}
 
-        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) = 0;
+        virtual void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) = 0;
 
         virtual ~FrameGraphRenderer() = default;
 
@@ -177,8 +177,8 @@ namespace mirai {
 
         void load_from_file(const std::string &filename);
 
-        void render(CommandBuffer *command_buffer, Renderer* renderer);
-        void update(Renderer* renderer);
+        void render(CommandBuffer *command_buffer, Renderer *renderer);
+        void update(Renderer *renderer);
 
         void add_node(const FrameGraphNodeDescription &node) {
             node_descriptions.push_back(node);
@@ -222,15 +222,15 @@ namespace mirai {
             return nullptr;
         }
 
+        // Renderer must be set for each pass before calling compile function
+        // use set_renderer() function
+        void compile(Renderer *renderer);
+
       private:
         std::string name;
         FrameGraphBuilder *builder;
         std::vector<FrameGraphNodeDescription> node_descriptions;
         std::vector<FrameGraphNodeHandle> node_handles;
-
-        // Renderer must be set for each pass before calling compile function
-        // use set_renderer() function
-        void compile(Renderer *renderer);
 
         friend class Renderer;
     };

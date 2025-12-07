@@ -163,8 +163,8 @@ namespace mirai {
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
-                    .vertex_buffer = gpu_mesh.vertex_buffer,
-                    .index_buffer = gpu_mesh.index_buffer,
+                    .vertex_buffer = subset.vertex_buffer.buffer,
+                    .index_buffer = subset.index_buffer.buffer,
                     .vertex_offset = subset.vertex_buffer.offset,
                     .vertex_count = subset.vertex_buffer.size / sizeof(Vertex),
                     .index_offset = subset.index_buffer.offset,
@@ -205,11 +205,6 @@ namespace mirai {
 
     Scene::~Scene() {
         release_all_entities();
-
-        for (auto &gpu_mesh : gpu_meshes) {
-            RenderingDevice::get()->destroy_buffers(&gpu_mesh.vertex_buffer, 1);
-            RenderingDevice::get()->destroy_buffers(&gpu_mesh.index_buffer, 1);
-        }
 
         for (auto &comp_array : component_manager->component_array) {
             if (comp_array)

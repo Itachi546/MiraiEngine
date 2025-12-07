@@ -49,7 +49,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        Scene* scene = renderer->get_scene();
+        Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
             for (auto &batch : render_batches) {

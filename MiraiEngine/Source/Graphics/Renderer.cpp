@@ -52,8 +52,8 @@ namespace mirai {
         line_renderer = std::make_unique<LineRenderer>();
     }
 
-    void Renderer::on_initialize() {
-        this->scene->on_initialize();
+    void Renderer::initialize() {
+        // this->scene->on_initialize();
 
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
@@ -128,6 +128,18 @@ namespace mirai {
         buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
         cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
 
+        // Initialize global goemetry buffer allocator
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
+        buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        BufferID geometry_buffer = device->create_buffer(&buffer_desc, "global_vertex_buffer");
+        vertex_buffer_allocator.init(geometry_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE, 0);
+
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
+        BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
+        index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
+
         // Initialize PerFrame uniform set
         UniformLayout layout = {
             .binding = 0,
@@ -156,9 +168,6 @@ namespace mirai {
             UniformBinding cascade_uniform_binding = {.resource_id = cascade_uniform_buffer};
             device->update_uniform_set(cascade_uniform_set, &cascade_uniform_binding, 1);
         }
-
-        // Compile frame graph
-        frame_graph->compile(this);
     }
 
     void Renderer::copy_buffers(CommandBuffer *cb) {
@@ -322,7 +331,7 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
-        BufferID buffers[] = {per_frame_staging_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_uniform_buffer};
+        BufferID buffers[] = {per_frame_staging_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_uniform_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         shader_manager.reset();
         miProfiler::Destroy();

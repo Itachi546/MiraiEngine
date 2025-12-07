@@ -50,8 +50,8 @@ namespace mirai {
     };
 
     struct GpuMesh {
-        BufferID vertex_buffer;
-        BufferID index_buffer;
+        BufferView vertex_buffer;
+        BufferView index_buffer;
 
         uint32_t vertex_buffer_size;
         uint32_t index_buffer_size;

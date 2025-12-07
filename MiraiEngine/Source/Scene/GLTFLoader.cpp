@@ -15,6 +15,7 @@
 #include "Engine/Timer.hpp"
 #include "TextureCache.hpp"
 #include "Material.hpp"
+#include "Graphics/Renderer.hpp"
 
 #include <memory>
 
@@ -252,41 +253,58 @@ namespace mirai {
 
         // @TODO May cause issue later when multiple mesh are loaded in different thread
         // Pushing to the vector may invalidates all the reference
-        RenderingDevice *device = RenderingDevice::get();
+        Renderer *renderer = Renderer::get();
         uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
-        BufferDescription buffer_desc = {
-            .size = vertex_buffer_size,
-            .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT,
-            .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
-        };
+        std::optional<BufferView> vertex_buffer_view = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
+        if (!vertex_buffer_view.has_value()) {
+            ASSERT_MSG(0, "Failed to allocate goemetry buffer");
+            exit(-1);
+        }
 
-        BufferID vertex_buffer = device->create_buffer(&buffer_desc, "vertex_buffer");
+        BufferView vertex_buffer = vertex_buffer_view.value();
         load_state->async_loader->add_buffer_copy_task({
-            .dst = vertex_buffer,
+            .dst = vertex_buffer.buffer,
             .data = vertices.data(),
-            .offset_in_bytes = 0,
+            .offset_in_bytes = vertex_buffer.offset,
             .size_in_bytes = vertex_buffer_size,
         });
 
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
-        BufferID index_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "index_buffer");
+        std::optional<BufferView> index_buffer_view = renderer->index_buffer_allocator.allocate(index_buffer_size);
+        if (!index_buffer_view.has_value()) {
+            ASSERT_MSG(0, "Failed to allocate goemetry buffer");
+            exit(-1);
+        }
+
+        BufferView index_buffer = index_buffer_view.value();
         load_state->async_loader->add_buffer_copy_task({
-            .dst = index_buffer,
+            .dst = index_buffer.buffer,
             .data = indices.data(),
-            .offset_in_bytes = 0,
+            .offset_in_bytes = index_buffer.offset,
             .size_in_bytes = index_buffer_size,
         });
+
+        for (auto &mesh_component : mesh_components) {
+            for (auto &mesh_subset : mesh_component.mesh_subsets) {
+                mesh_subset.vertex_buffer.buffer = vertex_buffer.buffer;
+                mesh_subset.vertex_buffer.offset += vertex_buffer.offset;
+
+                mesh_subset.index_buffer.buffer = index_buffer.buffer;
+                mesh_subset.index_buffer.offset += index_buffer.offset;
+            }
+        }
 
         UniformLayout vertex_data_layout = {
             .binding = 0,
             .binding_type = BINDING_TYPE_STORAGE_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
+
+        RenderingDevice *device = RenderingDevice::get();
         UniformSetID vertex_binding_set = device->create_uniform_set(&vertex_data_layout, 1, 2, "mesh_data_set");
 
         UniformBinding vertex_binding = {
-            .resource_id = vertex_buffer,
+            .resource_id = vertex_buffer.buffer,
         };
 
         device->update_uniform_set(vertex_binding_set, &vertex_binding, 1);
