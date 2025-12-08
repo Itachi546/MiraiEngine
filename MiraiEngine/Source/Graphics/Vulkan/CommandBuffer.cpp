@@ -8,6 +8,13 @@ namespace mirai {
 
     CommandBuffer::CommandBuffer() {
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
+        descriptor_pools.resize(device->get_swapchain_image_count());
+
+        for (auto &descriptor_pool : descriptor_pools) {
+            descriptor_pool = device->create_descriptor_pool(0);
+            // Add this to global list so that it is cleaned up automatically
+            device->descriptor_pools.push_back(descriptor_pool);
+        }
     }
 
     void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph, Viewport *override_viewport) {
@@ -314,11 +321,20 @@ namespace mirai {
         pipeline_barrier(nullptr, 0, buffer_barriers.data(), cast_u32(buffer_barriers.size()));
     }
 
+    UniformSetID CommandBuffer::create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set) {
+        uint32_t frame_id = device->get_current_frame();
+        UniformSetID uniform_set = device->create_uniform_set(layouts, layout_count, set, "temp_uniform_set");
+        return uniform_set;
+    }
+
     void CommandBuffer::end_render_pass() {
         vkCmdEndRendering(command_buffer);
     }
 
     void CommandBuffer::begin() {
+        // Reset descriptor pool
+        uint32_t frame_id = device->get_current_frame();
+        vkResetDescriptorPool(device->device, descriptor_pools[frame_id], 0);
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,

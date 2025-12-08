@@ -65,6 +65,8 @@ namespace mirai {
 
         void prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count);
 
+        UniformSetID create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set_id);
+
         VkCommandBuffer get_command_buffer() {
             return command_buffer;
         }
@@ -85,5 +87,7 @@ namespace mirai {
         VkCommandBuffer command_buffer;
         uint32_t queue_family_indices;
         VkFence fence;
+
+        std::vector<VkDescriptorPool> descriptor_pools;
     };
 } // namespace mirai

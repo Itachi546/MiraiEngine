@@ -8,7 +8,7 @@ namespace mirai {
     class Scene;
 
     enum RenderBatchType {
-        RENDERBATCH_TYPE_OPAQUE,
+        RENDERBATCH_TYPE_OPAQUE = 0,
         RENDERBATCH_TYPE_TRANSPARENT,
     };
 
