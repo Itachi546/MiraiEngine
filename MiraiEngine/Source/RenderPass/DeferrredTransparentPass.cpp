@@ -45,8 +45,8 @@ namespace mirai {
             PushConstant push_constant_vert = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
             command_buffer->set_index_buffer(batch->index_buffer);
             command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
-            for (uint32_t i = 0; i < batch->entities.size(); ++i) {
-                instance_data[0] = batch->entities[i];
+            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
+                instance_data[0] = batch->transform_indices[i];
                 command_buffer->draw_indexed(batch->index_counts[i],
                                              1,
                                              batch->index_offsets[i],

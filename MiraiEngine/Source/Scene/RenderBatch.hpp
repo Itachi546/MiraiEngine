@@ -22,14 +22,14 @@ namespace mirai {
         BufferView transform_buffer_view;
         BufferView material_buffer_view;
 
-        std::vector<uint32_t> entities;
+        std::vector<uint32_t> transform_indices;
         std::vector<uint32_t> material_indices;
         std::vector<uint32_t> vertex_offsets;
         std::vector<uint32_t> index_offsets;
         std::vector<uint32_t> index_counts;
 
-        void add(uint32_t entity, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count) {
-            entities.push_back(entity);
+        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count) {
+            transform_indices.push_back(transform_index);
             material_indices.push_back(material_index);
             vertex_offsets.push_back(vertex_offset);
             index_offsets.push_back(index_offset);

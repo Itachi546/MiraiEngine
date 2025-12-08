@@ -156,7 +156,7 @@ namespace mirai {
         }
 
         template <typename T>
-        inline std::shared_ptr<ComponentArray<T>> get_component_array(int index) {
+        inline std::shared_ptr<ComponentArray<T>> get_component_array_by_index(int index) {
             return std::static_pointer_cast<ComponentArray<T>>(component_array[index]);
         }
 
@@ -169,7 +169,7 @@ namespace mirai {
         template <typename T>
         bool has_component(const Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
-            auto comp = get_component_array<T>(comp_id);
+            auto comp = get_component_array_by_index<T>(comp_id);
             return comp->get_component_index(entity) != UINT32_MAX;
         }
 
@@ -182,7 +182,7 @@ namespace mirai {
         T &add_component(Entity &entity) {
             uint32_t comp_id = get_component_type_id<T>();
             ASSERT(comp_id < K_MAX_COMPONENTS);
-            auto comp = get_component_array<T>(comp_id);
+            auto comp = get_component_array_by_index<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->add_component(entity);
         }
@@ -201,7 +201,7 @@ namespace mirai {
             uint32_t comp_id = get_component_type_id<T>();
             ASSERT(comp_id < K_MAX_COMPONENTS);
 
-            auto comp = get_component_array<T>(comp_id);
+            auto comp = get_component_array_by_index<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->get_component(entity);
         }
@@ -211,7 +211,7 @@ namespace mirai {
             uint32_t comp_id = get_component_type_id<T>();
             ASSERT(comp_id < K_MAX_COMPONENTS);
 
-            auto comp = get_component_array<T>(comp_id);
+            auto comp = get_component_array_by_index<T>(comp_id);
             ASSERT(comp != nullptr);
             return comp->get_component_index(entity);
         }

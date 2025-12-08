@@ -87,9 +87,6 @@ namespace mirai {
         main_render_batches.clear();
         DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, false);
 
-        for (auto &batch : main_render_batches) {
-        }
-
         glm::vec3 light_direction = sun->get_direction();
     }
 

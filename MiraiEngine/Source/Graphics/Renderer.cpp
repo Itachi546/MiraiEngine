@@ -171,6 +171,7 @@ namespace mirai {
     }
 
     void Renderer::copy_buffers(CommandBuffer *cb) {
+        ScopedCpuProfiling("Renderer::Copy Buffers");
         // Reset staging buffer offset
         per_frame_staging_buffer_offset = 0;
 
@@ -218,9 +219,9 @@ namespace mirai {
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
         for (auto &batch : scene->main_render_batches) {
-            total_entities += cast_u32(batch.entities.size());
+            total_entities += cast_u32(batch.transform_indices.size());
         }
-
+        // @TODO do it in parallel
         // Allocate memory in staging buffer
         uint32_t transform_size_bytes = total_entities * sizeof(glm::mat4);
         uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
@@ -229,24 +230,23 @@ namespace mirai {
         uint32_t material_size_bytes = total_entities * sizeof(StandardPBRMaterial::PBRProperties);
         uint32_t material_buffer_offset = allocate_staging_buffer(material_size_bytes, current_frame);
         uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
-
         // Copy the transform/material data in staging buffer
         uint32_t offset = 0;
         for (auto &batch : scene->main_render_batches) {
-            uint32_t num_entity = cast_u32(batch.entities.size());
+            uint32_t num_entity = cast_u32(batch.transform_indices.size());
 
             batch.transform_buffer_view.buffer = transform_buffer;
-            batch.transform_buffer_view.offset = offset;
+            batch.transform_buffer_view.offset = offset * sizeof(glm::mat4);
             batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
             uint32_t material_batch_size = sizeof(StandardPBRMaterial::PBRProperties) * num_entity;
             batch.material_buffer_view.buffer = material_buffer;
-            batch.material_buffer_view.offset = offset;
+            batch.material_buffer_view.offset = offset * sizeof(StandardPBRMaterial::PBRProperties);
             batch.material_buffer_view.size = material_batch_size;
 
             for (uint32_t e = 0; e < num_entity; ++e) {
-                TransformComponent *component = scene->component_manager->get_component<TransformComponent>(batch.entities[e]);
-                transform_array[e] = component->world_transform;
+                TransformComponent &component = scene->component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
+                transform_array[offset + e] = component.world_transform;
 
                 auto &material = scene->materials[batch.material_indices[e]];
                 uint32_t instance_data_size = material->get_instance_data_size();
@@ -283,10 +283,12 @@ namespace mirai {
     }
 
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame) {
-        // @TODO handle this
         ASSERT_MSG(per_frame_staging_buffer_offset + size <= k_staging_buffer_size_per_frame, "Staging buffer size is not enough");
         uint32_t per_frame_offset = current_frame * k_staging_buffer_size_per_frame;
         uint32_t next_ptr = per_frame_offset + per_frame_staging_buffer_offset;
+
+        // Round to the multiple of 16
+        size = (size + 16 - 1) & ~15;
         per_frame_staging_buffer_offset += size;
         return next_ptr;
     }
@@ -317,9 +319,8 @@ namespace mirai {
         miProfiler::BeginFrame(cb);
         {
             ScopedGpuProfiling(cb, "Gpu Time");
-
-            // Copy per frame data from staging buffer to gpu uniform buffer
-            copy_buffers(cb);
+             // Copy per frame data from staging buffer to gpu uniform buffer
+            copy_buffers(cb); 
 
             frame_graph->render(cb, this);
 

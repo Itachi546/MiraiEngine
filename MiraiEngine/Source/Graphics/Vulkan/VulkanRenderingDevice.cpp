@@ -191,6 +191,9 @@ namespace mirai {
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)swapchain->image_views[i], image_view_name.c_str());
         }
 
+        descriptor_pools.push_back(create_descriptor_pool(0));
+        initialize_bindless_descriptor();
+
         // Initialize CommandPool and CommandBuffer
         uint32_t swapchain_image_count = cast_u32(swapchain->images.size());
         uint32_t pool_counts = swapchain_image_count * K_NUM_THREAD;
@@ -236,9 +239,6 @@ namespace mirai {
             render_finished_semaphore[i] = create_semaphore("render_finished_semaphore" + index);
             in_flight_fences[i] = create_fence("in_flight_fence" + index, true);
         }
-
-        descriptor_pools.push_back(create_descriptor_pool(0));
-        initialize_bindless_descriptor();
     }
 
     VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
@@ -635,7 +635,7 @@ namespace mirai {
         return PipelineID{pipeline_id};
     }
 
-    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name) {
+    UniformSetID VulkanRenderingDevice::create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name) {
         uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
         auto found = descriptor_set_layouts_cache.find(hash);
 
@@ -653,30 +653,31 @@ namespace mirai {
             descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
         } else
             set_layout = found->second;
+
         VkDescriptorSetAllocateInfo allocate_info{
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = descriptor_pools.back(),
+            .descriptorPool = descriptor_pool,
             .descriptorSetCount = 1,
             .pSetLayouts = &set_layout,
         };
 
         VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-        if (!vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set)) {
-            descriptor_pools.push_back(create_descriptor_pool(0));
-            allocate_info.descriptorPool = descriptor_pools.back();
-            VK_CHECK(vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
-        }
+        VK_CHECK(vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
 
         if (debug_name.size() > 0)
             set_debug_marker_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptor_set, debug_name.c_str());
 
         uint32_t id = resource_pool_uniform_sets.obtain();
         VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(id);
-        uniform_set->descriptor_pool = descriptor_pools.back();
+        uniform_set->descriptor_pool = descriptor_pool;
         uniform_set->descriptor_set = descriptor_set;
         uniform_set->set_id = set;
         uniform_set->uniform_layout.insert(uniform_set->uniform_layout.end(), uniforms, uniforms + uniform_count);
         return UniformSetID{id};
+    }
+
+    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name) {
+        return create_uniform_set_from_descriptor_pool(uniforms, uniform_count, set, descriptor_pools[0], debug_name);
     }
 
     void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) {
@@ -1266,10 +1267,10 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(uniform_sets[i]);
-            vkFreeDescriptorSets(device, uniform_set->descriptor_pool, 1, &uniform_set->descriptor_set);
             uniform_set->descriptor_pool = VK_NULL_HANDLE;
             uniform_set->descriptor_set = VK_NULL_HANDLE;
             uniform_set->set_id = 0;
+            uniform_set->uniform_layout.clear();
             resource_pool_uniform_sets.release(uniform_sets[i]);
         }
     }

@@ -117,8 +117,8 @@ namespace mirai {
 
             uint32_t instance_data[] = {0, cascade_index, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-            for (uint32_t i = 0; i < batch->entities.size(); ++i) {
-                instance_data[0] = batch->entities[i];
+            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
+                instance_data[0] = batch->transform_indices[i];
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(batch->index_counts[i],
                                              1,

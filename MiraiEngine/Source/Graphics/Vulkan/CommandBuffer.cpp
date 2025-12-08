@@ -135,7 +135,6 @@ namespace mirai {
         if (uniform_set_count == 0)
             return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
-        std::vector<VkDescriptorSet> descriptor_sets(uniform_set_count);
         for (uint32_t i = 0; i < uniform_set_count; ++i) {
             VulkanUniformSet *uniform_set = device->access_uniform_set(uniform_sets[i]);
             vkCmdBindDescriptorSets(command_buffer,
@@ -323,8 +322,7 @@ namespace mirai {
 
     UniformSetID CommandBuffer::create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set) {
         uint32_t frame_id = device->get_current_frame();
-        UniformSetID uniform_set = device->create_uniform_set(layouts, layout_count, set, "temp_uniform_set");
-        return uniform_set;
+        return device->create_uniform_set_from_descriptor_pool(layouts, layout_count, set, descriptor_pools[frame_id], "temp_uniform_set");
     }
 
     void CommandBuffer::end_render_pass() {

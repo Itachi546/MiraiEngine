@@ -68,7 +68,8 @@ namespace mirai {
                         .batch_type = target_batch_info->batch_type});
                 }
             }
-            render_batches[target_batch_info->batch_index].add(object.entity, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
+            uint32_t transform_index = scene->component_manager->get_component_index<TransformComponent>(object.entity);
+            render_batches[target_batch_info->batch_index].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
         }
     }
 } // namespace mirai

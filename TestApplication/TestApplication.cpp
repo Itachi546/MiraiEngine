@@ -235,7 +235,7 @@ class TestApplication : public App {
 
             uint32_t total_entities = 0;
             for (auto &batch : scene->main_render_batches) {
-                total_entities += cast_u32(batch.entities.size());
+                total_entities += cast_u32(batch.transform_indices.size());
             }
             ImGui::Text("Total Visible Entities: %u", total_entities);
 

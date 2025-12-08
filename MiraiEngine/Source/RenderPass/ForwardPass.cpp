@@ -9,45 +9,40 @@
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr), mesh_instance_set(K_INVALID_ID) {
+    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr) {
     }
 
     void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer *renderer) {
         opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
         transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
 
-        // Mesh Data
-        UniformLayout mesh_data_layout[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-        };
-
         // Mesh Instance Data (Transform/Material)
-        UniformLayout mesh_instance_layout[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
-        };
-
-        mesh_instance_set = device->create_uniform_set(mesh_instance_layout, (uint32_t)std::size(mesh_instance_layout), 3, "mesh_instance_set");
-        // Update Per Pipeline Data (Transform/Material)
-        UniformBinding per_shader_bindings[] = {
-            {.resource_id = renderer->transform_buffer},
-            {.resource_id = renderer->material_buffer},
-        };
-        device->update_uniform_set(mesh_instance_set, per_shader_bindings, (uint32_t)std::size(per_shader_bindings));
+        mesh_instance_layouts[0] = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+        mesh_instance_layouts[1] = {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT};
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
-
+        ScopedCpuProfiling("FrameGraph::ForwardPass");
         auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
             // Set Per Frame Data
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
+
+            UniformSetID mesh_instance_set = command_buffer->create_uniform_set(mesh_instance_layouts, cast_u32(std::size(mesh_instance_layouts)), 3);
+            UniformBinding per_shader_bindings[] = {
+                {.resource_id = batch->transform_buffer_view.buffer, .buffer_info{.offset = batch->transform_buffer_view.offset, .range = batch->transform_buffer_view.size}},
+                {.resource_id = batch->material_buffer_view.buffer, .buffer_info{.offset = batch->material_buffer_view.offset, .range = batch->material_buffer_view.size}},
+            };
+            device->update_uniform_set(mesh_instance_set, per_shader_bindings, cast_u32(std::size(per_shader_bindings)));
+
+            UniformSetID uniform_sets[] = {batch->vertex_binding_set, mesh_instance_set};
+            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
             command_buffer->set_index_buffer(batch->index_buffer);
-            command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
-            for (uint32_t i = 0; i < batch->entities.size(); ++i) {
-                instance_data[0] = batch->entities[i];
-                instance_data[1] = batch->material_indices[i];
+
+            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
+                instance_data[0] = i;
+                instance_data[1] = i;
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
                 command_buffer->draw_indexed(batch->index_counts[i],
                                              1,
@@ -55,8 +50,8 @@ namespace mirai {
                                              batch->vertex_offsets[i],
                                              0);
             }
+            device->destroy_uniform_sets(&mesh_instance_set, 1);
         };
-
         ScopedGpuProfiling(command_buffer, "Forward Pass");
 
         device->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
@@ -66,19 +61,18 @@ namespace mirai {
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
-            UniformSetID uniform_sets[] = {renderer->per_frame_uniform_set, mesh_instance_set};
+            opaque_shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
+            opaque_shader->bind(command_buffer, &node->renderpass_info);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
-                    opaque_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-                    opaque_shader->bind(command_buffer, &node->renderpass_info);
                     draw_batch(&batch, opaque_shader->get_pipeline_id());
                 }
             }
 
+            transparent_shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
+            transparent_shader->bind(command_buffer, &node->renderpass_info);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
-                    transparent_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
-                    transparent_shader->bind(command_buffer, &node->renderpass_info);
                     draw_batch(&batch, transparent_shader->get_pipeline_id());
                 }
             }

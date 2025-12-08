@@ -7,15 +7,15 @@ namespace mirai {
       public:
         ForwardPass();
 
-        void initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer* renderer) override;
+        void initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         ~ForwardPass();
 
       private:
-        ShaderMaterial* opaque_shader;
-        ShaderMaterial* transparent_shader;
-        UniformSetID mesh_instance_set;
+        ShaderMaterial *opaque_shader;
+        ShaderMaterial *transparent_shader;
+        UniformLayout mesh_instance_layouts[2];
     };
 } // namespace mirai

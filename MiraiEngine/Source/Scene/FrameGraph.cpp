@@ -1,5 +1,6 @@
 #include "FrameGraph.hpp"
 #include "Engine/Log.hpp"
+#include "Engine/Profiler.hpp"
 #include <json.hpp>
 #include <fstream>
 
@@ -422,6 +423,7 @@ namespace mirai {
     }
 
     void FrameGraph::render(CommandBuffer *command_buffer, Renderer *renderer) {
+        ScopedCpuProfiling("FrameGraph::Render");
         for (auto handle : node_handles) {
             FrameGraphNode *node = builder->get_node(handle);
             if (node->enabled)

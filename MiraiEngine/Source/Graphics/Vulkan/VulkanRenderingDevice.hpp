@@ -41,6 +41,7 @@ namespace mirai {
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name = "") override;
 
+        UniformSetID create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name);
         UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") override;
         void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) override;
 
