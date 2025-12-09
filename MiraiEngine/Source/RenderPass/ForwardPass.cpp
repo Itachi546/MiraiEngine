@@ -19,6 +19,23 @@ namespace mirai {
         // Mesh Instance Data (Transform/Material)
         mesh_instance_layouts[0] = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
         mesh_instance_layouts[1] = {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT};
+
+        // Initialize PerFrame uniform set
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
+        };
+        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
+
+        UniformBinding binding = {
+            .resource_id = renderer->per_frame_uniform_buffer,
+            .buffer_info = {
+                .offset = 0,
+                .range = sizeof(Scene::FrameData),
+            },
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -63,7 +80,7 @@ namespace mirai {
         if (render_batches.size() > 0) {
             opaque_shader->bind(command_buffer, &node->renderpass_info);
             PipelineID opaque_pipeline_id = opaque_shader->get_pipeline_id();
-            command_buffer->set_uniform_sets(opaque_pipeline_id, &renderer->per_frame_uniform_set, 1);
+            command_buffer->set_uniform_sets(opaque_pipeline_id, &per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
                     draw_batch(&batch, opaque_pipeline_id);
@@ -72,7 +89,7 @@ namespace mirai {
 
             transparent_shader->bind(command_buffer, &node->renderpass_info);
             PipelineID transparent_pipeline_id = transparent_shader->get_pipeline_id();
-            command_buffer->set_uniform_sets(transparent_pipeline_id, &renderer->per_frame_uniform_set, 1);
+            command_buffer->set_uniform_sets(transparent_pipeline_id, &per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
                     draw_batch(&batch, transparent_pipeline_id);

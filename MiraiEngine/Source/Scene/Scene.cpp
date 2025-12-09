@@ -32,6 +32,11 @@ namespace mirai {
         sun->rotation = glm::vec3(0.0f, 82.0f, 0.0f);
         sun->intensity = 20.0f;
         sun->cast_shadow = true;
+
+        per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
     }
 
     void Scene::on_initialize() {
@@ -43,8 +48,6 @@ namespace mirai {
         update_hierarchy_component();
 
         generate_render_object_list();
-
-        per_frame_data._padding = glm::vec2(0.0f);
     }
 
     void Scene::update() {
@@ -64,20 +67,24 @@ namespace mirai {
         glm::mat4 V = camera->get_view_transform();
         glm::mat4 VP = camera->get_view_projection_transform();
 
-        per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
         per_frame_data.P = P;
         per_frame_data.V = V;
         per_frame_data.VP = VP;
-        per_frame_data.window_size = glm::vec2((float)width, (float)height);
+        per_frame_data.invVP = camera->get_inv_view_projection_transform();
+        per_frame_data.camera_position = camera->position;
+        per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
 
-        scene_data.inv_VP = camera->get_inv_view_projection_transform();
-        scene_data.camera_position = glm::vec4(camera->position, 0.0f);
-        scene_data.light_direction = glm::vec4(sun->get_direction(), (float)sun->cast_shadow);
-        scene_data.light_color = glm::vec4(sun->color, sun->intensity);
+        per_frame_data.light_direction = sun->get_direction();
+        per_frame_data.cast_shadow = cast_float(sun->cast_shadow);
+        per_frame_data.light_color = sun->color;
+        per_frame_data.light_intensity = sun->intensity;
+
+        per_frame_data.width = cast_float(width);
+        per_frame_data.height = cast_float(height);
         if (env_map) {
-            scene_data.irradiance_map = env_map->get_irradiance_map().id;
-            scene_data.prefilter_map = env_map->get_prefilter_map().id;
-            scene_data.brdf_texture = env_map->get_brdf_texture().id;
+            per_frame_data.irradiance_map = env_map->get_irradiance_map().id;
+            per_frame_data.prefilter_map = env_map->get_prefilter_map().id;
+            per_frame_data.brdf_texture_map = env_map->get_brdf_texture().id;
         }
 
         generate_render_object_list();

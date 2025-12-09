@@ -82,7 +82,8 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
         Scene *scene = renderer->get_scene();
-        PushConstant push_constant = {.data = &scene->scene_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(scene->scene_data), .offset = 0};
+        // @TODO Fix this
+        PushConstant push_constant = {.data = nullptr, .shader_stage = SHADER_STAGE_FRAGMENT, .size = 0, .offset = 0};
 
         active_shader->bind(command_buffer, &node->renderpass_info);
 

@@ -28,8 +28,8 @@ namespace mirai {
         // Preload shaders
         shader_manager = std::make_unique<ShaderManager>();
         shader_manager->load("overlay_skybox", {"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"}, {.depth_test = true});
-        shader_manager->load("depth_prepass", {"SPIRV/depth_prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
-        shader_manager->load("pbr_forward", {"SPIRV/forward_pass.vert.spv", "SPIRV/forward_pass.frag.spv"}, {.depth_test = true, .depth_write = false});
+        shader_manager->load("depth_prepass", {"SPIRV/depth-prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
+        shader_manager->load("pbr_forward", {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"}, {.depth_test = true, .depth_write = false});
         shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .blend = true});
         shader_manager->load("gbuffer_pass", {"SPIRV/deferred.vert.spv", "SPIRV/deferred.frag.spv"}, {.depth_test = true, .depth_write = true});
         shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
@@ -130,23 +130,6 @@ namespace mirai {
         buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
         BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
         index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
-
-        // Initialize PerFrame uniform set
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
-
-        UniformBinding binding = {
-            .resource_id = per_frame_uniform_buffer,
-            .buffer_info = {
-                .offset = 0,
-                .range = sizeof(Scene::FrameData),
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
 
         // Initialize cascade uniform set
         if (scene->directional_light_info.enable_shadow) {

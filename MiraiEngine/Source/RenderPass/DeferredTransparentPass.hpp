@@ -15,6 +15,6 @@ namespace mirai {
 
       private:
         ShaderMaterial *transparent_shader;
-        UniformSetID mesh_instance_set;
+        UniformSetID mesh_instance_set, per_frame_uniform_set;
     };
 } // namespace mirai

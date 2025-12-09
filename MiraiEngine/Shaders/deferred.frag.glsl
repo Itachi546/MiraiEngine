@@ -23,13 +23,13 @@ fs_in;
 #include "utils/transform.glsl"
 
 layout(set = 3, binding = 1) readonly buffer Materials {
-    Material materials[];
+    PBRMaterial materials[];
 };
 
 void main() {
     vec3 col = vec3(0.0f);
 
-    Material material = materials[fs_in.mat_id];
+    PBRMaterial material = materials[fs_in.mat_id];
 
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)

@@ -14,6 +14,23 @@ namespace mirai {
         shader = ShaderManager::get()->get_shader("depth_prepass");
         // Mesh Data
         transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+
+        // Initialize PerFrame uniform set
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
+
+        UniformBinding binding = {
+            .resource_id = renderer->per_frame_uniform_buffer,
+            .buffer_info = {
+                .offset = 0,
+                .range = sizeof(Scene::FrameData),
+            },
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -59,7 +76,7 @@ namespace mirai {
         shader->bind(command_buffer, &node->renderpass_info);
 
         PipelineID pipeline_id = shader->get_pipeline_id();
-        command_buffer->set_uniform_sets(pipeline_id, &renderer->per_frame_uniform_set, 1);
+        command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;

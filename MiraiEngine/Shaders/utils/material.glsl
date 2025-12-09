@@ -8,7 +8,7 @@
 #define FLAG_DOUBLE_SIDED 1 << 3
 #define FLAG_SPECULAR_GLOSSINESS_WORKFLOW 1 << 4
 
-struct Material {
+struct PBRMaterial {
     vec4 albedo;
     vec3 emissive_factor;
     float metallic_factor;

@@ -14,17 +14,10 @@ vs_out;
 #extension GL_ARB_shader_draw_parameters : enable
 
 #include "utils/vertexdata.glsl"
+#include "utils/per-frame-data.glsl"
 
-layout(set = 0, binding = 0) uniform PerFrameData {
-    mat4 P;
-    mat4 V;
-    mat4 VP;
-
-    vec3 camera_position;
-    float elapsed_time;
-
-    vec2 window_size;
-    vec2 _padding;
+layout(set = 0, binding = 0) uniform PerFrameBinding {
+    PerFrameData per_frame_data;
 };
 
 layout(set = 2, binding = 0) readonly buffer VertexData {
@@ -47,7 +40,7 @@ void main() {
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
-    gl_Position = VP * world_pos;
+    gl_Position = per_frame_data.VP * world_pos;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);

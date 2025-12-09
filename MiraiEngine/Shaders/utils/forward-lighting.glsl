@@ -10,28 +10,23 @@ layout(location = 0) in FS_IN {
 }
 fs_in;
 
-#include "utils/bindless.glsl"
-#include "utils/material.glsl"
+#include "bindless.glsl"
+#include "material.glsl"
 #include "pbr.glsl"
+#include "per-frame-data.glsl"
 
-layout(set = 3, binding = 1) readonly buffer Materials {
-    Material materials[];
+layout(set = 0, binding = 0) uniform PerFrameBinding {
+    PerFrameData per_frame_data;
 };
 
-layout(push_constant) uniform PushConstant {
-    layout(offset = 16) mat4 invVP;
-    vec4 camera_position;
-    vec4 light_direction;
-    vec4 light_color;
-    uint irradiance_map;
-    uint prefilter_map;
-    uint brdf_texture;
+layout(set = 3, binding = 1) readonly buffer Materials {
+    PBRMaterial materials[];
 };
 
 void main() {
     vec3 col = vec3(0.0f);
 
-    Material material = materials[fs_in.mat_id];
+    PBRMaterial material = materials[fs_in.mat_id];
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
@@ -60,13 +55,14 @@ void main() {
     if (material.emissive_texture != K_INVALID_TEXTURE)
         emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
 
-    vec3 view_dir = normalize(camera_position.xyz - fs_in.world_pos);
-    vec3 halfway_vector = normalize(view_dir + light_direction.xyz);
+    vec3 light_direction = per_frame_data.light_direction;
+    vec3 view_dir = normalize(per_frame_data.camera_position.xyz - fs_in.world_pos);
+    vec3 halfway_vector = normalize(view_dir + light_direction);
 
-    float ndotl = max(dot(normal, light_direction.xyz), 0.0);
+    float ndotl = max(dot(normal, light_direction), 0.0);
     float ndotv = max(dot(normal, view_dir), 0.0);
     float ndoth = max(dot(normal, halfway_vector), 0.0);
-    float ldoth = max(dot(light_direction.xyz, halfway_vector), 0.0);
+    float ldoth = max(dot(light_direction, halfway_vector), 0.0);
     float ao = 0.8f;
 
     // Directional Light Lighting calculation
@@ -83,7 +79,7 @@ void main() {
         vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
 
         // For directional light
-        vec3 radiance = light_color.xyz * light_color.w;
+        vec3 radiance = per_frame_data.light_color.xyz * per_frame_data.light_intensity;
         vec3 kD = (1.0 - F) * (1.0 - metallic);
 
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * ao;
@@ -91,14 +87,14 @@ void main() {
 
     vec3 Ks = F_SchlickRoughness(ndotv, F0, roughness);
     vec3 Kd = (1.0 - Ks) * (1.0 - metallic);
-    vec3 irradiance = sample_texture_cube(irradiance_map, normal).rgb;
+    vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
     vec3 diffuse = irradiance * albedo.rgb;
     vec3 R = reflect(-view_dir, normal);
-    vec3 prefilter_color = sample_texture_cube_lod(prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = sample_texture(brdf_texture, vec2(ndotv, roughness)).rg;
+    vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
     vec3 ambient = (Kd * diffuse + specular * 0.2f) * ao;
     Lo += ambient + emissive;
-    fragColor = vec4(normal, 1.0f);
+    fragColor = vec4(Lo, 1.0f);
 }

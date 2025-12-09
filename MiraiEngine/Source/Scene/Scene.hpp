@@ -62,16 +62,6 @@ namespace mirai {
         UniformSetID vertex_binding_set;
     };
 
-    struct SceneData {
-        glm::mat4 inv_VP;
-        glm::vec4 camera_position;
-        glm::vec4 light_direction;
-        glm::vec4 light_color;
-        uint32_t irradiance_map;
-        uint32_t prefilter_map;
-        uint32_t brdf_texture;
-    };
-
     class Scene {
       public:
         Scene(const std::string &name);
@@ -121,17 +111,28 @@ namespace mirai {
             glm::mat4 P;
             glm::mat4 V;
             glm::mat4 VP;
+            glm::mat4 invVP;
 
             glm::vec3 camera_position;
             float elapsed_time;
 
-            glm::vec2 window_size;
-            glm::vec2 _padding;
+            glm::vec3 light_direction;
+            float cast_shadow;
+
+            glm::vec3 light_color;
+            float light_intensity;
+
+            float width;
+            float height;
+            uint32_t irradiance_map;
+            uint32_t prefilter_map;
+
+            uint32_t brdf_texture_map;
+            uint32_t padding[3];
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
         DirectionalLightInfo directional_light_info;
-        SceneData scene_data;
 
         std::vector<GpuMesh> gpu_meshes;
         std::vector<RenderableObjectData> render_object_list;

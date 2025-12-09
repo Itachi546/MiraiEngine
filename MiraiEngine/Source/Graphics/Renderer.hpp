@@ -103,7 +103,6 @@ namespace mirai {
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        UniformSetID per_frame_uniform_set;
         UniformSetID cascade_uniform_set;
 
       private:

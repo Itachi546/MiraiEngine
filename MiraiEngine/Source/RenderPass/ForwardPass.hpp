@@ -17,5 +17,6 @@ namespace mirai {
         ShaderMaterial *opaque_shader;
         ShaderMaterial *transparent_shader;
         UniformLayout mesh_instance_layouts[2];
+        UniformSetID per_frame_uniform_set;
     };
 } // namespace mirai
