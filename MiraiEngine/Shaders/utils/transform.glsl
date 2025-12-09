@@ -44,5 +44,4 @@ vec3 octahedral_decode(vec2 f) {
     n.y += n.y >= 0.0f ? -t : t;
     return normalize(n);
 }
-
 #endif

@@ -1,6 +1,8 @@
 #ifndef MATERIAL_GLSL
 #define MATERIAL_GLSL
 
+#include "bindless.glsl"
+
 #define FLAG_EMPTY 0
 #define FLAG_OPAQUE 1 << 0
 #define FLAG_ALPHA_BLEND 1 << 1
@@ -24,7 +26,33 @@ struct PBRMaterial {
     uint occlusion_texture;
 };
 
+struct PBRParameter {
+    vec4 albedo;
+    vec3 emissive;
+    float metallic;
+    float roughness;
+};
+
 bool is_specular_glossiness_workflow(uint flags) {
     return (flags & FLAG_SPECULAR_GLOSSINESS_WORKFLOW) == FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
 }
+
+PBRParameter get_pbr_parameter(PBRMaterial material, vec2 uv) {
+    PBRParameter out_params;
+    out_params.metallic = material.metallic_factor;
+    out_params.roughness = material.roughness_factor;
+    if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
+        vec2 mr = sample_texture(material.metallic_roughness_texture, uv).bg;
+        out_params.metallic = mr.x;
+        out_params.roughness = mr.y;
+    }
+    out_params.roughness = is_specular_glossiness_workflow(material.flags) ? 1.0 - out_params.roughness : out_params.roughness;
+
+    out_params.emissive = material.emissive_factor;
+    if (material.emissive_texture != K_INVALID_TEXTURE)
+        out_params.emissive *= sample_texture(material.emissive_texture, uv).rgb;
+
+    return out_params;
+}
+
 #endif
