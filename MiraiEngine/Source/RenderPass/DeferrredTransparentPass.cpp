@@ -65,8 +65,10 @@ namespace mirai {
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
             UniformSetID uniform_sets[] = {renderer->per_frame_uniform_set, mesh_instance_set};
-            transparent_shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
             transparent_shader->bind(command_buffer, &node->renderpass_info);
+
+            PipelineID pipeline_id = transparent_shader->get_pipeline_id();
+            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
 
             PushConstant push_constant_frag = {
                 .data = &scene->scene_data,
@@ -74,7 +76,6 @@ namespace mirai {
                 .size = sizeof(scene->scene_data),
                 .offset = sizeof(uint32_t) * 4,
             };
-            PipelineID pipeline_id = transparent_shader->get_pipeline_id();
             command_buffer->set_push_constants(pipeline_id, &push_constant_frag, 1);
 
             for (auto &batch : render_batches) {

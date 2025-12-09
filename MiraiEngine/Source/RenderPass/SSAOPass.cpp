@@ -54,7 +54,6 @@ namespace mirai {
         // SSAO Uniform Set
         ssao_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "ssao_uniform_set");
         device->update_uniform_set(ssao_set, bindings, cast_u32(std::size(bindings)));
-        ssao_shader->set_uniform_sets(&ssao_set, 1);
 
         // Create BlurX Uniform Set
         blur_x_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "blur_x_set");
@@ -83,7 +82,7 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "SSAO Pass");
         device->begin_debug_utils_label(command_buffer, "SSAO Pass", nullptr);
 
-        Scene* scene = renderer->get_scene();
+        Scene *scene = renderer->get_scene();
         ssao_pass(command_buffer, frame_graph, node, scene);
 
         TextureID ssao_texture = frame_graph->get_resource(node->outputs[0])->handle;
@@ -125,8 +124,11 @@ namespace mirai {
         };
 
         command_buffer->begin_compute_pass(node, frame_graph);
-        ssao_shader->set_push_constant(&push_constants, 1);
         ssao_shader->bind(command_buffer);
+
+        PipelineID pipeline_id = ssao_shader->get_pipeline_id();
+        command_buffer->set_uniform_sets(pipeline_id, &ssao_set, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
 
         float ssao_push_constant = {};
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
@@ -151,10 +153,12 @@ namespace mirai {
         };
 
         UniformSetID uniform_set = direction == 0 ? blur_x_set : blur_y_set;
-        blur_shader->set_push_constant(&push_constants, 1);
-        blur_shader->set_uniform_sets(&uniform_set, 1);
+
         blur_shader->bind(command_buffer);
 
+        PipelineID pipeline_id = blur_shader->get_pipeline_id();
+        command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
+        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
         float ssao_push_constant = {};
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);

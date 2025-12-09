@@ -38,7 +38,6 @@ namespace mirai {
 
         rt_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "rt_shadow_set");
         device->update_uniform_set(rt_uniform_set, bindings, cast_u32(std::size(bindings)));
-        dir_shadow_shader->set_uniform_sets(&rt_uniform_set, 1);
 
         // Create blur intermediate texture
         TextureDescription texture_desc = {
@@ -103,8 +102,10 @@ namespace mirai {
             .offset = 0,
         };
 
-        dir_shadow_shader->set_push_constant(&push_constant, 1);
         dir_shadow_shader->bind(command_buffer);
+        PipelineID pipeline_id = dir_shadow_shader->get_pipeline_id();
+        command_buffer->set_uniform_sets(pipeline_id, &rt_uniform_set, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
@@ -145,9 +146,12 @@ namespace mirai {
         };
 
         // Blur in X-direction
-        blur_shader->set_uniform_sets(&blur_uniform_set_x, 1);
-        blur_shader->set_push_constant(&push_constant, 1);
+
         blur_shader->bind(command_buffer);
+        PipelineID pipeline_id = blur_shader->get_pipeline_id();
+
+        command_buffer->set_uniform_sets(pipeline_id, &blur_uniform_set_x, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
         command_buffer->dispatch(work_size_x, work_size_y, 1);
 
         // Blur in Y-Direction
@@ -161,8 +165,8 @@ namespace mirai {
 
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
-        blur_shader->set_uniform_sets(&blur_uniform_set_y, 1);
-        blur_shader->set_push_constant(&push_constant, 1);
+        command_buffer->set_uniform_sets(pipeline_id, &blur_uniform_set_y, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
         blur_shader->bind(command_buffer);
         command_buffer->dispatch(work_size_x, work_size_y, 1);
     }

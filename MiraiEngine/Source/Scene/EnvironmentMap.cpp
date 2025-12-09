@@ -98,7 +98,7 @@ namespace mirai {
 
         ComputeShader cubemap_shader("hdri_cubemap");
         cubemap_shader.create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"});
-        cubemap_shader.set_uniform_sets(&uniform_set, 1);
+        cubemap_shader.set_custom_bindings(&uniform_set, 1);
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
@@ -111,6 +111,7 @@ namespace mirai {
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
+        device->destroy_uniform_sets(&uniform_set, 1);
         device->destroy_textures(&hdri_texture, 1);
 
         create_pbr_env_map();
@@ -122,18 +123,9 @@ namespace mirai {
         SamplerDescription sampler_desc = SamplerDescription::create();
 
         RenderingDevice *device = RenderingDevice::get();
-        UniformLayout layout[] = {
-            {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
-        };
-        UniformSetID uniform_set = device->create_uniform_set(layout, (uint32_t)std::size(layout), 0, "procedural_cubemap_set");
-        UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
-        };
-        device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
 
         ComputeShader cubemap_shader("hdri_cubemap");
         cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
-        cubemap_shader.set_uniform_sets(&uniform_set, 1);
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
@@ -195,7 +187,6 @@ namespace mirai {
             .size = sizeof(uint32_t) * 4,
             .offset = 0,
         };
-        cubemap_shader.set_push_constant(&push_constant, 1);
 
         TextureBarrierInfo barrier_info = {
             .texture_id = cubemap_texture,
@@ -207,6 +198,9 @@ namespace mirai {
         command_buffer->prepare_image(&barrier_info, 1);
 
         cubemap_shader.bind(command_buffer);
+
+        PipelineID pipeline_id = cubemap_shader.get_pipeline_id();
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(cubemap_size, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(cubemap_size, 32);
@@ -257,9 +251,11 @@ namespace mirai {
             .offset = 0,
         };
 
-        convolute_shader.set_uniform_sets(&uniform_set, 1);
-        convolute_shader.set_push_constant(&push_constant, 1);
+        PipelineID pipeline_id = convolute_shader.get_pipeline_id();
+
         convolute_shader.bind(command_buffer);
+        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         uint32_t work_group_size = rendering_utils::get_workgroup_size(irradiance_map_size, 32);
         command_buffer->dispatch(work_group_size, work_group_size, 6);
@@ -268,6 +264,8 @@ namespace mirai {
         barrier_infos[1].access_mask = ACCESS_FLAG_SHADER_READ;
         barrier_infos[1].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         command_buffer->prepare_image(&barrier_infos[1], 1);
+
+        device->destroy_uniform_sets(&uniform_set, 1);
     }
 
     void EnvironmentMap::convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader &prefilter_shader) {
@@ -342,6 +340,8 @@ namespace mirai {
         }
 
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
+
+        device->destroy_uniform_sets(uniform_sets.data(), cast_u32(uniform_sets.size()));
     }
 
     void EnvironmentMap::integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader &integrate_brdf_shader) {
@@ -377,9 +377,11 @@ namespace mirai {
             .offset = 0,
         };
 
-        integrate_brdf_shader.set_uniform_sets(&uniform_set, 1);
-        integrate_brdf_shader.set_push_constant(&push_constant, 1);
         integrate_brdf_shader.bind(command_buffer);
+
+        PipelineID pipeline_id = integrate_brdf_shader.get_pipeline_id();
+        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         uint32_t work_group_size = rendering_utils::get_workgroup_size(brdf_texture_size, 32);
         command_buffer->dispatch(work_group_size, work_group_size, 1);

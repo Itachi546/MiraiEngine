@@ -17,7 +17,24 @@ namespace mirai {
     class FrameGraph;
     class FrameGraphBuilder;
     struct Font;
+    /*
+    enum RenderPassType {
+        RENDERPASS_DEPTH = 0,
+        RENDERPASS_FORWARD,
+        RENDERPASS_DEFERRED,
+        RENDERPASS_TRANSPARENT,
+        RENDERPASS_MAX
+    };
 
+    union MaterialVariant {
+        struct {
+            uint32_t renderpass : 8;
+            uint32_t blend_mode : 4;
+            uint32_t cull_mode : 2;
+        } bits;
+        uint32_t value;
+    };
+    */
     struct GpuBufferSubAllocation {
         BufferID buffer;
         uint32_t offset;

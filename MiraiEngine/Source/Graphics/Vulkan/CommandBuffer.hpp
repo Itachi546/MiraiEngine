@@ -35,7 +35,7 @@ namespace mirai {
 
         void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 
-        void bind_pipeline(PipelineID pipeline, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count);
+        void bind_pipeline(PipelineID pipeline);
 
         void set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count);
 

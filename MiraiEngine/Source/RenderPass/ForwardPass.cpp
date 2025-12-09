@@ -61,19 +61,21 @@ namespace mirai {
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
-            opaque_shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
             opaque_shader->bind(command_buffer, &node->renderpass_info);
+            PipelineID opaque_pipeline_id = opaque_shader->get_pipeline_id();
+            command_buffer->set_uniform_sets(opaque_pipeline_id, &renderer->per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
-                    draw_batch(&batch, opaque_shader->get_pipeline_id());
+                    draw_batch(&batch, opaque_pipeline_id);
                 }
             }
 
-            transparent_shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
             transparent_shader->bind(command_buffer, &node->renderpass_info);
+            PipelineID transparent_pipeline_id = transparent_shader->get_pipeline_id();
+            command_buffer->set_uniform_sets(transparent_pipeline_id, &renderer->per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
-                    draw_batch(&batch, transparent_shader->get_pipeline_id());
+                    draw_batch(&batch, transparent_pipeline_id);
                 }
             }
         }

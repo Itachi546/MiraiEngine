@@ -81,18 +81,19 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
-        if (active_shader == shader) {
-            UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
-            active_shader->set_uniform_sets(uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
-        } else if (active_shader == rt_shader) {
-            active_shader->set_uniform_sets(&rt_uniform_set, 1);
-        }
-
         Scene *scene = renderer->get_scene();
         PushConstant push_constant = {.data = &scene->scene_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(scene->scene_data), .offset = 0};
-        active_shader->set_push_constant(&push_constant, 1);
 
         active_shader->bind(command_buffer, &node->renderpass_info);
+
+        PipelineID pipeline_id = active_shader->get_pipeline_id();
+        if (active_shader == shader) {
+            UniformSetID uniform_sets[] = {uniform_set, cascade_uniform_set};
+            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
+        } else if (active_shader == rt_shader) {
+            command_buffer->set_uniform_sets(pipeline_id, &rt_uniform_set, 1);
+        }
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         command_buffer->draw(3, 1, 0, 0);
 

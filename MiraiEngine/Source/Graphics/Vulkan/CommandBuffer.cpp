@@ -119,13 +119,10 @@ namespace mirai {
         prepare_pass_resources(frame_graph, node);
     }
 
-    void CommandBuffer::bind_pipeline(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count, PushConstant *push_constants, uint32_t push_constant_count) {
+    void CommandBuffer::bind_pipeline(PipelineID pipeline_id) {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
-
-        set_uniform_sets(pipeline_id, uniform_sets, uniform_set_count);
-        set_push_constants(pipeline_id, push_constants, push_constant_count);
 
         if (pipeline->support_bindless_texture)
             vkCmdBindDescriptorSets(command_buffer, pipeline->bind_point, pipeline->pipeline_layout, K_BINDLESS_TEXTURE_SET, 1, &device->bindless_descriptor_set, 0, nullptr);

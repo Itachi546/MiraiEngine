@@ -29,17 +29,11 @@ namespace mirai {
 
         void create_from_file(const std::vector<std::string> &shader_files, const ShaderMaterialProperties &properties);
 
+        void set_custom_bindings(UniformSetID *uniform_sets, uint32_t uniform_set_count) {
+            custom_uniform_sets.insert(custom_uniform_sets.end(), uniform_sets, uniform_sets + uniform_set_count);
+        }
+
         virtual void bind(CommandBuffer *command_buffer, const FrameGraphRenderpassInfo *renderpass);
-
-        void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
-            this->uniform_sets.clear();
-            this->uniform_sets.insert(this->uniform_sets.end(), uniform_sets, uniform_sets + count);
-        }
-
-        void set_push_constant(PushConstant *push_constants, uint32_t count) {
-            this->push_constants.clear();
-            this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
-        }
 
         PipelineID get_pipeline_id() const {
             return pipeline;
@@ -54,9 +48,8 @@ namespace mirai {
         std::string name;
         PipelineID pipeline;
 
+        std::vector<UniformSetID> custom_uniform_sets;
         std::vector<std::string> shader_files;
-        std::vector<UniformSetID> uniform_sets;
-        std::vector<PushConstant> push_constants;
         ShaderMaterialProperties properties;
 
         PipelineID create_pipeline(const FrameGraphRenderpassInfo *renderpass);
@@ -73,14 +66,8 @@ namespace mirai {
 
         virtual void bind(CommandBuffer *command_buffer);
 
-        void set_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
-            this->uniform_sets.clear();
-            this->uniform_sets.insert(this->uniform_sets.end(), uniform_sets, uniform_sets + count);
-        }
-
-        void set_push_constant(PushConstant *push_constants, uint32_t count) {
-            this->push_constants.clear();
-            this->push_constants.insert(this->push_constants.end(), push_constants, push_constants + count);
+        void set_custom_bindings(UniformSetID *uniform_sets, uint32_t uniform_set_count) {
+            custom_uniform_sets.insert(custom_uniform_sets.end(), uniform_sets, uniform_sets + uniform_set_count);
         }
 
         PipelineID get_pipeline_id() const {
@@ -91,9 +78,8 @@ namespace mirai {
         std::string name;
 
       private:
+        std::vector<UniformSetID> custom_uniform_sets;
         PipelineID pipeline;
-        std::vector<UniformSetID> uniform_sets;
-        std::vector<PushConstant> push_constants;
         void create_pipeline(ShaderID shader);
     };
 

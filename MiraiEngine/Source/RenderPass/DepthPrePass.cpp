@@ -35,7 +35,7 @@ namespace mirai {
 
             ScopedCpuProfiling("DepthPrepass::DrawBatch");
             UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
-            command_buffer->set_uniform_sets(shader->get_pipeline_id(), uniform_sets, cast_u32(std::size(uniform_sets)));
+            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
             command_buffer->set_index_buffer(batch->index_buffer);
             for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
@@ -55,15 +55,18 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);
 
         command_buffer->begin_render_pass(node, frame_graph);
-        shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
+
         shader->bind(command_buffer, &node->renderpass_info);
+
+        PipelineID pipeline_id = shader->get_pipeline_id();
+        command_buffer->set_uniform_sets(pipeline_id, &renderer->per_frame_uniform_set, 1);
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE)
-                    draw_batch(&batch, shader->get_pipeline_id());
+                    draw_batch(&batch, pipeline_id);
             }
         }
 

@@ -86,7 +86,8 @@ namespace mirai {
 
     enum Colorspace {
         COLOR_SPACE_SRGB = 0,
-        COLOR_SPACE_LINEAR
+        COLOR_SPACE_LINEAR,
+        COLOR_SPACE_MAX
     };
 
     enum Format {
@@ -353,6 +354,7 @@ namespace mirai {
         PIPELINE_STAGE_INDEX_INPUT_BIT = 0x1000000000ULL,
         PIPELINE_STAGE_VERTEX_ATTRIBUTE_INPUT_BIT = 0x2000000000ULL,
         PIPELINE_STAGE_PRE_RASTERIZATION_SHADERS_BIT = 0x4000000000ULL,
+        PIPELINE_STAGE_MAX
     };
 
     struct SamplerDescription {

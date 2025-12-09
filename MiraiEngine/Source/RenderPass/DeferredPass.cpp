@@ -34,12 +34,12 @@ namespace mirai {
 
         if (render_batches.size() > 0) {
             // Set Per Frame Data
-            shader->set_uniform_sets(&renderer->per_frame_uniform_set, 1);
+            PipelineID pipeline_id = shader->get_pipeline_id();
             shader->bind(command_buffer, &node->renderpass_info);
+            command_buffer->set_uniform_sets(pipeline_id, &renderer->per_frame_uniform_set, 1);
 
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-            PipelineID pipeline_id = shader->get_pipeline_id();
 
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)

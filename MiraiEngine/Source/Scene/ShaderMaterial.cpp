@@ -25,12 +25,10 @@ namespace mirai {
         if (!pipeline.is_valid()) {
             pipeline = create_pipeline(renderpass);
         }
-
-        command_buffer->bind_pipeline(pipeline,
-                                      uniform_sets.data(),
-                                      static_cast<uint32_t>(uniform_sets.size()),
-                                      push_constants.data(),
-                                      static_cast<uint32_t>(push_constants.size()));
+        command_buffer->bind_pipeline(pipeline);
+        if (custom_uniform_sets.size() > 0) {
+            command_buffer->set_uniform_sets(pipeline, custom_uniform_sets.data(), cast_u32(custom_uniform_sets.size()));
+        }
     }
 
     PipelineID ShaderMaterial::create_pipeline(const FrameGraphRenderpassInfo *renderpass) {
@@ -108,11 +106,11 @@ namespace mirai {
 
     void ComputeShader::bind(CommandBuffer *command_buffer) {
         ASSERT(pipeline.is_valid());
-        command_buffer->bind_pipeline(pipeline,
-                                      uniform_sets.data(),
-                                      static_cast<uint32_t>(uniform_sets.size()),
-                                      push_constants.data(),
-                                      static_cast<uint32_t>(push_constants.size()));
+        command_buffer->bind_pipeline(pipeline);
+
+        if (custom_uniform_sets.size() > 0) {
+            command_buffer->set_uniform_sets(pipeline, custom_uniform_sets.data(), cast_u32(custom_uniform_sets.size()));
+        }
     }
 
     ComputeShader::~ComputeShader() {

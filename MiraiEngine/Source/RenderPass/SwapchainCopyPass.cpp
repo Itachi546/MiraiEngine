@@ -33,10 +33,9 @@ namespace mirai {
 
         UniformBinding bindings = {.resource_id = input_texture->handle, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(uniform_set, &bindings, 1);
-        material->set_uniform_sets(&uniform_set, 1);
     }
 
-    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) {
+    void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
 
         device->begin_debug_utils_label(command_buffer, "Swapchain + FXAA", nullptr);
@@ -54,11 +53,14 @@ namespace mirai {
             .size = sizeof(float) * 4,
             .offset = 0,
         };
-        material->set_push_constant(&push_constants, 1);
 
         command_buffer->begin_render_pass(node, frame_graph);
 
         material->bind(command_buffer, &node->renderpass_info);
+
+        PipelineID pipeline_id = material->get_pipeline_id();
+        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
+        command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
 
         command_buffer->draw(3, 1, 0, 0);
 

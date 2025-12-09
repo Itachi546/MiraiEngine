@@ -128,7 +128,7 @@ namespace mirai {
             }
         };
 
-        Scene* scene = renderer->get_scene();
+        Scene *scene = renderer->get_scene();
         Viewport viewport = {0, 0, shadow_map_size, shadow_map_size, 0.0f, 1.0f};
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
         Frustum frustum;
@@ -150,11 +150,13 @@ namespace mirai {
             command_buffer->begin_render_pass(node, frame_graph, &viewport);
             if (render_batches.size() > 0) {
                 UniformSetID uniform_sets[] = {cascade_uniform_set, mesh_instance_set};
-                shader->set_uniform_sets(uniform_sets, (uint32_t)std::size(uniform_sets));
                 shader->bind(command_buffer, &node->renderpass_info);
 
+                PipelineID pipeline_id = shader->get_pipeline_id();
+                command_buffer->set_uniform_sets(pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
+
                 for (auto &batch : render_batches)
-                    draw_batch(&batch, shader->get_pipeline_id(), i);
+                    draw_batch(&batch, pipeline_id, i);
             }
             command_buffer->end_render_pass();
             device->end_debug_utils_label(command_buffer);
