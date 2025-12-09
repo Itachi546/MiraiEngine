@@ -4,10 +4,16 @@
 #include "Graphics/TextRenderManager.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Device/Window.hpp"
-
+#include "Common/Font.hpp"
 namespace mirai {
 
     DebugPass::DebugPass() : FrameGraphRenderer("debug_pass") {
+    }
+
+    void DebugPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
+        text_render_manager = std::make_unique<TextRenderManager>();
+        default_font = LoadFont("Georgia");
+        text_render_manager->get_renderer_by_font(default_font.get());
     }
 
     void DebugPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {

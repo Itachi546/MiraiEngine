@@ -28,6 +28,12 @@ namespace mirai {
         TextureID skybox = renderer->get_scene()->get_environment_map()->get_cubemap();
         UniformBinding binding = {.resource_id = skybox, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
+
+        line_renderer = std::make_unique<LineRenderer>();
+    }
+
+    void Overlay3DPass::update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
+        line_renderer->NewFrame();
     }
 
     void Overlay3DPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -65,7 +71,6 @@ namespace mirai {
 
     void Overlay3DPass::render_debug_draw(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass) {
         // Draw Lines
-        LineRenderer *line_renderer = LineRenderer::get();
         if (line_renderer->line_count > 0) {
             Camera *camera = scene->get_camera();
             glm::mat4 VP = camera->get_view_projection_transform();

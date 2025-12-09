@@ -8,9 +8,6 @@
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
-#include "TextRenderManager.hpp"
-#include "LineRenderer.hpp"
-#include "Common/Font.hpp"
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
@@ -38,18 +35,12 @@ namespace mirai {
         shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
         shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
         shader_manager->load("csm_shadow", {"SPIRV/cascaded_shadow.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .depth_clamp = true});
-        shader_manager->load("swapchain_copy_rgba", {"SPIRV/fullscreen.vert.spv", "SPIRV/fullscreen.frag.spv"}, {.cull_mode = CULL_MODE_BACK});
+        shader_manager->load("swapchain_copy_rgba", {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"}, {.cull_mode = CULL_MODE_BACK});
         shader_manager->load("text_render_2d", {"SPIRV/font.vert.spv", "SPIRV/font.frag.spv"}, {.blend = true});
         shader_manager->load("line_3d", {"SPIRV/line.vert.spv", "SPIRV/line.frag.spv"}, {.depth_test = true, .topology = TOPOLOGY_LINE_LIST});
 
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
-
-        text_render_manager = std::make_unique<TextRenderManager>();
-        default_font = LoadFont("Georgia");
-        text_render_manager->get_renderer_by_font(default_font.get());
-
-        line_renderer = std::make_unique<LineRenderer>();
     }
 
     void Renderer::initialize() {
@@ -297,7 +288,6 @@ namespace mirai {
     }
 
     void Renderer::update() {
-        line_renderer->NewFrame();
         scene->update();
         frame_graph->update(this);
 
@@ -319,8 +309,8 @@ namespace mirai {
         miProfiler::BeginFrame(cb);
         {
             ScopedGpuProfiling(cb, "Gpu Time");
-             // Copy per frame data from staging buffer to gpu uniform buffer
-            copy_buffers(cb); 
+            // Copy per frame data from staging buffer to gpu uniform buffer
+            copy_buffers(cb);
 
             frame_graph->render(cb, this);
 
