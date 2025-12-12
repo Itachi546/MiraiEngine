@@ -8,6 +8,8 @@
 #include <sstream>
 
 namespace mirai {
+
+#define MI_EXIT_FAIL(code) (exit(code))
     class Log {
       public:
         template <typename... Args>
@@ -39,7 +41,11 @@ namespace mirai {
         static void Fatal(Args &&...args) {
             entries.push(LogEntry{LogLevel::Error, FormatLog(args...)});
             Write(Color_Red, "[ERROR] ", args...);
-            exit(-1);
+#ifdef _DEBUG
+            assert(0);
+#else
+            MI_EXIT_FAIL(-1);
+#endif
         }
 
       private:

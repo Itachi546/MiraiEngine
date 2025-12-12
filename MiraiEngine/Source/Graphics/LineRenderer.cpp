@@ -1,3 +1,4 @@
+/*
 #include "LineRenderer.hpp"
 
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -98,3 +99,4 @@ namespace mirai {
         RenderingDevice::get()->destroy_buffers(&buffer, 1);
     }
 } // namespace mirai
+*/

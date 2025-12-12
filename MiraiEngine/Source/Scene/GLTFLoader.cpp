@@ -253,8 +253,7 @@ namespace mirai {
         uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
         std::optional<BufferView> vertex_buffer_view = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
         if (!vertex_buffer_view.has_value()) {
-            ASSERT_MSG(0, "Failed to allocate goemetry buffer");
-            exit(-1);
+            Log::Fatal(0, "Failed to allocate goemetry buffer");
         }
 
         BufferView vertex_buffer = vertex_buffer_view.value();
@@ -268,8 +267,7 @@ namespace mirai {
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
         std::optional<BufferView> index_buffer_view = renderer->index_buffer_allocator.allocate(index_buffer_size);
         if (!index_buffer_view.has_value()) {
-            ASSERT_MSG(0, "Failed to allocate goemetry buffer");
-            exit(-1);
+            Log::Fatal("Failed to allocate goemetry buffer");
         }
 
         BufferView index_buffer = index_buffer_view.value();

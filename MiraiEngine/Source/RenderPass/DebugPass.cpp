@@ -1,3 +1,4 @@
+/*
 #include "DebugPass.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -74,3 +75,4 @@ namespace mirai {
         command_buffer->end_render_pass();
     }
 } // namespace mirai
+ */

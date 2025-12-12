@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "Graphics/RenderingDevice.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/ShaderMaterial.hpp"
@@ -48,3 +48,4 @@ namespace mirai {
         void ssao_blur(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene, float direction);
     };
 } // namespace mirai
+ */

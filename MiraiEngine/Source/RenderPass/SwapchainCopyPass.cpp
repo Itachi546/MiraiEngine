@@ -1,23 +1,31 @@
 #include "SwapchainCopyPass.hpp"
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
+#include "Scene/PipelineHashMap.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
 #include "Device/InputDevice.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/Math.hpp"
+#include "Scene/Shader.hpp"
 #include "Graphics/Renderer.hpp"
 
 #include <string>
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(true), material(nullptr) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(true) {
     }
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        material = ShaderManager::get()->get_shader("swapchain_copy_rgba");
+        PipelineState pipeline_state = {};
+        pipeline_state.color_attachment_count = 1;
+        pipeline_state.color_attachment_formats[0] = FORMAT_B8G8R8A8_UNORM;
+        pipeline_state.custom_shader_id = utils::djb2_hash_string("swapchain-copy-shader");
+        shader = std::make_unique<MaterialShader>("swapchain-copy-shader");
+        shader->create_from_file(pipeline_state, {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"});
+        if (!shader->pipeline_id.is_valid()) {
+            Log::Fatal("Failed to create swapchain copy pipeline");
+        }
 
         FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
 
@@ -56,11 +64,9 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        material->bind(command_buffer, &node->renderpass_info);
-
-        PipelineID pipeline_id = material->get_pipeline_id();
-        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
-        command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
+        shader->bind(command_buffer);
+        command_buffer->set_uniform_sets(shader->pipeline_id, &uniform_set, 1);
+        command_buffer->set_push_constants(shader->pipeline_id, &push_constants, 1);
 
         command_buffer->draw(3, 1, 0, 0);
 

@@ -1,7 +1,8 @@
-#include "ShaderMaterial.hpp"
+#include "Shader.hpp"
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+/*
 #include "Common/Hash.hpp"
 #include "FrameGraph.hpp"
-#include "Graphics/Vulkan/CommandBuffer.hpp"
 
 namespace mirai {
     ShaderMaterial::ShaderMaterial(const std::string &name) : name(name),
@@ -32,53 +33,6 @@ namespace mirai {
     }
 
     PipelineID ShaderMaterial::create_pipeline(const FrameGraphRenderpassInfo *renderpass) {
-        RasterizationState rs = RasterizationState::create();
-        rs.cull_mode = properties.cull_mode;
-        rs.front_face = properties.front_face;
-        rs.enable_depth_clamp = properties.depth_clamp;
-        rs.polygon_mode = properties.polygon_mode;
-
-        BlendState bs = BlendState::create();
-        if (properties.blend)
-            bs.enable = true;
-        PipelineDescription pipeline_description;
-
-        ASSERT(shader_files.size() > 0);
-        std::vector<ShaderID> shader_modules;
-        for (uint32_t i = 0; i < shader_files.size(); ++i) {
-            ShaderID shader = rendering_utils::create_shader_module_from_file(shader_files[i]);
-            shader_modules.push_back(shader);
-        }
-
-        pipeline_description.topology = properties.topology;
-        pipeline_description.shader_count = static_cast<uint32_t>(shader_modules.size());
-        pipeline_description.shaders = shader_modules.data();
-        pipeline_description.rasterization_state = &rs;
-        pipeline_description.blend_state = &bs;
-
-        DepthState ds = DepthState::create();
-        std::vector<Format> color_attachment_formats;
-
-        for (uint32_t i = 0; i < renderpass->attachment_info.size(); ++i) {
-            const FrameGraphAttachmentInfo *attachment = &renderpass->attachment_info[i];
-            if (i == renderpass->depth_attachment_index) {
-                ds.enable_depth_write = properties.depth_write;
-                ds.enable_depth_test = properties.depth_test;
-                ds.compare_op = properties.depth_op;
-                pipeline_description.depth_attachment_format = attachment->format;
-            } else {
-                color_attachment_formats.push_back(attachment->format);
-            }
-        }
-        pipeline_description.depth_state = &ds;
-        pipeline_description.color_attachment_count = static_cast<uint32_t>(color_attachment_formats.size());
-        pipeline_description.color_attachment_formats = color_attachment_formats.data();
-
-        PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
-
-        RenderingDevice::get()->destroy_shaders(shader_modules.data(), cast_u32(shader_modules.size()));
-
-        return pipeline;
     }
 
     void ShaderMaterial::update_shader_material_id() {
@@ -122,4 +76,20 @@ namespace mirai {
         pipeline = device->create_compute_pipeline(shader, name);
     }
 
+} // namespace mirai
+*/
+
+namespace mirai {
+    void Shader::bind(CommandBuffer *command_buffer) {
+        command_buffer->bind_pipeline(pipeline_id);
+        if (bindings.size() > 0)
+            command_buffer->set_uniform_sets(pipeline_id, bindings.data(), cast_u32(bindings.size()));
+    }
+
+    void MaterialShader::create_from_file(const PipelineState &pipeline_state, const std::vector<std::string> &shader_files) {
+        pipeline_id = PipelineHashMap::get()->add_or_get_graphics_pipeline(pipeline_state, shader_files, name);
+    }
+    void ComputeShader::create_from_file(const std::string &file) {
+        pipeline_id = PipelineHashMap::get()->add_or_get_compute_pipeline(file, name);
+    }
 } // namespace mirai

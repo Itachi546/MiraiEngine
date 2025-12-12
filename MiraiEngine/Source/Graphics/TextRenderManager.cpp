@@ -1,3 +1,4 @@
+/*
 #include "TextRenderManager.hpp"
 #include "Scene/ShaderMaterial.hpp"
 #include "Scene/ShaderManager.hpp"
@@ -122,3 +123,4 @@ namespace mirai {
         }
     }
 } // namespace mirai
+ */

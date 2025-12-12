@@ -1,5 +1,4 @@
 #include "Scene.hpp"
-#include "ShaderMaterial.hpp"
 #include "Component.hpp"
 #include "Camera.hpp"
 #include "EnvironmentMap.hpp"

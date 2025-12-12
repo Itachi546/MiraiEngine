@@ -1,6 +1,5 @@
 #include "EnvironmentMap.hpp"
 #include "Common/FileUtils.hpp"
-#include "Scene/ShaderMaterial.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include <cmath>
 
@@ -51,7 +50,10 @@ namespace mirai {
         brdf_texture = device->create_texture(&texture_desc, "brdf_texture");
     }
 
-    EnvironmentMap::EnvironmentMap(const std::string &hdri_path) : hdri_path(hdri_path) {
+    EnvironmentMap::EnvironmentMap(const std::string &hdri_path) : hdri_path(hdri_path), generate_cubemap_shader("hdri-cubemap"),
+                                                                   integrate_brdf_shader("brdf-shader"),
+                                                                   convolute_shader("convolute-cubemap"),
+                                                                   prefilter_shader("prefilter-shader") {
         int width, height, n_channel;
         float *data = utils::load_image_float(hdri_path.c_str(), &width, &height, &n_channel, 4);
         if (data == nullptr) {
@@ -117,21 +119,23 @@ namespace mirai {
         create_pbr_env_map();
     }
 
-    EnvironmentMap::EnvironmentMap() {
+    EnvironmentMap::EnvironmentMap() : generate_cubemap_shader("hdri-cubemap"),
+                                       integrate_brdf_shader("brdf-shader"),
+                                       convolute_shader("convolute-cubemap"),
+                                       prefilter_shader("prefilter-shader") {
         initialize_textures();
 
         SamplerDescription sampler_desc = SamplerDescription::create();
 
         RenderingDevice *device = RenderingDevice::get();
 
-        ComputeShader cubemap_shader("hdri_cubemap");
-        cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
+        generate_cubemap_shader.create_from_file({"SPIRV/procedural_sky.comp.spv"});
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         device->begin_debug_utils_label(command_buffer, "Procedural Sky Pass", nullptr);
 
-        generate_cubemap(command_buffer, cubemap_shader);
+        generate_cubemap(command_buffer, generate_cubemap_shader);
 
         device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
@@ -143,13 +147,10 @@ namespace mirai {
     void EnvironmentMap::create_pbr_env_map() {
         RenderingDevice *device = RenderingDevice::get();
 
-        ComputeShader convolute_shader("convolute_cubemap_shader");
         convolute_shader.create_from_file("SPIRV/convolute_cubemap.comp.spv");
 
-        ComputeShader prefilter_shader("prefilter_shader");
         prefilter_shader.create_from_file("SPIRV/prefilter-envmap.comp.spv");
 
-        ComputeShader integrate_brdf_shader("integrate_brdf_shader");
         integrate_brdf_shader.create_from_file("SPIRV/integrate-brdf.comp.spv");
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
@@ -199,7 +200,7 @@ namespace mirai {
 
         cubemap_shader.bind(command_buffer);
 
-        PipelineID pipeline_id = cubemap_shader.get_pipeline_id();
+        PipelineID pipeline_id = cubemap_shader.pipeline_id;
         command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(cubemap_size, 32);
@@ -251,7 +252,7 @@ namespace mirai {
             .offset = 0,
         };
 
-        PipelineID pipeline_id = convolute_shader.get_pipeline_id();
+        PipelineID pipeline_id = convolute_shader.pipeline_id;
 
         convolute_shader.bind(command_buffer);
         command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
@@ -318,7 +319,7 @@ namespace mirai {
         }
 
         prefilter_shader.bind(command_buffer);
-        PipelineID pipeline_id = prefilter_shader.get_pipeline_id();
+        PipelineID pipeline_id = prefilter_shader.pipeline_id;
         uint32_t dims = prefilter_map_size;
 
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
@@ -379,7 +380,7 @@ namespace mirai {
 
         integrate_brdf_shader.bind(command_buffer);
 
-        PipelineID pipeline_id = integrate_brdf_shader.get_pipeline_id();
+        PipelineID pipeline_id = integrate_brdf_shader.pipeline_id;
         command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
         command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 

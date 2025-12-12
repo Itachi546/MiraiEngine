@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Graphics/RenderingDevice.hpp"
+#include "Scene/Shader.hpp"
 
 namespace mirai {
-    class ComputeShader;
+    struct ComputeShader;
+
     class EnvironmentMap {
       public:
         EnvironmentMap(const std::string &hdri_path);
@@ -61,6 +63,8 @@ namespace mirai {
         uint32_t prefilter_map_size = 512;
         uint32_t brdf_texture_size = 512;
         uint32_t prefilter_num_mip_levels = 6;
+
+        ComputeShader generate_cubemap_shader, convolute_shader, prefilter_shader, integrate_brdf_shader;
 
         void generate_cubemap(CommandBuffer *command_buffer, ComputeShader &cubemap_shader);
         void convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader);

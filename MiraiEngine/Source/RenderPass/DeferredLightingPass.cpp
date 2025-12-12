@@ -1,3 +1,4 @@
+/*
 #include "DeferredLightingPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/EnvironmentMap.hpp"
@@ -106,3 +107,4 @@ namespace mirai {
     DeferredLightingPass::~DeferredLightingPass() {
     }
 } // namespace mirai
+*/

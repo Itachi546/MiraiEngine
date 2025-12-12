@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "Scene/FrameGraph.hpp"
 namespace mirai {
     class ShaderMaterial;
@@ -18,3 +18,4 @@ namespace mirai {
         UniformSetID mesh_instance_set, per_frame_uniform_set;
     };
 } // namespace mirai
+ */

@@ -1,3 +1,4 @@
+/*
 #include "DeferredTransparentPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
@@ -110,3 +111,4 @@ namespace mirai {
     DeferredTransparentPass::~DeferredTransparentPass() {
     }
 } // namespace mirai
+ */

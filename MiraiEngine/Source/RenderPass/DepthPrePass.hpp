@@ -3,7 +3,6 @@
 #include "Scene/FrameGraph.hpp"
 
 namespace mirai {
-    class ShaderMaterial;
     class DepthPrePass : public FrameGraphRenderer {
       public:
         DepthPrePass();
@@ -15,7 +14,7 @@ namespace mirai {
         ~DepthPrePass();
 
       private:
-        ShaderMaterial *shader;
+        PipelineID pipeline_id;
         UniformLayout transform_layout;
         UniformSetID per_frame_uniform_set;
     };

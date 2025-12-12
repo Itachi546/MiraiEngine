@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "ShaderMaterial.hpp"
 #include "Math/Math.hpp"
 
@@ -48,3 +48,4 @@ namespace mirai {
         PushConstant push_constant;
     };
 } // namespace mirai
+*/

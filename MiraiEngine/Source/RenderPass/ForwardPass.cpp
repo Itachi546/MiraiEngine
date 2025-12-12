@@ -1,21 +1,17 @@
 #include "ForwardPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
+#include "Scene/PipelineHashMap.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {
-    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass"), opaque_shader(nullptr), transparent_shader(nullptr) {
+    ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass") {
     }
 
     void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer *renderer) {
-        opaque_shader = ShaderManager::get()->get_shader("pbr_forward");
-        transparent_shader = ShaderManager::get()->get_shader("pbr_transparent");
-
         // Mesh Instance Data (Transform/Material)
         mesh_instance_layouts[0] = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
         mesh_instance_layouts[1] = {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT};
@@ -75,11 +71,19 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
+        PipelineState pipeline_state = {};
+        pipeline_state.render_state.fields.depth_test = true;
+        pipeline_state.render_state.fields.depth_write = false;
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_PBR_FORWARD;
+
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
-            opaque_shader->bind(command_buffer, &node->renderpass_info);
-            PipelineID opaque_pipeline_id = opaque_shader->get_pipeline_id();
+            PipelineID opaque_pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
+            if (!opaque_pipeline_id.is_valid()) {
+                Log::Fatal("Failed to load forward opaque pipeline");
+            }
+            command_buffer->bind_pipeline(opaque_pipeline_id);
             command_buffer->set_uniform_sets(opaque_pipeline_id, &per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
@@ -87,8 +91,14 @@ namespace mirai {
                 }
             }
 
-            transparent_shader->bind(command_buffer, &node->renderpass_info);
-            PipelineID transparent_pipeline_id = transparent_shader->get_pipeline_id();
+            pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
+            pipeline_state.render_state.fields.pass_mode = SHADER_PASS_PBR_FORWARD_TRANSPARENT;
+            pipeline_state.render_state.fields.blend_mode = true;
+            PipelineID transparent_pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
+            if (!transparent_pipeline_id.is_valid()) {
+                Log::Fatal("Failed to load forward transparent pipeline");
+            }
+            command_buffer->bind_pipeline(transparent_pipeline_id);
             command_buffer->set_uniform_sets(transparent_pipeline_id, &per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {

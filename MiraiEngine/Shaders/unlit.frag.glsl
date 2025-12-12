@@ -19,7 +19,8 @@ struct UnlitMaterial {
     vec4 color;
 
     uint texture_id;
-    uint padding[3];
+    uint flags;
+    uint padding[2];
 };
 
 layout(set = 3, binding = 1) readonly buffer Materials {

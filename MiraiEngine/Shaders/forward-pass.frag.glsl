@@ -31,10 +31,6 @@ void main() {
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
-#if FORWARD_TRANSPARENT_PASS
-    if (albedo.a < 0.5)
-        discard;
-#endif
 
     vec3 normal = vec3(0.0f, 0.0f, 1.0f);
     if (material.normal_texture != K_INVALID_TEXTURE)

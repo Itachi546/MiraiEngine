@@ -2,8 +2,7 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderManager.hpp"
-#include "Scene/ShaderMaterial.hpp"
+#include "Scene/PipelineHashMap.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -11,7 +10,7 @@
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
-
+#include "PipelineLoader.hpp"
 #include <cstring>
 
 namespace mirai {
@@ -26,19 +25,8 @@ namespace mirai {
         miProfiler::Initialize();
 
         // Preload shaders
-        shader_manager = std::make_unique<ShaderManager>();
-        shader_manager->load("overlay_skybox", {"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"}, {.depth_test = true});
-        shader_manager->load("depth_prepass", {"SPIRV/depth-prepass.vert.spv"}, {.depth_test = true, .depth_write = true});
-        shader_manager->load("pbr_forward", {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"}, {.depth_test = true, .depth_write = false});
-        shader_manager->load("pbr_transparent", {"SPIRV/forward_pass.vert.spv", "SPIRV/transparent.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .blend = true});
-        shader_manager->load("gbuffer_pass", {"SPIRV/deferred.vert.spv", "SPIRV/deferred.frag.spv"}, {.depth_test = true, .depth_write = true});
-        shader_manager->load("pbr_deferred", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
-        shader_manager->load("pbr_deferred_rt", {"SPIRV/fullscreen.vert.spv", "SPIRV/deferred_lighting_rt.frag.spv"}, {.cull_mode = CULL_MODE_NONE});
-        shader_manager->load("csm_shadow", {"SPIRV/cascaded_shadow.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .depth_test = true, .depth_write = true, .depth_clamp = true});
-        shader_manager->load("swapchain_copy_rgba", {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"}, {.cull_mode = CULL_MODE_BACK});
-        shader_manager->load("text_render_2d", {"SPIRV/font.vert.spv", "SPIRV/font.frag.spv"}, {.blend = true});
-        shader_manager->load("line_3d", {"SPIRV/line.vert.spv", "SPIRV/line.frag.spv"}, {.depth_test = true, .topology = TOPOLOGY_LINE_LIST});
-
+        pipeline_hashmap = std::make_unique<PipelineHashMap>();
+        preload_shaders(pipeline_hashmap.get());
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }
@@ -307,7 +295,7 @@ namespace mirai {
     Renderer::~Renderer() {
         BufferID buffers[] = {per_frame_staging_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_uniform_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
-        shader_manager.reset();
+        pipeline_hashmap->destroy();
         miProfiler::Destroy();
         scene.reset();
     }

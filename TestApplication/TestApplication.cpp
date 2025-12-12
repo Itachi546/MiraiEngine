@@ -11,7 +11,6 @@
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
-#include "Scene/ShaderManager.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"
@@ -300,6 +299,7 @@ class TestApplication : public App {
                     bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
                     ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
                 }
+                /*
                 if (!Renderer::get()->enable_rt_shadow) {
                     auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
                     ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
@@ -333,6 +333,7 @@ class TestApplication : public App {
                     ImGui::DragFloat("Blur radius", &ssao_pass->blur_radius, 0.01f, 0.0f, 10.0f);
                     ImGui::DragFloat("Blur Sharpness", &ssao_pass->blur_sharpness, 0.01f, 0.0f, 100.0f);
                 }
+            */
             }
         }
     }

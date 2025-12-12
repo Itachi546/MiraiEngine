@@ -6,7 +6,6 @@
 #include "Common/Hash.hpp"
 
 namespace mirai {
-    class ShaderMaterial;
 
     enum MaterialFlags {
         FLAG_EMPTY = 0,
@@ -31,16 +30,34 @@ namespace mirai {
 
         virtual uint32_t get_instance_data_size() const = 0;
 
-        virtual bool supports_multidraw_indirect() const {
-            return false;
-        }
-
         virtual bool is_transparent() const = 0;
 
-        virtual const char *get_material_type_name() const = 0;
-        virtual uint32_t get_material_id() const = 0;
-
         std::string name;
+    };
+
+    struct UnlitMaterial : public Material {
+        UnlitMaterial(const std::string &name) : Material(name) {
+        }
+
+        void *get_instance_data() override {
+            return &instance_data;
+        }
+
+        uint32_t get_instance_data_size() const override {
+            return sizeof(UnlitProperties);
+        }
+
+        bool is_transparent() const {
+            return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
+        }
+
+        struct UnlitProperties {
+            glm::vec4 albedo;
+            uint32_t unlit_texture_id;
+            uint32_t flags;
+            uint32_t padding[2];
+        } instance_data;
+        static_assert(sizeof(UnlitProperties) % 16 == 0);
     };
 
     struct StandardPBRMaterial : public Material {
@@ -55,21 +72,8 @@ namespace mirai {
             return sizeof(PBRProperties);
         }
 
-        bool supports_multidraw_indirect() const override {
-            return true;
-        }
-
         bool is_transparent() const override {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
-        }
-
-        const char *get_material_type_name() const override {
-            return "StandardPBRMaterial";
-        }
-
-        uint32_t get_material_id() const override {
-            static uint32_t id = utils::djb2_hash_string("StandardPBRMaterial");
-            return id;
         }
 
         struct PBRProperties {

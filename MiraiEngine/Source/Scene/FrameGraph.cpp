@@ -1,6 +1,7 @@
 #include "FrameGraph.hpp"
 #include "Engine/Log.hpp"
 #include "Engine/Profiler.hpp"
+#include "Graphics/StringEnumLookup.hpp"
 #include <json.hpp>
 #include <fstream>
 
@@ -277,41 +278,6 @@ namespace mirai {
         return FRAMEGRAPH_RESOURCE_TYPE_INVALID;
     }
 
-    static Format get_texture_format(const std::string &inputFormat) {
-        if (inputFormat == "B8G8R8A8_UNORM") {
-            return FORMAT_B8G8R8A8_UNORM;
-        } else if (inputFormat == "R16G16B16A16_SFLOAT") {
-            return FORMAT_R16G16B16A16_SFLOAT;
-        } else if (inputFormat == "R16G16B16_SFLOAT") {
-            return FORMAT_R16G16B16_SFLOAT;
-        } else if (inputFormat == "R32G32B32_SFLOAT") {
-            return FORMAT_R32G32B32_SFLOAT;
-        } else if (inputFormat == "R32G32B32A32_SFLOAT") {
-            return FORMAT_R32G32B32A32_SFLOAT;
-        } else if (inputFormat == "D32_SFLOAT") {
-            return FORMAT_D32_SFLOAT;
-        } else if (inputFormat == "D32_SFLOAT_S8_UINT") {
-            return FORMAT_D32_SFLOAT_S8_UINT;
-        } else if (inputFormat == "R16_SFLOAT") {
-            return FORMAT_R16_SFLOAT;
-        } else if (inputFormat == "R32_SFLOAT") {
-            return FORMAT_R32_SFLOAT;
-        } else if (inputFormat == "D24_UNORM_S8_UINT")
-            return FORMAT_D24_UNORM_S8_UINT;
-
-        ASSERT(!"Undefined input format");
-        return FORMAT_UNDEFINED;
-    }
-
-    static AttachmentLoadOp get_attachment_load_op(const std::string &op) {
-        if (op == "LOAD_OP_CLEAR")
-            return LOAD_OP_CLEAR;
-        else if (op == "LOAD_OP_LOAD")
-            return LOAD_OP_LOAD;
-
-        return LOAD_OP_DONT_CARE;
-    }
-
     FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder), name("default_framegraph") {
     }
 
@@ -383,8 +349,8 @@ namespace mirai {
                             json resolution = passOutput["resolution"];
                             resource.width = resolution[0];
                             resource.height = resolution[1];
-                            resource.format = get_texture_format(passOutput["format"]);
-                            resource.load_op = get_attachment_load_op(passOutput["op"]);
+                            resource.format = get_texture_format(std::string(passOutput["format"]));
+                            resource.load_op = get_attachment_load_op(passOutput.value("op", "LOAD_OP_LOAD"));
                             resource.array_layers = passOutput.value("layer", 1);
                             json clear_color = passOutput["clear_color"];
                             if (clear_color.size() == 4) {

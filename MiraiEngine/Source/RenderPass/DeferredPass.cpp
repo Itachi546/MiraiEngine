@@ -1,3 +1,4 @@
+/*
 #include "DeferredPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/ShaderMaterial.hpp"
@@ -96,3 +97,4 @@ namespace mirai {
     DeferredPass::~DeferredPass() {
     }
 } // namespace mirai
+*/

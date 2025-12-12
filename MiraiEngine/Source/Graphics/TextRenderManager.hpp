@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "RenderingDevice.hpp"
 #include "Math/Math.hpp"
 
@@ -63,3 +63,4 @@ namespace mirai {
     };
 
 }; // namespace mirai
+*/

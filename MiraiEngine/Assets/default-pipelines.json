@@ -1,0 +1,64 @@
+[
+    {
+        "name": "overlay-skybox-shader",
+        "shaders": [
+            "SPIRV/fullscreen.vert.spv",
+            "SPIRV/skybox.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_SKYBOX",
+            "depth-test": true,
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    },
+    {
+        "name": "depth-prepass-shader",
+        "shaders": [
+            "SPIRV/depth-prepass.vert.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_DEPTH_PREPASS",
+            "depth-test": true,
+            "depth-write": true,
+            "color-attachments-format": [],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    },
+    {
+        "name": "pbr-forward",
+        "shaders": [
+            "SPIRV/forward-pass.vert.spv",
+            "SPIRV/forward-pass.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_PBR_FORWARD",
+            "depth-test": true,
+            "depth-write": false,
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    },
+    {
+        "name": "pbr-forward-transparent",
+        "shaders": [
+            "SPIRV/forward-pass.vert.spv",
+            "SPIRV/transparent.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_PBR_FORWARD_TRANSPARENT",
+            "cull-mode": "CULL_MODE_NONE",
+            "depth-test": true,
+            "depth-write": false,
+            "blend-mode": true,
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    }
+]

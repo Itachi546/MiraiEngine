@@ -1,17 +1,15 @@
 #include "DepthPrePass.hpp"
 #include "Scene/Scene.hpp"
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
+#include "Scene/PipelineHashMap.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
 namespace mirai {
-    DepthPrePass::DepthPrePass() : FrameGraphRenderer("depth_prepass"), shader(nullptr) {
+    DepthPrePass::DepthPrePass() : FrameGraphRenderer("depth_prepass") {
     }
 
     void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        shader = ShaderManager::get()->get_shader("depth_prepass");
         // Mesh Data
         transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
 
@@ -31,6 +29,15 @@ namespace mirai {
             },
         };
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
+
+        PipelineState pipeline_state;
+        pipeline_state.render_state.fields.depth_test = true;
+        pipeline_state.render_state.fields.depth_write = true;
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_DEPTH_PREPASS;
+        pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
+        if (!pipeline_id.is_valid()) {
+            Log::Fatal("Failed to load pipeline for depth-prepass");
+        }
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -73,9 +80,7 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        shader->bind(command_buffer, &node->renderpass_info);
-
-        PipelineID pipeline_id = shader->get_pipeline_id();
+        command_buffer->bind_pipeline(pipeline_id);
         command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
 
         Scene *scene = renderer->get_scene();

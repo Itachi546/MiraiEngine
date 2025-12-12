@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "Scene/FrameGraph.hpp"
 
 namespace mirai {
@@ -16,3 +16,4 @@ namespace mirai {
         std::unique_ptr<TextRenderManager> text_render_manager;
     };
 } // namespace mirai
+*/

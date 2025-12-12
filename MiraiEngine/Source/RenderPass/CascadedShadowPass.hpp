@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
 #include "Scene/Scene.hpp"
@@ -34,3 +34,4 @@ namespace mirai {
         UniformSetID mesh_instance_set;
     };
 } // namespace mirai
+*/

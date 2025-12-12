@@ -2,7 +2,6 @@
 
 #include "Scene/FrameGraph.hpp"
 namespace mirai {
-    class ShaderMaterial;
     class ForwardPass : public FrameGraphRenderer {
       public:
         ForwardPass();
@@ -14,8 +13,6 @@ namespace mirai {
         ~ForwardPass();
 
       private:
-        ShaderMaterial *opaque_shader;
-        ShaderMaterial *transparent_shader;
         UniformLayout mesh_instance_layouts[2];
         UniformSetID per_frame_uniform_set;
     };

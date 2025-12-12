@@ -52,6 +52,5 @@ void main() {
     light.color = per_frame_data.light_color;
     light.intensity = per_frame_data.light_intensity;
     vec3 Lo = calculateLightIntensity(light, view_dir, normal, pbr_params);
-   
     fragColor = vec4(Lo, 1.0f);
 }

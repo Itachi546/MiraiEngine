@@ -1,4 +1,5 @@
 #include "Profiler.hpp"
+#include "Graphics/RenderingDevice.hpp"
 #include "Engine/Timer.hpp"
 #include "Common/Hash.hpp"
 #include "Graphics/TextRenderManager.hpp"
@@ -139,7 +140,7 @@ namespace mirai::miProfiler {
     void DrawData() {
         if (!enabled)
             return;
-
+        /*
         TextRenderer *renderer = TextRenderManager::get()->get_default();
         std::stringstream ss("");
         glm::vec2 position = {5.0f, 34.0f};
@@ -161,6 +162,7 @@ namespace mirai::miProfiler {
             ss.str("");
             position.y += font_size + 2.0f;
         }
+        */
     }
 
     void Destroy() {

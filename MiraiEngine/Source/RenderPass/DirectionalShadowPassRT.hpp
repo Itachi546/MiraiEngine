@@ -1,5 +1,5 @@
 #pragma once
-
+/*
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
 #include "Scene/Scene.hpp"
@@ -36,3 +36,4 @@ namespace mirai {
         void blur_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
     };
 } // namespace mirai
+*/

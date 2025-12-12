@@ -1,3 +1,4 @@
+/*
 #include "DirectionalShadowPassRT.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
@@ -176,3 +177,4 @@ namespace mirai {
             device->destroy_textures(&blur_intermediate_texture, 1);
     }
 } // namespace mirai
+*/

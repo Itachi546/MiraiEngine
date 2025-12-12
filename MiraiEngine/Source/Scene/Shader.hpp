@@ -1,22 +1,38 @@
 #pragma once
 
 #include "Graphics/RenderingDevice.hpp"
+#include "PipelineHashMap.hpp"
 #include <unordered_map>
 
 namespace mirai {
-    struct FrameGraphRenderpassInfo;
-    struct ShaderMaterialProperties {
-        CullMode cull_mode = CULL_MODE_BACK;
-        FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
-        bool depth_test = false;
-        bool depth_write = false;
-        bool depth_clamp = false;
-        bool blend = false;
-        CompareOp depth_op = COMPARE_OP_LESS_OR_EQUAL;
-        Topology topology = TOPOLOGY_TRIANGLE_LIST;
-        PolygonMode polygon_mode = POLYGON_MODE_FILL;
+
+    struct Shader {
+        Shader(const std::string &name) : name(name), pipeline_id(K_INVALID_ID) {
+        }
+
+        std::string name;
+        PipelineID pipeline_id;
+
+        void bind(CommandBuffer *command_buffer);
+
+        void set_custom_bindings(UniformSetID *uniform_sets, uint32_t count) {
+            bindings.insert(bindings.end(), uniform_sets, uniform_sets + count);
+        }
+
+      private:
+        std::vector<UniformSetID> bindings;
     };
 
+    struct MaterialShader : public Shader {
+        MaterialShader(const std::string &name) : Shader(name) {}
+        void create_from_file(const PipelineState &pipeline_state, const std::vector<std::string> &shader_files);
+    };
+
+    struct ComputeShader : public Shader {
+        ComputeShader(const std::string &name) : Shader(name) {}
+        void create_from_file(const std::string &file);
+    };
+    /*
     class ShaderMaterial {
       public:
         ShaderMaterial(const std::string &name);
@@ -82,5 +98,6 @@ namespace mirai {
         PipelineID pipeline;
         void create_pipeline(ShaderID shader);
     };
+    */
 
 } // namespace mirai

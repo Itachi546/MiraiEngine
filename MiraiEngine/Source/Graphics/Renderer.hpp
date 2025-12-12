@@ -10,7 +10,7 @@
 
 namespace mirai {
     class CommandBuffer;
-    class ShaderManager;
+    class PipelineHashMap;
     class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
@@ -112,7 +112,7 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
-        std::unique_ptr<ShaderManager> shader_manager;
+        std::unique_ptr<PipelineHashMap> pipeline_hashmap;
 
         void copy_buffers(CommandBuffer *cb);
 

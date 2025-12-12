@@ -4,17 +4,17 @@
 #include <memory>
 
 namespace mirai {
-    class ShaderMaterial;
     struct FrameGraphNode;
     class FrameGraph;
+    struct MaterialShader;
 
     class SwapchainCopyPass : public FrameGraphRenderer {
       public:
         SwapchainCopyPass();
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer* renderer) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         void set_antialiasing(bool state) {
             this->enable_aa = state;
@@ -28,7 +28,7 @@ namespace mirai {
 
       private:
         UniformSetID uniform_set;
-        ShaderMaterial* material;
         bool enable_aa;
+        std::unique_ptr<MaterialShader> shader;
     };
 } // namespace mirai
