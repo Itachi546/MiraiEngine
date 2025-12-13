@@ -52,6 +52,7 @@ namespace mirai {
             render_state.fields.topology = TOPOLOGY_TRIANGLE_LIST;
             render_state.fields.polygon_mode = POLYGON_MODE_FILL;
             render_state.fields._reserved = 0;
+            render_state.fields.pass_mode = SHADER_PASS_COUNT;
         }
 
         uint64_t get_hash() const {

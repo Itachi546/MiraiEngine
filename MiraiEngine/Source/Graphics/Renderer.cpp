@@ -42,14 +42,14 @@ namespace mirai {
             RenderableObjectData &object = render_list[i];
 
             mesh_infos[i].vertex_buffer = {
-                .buffer = object.vertex_buffer,
+                .buffer = object.vertex_buffer.buffer,
                 .offset = cast_u32(object.vertex_offset * sizeof(Vertex)),
                 .count = object.vertex_count,
                 .stride = sizeof(Vertex),
             };
 
             mesh_infos[i].index_buffer = {
-                .buffer = object.index_buffer,
+                .buffer = object.index_buffer.buffer,
                 .offset = cast_u32(object.index_offset * sizeof(uint32_t)),
                 .count = object.index_count,
                 .stride = sizeof(uint32_t),
@@ -180,41 +180,50 @@ namespace mirai {
 
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
+        uint32_t material_size_bytes = 0;
         for (auto &batch : scene->main_render_batches) {
-            total_entities += cast_u32(batch.transform_indices.size());
+            for (auto &mesh_batch : batch.meshes) {
+                uint32_t num_entity = cast_u32(mesh_batch.transform_indices.size());
+                total_entities += num_entity;
+                material_size_bytes += scene->materials[mesh_batch.material_indices[0]]->get_instance_data_size() * num_entity;
+            }
         }
         // @TODO do it in parallel
         // Allocate memory in staging buffer
         uint32_t transform_size_bytes = total_entities * sizeof(glm::mat4);
         uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
-        glm::mat4 *transform_array = reinterpret_cast<glm::mat4 *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+        uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
 
-        uint32_t instance_data_size = scene->materials[0]->get_instance_data_size();
-        uint32_t material_size_bytes = total_entities * instance_data_size;
         uint32_t material_buffer_offset = allocate_staging_buffer(material_size_bytes, current_frame);
         uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
+
         // Copy the transform/material data in staging buffer
-        uint32_t offset = 0;
-        for (auto &batch : scene->main_render_batches) {
-            uint32_t num_entity = cast_u32(batch.transform_indices.size());
+        uint32_t transform_offset_bytes = 0;
+        uint32_t material_offset_bytes = 0;
+        for (auto &render_batch : scene->main_render_batches) {
+            for (auto &batch : render_batch.meshes) {
+                uint32_t num_entity = cast_u32(batch.transform_indices.size());
+                batch.transform_buffer_view.buffer = transform_buffer;
+                batch.transform_buffer_view.offset = transform_offset_bytes;
+                batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
-            batch.transform_buffer_view.buffer = transform_buffer;
-            batch.transform_buffer_view.offset = offset * sizeof(glm::mat4);
-            batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
+                uint32_t instance_data_size = scene->materials[batch.material_indices[0]]->get_instance_data_size();
+                batch.material_buffer_view.buffer = material_buffer;
+                batch.material_buffer_view.offset = material_offset_bytes;
+                batch.material_buffer_view.size = num_entity * instance_data_size;
 
-            batch.material_buffer_view.buffer = material_buffer;
-            batch.material_buffer_view.offset = offset * instance_data_size;
-            batch.material_buffer_view.size = num_entity * instance_data_size;
+                for (uint32_t e = 0; e < num_entity; ++e) {
+                    TransformComponent &component = scene->component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
+                    std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
 
-            for (uint32_t e = 0; e < num_entity; ++e) {
-                TransformComponent &component = scene->component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
-                transform_array[offset + e] = component.world_transform;
-
-                auto &material = scene->materials[batch.material_indices[e]];
-                std::memcpy(material_array, material->get_instance_data(), instance_data_size);
-                material_array += instance_data_size;
+                    auto &material = scene->materials[batch.material_indices[e]];
+                    std::memcpy(material_array, material->get_instance_data(), instance_data_size);
+                    material_array += instance_data_size;
+                    transform_array += sizeof(glm::mat4);
+                }
+                transform_offset_bytes += num_entity * sizeof(glm::mat4);
+                material_offset_bytes += num_entity * instance_data_size;
             }
-            offset += num_entity;
         }
         if (transform_size_bytes > 0) {
             cb->copy_buffer(transform_buffer, per_frame_staging_buffer, {

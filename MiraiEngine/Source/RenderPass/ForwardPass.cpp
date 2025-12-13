@@ -37,7 +37,11 @@ namespace mirai {
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
         ScopedCpuProfiling("FrameGraph::ForwardPass");
-        auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
+
+        auto draw_batch = [&](MeshBatch *batch, PipelineID pipeline_id) {
+            if (batch->transform_indices.size() == 0)
+                return;
+
             // Set Per Frame Data
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
@@ -51,7 +55,7 @@ namespace mirai {
 
             UniformSetID uniform_sets[] = {batch->vertex_binding_set, mesh_instance_set};
             command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
-            command_buffer->set_index_buffer(batch->index_buffer);
+            command_buffer->set_index_buffer(batch->index_buffer.buffer);
 
             for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
                 instance_data[0] = i;
@@ -74,35 +78,49 @@ namespace mirai {
         PipelineState pipeline_state = {};
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = false;
-        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_PBR_FORWARD;
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
+
+        // Draw Opaque Object
         if (render_batches.size() > 0) {
-            PipelineID opaque_pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
-            if (!opaque_pipeline_id.is_valid()) {
-                Log::Fatal("Failed to load forward opaque pipeline");
-            }
-            command_buffer->bind_pipeline(opaque_pipeline_id);
-            command_buffer->set_uniform_sets(opaque_pipeline_id, &per_frame_uniform_set, 1);
             for (auto &batch : render_batches) {
-                if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE) {
-                    draw_batch(&batch, opaque_pipeline_id);
+                if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
+                    continue;
+
+                pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
+                pipeline_state.render_state.fields.pass_mode = batch.shader_key.fields.shader_pass;
+                PipelineID pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
+                if (!pipeline_id.is_valid()) {
+                    Log::Fatal("Failed to load forward transparent pipeline");
+                }
+
+                command_buffer->bind_pipeline(pipeline_id);
+                command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
+
+                for (auto &mesh_batch : batch.meshes) {
+                    draw_batch(&mesh_batch, pipeline_id);
                 }
             }
 
+            // Draw Transparent Object
             pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
-            pipeline_state.render_state.fields.pass_mode = SHADER_PASS_PBR_FORWARD_TRANSPARENT;
             pipeline_state.render_state.fields.blend_mode = true;
-            PipelineID transparent_pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
-            if (!transparent_pipeline_id.is_valid()) {
-                Log::Fatal("Failed to load forward transparent pipeline");
-            }
-            command_buffer->bind_pipeline(transparent_pipeline_id);
-            command_buffer->set_uniform_sets(transparent_pipeline_id, &per_frame_uniform_set, 1);
+            pipeline_state.render_state.fields.depth_write = true;
             for (auto &batch : render_batches) {
-                if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
-                    draw_batch(&batch, transparent_pipeline_id);
+                if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE)
+                    continue;
+
+                pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
+                pipeline_state.render_state.fields.pass_mode = batch.shader_key.fields.shader_pass;
+                PipelineID pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
+                if (!pipeline_id.is_valid()) {
+                    Log::Fatal("Failed to load forward transparent pipeline");
+                }
+                command_buffer->bind_pipeline(pipeline_id);
+                command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
+                for (auto &mesh_batch : batch.meshes) {
+                    draw_batch(&mesh_batch, pipeline_id);
                 }
             }
         }

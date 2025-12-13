@@ -35,8 +35,8 @@ namespace mirai {
         Entity entity;
         uint32_t material_index;
 
-        BufferID vertex_buffer;
-        BufferID index_buffer;
+        BufferView vertex_buffer;
+        BufferView index_buffer;
 
         uint32_t vertex_offset;
         uint32_t vertex_count;

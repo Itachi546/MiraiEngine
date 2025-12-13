@@ -42,7 +42,8 @@ namespace mirai {
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("FrameGraph::DepthPrepass");
-        auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id) {
+
+        auto draw_batch = [&](MeshBatch *batch, PipelineID pipeline_id) {
             // Set Per Frame Data
             uint32_t push_constant_data[4] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
@@ -61,7 +62,7 @@ namespace mirai {
             UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
             command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
-            command_buffer->set_index_buffer(batch->index_buffer);
+            command_buffer->set_index_buffer(batch->index_buffer.buffer);
             for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
                 push_constant_data[0] = i;
                 command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
@@ -87,8 +88,10 @@ namespace mirai {
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
         if (render_batches.size() > 0) {
             for (auto &batch : render_batches) {
-                if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE)
-                    draw_batch(&batch, pipeline_id);
+                if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
+                    continue;
+                for (auto &mesh_batch : batch.meshes)
+                    draw_batch(&mesh_batch, pipeline_id);
             }
         }
 

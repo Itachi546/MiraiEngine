@@ -53,7 +53,7 @@
             "pass": "SHADER_PASS_PBR_FORWARD_TRANSPARENT",
             "cull-mode": "CULL_MODE_NONE",
             "depth-test": true,
-            "depth-write": false,
+            "depth-write": true,
             "blend-mode": true,
             "color-attachments-format": [
                 "B8G8R8A8_UNORM"
@@ -87,7 +87,7 @@
             "pass": "SHADER_PASS_FORWARD_UNLIT_TRANSPARENT",
             "cull-mode": "CULL_MODE_NONE",
             "depth-test": true,
-            "depth-write": false,
+            "depth-write": true,
             "blend-mode": true,
             "color-attachments-format": [
                 "B8G8R8A8_UNORM"

@@ -4,7 +4,7 @@
 
 #include "Math/Math.hpp"
 #include "Common/Hash.hpp"
-
+#include "Shader.hpp"
 namespace mirai {
 
     enum MaterialFlags {
@@ -14,6 +14,29 @@ namespace mirai {
         FLAG_ALPHA_MASK = 1 << 2,
         FLAG_DOUBLE_SIDED = 1 << 3,
         FLAG_SPECULAR_GLOSSINESS_WORKFLOW = 1 << 4,
+    };
+
+    struct ShaderKey {
+        union {
+            struct {
+                uint64_t shader_pass : 32;
+                uint64_t custom_shader_id : 32;
+            } fields;
+            uint64_t key;
+        };
+
+        ShaderKey() {
+            this->fields.shader_pass = SHADER_PASS_COUNT;
+            this->fields.custom_shader_id = 0;
+        }
+
+        bool is_valid() {
+            return this->key != UINT64_MAX;
+        }
+
+        bool operator==(const ShaderKey &other) const {
+            return this->key == other.key;
+        }
     };
 
     /**
@@ -32,11 +55,26 @@ namespace mirai {
 
         virtual bool is_transparent() const = 0;
 
+        /**
+         * ShaderID consist's of two part
+         * 1. ShaderPass enum value
+         * 2. CustomShader id
+         * ShaderPass enum is used later to retrive pipeline for default shaders whereas
+         * CustomShaderID is used for custom shader types
+         * id = shader_pass_id << 32 | custom_shader_id
+         */
+        virtual ShaderKey get_shader_key() const = 0;
+
         std::string name;
     };
 
     struct UnlitMaterial : public Material {
         UnlitMaterial(const std::string &name) : Material(name) {
+            instance_data.flags = FLAG_OPAQUE;
+            instance_data.albedo = glm::vec4(1.0f);
+            instance_data.unlit_texture_id = K_INVALID_ID;
+            instance_data.padding[0] = 0;
+            instance_data.padding[1] = 0;
         }
 
         void *get_instance_data() override {
@@ -51,6 +89,12 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
+        ShaderKey get_shader_key() const override {
+            ShaderKey shader_key;
+            shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_FORWARD_UNLIT_TRANSPARENT : SHADER_PASS_FORWARD_UNLIT;
+            return shader_key;
+        }
+
         struct UnlitProperties {
             glm::vec4 albedo;
             uint32_t unlit_texture_id;
@@ -62,6 +106,17 @@ namespace mirai {
 
     struct StandardPBRMaterial : public Material {
         StandardPBRMaterial(const std::string &name) : Material(name) {
+            instance_data.flags = FLAG_OPAQUE;
+            instance_data.albedo = glm::vec4(1.0f);
+            instance_data.emissive_factor = glm::vec4(0.0f);
+            instance_data.metallic_factor = 0.1f;
+            instance_data.roughness_factor = 0.9f;
+            instance_data.transmission = 0.0f;
+            instance_data.emissive_texture = K_INVALID_ID;
+            instance_data.albedo_texture = K_INVALID_ID;
+            instance_data.normal_texture = K_INVALID_ID;
+            instance_data.metallic_roughness_texture = K_INVALID_ID;
+            instance_data.occlusion_texture = K_INVALID_ID;
         }
 
         void *get_instance_data() override {
@@ -74,6 +129,12 @@ namespace mirai {
 
         bool is_transparent() const override {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
+        }
+
+        ShaderKey get_shader_key() const override {
+            ShaderKey shader_key;
+            shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_FORWARD_TRANSPARENT : SHADER_PASS_PBR_FORWARD;
+            return shader_key;
         }
 
         struct PBRProperties {

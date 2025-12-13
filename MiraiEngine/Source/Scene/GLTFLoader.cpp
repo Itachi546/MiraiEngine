@@ -27,7 +27,6 @@ namespace mirai {
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
         AsyncLoader *async_loader;
-        uint32_t gpu_mesh_id;
     };
 
     static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state) {
@@ -236,8 +235,8 @@ namespace mirai {
                 }
 
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
-                mesh_subset.vertex_offset = vertex_offset;
-                mesh_subset.index_offset = index_offset;
+                mesh_subset.vertex_offset = vertex_offset * sizeof(Vertex);
+                mesh_subset.index_offset = index_offset * sizeof(uint32_t);
                 mesh_subset.vertex_size = cast_u32((vertices.size() - vertex_offset) * sizeof(Vertex));
                 mesh_subset.index_size = cast_u32((indices.size() - index_offset) * sizeof(uint32_t));
                 mesh_subset.vertex_count = index_count;
@@ -308,7 +307,7 @@ namespace mirai {
         gpu_mesh.index_buffer = index_buffer;
         gpu_mesh.index_buffer_size = index_buffer_size;
         gpu_mesh.vertex_binding_set = vertex_binding_set;
-    } // namespace mirai
+    }
 
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
         const tinygltf::Node *node = &model->nodes[node_index];
@@ -530,9 +529,7 @@ namespace mirai {
         }
         async_loader.wait();
 
-        GpuMesh &mesh = load_state.scene->gpu_meshes[load_state.gpu_mesh_id];
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
-        Log::Info("vertices: ", mesh.vertices.size(), " indices: ", mesh.indices.size());
         Log::Info("meshes: ", load_state.mesh_components.size());
 
         RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));

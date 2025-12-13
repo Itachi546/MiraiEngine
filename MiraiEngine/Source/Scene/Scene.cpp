@@ -167,11 +167,11 @@ namespace mirai {
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
-                    .vertex_buffer = vertex_buffer.buffer,
-                    .index_buffer = index_buffer.buffer,
-                    .vertex_offset = subset.vertex_offset,
-                    .vertex_count = subset.vertex_size / sizeof(Vertex),
-                    .index_offset = subset.index_offset,
+                    .vertex_buffer = vertex_buffer,
+                    .index_buffer = index_buffer,
+                    .vertex_offset = subset.vertex_offset / sizeof(Vertex),
+                    .vertex_count = subset.vertex_count,
+                    .index_offset = subset.index_offset / sizeof(uint32_t),
                     .index_count = subset.index_size / sizeof(uint32_t),
                     .aabb = std::move(aabb),
                     .vertex_binding_set = gpu_mesh.vertex_binding_set,
@@ -182,7 +182,7 @@ namespace mirai {
 
             // Sort by the buffer
             std::sort(render_object_list.begin(), render_object_list.end(), [](const RenderableObjectData &lhs, const RenderableObjectData &rhs) {
-                return lhs.vertex_buffer.id < rhs.vertex_buffer.id;
+                return lhs.vertex_buffer.buffer.id < rhs.vertex_buffer.buffer.id;
             });
         }
 

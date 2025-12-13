@@ -1,26 +1,29 @@
 #pragma once
 
 #include "Graphics/RenderingDevice.hpp"
+#include "Material.hpp"
 #include <vector>
 #include <Math/Math.hpp>
 
 namespace mirai {
     class Scene;
+    class CommandBuffer;
 
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 0,
         RENDERBATCH_TYPE_TRANSPARENT,
     };
 
-    struct RenderBatch {
-        BufferID vertex_buffer;
-        BufferID index_buffer;
-        UniformSetID vertex_binding_set;
-        RenderBatchType batch_type;
+    struct MeshBatch {
+        BufferView vertex_buffer;
+        BufferView index_buffer;
 
-        // Optional Buffers
+        // These are currently populated by renderer all at once for all batches
+        // We can also move it inside this call
         BufferView transform_buffer_view;
         BufferView material_buffer_view;
+
+        UniformSetID vertex_binding_set;
 
         std::vector<uint32_t> transform_indices;
         std::vector<uint32_t> material_indices;
@@ -37,6 +40,11 @@ namespace mirai {
         }
     };
 
+    struct RenderBatch {
+        ShaderKey shader_key;
+        RenderBatchType batch_type;
+        std::vector<MeshBatch> meshes;
+    };
     struct DrawBatchGenerator {
         static void CreateBatch(const Scene *scene, const Frustum *frustum, std::vector<RenderBatch> &render_batches, bool only_opaque);
     };

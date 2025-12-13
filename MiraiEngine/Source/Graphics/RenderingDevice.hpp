@@ -416,6 +416,10 @@ namespace mirai {
         BufferID buffer;
         uint32_t offset;
         uint32_t size;
+
+        bool operator==(const BufferView &other) const {
+            return this->buffer == other.buffer && this->size == other.size && this->offset == other.offset;
+        }
     };
     struct BufferDescription {
         uint32_t size;
