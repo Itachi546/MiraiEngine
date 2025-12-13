@@ -9,7 +9,7 @@ namespace mirai {
         Instance = this;
     }
 
-    PipelineID PipelineHashMap::add_or_get_graphics_pipeline(const PipelineState &pipeline_state, const std::vector<std::string> &shader_files, const std::string &name) {
+    PipelineID PipelineHashMap::add_or_get_graphics_pipeline(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files, const std::string &name) {
         uint64_t pipeline_key = pipeline_state.get_hash();
         auto found = pipeline_map.find(pipeline_key);
         if (found != pipeline_map.end())
@@ -44,17 +44,17 @@ namespace mirai {
         DepthState ds = DepthState::create();
         std::vector<Format> color_attachment_formats;
 
-        if (pipeline_state.color_attachment_count > 0) {
+        if (attachment_info.color_attachments_format.size() > 0) {
             color_attachment_formats.insert(color_attachment_formats.end(),
-                                            pipeline_state.color_attachment_formats,
-                                            pipeline_state.color_attachment_formats + pipeline_state.color_attachment_count);
+                                            attachment_info.color_attachments_format.begin(),
+                                            attachment_info.color_attachments_format.end());
         }
 
-        if (pipeline_state.has_depth_attachment) {
+        if (attachment_info.has_depth_attachment) {
             ds.enable_depth_write = render_state.fields.depth_write;
             ds.enable_depth_test = render_state.fields.depth_test;
             ds.compare_op = CompareOp(render_state.fields.depth_op);
-            pipeline_description.depth_attachment_format = pipeline_state.depth_attachment_format;
+            pipeline_description.depth_attachment_format = attachment_info.depth_attachment_format;
         }
 
         pipeline_description.depth_state = &ds;

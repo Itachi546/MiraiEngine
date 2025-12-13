@@ -32,19 +32,18 @@ namespace mirai {
             pipeline_state.render_state.fields.polygon_mode = get_polygon_mode(render_state.value("polygon-mode", "POLYGON_MODE_FILL"));
             pipeline_state.render_state.fields.pass_mode = get_pass_mode(render_state.value("pass", ""));
 
-            pipeline_state.color_attachment_count = 0;
-            pipeline_state.has_depth_attachment = false;
+            PipelineAttachmentInfo attachment_info{};
             if (render_state["color-attachments-format"] != nullptr) {
                 std::vector<std::string> color_attachments_format = render_state["color-attachments-format"].get<std::vector<std::string>>();
-                pipeline_state.color_attachment_count = cast_u32(color_attachments_format.size());
+                attachment_info.color_attachments_format.resize(color_attachments_format.size());
                 for (uint32_t f = 0; f < color_attachments_format.size(); ++f)
-                    pipeline_state.color_attachment_formats[f] = get_texture_format(color_attachments_format[f]);
+                    attachment_info.color_attachments_format[f] = get_texture_format(color_attachments_format[f]);
             }
             if (render_state["depth-attachment-format"] != nullptr) {
-                pipeline_state.has_depth_attachment = true;
-                pipeline_state.depth_attachment_format = get_texture_format(render_state["depth-attachment-format"]);
+                attachment_info.has_depth_attachment = true;
+                attachment_info.depth_attachment_format = get_texture_format(render_state["depth-attachment-format"]);
             }
-            PipelineHashMap::get()->add_or_get_graphics_pipeline(pipeline_state, shaders_path, name);
+            PipelineHashMap::get()->add_or_get_graphics_pipeline(pipeline_state, attachment_info, shaders_path, name);
             Log::Debug("Compiled ", name, " Hash: ", pipeline_state.get_hash(), " RenderState: ", pipeline_state.render_state.hash);
         }
     }

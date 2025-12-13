@@ -18,11 +18,14 @@ namespace mirai {
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         PipelineState pipeline_state = {};
-        pipeline_state.color_attachment_count = 1;
-        pipeline_state.color_attachment_formats[0] = FORMAT_B8G8R8A8_UNORM;
         pipeline_state.custom_shader_id = utils::djb2_hash_string("swapchain-copy-shader");
+        PipelineAttachmentInfo attachment_info = {
+            .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+            .has_depth_attachment = false,
+        };
+
         shader = std::make_unique<MaterialShader>("swapchain-copy-shader");
-        shader->create_from_file(pipeline_state, {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"});
+        shader->create_from_file(pipeline_state, attachment_info, {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"});
         if (!shader->pipeline_id.is_valid()) {
             Log::Fatal("Failed to create swapchain copy pipeline");
         }

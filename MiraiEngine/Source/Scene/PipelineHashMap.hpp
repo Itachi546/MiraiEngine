@@ -40,11 +40,6 @@ namespace mirai {
             uint64_t hash;
         } render_state;
         uint32_t custom_shader_id = 0;
-        // Can have maximum upto 16 attachment format
-        Format color_attachment_formats[16];
-        uint8_t color_attachment_count;
-        bool has_depth_attachment;
-        Format depth_attachment_format;
 
         PipelineState() {
             render_state.fields.cull_mode = CULL_MODE_BACK;
@@ -57,8 +52,6 @@ namespace mirai {
             render_state.fields.topology = TOPOLOGY_TRIANGLE_LIST;
             render_state.fields.polygon_mode = POLYGON_MODE_FILL;
             render_state.fields._reserved = 0;
-            color_attachment_count = 0;
-            has_depth_attachment = false;
         }
 
         uint64_t get_hash() const {
@@ -66,6 +59,12 @@ namespace mirai {
             utils::hash_combine(hash, render_state.hash);
             return hash;
         }
+    };
+
+    struct PipelineAttachmentInfo {
+        std::vector<Format> color_attachments_format;
+        bool has_depth_attachment = false;
+        Format depth_attachment_format;
     };
 
     class PipelineHashMap {
@@ -77,7 +76,7 @@ namespace mirai {
 
         ~PipelineHashMap();
 
-        PipelineID add_or_get_graphics_pipeline(const PipelineState &pipeline_state, const std::vector<std::string> &shader_files, const std::string &name);
+        PipelineID add_or_get_graphics_pipeline(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files, const std::string &name);
         PipelineID add_or_get_compute_pipeline(const std::string &shader_files, const std::string &name);
 
         PipelineID get_from_state_hash(uint64_t hash);

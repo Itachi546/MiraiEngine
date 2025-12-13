@@ -25,7 +25,7 @@ namespace mirai {
 
     struct MaterialShader : public Shader {
         MaterialShader(const std::string &name) : Shader(name) {}
-        void create_from_file(const PipelineState &pipeline_state, const std::vector<std::string> &shader_files);
+        void create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo& attachment_info, const std::vector<std::string> &shader_files);
     };
 
     struct ComputeShader : public Shader {
