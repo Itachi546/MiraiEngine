@@ -2,7 +2,7 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -25,8 +25,8 @@ namespace mirai {
         miProfiler::Initialize();
 
         // Preload shaders
-        pipeline_hashmap = std::make_unique<PipelineHashMap>();
-        preload_shaders(pipeline_hashmap.get());
+        shader_hashmap = std::make_unique<ShaderHashMap>();
+        preload_shaders(shader_hashmap.get());
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }
@@ -303,7 +303,7 @@ namespace mirai {
     Renderer::~Renderer() {
         BufferID buffers[] = {per_frame_staging_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_uniform_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
-        pipeline_hashmap->destroy();
+        shader_hashmap->destroy();
         miProfiler::Destroy();
         scene.reset();
     }

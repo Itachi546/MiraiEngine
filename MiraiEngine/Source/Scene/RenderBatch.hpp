@@ -41,7 +41,7 @@ namespace mirai {
     };
 
     struct RenderBatch {
-        ShaderKey shader_key;
+        ShaderPassKey shader_key;
         RenderBatchType batch_type;
         std::vector<MeshBatch> meshes;
     };

@@ -1,12 +1,12 @@
 #include "PipelineLoader.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Engine/Log.hpp"
 #include "Graphics/StringEnumLookup.hpp"
 #include <json.hpp>
 #include <fstream>
 
 namespace mirai {
-    void preload_shaders(PipelineHashMap *pipeline_hashmap) {
+    void preload_shaders(ShaderHashMap *pipeline_hashmap) {
         using json = nlohmann::json;
         std::ifstream json_file("Assets/default-pipelines.json");
         if (!json_file) {
@@ -43,7 +43,8 @@ namespace mirai {
                 attachment_info.has_depth_attachment = true;
                 attachment_info.depth_attachment_format = get_texture_format(render_state["depth-attachment-format"]);
             }
-            PipelineHashMap::get()->add_or_get_graphics_pipeline(pipeline_state, attachment_info, shaders_path, name);
+
+            Shader::create_from_file(pipeline_state, attachment_info, shaders_path, name);
             Log::Debug("Compiled ", name, " Hash: ", pipeline_state.get_hash(), " RenderState: ", pipeline_state.render_state.hash);
         }
     }

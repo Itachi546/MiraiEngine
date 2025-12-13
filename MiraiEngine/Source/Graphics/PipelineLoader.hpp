@@ -1,6 +1,6 @@
 #pragma once
 
 namespace mirai {
-    class PipelineHashMap;
-    void preload_shaders(PipelineHashMap *pipeline_hashmap);
+    class ShaderHashMap;
+    void preload_shaders(ShaderHashMap *pipeline_hashmap);
 } // namespace mirai

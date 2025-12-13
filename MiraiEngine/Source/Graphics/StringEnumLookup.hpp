@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Graphics/RenderingDevice.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/Shader.hpp"
 
 namespace mirai {
     Format get_texture_format(const std::string &inputFormat);

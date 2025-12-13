@@ -6,7 +6,7 @@
 namespace mirai {
     struct FrameGraphNode;
     class FrameGraph;
-    struct MaterialShader;
+    struct Shader;
 
     class SwapchainCopyPass : public FrameGraphRenderer {
       public:
@@ -29,6 +29,6 @@ namespace mirai {
       private:
         UniformSetID uniform_set;
         bool enable_aa;
-        std::unique_ptr<MaterialShader> shader;
+        Shader *shader;
     };
 } // namespace mirai

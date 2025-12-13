@@ -7,11 +7,11 @@ namespace mirai {
 
     struct CachedBatchInfo {
         RenderBatchType batch_type;
-        ShaderKey shader_key;
+        ShaderPassKey shader_key;
         BufferView vertex_buffer;
     };
 
-    uint32_t FindOrCreateShaderBatch(ShaderKey shader_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
+    uint32_t FindOrCreateShaderBatch(ShaderPassKey shader_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
         for (uint32_t i = 0; i < render_batches.size(); ++i) {
             if (shader_key == render_batches[i].shader_key)
                 return i;
@@ -63,7 +63,7 @@ namespace mirai {
             }
 
             // Check Shader Batch
-            ShaderKey shader_key = material->get_shader_key();
+            ShaderPassKey shader_key = material->get_shader_key();
             if (shader_key != cached_batch_info.shader_key) {
                 // We have a different batch
                 shader_batch = FindOrCreateShaderBatch(shader_key, render_batch_type, render_batches);

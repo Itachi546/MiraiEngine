@@ -1,5 +1,5 @@
 #include "SwapchainCopyPass.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
@@ -24,9 +24,8 @@ namespace mirai {
             .has_depth_attachment = false,
         };
 
-        shader = std::make_unique<MaterialShader>("swapchain-copy-shader");
-        shader->create_from_file(pipeline_state, attachment_info, {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"});
-        if (!shader->pipeline_id.is_valid()) {
+        shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/fullscreen.vert.spv", "SPIRV/swapchain-copy.frag.spv"}, "swapchain-copy-shader");
+        if (shader == nullptr) {
             Log::Fatal("Failed to create swapchain copy pipeline");
         }
 

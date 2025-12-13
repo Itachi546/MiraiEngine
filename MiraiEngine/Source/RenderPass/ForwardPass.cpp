@@ -1,7 +1,7 @@
 #include "ForwardPass.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
@@ -90,16 +90,16 @@ namespace mirai {
 
                 pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
                 pipeline_state.render_state.fields.pass_mode = batch.shader_key.fields.shader_pass;
-                PipelineID pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
-                if (!pipeline_id.is_valid()) {
+                Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
+                if (shader == nullptr) {
                     Log::Fatal("Failed to load forward transparent pipeline");
                 }
 
-                command_buffer->bind_pipeline(pipeline_id);
-                command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
+                shader->bind(command_buffer);
+                command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
 
                 for (auto &mesh_batch : batch.meshes) {
-                    draw_batch(&mesh_batch, pipeline_id);
+                    draw_batch(&mesh_batch, shader->pipeline_id);
                 }
             }
 
@@ -113,14 +113,14 @@ namespace mirai {
 
                 pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
                 pipeline_state.render_state.fields.pass_mode = batch.shader_key.fields.shader_pass;
-                PipelineID pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
-                if (!pipeline_id.is_valid()) {
+                Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
+                if (shader == nullptr) {
                     Log::Fatal("Failed to load forward transparent pipeline");
                 }
-                command_buffer->bind_pipeline(pipeline_id);
-                command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
+                shader->bind(command_buffer);
+                command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
                 for (auto &mesh_batch : batch.meshes) {
-                    draw_batch(&mesh_batch, pipeline_id);
+                    draw_batch(&mesh_batch, shader->pipeline_id);
                 }
             }
         }

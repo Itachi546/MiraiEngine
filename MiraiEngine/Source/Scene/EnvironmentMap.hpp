@@ -4,7 +4,7 @@
 #include "Scene/Shader.hpp"
 
 namespace mirai {
-    struct ComputeShader;
+    struct Shader;
 
     class EnvironmentMap {
       public:
@@ -64,12 +64,10 @@ namespace mirai {
         uint32_t brdf_texture_size = 512;
         uint32_t prefilter_num_mip_levels = 6;
 
-        ComputeShader generate_cubemap_shader, convolute_shader, prefilter_shader, integrate_brdf_shader;
-
-        void generate_cubemap(CommandBuffer *command_buffer, ComputeShader &cubemap_shader);
-        void convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader &convolute_shader);
-        void convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader &prefilter_shader);
-        void integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader &integrate_brdf_shader);
+        void generate_cubemap(CommandBuffer *command_buffer, Shader *cubemap_shader);
+        void convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader);
+        void convolute_specular_cubemap(CommandBuffer *command_buffer, Shader *prefilter_shader);
+        void integrate_brdf_texture(CommandBuffer *command_buffer, Shader *integrate_brdf_shader);
 
         void initialize_textures();
         void create_pbr_env_map();

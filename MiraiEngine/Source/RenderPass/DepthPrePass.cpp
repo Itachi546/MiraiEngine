@@ -1,6 +1,6 @@
 #include "DepthPrePass.hpp"
 #include "Scene/Scene.hpp"
-#include "Scene/PipelineHashMap.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
@@ -34,8 +34,9 @@ namespace mirai {
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_DEPTH_PREPASS;
-        pipeline_id = PipelineHashMap::get()->get_from_state_hash(pipeline_state.get_hash());
-        if (!pipeline_id.is_valid()) {
+
+        shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
+        if (shader == nullptr) {
             Log::Fatal("Failed to load pipeline for depth-prepass");
         }
     }
@@ -81,8 +82,8 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        command_buffer->bind_pipeline(pipeline_id);
-        command_buffer->set_uniform_sets(pipeline_id, &per_frame_uniform_set, 1);
+        shader->bind(command_buffer);
+        command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
@@ -91,7 +92,7 @@ namespace mirai {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
                     continue;
                 for (auto &mesh_batch : batch.meshes)
-                    draw_batch(&mesh_batch, pipeline_id);
+                    draw_batch(&mesh_batch, shader->pipeline_id);
             }
         }
 

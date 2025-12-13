@@ -10,28 +10,11 @@
 
 namespace mirai {
     class CommandBuffer;
-    class PipelineHashMap;
+    class ShaderHashMap;
     class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
-    /*
-    enum RenderPassType {
-        RENDERPASS_DEPTH = 0,
-        RENDERPASS_FORWARD,
-        RENDERPASS_DEFERRED,
-        RENDERPASS_TRANSPARENT,
-        RENDERPASS_MAX
-    };
-
-    union MaterialVariant {
-        struct {
-            uint32_t renderpass : 8;
-            uint32_t blend_mode : 4;
-            uint32_t cull_mode : 2;
-        } bits;
-        uint32_t value;
-    };
-    */
+   
     struct GpuBufferSubAllocation {
         BufferID buffer;
         uint32_t offset;
@@ -112,7 +95,7 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
-        std::unique_ptr<PipelineHashMap> pipeline_hashmap;
+        std::unique_ptr<ShaderHashMap> shader_hashmap;
 
         void copy_buffers(CommandBuffer *cb);
 

@@ -16,7 +16,7 @@ namespace mirai {
         FLAG_SPECULAR_GLOSSINESS_WORKFLOW = 1 << 4,
     };
 
-    struct ShaderKey {
+    struct ShaderPassKey {
         union {
             struct {
                 uint64_t shader_pass : 32;
@@ -25,7 +25,7 @@ namespace mirai {
             uint64_t key;
         };
 
-        ShaderKey() {
+        ShaderPassKey() {
             this->fields.shader_pass = SHADER_PASS_COUNT;
             this->fields.custom_shader_id = 0;
         }
@@ -34,7 +34,7 @@ namespace mirai {
             return this->key != UINT64_MAX;
         }
 
-        bool operator==(const ShaderKey &other) const {
+        bool operator==(const ShaderPassKey &other) const {
             return this->key == other.key;
         }
     };
@@ -63,7 +63,7 @@ namespace mirai {
          * CustomShaderID is used for custom shader types
          * id = shader_pass_id << 32 | custom_shader_id
          */
-        virtual ShaderKey get_shader_key() const = 0;
+        virtual ShaderPassKey get_shader_key() const = 0;
 
         std::string name;
     };
@@ -89,8 +89,8 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
-        ShaderKey get_shader_key() const override {
-            ShaderKey shader_key;
+        ShaderPassKey get_shader_key() const override {
+            ShaderPassKey shader_key;
             shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_FORWARD_UNLIT_TRANSPARENT : SHADER_PASS_FORWARD_UNLIT;
             return shader_key;
         }
@@ -131,8 +131,8 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
-        ShaderKey get_shader_key() const override {
-            ShaderKey shader_key;
+        ShaderPassKey get_shader_key() const override {
+            ShaderPassKey shader_key;
             shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_FORWARD_TRANSPARENT : SHADER_PASS_PBR_FORWARD;
             return shader_key;
         }
@@ -155,6 +155,41 @@ namespace mirai {
 
         } instance_data;
         static_assert(sizeof(PBRProperties) % 16 == 0);
+    };
+
+    struct ShaderMaterial : public Material {
+        ShaderMaterial(const std::string &name, uint32_t shader_id) : Material(name), shader_id(shader_id) {
+        }
+
+        ShaderPassKey get_shader_key() const override {
+            ShaderPassKey shader_key;
+            shader_key.fields.custom_shader_id = shader_id;
+            return shader_key;
+        }
+
+        void set_instance_data(uint8_t *data, uint32_t size) {
+            instance_data.clear();
+            const uint32_t alignment = 16;
+            uint32_t allocation_size = (size + alignment - 1) & ~(alignment - 1);
+            instance_data.resize(allocation_size);
+            std::memcpy(instance_data.data(), data, size);
+        }
+
+        void *get_instance_data() override {
+            return instance_data.data();
+        }
+
+        uint32_t get_instance_data_size() const override {
+            return cast_u32(instance_data.size());
+        }
+
+        bool is_transparent() const {
+            return false;
+        }
+
+      private:
+        uint32_t shader_id;
+        std::vector<uint8_t> instance_data;
     };
 
 } // namespace mirai
