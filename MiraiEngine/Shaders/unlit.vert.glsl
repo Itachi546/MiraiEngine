@@ -1,7 +1,6 @@
 #version 460
 
 layout(location = 0) out VS_OUT {
-    vec3 normal;
     vec2 uv;
     flat uint mat_id;
 }
@@ -38,4 +37,7 @@ void main() {
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
     gl_Position = per_frame_data.VP * world_pos;
+
+    vs_out.uv = vec2(vertex.tu, vertex.tv);
+    vs_out.mat_id = material_id;
 }

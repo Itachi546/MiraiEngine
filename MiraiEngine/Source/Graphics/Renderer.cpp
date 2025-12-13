@@ -189,7 +189,8 @@ namespace mirai {
         uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
         glm::mat4 *transform_array = reinterpret_cast<glm::mat4 *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
 
-        uint32_t material_size_bytes = total_entities * sizeof(StandardPBRMaterial::PBRProperties);
+        uint32_t instance_data_size = scene->materials[0]->get_instance_data_size();
+        uint32_t material_size_bytes = total_entities * instance_data_size;
         uint32_t material_buffer_offset = allocate_staging_buffer(material_size_bytes, current_frame);
         uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
         // Copy the transform/material data in staging buffer
@@ -201,17 +202,15 @@ namespace mirai {
             batch.transform_buffer_view.offset = offset * sizeof(glm::mat4);
             batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
-            uint32_t material_batch_size = sizeof(StandardPBRMaterial::PBRProperties) * num_entity;
             batch.material_buffer_view.buffer = material_buffer;
-            batch.material_buffer_view.offset = offset * sizeof(StandardPBRMaterial::PBRProperties);
-            batch.material_buffer_view.size = material_batch_size;
+            batch.material_buffer_view.offset = offset * instance_data_size;
+            batch.material_buffer_view.size = num_entity * instance_data_size;
 
             for (uint32_t e = 0; e < num_entity; ++e) {
                 TransformComponent &component = scene->component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
                 transform_array[offset + e] = component.world_transform;
 
                 auto &material = scene->materials[batch.material_indices[e]];
-                uint32_t instance_data_size = material->get_instance_data_size();
                 std::memcpy(material_array, material->get_instance_data(), instance_data_size);
                 material_array += instance_data_size;
             }
