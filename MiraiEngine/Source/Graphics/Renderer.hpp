@@ -14,7 +14,7 @@ namespace mirai {
     class TextureCache;
     class FrameGraph;
     class FrameGraphBuilder;
-   
+
     struct GpuBufferSubAllocation {
         BufferID buffer;
         uint32_t offset;
@@ -75,19 +75,17 @@ namespace mirai {
         ~Renderer();
 
         bool enable_rt_shadow = false;
-        BufferID transform_buffer;
-        BufferID material_buffer;
+
         // Uniform Buffer
-        BufferID cascade_uniform_buffer;
-        BufferID per_frame_uniform_buffer;
+        BufferView cascade_uniform_buffer;
+        BufferView per_frame_uniform_buffer;
 
         // Global Geometry Buffer
         const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        UniformSetID cascade_uniform_set;
-
+        UniformSetID per_frame_uniform_set{K_INVALID_ID};
       private:
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
@@ -98,6 +96,7 @@ namespace mirai {
         std::unique_ptr<ShaderHashMap> shader_hashmap;
 
         void copy_buffers(CommandBuffer *cb);
+        void update_uniform_set(CommandBuffer* cb);
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;

@@ -13,23 +13,6 @@ namespace mirai {
         // Mesh Data
         transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
 
-        // Initialize PerFrame uniform set
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
-
-        UniformBinding binding = {
-            .resource_id = renderer->per_frame_uniform_buffer,
-            .buffer_info = {
-                .offset = 0,
-                .range = sizeof(Scene::FrameData),
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
-
         PipelineState pipeline_state;
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
@@ -76,6 +59,23 @@ namespace mirai {
             device->destroy_uniform_sets(&transform_set, 1);
         };
 
+        // Create PerFrame uniform set
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
+
+        UniformBinding binding = {
+            .resource_id = renderer->per_frame_uniform_buffer.buffer,
+            .buffer_info = {
+                .offset = renderer->per_frame_uniform_buffer.offset,
+                .range = renderer->per_frame_uniform_buffer.size,
+            },
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
+
         ScopedGpuProfiling(command_buffer, "DepthPrePass");
 
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);
@@ -99,6 +99,7 @@ namespace mirai {
         command_buffer->end_render_pass();
 
         device->end_debug_utils_label(command_buffer);
+        device->destroy_uniform_sets(&per_frame_uniform_set, 1);
     }
 
     DepthPrePass::~DepthPrePass() {

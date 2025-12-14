@@ -14,6 +14,5 @@ namespace mirai {
 
       private:
         UniformLayout mesh_instance_layouts[2];
-        UniformSetID per_frame_uniform_set;
     };
 } // namespace mirai

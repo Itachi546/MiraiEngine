@@ -32,8 +32,6 @@ namespace mirai {
     }
 
     void Renderer::initialize() {
-        // this->scene->on_initialize();
-
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
 
@@ -76,7 +74,7 @@ namespace mirai {
         uint32_t total_frames = device->get_swapchain_image_count();
         BufferDescription buffer_desc = {
             .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
-            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
@@ -85,29 +83,6 @@ namespace mirai {
         per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
         per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
 
-        buffer_desc.size = k_transform_buffer_size;
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
-        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
-        // Allocate transform buffer
-        transform_buffer = device->create_buffer(&buffer_desc, "transform_buffer");
-        Log::Info("Total Transform Buffer Memory: ", utils::bytes_to_mb(k_transform_buffer_size), " mb");
-
-        // Allocate material buffer
-        buffer_desc.size = k_material_buffer_size;
-        material_buffer = device->create_buffer(&buffer_desc, "material_buffer");
-        Log::Info("Total Material Buffer Memory: ", utils::bytes_to_mb(k_material_buffer_size), " mb");
-
-        // Initialize PerFrame Resources
-        buffer_desc.size = sizeof(Scene::FrameData);
-        buffer_desc.usage_flags = BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
-        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
-        per_frame_uniform_buffer = device->create_buffer(&buffer_desc, "per_frame_data_buffer");
-
-        // Initialize cascade info
-        buffer_desc.size = sizeof(DirectionalLightCascadeInfo);
-        cascade_uniform_buffer = device->create_buffer(&buffer_desc, "cascade_uniform_buffer");
-
-        // Initialize global goemetry buffer allocator
         buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
         buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
         buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -118,66 +93,31 @@ namespace mirai {
         buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
         BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
         index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
-
-        // Initialize cascade uniform set
-        if (scene->directional_light_info.enable_shadow) {
-            UniformLayout cascade_buffer_layout = {
-                .binding = 0,
-                .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-                .shader_stage = SHADER_STAGE_VERTEX,
-            };
-            cascade_uniform_set = device->create_uniform_set(&cascade_buffer_layout, 1, 0, "cascade_uniform_set");
-            UniformBinding cascade_uniform_binding = {.resource_id = cascade_uniform_buffer};
-            device->update_uniform_set(cascade_uniform_set, &cascade_uniform_binding, 1);
-        }
     }
 
     void Renderer::copy_buffers(CommandBuffer *cb) {
+        // @TODO this is not correct and shouldn't be done
         ScopedCpuProfiling("Renderer::Copy Buffers");
         // Reset staging buffer offset
         per_frame_staging_buffer_offset = 0;
-
-        std::vector<BufferBarrierInfo> barrier_infos(4);
-        for (uint32_t i = 0; i < barrier_infos.size(); ++i) {
-            barrier_infos[i].offset = 0;
-            barrier_infos[i].size = UINT64_MAX;
-            barrier_infos[i].src_stage_mask = PIPELINE_STAGE_ALL_COMMANDS_BIT;
-            barrier_infos[i].src_access_mask = ACCESS_FLAG_SHADER_READ;
-            barrier_infos[i].dst_stage_mask = PIPELINE_STAGE_TRANSFER_BIT;
-            barrier_infos[i].dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE;
-        }
-        barrier_infos[0].buffer_id = per_frame_uniform_buffer;
-        barrier_infos[1].buffer_id = cascade_uniform_buffer;
-        barrier_infos[2].buffer_id = transform_buffer;
-        barrier_infos[3].buffer_id = material_buffer;
-
-        // Prepare the buffer for copy
-        cb->prepare_buffer(barrier_infos.data(), cast_u32(barrier_infos.size()));
+        uint32_t current_frame = device->get_current_frame();
 
         // Copy per frame uniform data
-        uint32_t current_frame = device->get_current_frame();
-        uint32_t staging_buffer_offset = allocate_staging_buffer(sizeof(scene->per_frame_data), current_frame);
-        uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + staging_buffer_offset;
+        per_frame_uniform_buffer.offset = allocate_staging_buffer(sizeof(scene->per_frame_data), current_frame);
+        per_frame_uniform_buffer.size = sizeof(Scene::FrameData);
+        per_frame_uniform_buffer.buffer = per_frame_staging_buffer;
 
+        uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_uniform_buffer.offset;
         std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));
-        cb->copy_buffer(per_frame_uniform_buffer, per_frame_staging_buffer, {
-                                                                                .src_offset = staging_buffer_offset,
-                                                                                .dst_offset = 0,
-                                                                                .size = sizeof(scene->per_frame_data),
-                                                                            });
 
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
-        staging_buffer_offset = allocate_staging_buffer(sizeof(cascade_info), current_frame);
-        staging_buffer_ptr = per_frame_staging_buffer_ptr + staging_buffer_offset;
+        cascade_uniform_buffer.offset = allocate_staging_buffer(sizeof(cascade_info), current_frame);
+        cascade_uniform_buffer.buffer = per_frame_staging_buffer;
+        cascade_uniform_buffer.size = sizeof(cascade_info);
+        staging_buffer_ptr = per_frame_staging_buffer_ptr + cascade_uniform_buffer.offset;
 
         // Copy cascade info
         std::memcpy(staging_buffer_ptr, &cascade_info, sizeof(cascade_info));
-        cb->copy_buffer(cascade_uniform_buffer, per_frame_staging_buffer, {
-                                                                              .src_offset = staging_buffer_offset,
-                                                                              .dst_offset = 0,
-                                                                              .size = sizeof(cascade_info),
-                                                                          });
-
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
         uint32_t material_size_bytes = 0;
@@ -188,7 +128,6 @@ namespace mirai {
                 material_size_bytes += scene->materials[mesh_batch.material_indices[0]]->get_instance_data_size() * num_entity;
             }
         }
-        // @TODO do it in parallel
         // Allocate memory in staging buffer
         uint32_t transform_size_bytes = total_entities * sizeof(glm::mat4);
         uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
@@ -198,17 +137,17 @@ namespace mirai {
         uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
         // Copy the transform/material data in staging buffer
-        uint32_t transform_offset_bytes = 0;
-        uint32_t material_offset_bytes = 0;
+        uint32_t transform_offset_bytes = transform_buffer_offset;
+        uint32_t material_offset_bytes = material_buffer_offset;
         for (auto &render_batch : scene->main_render_batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.transform_indices.size());
-                batch.transform_buffer_view.buffer = transform_buffer;
+                batch.transform_buffer_view.buffer = per_frame_staging_buffer;
                 batch.transform_buffer_view.offset = transform_offset_bytes;
                 batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
                 uint32_t instance_data_size = scene->materials[batch.material_indices[0]]->get_instance_data_size();
-                batch.material_buffer_view.buffer = material_buffer;
+                batch.material_buffer_view.buffer = per_frame_staging_buffer;
                 batch.material_buffer_view.offset = material_offset_bytes;
                 batch.material_buffer_view.size = num_entity * instance_data_size;
 
@@ -225,31 +164,29 @@ namespace mirai {
                 material_offset_bytes += num_entity * instance_data_size;
             }
         }
-        if (transform_size_bytes > 0) {
-            cb->copy_buffer(transform_buffer, per_frame_staging_buffer, {
-                                                                            .src_offset = transform_buffer_offset,
-                                                                            .dst_offset = 0,
-                                                                            .size = transform_size_bytes,
-                                                                        });
+    }
+
+    void Renderer::update_uniform_set(CommandBuffer *command_buffer) {
+        if (per_frame_uniform_set.is_valid()) {
+            device->destroy_uniform_sets(&per_frame_uniform_set, 1);
         }
 
-        if (material_size_bytes > 0) {
-            cb->copy_buffer(material_buffer, per_frame_staging_buffer, {
-                                                                           .src_offset = material_buffer_offset,
-                                                                           .dst_offset = 0,
-                                                                           .size = material_size_bytes,
-                                                                       });
-        }
+        // Initialize PerFrame uniform set
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
+        };
+        per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
 
-        // Prepare the buffer for shader read
-        for (uint32_t i = 0; i < barrier_infos.size(); ++i) {
-            barrier_infos[i].src_stage_mask = PIPELINE_STAGE_TRANSFER_BIT;
-            barrier_infos[i].src_access_mask = ACCESS_FLAG_TRANSFER_WRITE;
-            barrier_infos[i].dst_stage_mask = PIPELINE_STAGE_ALL_COMMANDS_BIT;
-            barrier_infos[i].dst_access_mask = ACCESS_FLAG_SHADER_READ;
-        }
-
-        cb->prepare_buffer(barrier_infos.data(), cast_u32(barrier_infos.size()));
+        UniformBinding binding = {
+            .resource_id = per_frame_uniform_buffer.buffer,
+            .buffer_info = {
+                .offset = per_frame_uniform_buffer.offset,
+                .range = per_frame_uniform_buffer.size,
+            },
+        };
+        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
     }
 
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame) {
@@ -291,6 +228,8 @@ namespace mirai {
             // Copy per frame data from staging buffer to gpu uniform buffer
             copy_buffers(cb);
 
+            update_uniform_set(cb);
+
             frame_graph->render(cb, this);
 
             device->queue_command_buffer(cb);
@@ -301,7 +240,7 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
-        BufferID buffers[] = {per_frame_staging_buffer, transform_buffer, material_buffer, cascade_uniform_buffer, per_frame_uniform_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
+        BufferID buffers[] = {per_frame_staging_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         shader_hashmap->destroy();
         miProfiler::Destroy();

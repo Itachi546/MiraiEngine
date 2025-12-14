@@ -15,23 +15,6 @@ namespace mirai {
         // Mesh Instance Data (Transform/Material)
         mesh_instance_layouts[0] = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
         mesh_instance_layouts[1] = {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT};
-
-        // Initialize PerFrame uniform set
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
-        };
-        per_frame_uniform_set = device->create_uniform_set(&layout, 1, 0, "per_frame_uniform_set");
-
-        UniformBinding binding = {
-            .resource_id = renderer->per_frame_uniform_buffer,
-            .buffer_info = {
-                .offset = 0,
-                .range = sizeof(Scene::FrameData),
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -42,7 +25,7 @@ namespace mirai {
             if (batch->transform_indices.size() == 0)
                 return;
 
-            // Set Per Frame Data
+            // Set Per Instance Data
             uint32_t instance_data[] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
 
@@ -96,7 +79,7 @@ namespace mirai {
                 }
 
                 shader->bind(command_buffer);
-                command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
+                command_buffer->set_uniform_sets(shader->pipeline_id, &renderer->per_frame_uniform_set, 1);
 
                 for (auto &mesh_batch : batch.meshes) {
                     draw_batch(&mesh_batch, shader->pipeline_id);
@@ -118,7 +101,7 @@ namespace mirai {
                     Log::Fatal("Failed to load forward transparent pipeline");
                 }
                 shader->bind(command_buffer);
-                command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
+                command_buffer->set_uniform_sets(shader->pipeline_id, &renderer->per_frame_uniform_set, 1);
                 for (auto &mesh_batch : batch.meshes) {
                     draw_batch(&mesh_batch, shader->pipeline_id);
                 }
