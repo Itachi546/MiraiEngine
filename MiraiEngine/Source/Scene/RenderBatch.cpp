@@ -49,11 +49,14 @@ namespace mirai {
             const Material *material = scene->materials[object.material_index].get();
 
             // Check if the AABB is visible or not in current frustum
-            TransformComponent *transform = scene->component_manager->get_component<TransformComponent>(object.entity);
-            AABB aabb = object.aabb;
-            aabb.transform(transform->world_transform);
-            if (!frustum->intersect(aabb))
-                continue;
+            bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
+            if (!disable_frustum_culling) {
+                TransformComponent *transform = scene->component_manager->get_component<TransformComponent>(object.entity);
+                AABB aabb = object.aabb;
+                aabb.transform(transform->world_transform);
+                if (!frustum->intersect(aabb))
+                    continue;
+            }
 
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
             if (material->is_transparent()) {

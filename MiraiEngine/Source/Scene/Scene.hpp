@@ -34,6 +34,7 @@ namespace mirai {
     struct RenderableObjectData {
         Entity entity;
         uint32_t material_index;
+        uint32_t render_flags;
 
         BufferView vertex_buffer;
         BufferView index_buffer;

@@ -56,7 +56,8 @@ namespace mirai {
             CAST_SHADOW = 1 << 2,
             RECEIVE_SHADOW = 1 << 3,
             DEPTH_TEST = 1 << 4,
-            DEPTH_WRITE = 1 << 5
+            DEPTH_WRITE = 1 << 5,
+            DISABLE_FRUSTUM_CULLING = 1 << 6,
         };
 
         uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;

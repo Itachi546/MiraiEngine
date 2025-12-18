@@ -167,6 +167,7 @@ namespace mirai {
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
+                    .render_flags = mesh_component._flags,
                     .vertex_buffer = vertex_buffer,
                     .index_buffer = index_buffer,
                     .vertex_offset = subset.vertex_offset / sizeof(Vertex),
