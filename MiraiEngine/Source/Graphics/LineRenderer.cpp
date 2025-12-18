@@ -1,9 +1,8 @@
-/*
 #include "LineRenderer.hpp"
 
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
+#include "Scene/Shader.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include <vector>
 
 namespace mirai {
@@ -12,6 +11,10 @@ namespace mirai {
     LineRenderer::LineRenderer() {
         ASSERT(Instance == nullptr);
         Instance = this;
+        /**
+         * @TODO memory should be allocated with frame in flight
+         * in consideration
+         */
         BufferDescription buffer_desc = {
             .size = cast_u32(K_MAX_LINE_COUNT * sizeof(Line)),
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -22,7 +25,13 @@ namespace mirai {
         buffer = device->create_buffer(&buffer_desc, "line_vertex_buffer");
         line_array = (Line *)device->map_buffer(buffer);
 
-        shader_material = ShaderManager::get()->get_shader("line_3d");
+        PipelineState pipeline_state = {};
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_DEBUG_DRAW;
+        pipeline_state.render_state.fields.depth_test = true;
+        pipeline_state.render_state.fields.depth_write = true;
+        pipeline_state.render_state.fields.blend_mode = true;
+        pipeline_state.render_state.fields.topology = TOPOLOGY_LINE_LIST;
+        shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
 
         UniformLayout vertex_layout = {
             .binding = 0,
@@ -34,7 +43,7 @@ namespace mirai {
             .resource_id = buffer,
         };
         device->update_uniform_set(uniform_set, &binding, 1);
-        shader_material->set_custom_bindings(&uniform_set, 1);
+        shader->set_custom_bindings(&uniform_set, 1);
     }
 
     void LineRenderer::NewFrame() {
@@ -95,8 +104,7 @@ namespace mirai {
     }
 
     LineRenderer::~LineRenderer() {
-        shader_material = nullptr;
+        shader = nullptr;
         RenderingDevice::get()->destroy_buffers(&buffer, 1);
     }
 } // namespace mirai
-*/

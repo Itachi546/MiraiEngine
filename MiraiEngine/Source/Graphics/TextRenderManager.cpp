@@ -1,9 +1,7 @@
-/*
 #include "TextRenderManager.hpp"
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
 #include "Common/Font.hpp"
-
+#include "Scene/ShaderHashMap.hpp"
+#include "Scene/Shader.hpp"
 #include <algorithm>
 
 namespace mirai {
@@ -11,6 +9,10 @@ namespace mirai {
     const uint32_t K_MAX_TEXTS = 1000;
 
     TextRenderer::TextRenderer(Font *font) : font(font) {
+        /**
+         * @TODO This is a CPU visible buffer and the memory should be allocated per frame.
+         * This should be fixed
+         */
         BufferDescription buffer_desc = {
             .size = K_MAX_TEXTS * sizeof(glm::vec4) * 4,
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -100,7 +102,11 @@ namespace mirai {
     TextRenderManager::TextRenderManager() {
         ASSERT(Instance == nullptr);
         Instance = this;
-        shader = ShaderManager::get()->get_shader("text_render_2d");
+
+        PipelineState pipeline_state{};
+        pipeline_state.render_state.fields.blend_mode = true;
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_TEXT2D;
+        shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
     }
 
     TextRenderManager::~TextRenderManager() {
@@ -123,4 +129,3 @@ namespace mirai {
         }
     }
 } // namespace mirai
- */

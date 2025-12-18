@@ -2,13 +2,13 @@
 
 #include <stdint.h>
 #include "Graphics/RenderingDevice.hpp"
-#include "Scene/ShaderMaterial.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
 
 namespace mirai {
 
     class Camera;
+    struct Shader;
 
     class TerrainPass : public FrameGraphRenderer {
 
@@ -27,9 +27,9 @@ namespace mirai {
         RenderingDevice *device;
         uint32_t width, height, maxHeight, cbt_depth;
         BufferID cbt_buffer, cbt_dispatch_indirect_buffer, cbt_draw_indirect_buffer;
-        std::unique_ptr<ComputeShader> cbt_init_program, cbt_sum_reduction_program, cbt_sum_reduction_prepass_program, cbt_subdivision_program;
-        std::unique_ptr<ShaderMaterial> terrain_shader;
-        std::unique_ptr<ShaderMaterial> terrain_shader_wireframe;
+        Shader* cbt_init_program, *cbt_sum_reduction_program, *cbt_sum_reduction_prepass_program, *cbt_subdivision_program;
+        Shader* terrain_shader;
+        Shader* terrain_shader_wireframe;
 
         UniformSetID cbt_init_set, cbt_vert_set, cbt_subdivision_set, cbt_sum_reduction_set, cbt_sum_reduction_prepass_set;
         float lod_factor = 0.0f;

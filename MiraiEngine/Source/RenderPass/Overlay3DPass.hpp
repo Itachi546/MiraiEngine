@@ -1,10 +1,9 @@
 #pragma once
-/*
 #include "Scene/FrameGraph.hpp"
+#include "Graphics/LineRenderer.hpp"
 
 namespace mirai {
-    class ShaderMaterial;
-    struct LineRenderer;
+    struct Shader;
     class Overlay3DPass : public FrameGraphRenderer {
       public:
         Overlay3DPass();
@@ -15,7 +14,7 @@ namespace mirai {
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
       private:
-        ShaderMaterial *skybox_material;
+        Shader *skybox_shader;
         UniformSetID skybox_uniform_set;
         SamplerID default_sampler;
 
@@ -26,4 +25,3 @@ namespace mirai {
     };
 
 } // namespace mirai
-*/

@@ -1,9 +1,8 @@
 #pragma once
-/*
 #include "Scene/FrameGraph.hpp"
-
+#include "Common/Font.hpp"
+#include <memory>
 namespace mirai {
-    struct Font;
     struct TextRenderManager;
     class DebugPass : public FrameGraphRenderer {
       public:
@@ -16,4 +15,3 @@ namespace mirai {
         std::unique_ptr<TextRenderManager> text_render_manager;
     };
 } // namespace mirai
-*/

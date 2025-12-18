@@ -18,6 +18,8 @@ namespace mirai {
         SHADER_PASS_DEFERRED_UNLIT,
         SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT,
         SHADER_PASS_SHADOW,
+        SHADER_PASS_TEXT2D,
+        SHADER_PASS_DEBUG_DRAW,
         SHADER_PASS_COUNT
     };
     struct PipelineState {

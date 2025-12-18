@@ -1,5 +1,5 @@
 #pragma once
-/*
+
 #include "RenderingDevice.hpp"
 #include "Math/Math.hpp"
 
@@ -9,7 +9,7 @@
 
 namespace mirai {
 
-    class ShaderMaterial;
+    struct Shader;
     struct Font;
     struct TextRenderManager;
 
@@ -59,8 +59,7 @@ namespace mirai {
 
         static TextRenderManager *Instance;
         std::vector<std::shared_ptr<TextRenderer>> renderers;
-        ShaderMaterial *shader;
+        Shader *shader;
     };
 
 }; // namespace mirai
-*/

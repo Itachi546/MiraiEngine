@@ -6,8 +6,7 @@
 namespace mirai {
 
     class CommandBuffer;
-    class ShaderMaterial;
-
+    struct Shader;
     struct LineRenderer {
 
         LineRenderer();
@@ -24,7 +23,7 @@ namespace mirai {
 
         BufferID buffer;
         UniformSetID uniform_set;
-        ShaderMaterial *shader_material;
+        Shader *shader;
         uint32_t line_count = 0;
 
         static LineRenderer *get() {

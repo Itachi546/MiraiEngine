@@ -1,3 +1,5 @@
+#pragma once
+
 #include "DebugPass.hpp"
 #include "DeferredLightingPass.hpp"
 #include "DepthPrePass.hpp"

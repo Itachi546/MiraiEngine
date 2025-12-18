@@ -80,6 +80,8 @@ namespace mirai {
     Topology get_topology(const std::string &value) {
         if (value == "TOPOLOGY_TRIANGLE_LIST")
             return TOPOLOGY_TRIANGLE_LIST;
+        else if (value == "TOPOLOGY_LINE_LIST")
+            return TOPOLOGY_LINE_LIST;
         ASSERT(0);
         return TOPOLOGY_TRIANGLE_LIST;
     }
@@ -118,6 +120,11 @@ namespace mirai {
             return SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT;
         else if (pass_mode == "SHADER_PASS_SHADOW")
             return SHADER_PASS_SHADOW;
+        else if (pass_mode == "SHADER_PASS_TEXT2D")
+            return SHADER_PASS_TEXT2D;
+        else if (pass_mode == "SHADER_PASS_DEBUG_DRAW")
+            return SHADER_PASS_DEBUG_DRAW;
+
         ASSERT(0);
         return SHADER_PASS_COUNT;
     }

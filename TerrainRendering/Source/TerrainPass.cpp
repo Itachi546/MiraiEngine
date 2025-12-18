@@ -1,7 +1,7 @@
 #include "TerrainPass.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderManager.hpp"
+#include "Scene/Shader.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Common/FileUtils.hpp"
@@ -124,38 +124,36 @@ namespace mirai {
         cbt_sum_reduction_set = device->create_uniform_set(cbt_sum_reduction_layouts.data(), cast_u32(cbt_sum_reduction_layouts.size()), 0, "cbt_subdivision_set");
         device->update_uniform_set(cbt_sum_reduction_set, cbt_sum_reduction_bindings.data(), cast_u32(cbt_sum_reduction_layouts.size()));
 
-        cbt_init_program = std::make_unique<ComputeShader>("cbt_initialize");
-        cbt_init_program->create_from_file("SPIRV/cbt_initialize.comp.spv");
-        cbt_init_program->set_uniform_sets(&cbt_init_set, 1);
+        cbt_init_program = Shader::create_from_file("SPIRV/cbt_initialize.comp.spv", "cbt-init-program");
+        cbt_init_program->set_custom_bindings(&cbt_init_set, 1);
 
-        cbt_sum_reduction_program = std::make_unique<ComputeShader>("cbt_sumreduction");
-        cbt_sum_reduction_program->create_from_file("SPIRV/cbt_sum_reduction.comp.spv");
-        cbt_sum_reduction_program->set_uniform_sets(&cbt_sum_reduction_set, 1);
+        cbt_sum_reduction_program = Shader::create_from_file("SPIRV/cbt_sum_reduction.comp.spv", "cbt-sum-reduction");
+        cbt_sum_reduction_program->set_custom_bindings(&cbt_sum_reduction_set, 1);
 
-        cbt_sum_reduction_prepass_program = std::make_unique<ComputeShader>("cbt_sumreduction_prepass");
-        cbt_sum_reduction_prepass_program->create_from_file("SPIRV/cbt_sum_reduction_prepass.comp.spv");
-        cbt_sum_reduction_prepass_program->set_uniform_sets(&cbt_sum_reduction_prepass_set, 1);
+        cbt_sum_reduction_prepass_program = Shader::create_from_file("SPIRV/cbt_sum_reduction_prepass.comp.spv", "sum-reduction-prepass");
+        cbt_sum_reduction_prepass_program->set_custom_bindings(&cbt_sum_reduction_prepass_set, 1);
 
-        cbt_subdivision_program = std::make_unique<ComputeShader>("cbt_subdivision");
-        cbt_subdivision_program->create_from_file("SPIRV/cbt_subdivision.comp.spv");
-        cbt_subdivision_program->set_uniform_sets(&cbt_subdivision_set, 1);
+        cbt_subdivision_program = Shader::create_from_file("SPIRV/cbt_subdivision.comp.spv", "cbt-subdivision");
+        cbt_subdivision_program->set_custom_bindings(&cbt_subdivision_set, 1);
 
         // Initialize Terrain Shader
-        terrain_shader = std::make_unique<ShaderMaterial>("Terrain Shader");
-        terrain_shader->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {
-                                                                                                   .cull_mode = CULL_MODE_BACK,
-                                                                                                   .depth_test = true,
-                                                                                                   .depth_write = true,
-                                                                                                   .polygon_mode = POLYGON_MODE_FILL,
-                                                                                               });
+        PipelineState pipeline_state{};
+        pipeline_state.render_state.fields.depth_test = true;
+        pipeline_state.render_state.fields.depth_write = true;
 
-        terrain_shader_wireframe = std::make_unique<ShaderMaterial>("Terrain Shader Wireframe");
-        terrain_shader_wireframe->create_from_file({"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, {
-                                                                                                             .cull_mode = CULL_MODE_BACK,
-                                                                                                             .depth_test = true,
-                                                                                                             .depth_write = true,
-                                                                                                             .polygon_mode = POLYGON_MODE_LINE,
-                                                                                                         });
+        PipelineAttachmentInfo attachment_info{
+            .color_attachments_format = {
+                FORMAT_B8G8R8A8_UNORM,
+            },
+            .has_depth_attachment = true,
+            .depth_attachment_format = {
+                FORMAT_D32_SFLOAT,
+            },
+        };
+
+        terrain_shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, "terrain-shader");
+        pipeline_state.render_state.fields.polygon_mode = POLYGON_MODE_LINE;
+        terrain_shader_wireframe = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/terrain.vert.spv", "SPIRV/terrain.frag.spv"}, "terrain-shader-wireframe");
 
         // Initialize CBT Buffer
         init_at_depth(cbt_depth / 2);
@@ -175,7 +173,7 @@ namespace mirai {
             .offset = 0,
         };
 
-        cbt_init_program->set_push_constant(&push_constant, 1);
+        command_buffer->set_push_constants(cbt_init_program->pipeline_id, &push_constant, 1);
         cbt_init_program->bind(command_buffer);
 
         uint32_t work_group_size = 1;
@@ -214,7 +212,7 @@ namespace mirai {
             .offset = 0,
         };
 
-        command_buffer->set_push_constants(cbt_sum_reduction_prepass_program->get_pipeline_id(), &push_constants, 1);
+        command_buffer->set_push_constants(cbt_sum_reduction_prepass_program->pipeline_id, &push_constants, 1);
         uint32_t local_work_size = rendering_utils::get_workgroup_size((1 << cbt_depth) / 32, 256);
         command_buffer->dispatch(local_work_size, 1, 1);
         device->end_debug_utils_label(command_buffer);
@@ -266,7 +264,7 @@ namespace mirai {
                 .size = sizeof(uint32_t),
                 .offset = 0,
             };
-            command_buffer->set_push_constants(cbt_sum_reduction_program->get_pipeline_id(), &push_constants, 1);
+            command_buffer->set_push_constants(cbt_sum_reduction_program->pipeline_id, &push_constants, 1);
             uint32_t local_work_size = rendering_utils::get_workgroup_size(1 << level, 256);
             command_buffer->dispatch(local_work_size, 1, 1);
         }
@@ -287,6 +285,8 @@ namespace mirai {
         push_constant_data.subdivision_info = glm::vec4(subdivision_mode, lod_factor, 0.0f, 0.0f);
         push_constant_data.dims = glm::vec4(float(width), float(height), float(maxHeight), float(enable_sumreduction_prepass));
 
+        cbt_subdivision_program->bind(command_buffer);
+
         PushConstant push_constant = {
             .data = &push_constant_data,
             .shader_stage = SHADER_STAGE_COMPUTE,
@@ -294,9 +294,7 @@ namespace mirai {
             .offset = 0,
         };
 
-        cbt_subdivision_program->set_push_constant(&push_constant, 1);
-        cbt_subdivision_program->bind(command_buffer);
-
+        command_buffer->set_push_constants(cbt_subdivision_program->pipeline_id, &push_constant, 1);
         // Proper buffer access transition from vertex shader input to compute shader
         BufferBarrierInfo cbt_buffer_barrier_info[] = {
             {
@@ -392,14 +390,14 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        auto shader = enable_wireframe ? terrain_shader_wireframe.get() : terrain_shader.get();
+        auto shader = enable_wireframe ? terrain_shader_wireframe : terrain_shader;
 
         UniformSetID uniform_sets[] = {
             cbt_vert_set,
         };
-        shader->set_uniform_sets(uniform_sets, cast_u32(std::size(uniform_sets)));
 
-        shader->bind(command_buffer, &node->renderpass_info);
+        shader->bind(command_buffer);
+        command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
         struct TerrainPushConstant {
             glm::mat4 VP;
@@ -409,7 +407,7 @@ namespace mirai {
         push_constant_data.dims = {float(width), float(height), float(maxHeight), float(enable_sumreduction_prepass)};
         PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(push_constant_data), .offset = 0};
 
-        command_buffer->set_push_constants(shader->get_pipeline_id(), &push_constant, 1);
+        command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
         command_buffer->draw_indirect(cbt_draw_indirect_buffer, 0, 1, sizeof(uint32_t) * 4);
         command_buffer->end_render_pass();
 

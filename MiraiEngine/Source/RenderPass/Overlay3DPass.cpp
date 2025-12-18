@@ -1,21 +1,21 @@
-/*
 #include "Overlay3DPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
-#include "Graphics/LineRenderer.hpp"
-#include "Scene/ShaderManager.hpp"
-#include "Scene/ShaderMaterial.hpp"
+#include "Scene/ShaderHashMap.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {
-    Overlay3DPass::Overlay3DPass() : FrameGraphRenderer("sky_pass"), skybox_material(nullptr) {
+    Overlay3DPass::Overlay3DPass() : FrameGraphRenderer("sky_pass"), skybox_shader(nullptr) {
     }
 
     void Overlay3DPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        skybox_material = ShaderManager::get()->get_shader("overlay_skybox");
+        PipelineState pipeline_state = {};
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_SKYBOX;
+        pipeline_state.render_state.fields.depth_test = true;
+        skybox_shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
 
         SamplerDescription sampler_desc = SamplerDescription::create();
         default_sampler = device->create_sampler(&sampler_desc);
@@ -58,15 +58,14 @@ namespace mirai {
         Camera *camera = scene->get_camera();
 
         // Draw Sky
-        skybox_material->bind(command_buffer, render_pass);
+        skybox_shader->bind(command_buffer);
 
-        PipelineID pipeline_id = skybox_material->get_pipeline_id();
-        command_buffer->set_uniform_sets(pipeline_id, &skybox_uniform_set, 1);
+        command_buffer->set_uniform_sets(skybox_shader->pipeline_id, &skybox_uniform_set, 1);
 
         glm::mat4 push_constant_data[] = {camera->get_inv_projection_transform(), camera->get_inv_view_transform()};
         PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4) * 2, .offset = 0};
 
-        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+        command_buffer->set_push_constants(skybox_shader->pipeline_id, &push_constant, 1);
         command_buffer->draw(3, 1, 0, 0);
     }
 
@@ -82,11 +81,10 @@ namespace mirai {
                 .offset = 0,
             };
 
-            line_renderer->shader_material->bind(command_buffer, render_pass);
-            command_buffer->set_push_constants(line_renderer->shader_material->get_pipeline_id(), &push_constant, 1);
+            line_renderer->shader->bind(command_buffer);
+            command_buffer->set_push_constants(line_renderer->shader->pipeline_id, &push_constant, 1);
 
             command_buffer->draw(line_renderer->line_count * 2, 1, 0, 0);
         }
     }
 } // namespace mirai
-*/

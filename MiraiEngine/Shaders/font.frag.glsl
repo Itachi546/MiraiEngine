@@ -12,7 +12,7 @@ layout(location = 1) in vec2 uv;
 const float width = 0.3;
 const float edge = 0.55;
 void main() {
-    float dist = 1.0 - sample_texture(tex_id, vec2(uv.x, uv.y)).r;
+    float dist = 1.0 - sample_texture(tex_id, vec2(uv.x, 1.0 - uv.y)).r;
     float alpha = 1.0 - smoothstep(width, width + edge, dist);
     vec3 col = vec3(0.9f);
     fragColor = vec4(col, alpha);

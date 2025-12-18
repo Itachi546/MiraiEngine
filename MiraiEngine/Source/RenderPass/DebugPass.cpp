@@ -1,11 +1,9 @@
-/*
 #include "DebugPass.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/TextRenderManager.hpp"
-#include "Scene/ShaderMaterial.hpp"
+#include "Scene/Shader.hpp"
 #include "Device/Window.hpp"
-#include "Common/Font.hpp"
 namespace mirai {
 
     DebugPass::DebugPass() : FrameGraphRenderer("debug_pass") {
@@ -39,8 +37,8 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        text_render_manager->shader->bind(command_buffer, &node->renderpass_info);
-        PipelineID pipeline = text_render_manager->shader->get_pipeline_id();
+        text_render_manager->shader->bind(command_buffer);
+        PipelineID pipeline = text_render_manager->shader->pipeline_id;
 
         struct PushConstantData {
             glm::mat4 ortho_matrix;
@@ -75,4 +73,3 @@ namespace mirai {
         command_buffer->end_render_pass();
     }
 } // namespace mirai
- */
