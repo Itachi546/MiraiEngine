@@ -158,13 +158,11 @@ namespace mirai {
     };
 
     struct ShaderMaterial : public Material {
-        ShaderMaterial(const std::string &name, uint32_t shader_id) : Material(name), shader_id(shader_id) {
+        ShaderMaterial(const std::string &name, ShaderPassKey pass_key) : Material(name), pass_key(pass_key) {
         }
 
         ShaderPassKey get_shader_key() const override {
-            ShaderPassKey shader_key;
-            shader_key.fields.custom_shader_id = shader_id;
-            return shader_key;
+           return pass_key;
         }
 
         void set_instance_data(uint8_t *data, uint32_t size) {
@@ -188,7 +186,7 @@ namespace mirai {
         }
 
       private:
-        uint32_t shader_id;
+        ShaderPassKey pass_key;
         std::vector<uint8_t> instance_data;
     };
 

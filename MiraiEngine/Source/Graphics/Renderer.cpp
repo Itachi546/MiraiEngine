@@ -167,10 +167,6 @@ namespace mirai {
     }
 
     void Renderer::update_uniform_set(CommandBuffer *command_buffer) {
-        if (per_frame_uniform_set.is_valid()) {
-            device->destroy_uniform_sets(&per_frame_uniform_set, 1);
-        }
-
         // Initialize PerFrame uniform set
         UniformLayout layout = {
             .binding = 0,

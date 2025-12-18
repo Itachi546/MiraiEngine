@@ -86,18 +86,13 @@ namespace mirai {
         static Shader *create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files, const std::string &name);
         static Shader *create_from_file(const std::string &shader_file, const std::string &name);
 
+        static uint32_t create_shader_id() {
+            static uint32_t id = 1;
+            return id++;
+        }
+
       private:
         std::vector<UniformSetID> bindings;
     };
-    /*
-    struct MaterialShader : public Shader {
-        MaterialShader(const std::string &name) : Shader(name) {}
-        void create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files);
-    };
 
-    struct ComputeShader : public Shader {
-        ComputeShader(const std::string &name) : Shader(name) {}
-        void create_from_file(const std::string &file);
-    };
-    */
 } // namespace mirai

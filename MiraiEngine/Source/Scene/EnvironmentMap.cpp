@@ -109,7 +109,6 @@ namespace mirai {
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
-        device->destroy_uniform_sets(&uniform_set, 1);
         device->destroy_textures(&hdri_texture, 1);
 
         create_pbr_env_map();
@@ -256,8 +255,6 @@ namespace mirai {
         barrier_infos[1].access_mask = ACCESS_FLAG_SHADER_READ;
         barrier_infos[1].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         command_buffer->prepare_image(&barrier_infos[1], 1);
-
-        device->destroy_uniform_sets(&uniform_set, 1);
     }
 
     void EnvironmentMap::convolute_specular_cubemap(CommandBuffer *command_buffer, Shader *prefilter_shader) {
@@ -331,8 +328,6 @@ namespace mirai {
         }
 
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
-
-        device->destroy_uniform_sets(uniform_sets.data(), cast_u32(uniform_sets.size()));
     }
 
     void EnvironmentMap::integrate_brdf_texture(CommandBuffer *command_buffer, Shader *integrate_brdf_shader) {

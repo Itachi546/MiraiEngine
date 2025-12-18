@@ -319,7 +319,9 @@ namespace mirai {
 
     UniformSetID CommandBuffer::create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set) {
         uint32_t frame_id = device->get_current_frame();
-        return device->create_uniform_set_from_descriptor_pool(layouts, layout_count, set, descriptor_pools[frame_id], "temp_uniform_set");
+        UniformSetID uniform_set = device->create_uniform_set_from_descriptor_pool(layouts, layout_count, set, descriptor_pools[frame_id], "temp_uniform_set");
+        uniform_sets.push_back(uniform_set);
+        return uniform_set;
     }
 
     void CommandBuffer::end_render_pass() {
@@ -328,6 +330,9 @@ namespace mirai {
 
     void CommandBuffer::begin() {
         // Reset descriptor pool
+        device->destroy_uniform_sets(uniform_sets.data(), cast_u32(uniform_sets.size()));
+        uniform_sets.clear();
+
         uint32_t frame_id = device->get_current_frame();
         vkResetDescriptorPool(device->device, descriptor_pools[frame_id], 0);
         VkCommandBufferBeginInfo begin_info = {

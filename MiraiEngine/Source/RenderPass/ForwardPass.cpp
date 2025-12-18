@@ -50,8 +50,8 @@ namespace mirai {
                                              batch->vertex_offsets[i],
                                              0);
             }
-            device->destroy_uniform_sets(&mesh_instance_set, 1);
         };
+
         ScopedGpuProfiling(command_buffer, "Forward Pass");
 
         device->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);

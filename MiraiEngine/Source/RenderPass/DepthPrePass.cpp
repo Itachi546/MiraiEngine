@@ -56,7 +56,6 @@ namespace mirai {
                                              batch->vertex_offsets[i],
                                              0);
             }
-            device->destroy_uniform_sets(&transform_set, 1);
         };
 
         // Create PerFrame uniform set
@@ -99,7 +98,6 @@ namespace mirai {
         command_buffer->end_render_pass();
 
         device->end_debug_utils_label(command_buffer);
-        device->destroy_uniform_sets(&per_frame_uniform_set, 1);
     }
 
     DepthPrePass::~DepthPrePass() {

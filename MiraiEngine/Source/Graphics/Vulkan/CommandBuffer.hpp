@@ -88,6 +88,8 @@ namespace mirai {
         uint32_t queue_family_indices;
         VkFence fence;
 
+        std::vector<UniformSetID> uniform_sets;
+
         std::vector<VkDescriptorPool> descriptor_pools;
     };
 } // namespace mirai
