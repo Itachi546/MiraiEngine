@@ -74,6 +74,7 @@ namespace mirai {
         RenderingDevice::get()->destroy_shaders(shader_modules.data(), cast_u32(shader_modules.size()));
 
         std::shared_ptr<Shader> shader = std::make_shared<Shader>(name);
+        shader->draw_mode = DrawMode(pipeline_state.render_state.fields.draw_mode);
         shader->pipeline_id = pipeline;
         shader_map->add(shader_key, shader);
         return shader.get();

@@ -1,6 +1,6 @@
 #include "RenderBatch.hpp"
 #include "Scene/Scene.hpp"
-
+#include "Graphics/Vulkan/CommandBuffer.hpp"
 #include <unordered_map>
 
 namespace mirai {
@@ -84,6 +84,56 @@ namespace mirai {
 
             uint32_t transform_index = scene->component_manager->get_component_index<TransformComponent>(object.entity);
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
+        }
+    }
+
+    static UniformLayout MESH_INSTANCE_LAYOUT_INDEXED[] = {
+        {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
+        {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
+    };
+
+    static const uint32_t MESH_LAYOUT_BINDING = 3;
+
+    void DrawBatchIndexed(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
+        if (batch->transform_indices.size() == 0)
+            return;
+
+        RenderingDevice *device = RenderingDevice::get();
+
+        // Set Per Instance Data
+        uint32_t instance_data[] = {0, 0, 0, 0};
+        PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
+
+        UniformSetID mesh_instance_set = command_buffer->create_uniform_set(MESH_INSTANCE_LAYOUT_INDEXED, cast_u32(std::size(MESH_INSTANCE_LAYOUT_INDEXED)), MESH_LAYOUT_BINDING);
+        UniformBinding per_shader_bindings[] = {
+            {.resource_id = batch->transform_buffer_view.buffer, .buffer_info{.offset = batch->transform_buffer_view.offset, .range = batch->transform_buffer_view.size}},
+            {.resource_id = batch->material_buffer_view.buffer, .buffer_info{.offset = batch->material_buffer_view.offset, .range = batch->material_buffer_view.size}},
+        };
+        device->update_uniform_set(mesh_instance_set, per_shader_bindings, cast_u32(std::size(per_shader_bindings)));
+
+        UniformSetID uniform_sets[] = {batch->vertex_binding_set, mesh_instance_set};
+        command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+        command_buffer->set_index_buffer(batch->index_buffer.buffer);
+
+        for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
+            instance_data[0] = i;
+            instance_data[1] = i;
+            command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+            command_buffer->draw_indexed(batch->index_counts[i],
+                                         1,
+                                         batch->index_offsets[i],
+                                         batch->vertex_offsets[i],
+                                         0);
+        }
+    }
+
+    void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader) {
+        switch (shader->get_draw_mode()) {
+        case DRAWMODE_INDEXED:
+            DrawBatchIndexed(command_buffer, batch, shader->pipeline_id);
+            return;
+        default:
+            Log::Fatal(0, "Undefined shader draw mode");
         }
     }
 } // namespace mirai

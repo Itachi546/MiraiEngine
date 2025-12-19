@@ -11,8 +11,5 @@ namespace mirai {
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         ~ForwardPass();
-
-      private:
-        UniformLayout mesh_instance_layouts[2];
     };
 } // namespace mirai

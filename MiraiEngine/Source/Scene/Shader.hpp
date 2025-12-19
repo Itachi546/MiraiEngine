@@ -22,6 +22,13 @@ namespace mirai {
         SHADER_PASS_DEBUG_DRAW,
         SHADER_PASS_COUNT
     };
+
+    enum DrawMode {
+        DRAWMODE_INDEXED = 0,
+        DRAWMODE_INDIRECT,
+        DRAWMODE_INSTANCED,
+    };
+
     struct PipelineState {
         union PipelineRenderState {
             struct {
@@ -35,7 +42,8 @@ namespace mirai {
                 uint64_t topology : 4;     // 14
                 uint64_t polygon_mode : 2; // 16
                 uint64_t pass_mode : 16;   // 32
-                uint64_t _reserved : 32;
+                uint64_t draw_mode : 2;
+                uint64_t _reserved : 30;
             } fields;
             uint64_t hash;
         } render_state;
@@ -51,6 +59,7 @@ namespace mirai {
             render_state.fields.depth_op = COMPARE_OP_LESS_OR_EQUAL;
             render_state.fields.topology = TOPOLOGY_TRIANGLE_LIST;
             render_state.fields.polygon_mode = POLYGON_MODE_FILL;
+            render_state.fields.draw_mode = DRAWMODE_INDEXED;
             render_state.fields._reserved = 0;
             render_state.fields.pass_mode = SHADER_PASS_COUNT;
         }
@@ -85,6 +94,10 @@ namespace mirai {
             bindings.clear();
         }
 
+        DrawMode get_draw_mode() {
+            return draw_mode;
+        }
+
         static Shader *create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files, const std::string &name);
         static Shader *create_from_file(const std::string &shader_file, const std::string &name);
 
@@ -95,6 +108,7 @@ namespace mirai {
 
       private:
         std::vector<UniformSetID> bindings;
+        DrawMode draw_mode;
     };
 
 } // namespace mirai

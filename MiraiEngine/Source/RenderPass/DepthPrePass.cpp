@@ -25,8 +25,6 @@ namespace mirai {
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
-        ScopedCpuProfiling("FrameGraph::DepthPrepass");
-
         auto draw_batch = [&](MeshBatch *batch, PipelineID pipeline_id) {
             // Set Per Frame Data
             uint32_t push_constant_data[4] = {0, 0, 0, 0};
@@ -42,7 +40,6 @@ namespace mirai {
             };
             device->update_uniform_set(transform_set, &binding, 1);
 
-            ScopedCpuProfiling("DepthPrepass::DrawBatch");
             UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
             command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
