@@ -85,9 +85,10 @@ else()
     message(FATAL_ERROR "Unsupported platform")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(${TARGET_NAME} PRIVATE /W3)
-endif()
+target_compile_options(${TARGET_NAME} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W3>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+)
 
 add_subdirectory(Shaders/)
 add_dependencies(${TARGET_NAME} Shaders)

@@ -20,8 +20,8 @@ namespace mirai {
 
         std::unique_ptr<LineRenderer> line_renderer;
 
-        void render_skybox(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass);
-        void render_debug_draw(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass);
+        void render_skybox(CommandBuffer *command_buffer, Scene *scene);
+        void render_debug_draw(CommandBuffer *command_buffer, Scene *scene);
     };
 
 } // namespace mirai

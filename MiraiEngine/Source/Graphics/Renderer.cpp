@@ -95,7 +95,7 @@ namespace mirai {
         index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
     }
 
-    void Renderer::copy_buffers(CommandBuffer *cb) {
+    void Renderer::copy_buffers() {
         // @TODO this is not correct and shouldn't be done
         ScopedCpuProfiling("Renderer::Copy Buffers");
         // Reset staging buffer offset
@@ -222,7 +222,7 @@ namespace mirai {
         {
             ScopedGpuProfiling(cb, "Gpu Time");
             // Copy per frame data from staging buffer to gpu uniform buffer
-            copy_buffers(cb);
+            copy_buffers();
 
             update_uniform_set(cb);
 

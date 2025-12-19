@@ -742,7 +742,6 @@ namespace dds {
         // returns the offset of a specific mipmap of a specific slice relative to the beginning of the file, in bytes
         constexpr unsigned long long mip_offset(unsigned mip, unsigned slice = 0) const {
             unsigned long long offset = slice_offset(slice);
-            const unsigned mips = mip_levels();
             for (unsigned i = 0; i < mip; ++i) {
                 offset += mip_size(i);
             }

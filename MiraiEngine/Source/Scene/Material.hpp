@@ -65,6 +65,8 @@ namespace mirai {
          */
         virtual ShaderPassKey get_shader_key() const = 0;
 
+        virtual ~Material() = default;
+
         std::string name;
     };
 
@@ -162,7 +164,7 @@ namespace mirai {
         }
 
         ShaderPassKey get_shader_key() const override {
-           return pass_key;
+            return pass_key;
         }
 
         void set_instance_data(uint8_t *data, uint32_t size) {

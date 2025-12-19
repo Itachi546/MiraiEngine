@@ -137,10 +137,10 @@ namespace mirai {
         std::vector<Vertex> &vertices = gpu_mesh.vertices;
         std::vector<uint32_t> &indices = gpu_mesh.indices;
 
-        for (uint32_t i = 0; i < mesh_count; ++i) {
-            MeshComponent &mesh_component = mesh_components[i];
+        for (uint32_t m = 0; m < mesh_count; ++m) {
+            MeshComponent &mesh_component = mesh_components[m];
             mesh_component.gpu_mesh_index = gpu_mesh_index;
-            const tinygltf::Mesh &gltf_mesh = model->meshes[i];
+            const tinygltf::Mesh &gltf_mesh = model->meshes[m];
 
             uint32_t primitive_count = static_cast<uint32_t>(gltf_mesh.primitives.size());
             mesh_component.mesh_subsets.resize(primitive_count);

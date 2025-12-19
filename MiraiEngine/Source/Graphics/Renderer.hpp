@@ -86,6 +86,7 @@ namespace mirai {
 
         // Per frame Uniform Set
         UniformSetID per_frame_uniform_set{K_INVALID_ID};
+
       private:
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
@@ -95,8 +96,8 @@ namespace mirai {
         std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
         std::unique_ptr<ShaderHashMap> shader_hashmap;
 
-        void copy_buffers(CommandBuffer *cb);
-        void update_uniform_set(CommandBuffer* cb);
+        void copy_buffers();
+        void update_uniform_set(CommandBuffer *cb);
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;

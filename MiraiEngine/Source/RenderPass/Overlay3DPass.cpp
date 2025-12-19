@@ -45,16 +45,16 @@ namespace mirai {
 
         Scene *scene = renderer->get_scene();
         if (scene->get_environment_map() != nullptr)
-            render_skybox(command_buffer, scene, &node->renderpass_info);
+            render_skybox(command_buffer, scene);
 
-        render_debug_draw(command_buffer, scene, &node->renderpass_info);
+        render_debug_draw(command_buffer, scene);
 
         command_buffer->end_render_pass();
 
         device->end_debug_utils_label(command_buffer);
     }
 
-    void Overlay3DPass::render_skybox(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass) {
+    void Overlay3DPass::render_skybox(CommandBuffer *command_buffer, Scene *scene) {
         Camera *camera = scene->get_camera();
 
         // Draw Sky
@@ -69,7 +69,7 @@ namespace mirai {
         command_buffer->draw(3, 1, 0, 0);
     }
 
-    void Overlay3DPass::render_debug_draw(CommandBuffer *command_buffer, Scene *scene, FrameGraphRenderpassInfo *render_pass) {
+    void Overlay3DPass::render_debug_draw(CommandBuffer *command_buffer, Scene *scene) {
         // Draw Lines
         if (line_renderer->line_count > 0) {
             Camera *camera = scene->get_camera();
