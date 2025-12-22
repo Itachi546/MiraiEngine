@@ -54,7 +54,8 @@ namespace mirai {
             };
 
             // @TODO a very long function :D
-            TransformComponent *transform_component = scene->component_manager->get_component<TransformComponent>(render_list[i].entity);
+            auto &component_manager = scene->ecs->component_manager;
+            TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
             // The default representation of glm is column major while the VkTransformKHR uses row major
             // glm::mat4 transform = glm::transpose(transform_component.world_transform);
             glm::mat4 transform = transform_component->world_transform;
@@ -74,7 +75,7 @@ namespace mirai {
         uint32_t total_frames = device->get_swapchain_image_count();
         BufferDescription buffer_desc = {
             .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
-            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
@@ -121,13 +122,16 @@ namespace mirai {
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
         uint32_t material_size_bytes = 0;
+        uint32_t draw_indirect_size_bytes = 0;
         for (auto &batch : scene->main_render_batches) {
             for (auto &mesh_batch : batch.meshes) {
                 uint32_t num_entity = cast_u32(mesh_batch.transform_indices.size());
                 total_entities += num_entity;
                 material_size_bytes += scene->materials[mesh_batch.material_indices[0]]->get_instance_data_size() * num_entity;
+                draw_indirect_size_bytes += sizeof(DrawIndexedIndirectCommand) * num_entity;
             }
         }
+
         // Allocate memory in staging buffer
         uint32_t transform_size_bytes = total_entities * sizeof(glm::mat4);
         uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
@@ -136,9 +140,14 @@ namespace mirai {
         uint32_t material_buffer_offset = allocate_staging_buffer(material_size_bytes, current_frame);
         uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
+        uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
+        uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
+
         // Copy the transform/material data in staging buffer
         uint32_t transform_offset_bytes = transform_buffer_offset;
         uint32_t material_offset_bytes = material_buffer_offset;
+        auto &component_manager = scene->ecs->component_manager;
+
         for (auto &render_batch : scene->main_render_batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.transform_indices.size());
@@ -151,17 +160,31 @@ namespace mirai {
                 batch.material_buffer_view.offset = material_offset_bytes;
                 batch.material_buffer_view.size = num_entity * instance_data_size;
 
+                batch.draw_indirect_buffer_view.buffer = per_frame_staging_buffer;
+                batch.draw_indirect_buffer_view.offset = draw_indirect_buffer_offset;
+                batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
+
                 for (uint32_t e = 0; e < num_entity; ++e) {
-                    TransformComponent &component = scene->component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
+                    TransformComponent &component = component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
                     std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
 
                     auto &material = scene->materials[batch.material_indices[e]];
                     std::memcpy(material_array, material->get_instance_data(), instance_data_size);
                     material_array += instance_data_size;
                     transform_array += sizeof(glm::mat4);
+
+                    DrawIndexedIndirectCommand command{
+                        batch.index_counts[e],
+                        1,
+                        batch.index_offsets[e],
+                        batch.vertex_offsets[e],
+                        0};
+                    std::memcpy(draw_indirect_array, &command, sizeof(DrawIndexedIndirectCommand));
+                    draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
                 }
                 transform_offset_bytes += num_entity * sizeof(glm::mat4);
                 material_offset_bytes += num_entity * instance_data_size;
+                draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
             }
         }
     }

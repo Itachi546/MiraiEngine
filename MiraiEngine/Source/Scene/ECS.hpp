@@ -230,14 +230,23 @@ namespace mirai {
         std::unordered_map<std::size_t, uint32_t> component_id_map;
     };
 
-    namespace ecs {
-        inline Entity create_entity() {
-            static uint32_t id = 0;
+    class ECS {
+      public:
+        ECS() : id(0) {
+            component_manager = std::make_unique<ComponentManager>();
+        }
+
+        Entity create_entity() {
             ASSERT_MSG(id < K_MAX_ENTITIES, "Entity count exceed the max limit");
             return ++id;
         }
 
-        void destroy_entity(ComponentManager *mgr, Entity &entity);
-        void destroy(ComponentManager *mgr);
-    } // namespace ecs
+        void destroy_entity(Entity &entity);
+        void destroy();
+
+        std::unique_ptr<ComponentManager> component_manager;
+
+      private:
+        uint32_t id;
+    };
 } // namespace mirai

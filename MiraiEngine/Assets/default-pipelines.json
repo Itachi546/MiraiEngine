@@ -24,7 +24,8 @@
             "depth-test": true,
             "depth-write": true,
             "color-attachments-format": [],
-            "depth-attachment-format": "D32_SFLOAT"
+            "depth-attachment-format": "D32_SFLOAT",
+            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
         }
     },
     {
@@ -40,7 +41,8 @@
             "color-attachments-format": [
                 "B8G8R8A8_UNORM"
             ],
-            "depth-attachment-format": "D32_SFLOAT"
+            "depth-attachment-format": "D32_SFLOAT",
+            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
         }
     },
     {
@@ -58,7 +60,8 @@
             "color-attachments-format": [
                 "B8G8R8A8_UNORM"
             ],
-            "depth-attachment-format": "D32_SFLOAT"
+            "depth-attachment-format": "D32_SFLOAT",
+            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
         }
     },
     {

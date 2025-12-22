@@ -22,6 +22,8 @@ namespace mirai {
         // We can also move it inside this call
         BufferView transform_buffer_view;
         BufferView material_buffer_view;
+        // Only applied for draw indirect call
+        BufferView draw_indirect_buffer_view;
 
         UniformSetID vertex_binding_set;
 

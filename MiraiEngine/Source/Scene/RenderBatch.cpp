@@ -45,13 +45,14 @@ namespace mirai {
         uint32_t shader_batch = UINT32_MAX;
         uint32_t mesh_batch = UINT32_MAX;
 
+        auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
             const Material *material = scene->materials[object.material_index].get();
 
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             if (!disable_frustum_culling) {
-                TransformComponent *transform = scene->component_manager->get_component<TransformComponent>(object.entity);
+                TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
                 if (!frustum->intersect(aabb))
@@ -82,7 +83,7 @@ namespace mirai {
                 cached_batch_info.vertex_buffer = object.vertex_buffer;
             }
 
-            uint32_t transform_index = scene->component_manager->get_component_index<TransformComponent>(object.entity);
+            uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
         }
     }
@@ -94,15 +95,11 @@ namespace mirai {
 
     static const uint32_t MESH_LAYOUT_BINDING = 3;
 
-    void DrawBatchIndexed(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
+    void DrawBatchIndirect(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
         if (batch->transform_indices.size() == 0)
             return;
 
         RenderingDevice *device = RenderingDevice::get();
-
-        // Set Per Instance Data
-        uint32_t instance_data[] = {0, 0, 0, 0};
-        PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
 
         UniformSetID mesh_instance_set = command_buffer->create_uniform_set(MESH_INSTANCE_LAYOUT_INDEXED, cast_u32(std::size(MESH_INSTANCE_LAYOUT_INDEXED)), MESH_LAYOUT_BINDING);
         UniformBinding per_shader_bindings[] = {
@@ -115,23 +112,16 @@ namespace mirai {
         command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
         command_buffer->set_index_buffer(batch->index_buffer.buffer);
 
-        for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
-            instance_data[0] = i;
-            instance_data[1] = i;
-            command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-            command_buffer->draw_indexed(batch->index_counts[i],
-                                         1,
-                                         batch->index_offsets[i],
-                                         batch->vertex_offsets[i],
-                                         0);
-        }
+        uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
+        command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
     }
 
     void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader) {
         switch (shader->get_draw_mode()) {
-        case DRAWMODE_INDEXED:
-            DrawBatchIndexed(command_buffer, batch, shader->pipeline_id);
+        case DRAWMODE_INDEXED_INDIRECT:
+            DrawBatchIndirect(command_buffer, batch, shader->pipeline_id);
             return;
+
         default:
             Log::Fatal(0, "Undefined shader draw mode");
         }

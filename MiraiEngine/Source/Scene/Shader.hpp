@@ -25,7 +25,7 @@ namespace mirai {
 
     enum DrawMode {
         DRAWMODE_INDEXED = 0,
-        DRAWMODE_INDIRECT,
+        DRAWMODE_INDEXED_INDIRECT,
         DRAWMODE_INSTANCED,
     };
 

@@ -27,6 +27,7 @@ namespace mirai {
         PipelineState pipeline_state = {};
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = false;
+        pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;

@@ -97,6 +97,17 @@ namespace mirai {
         return POLYGON_MODE_FILL;
     }
 
+    DrawMode get_draw_mode(const std::string &draw_mode) {
+        if (draw_mode == "DRAWMODE_INDEXED")
+            return DRAWMODE_INDEXED;
+        else if (draw_mode == "DRAWMODE_INDEXED_INDIRECT")
+            return DRAWMODE_INDEXED_INDIRECT;
+        else if (draw_mode == "DRAWMODE_INSTANCED")
+            return DRAWMODE_INSTANCED;
+        ASSERT(0);
+        return DRAWMODE_INDEXED;
+    }
+
     ShaderPass get_pass_mode(const std::string &pass_mode) {
         if (pass_mode == "SHADER_PASS_DEPTH_PREPASS")
             return SHADER_PASS_DEPTH_PREPASS;

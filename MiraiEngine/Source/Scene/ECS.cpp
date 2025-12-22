@@ -1,20 +1,22 @@
 #include "ECS.hpp"
 
-namespace mirai::ecs {
-    void destroy_entity(ComponentManager *mgr, Entity &entity) {
+namespace mirai {
+
+    void ECS::destroy_entity(Entity &entity) {
         for (uint32_t i = 0; i < K_MAX_COMPONENTS; ++i) {
-            std::shared_ptr<IComponentArray> comp = mgr->get_base_component_array(i);
+            std::shared_ptr<IComponentArray> comp = component_manager->get_base_component_array(i);
             if (comp)
                 comp->remove_entity(entity);
         }
         entity = 0;
     }
 
-    void destroy(ComponentManager *mgr) {
+    void ECS::destroy() {
         for (uint32_t i = 0; i < K_MAX_COMPONENTS; ++i) {
-            std::shared_ptr<IComponentArray> comp = mgr->get_base_component_array(i);
+            std::shared_ptr<IComponentArray> comp = component_manager->get_base_component_array(i);
             comp.reset();
         }
+        component_manager = nullptr;
     }
 
-} // namespace mirai::ecs
+} // namespace mirai

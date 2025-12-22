@@ -12,4 +12,5 @@ namespace mirai {
     Topology get_topology(const std::string &value);
     PolygonMode get_polygon_mode(const std::string &value);
     ShaderPass get_pass_mode(const std::string &pass_mode);
+    DrawMode get_draw_mode(const std::string &draw_mode);
 } // namespace mirai

@@ -25,6 +25,9 @@ namespace mirai {
             uint64_t key;
         };
 
+        ShaderPassKey(uint64_t key) : key(key) {
+        }
+
         ShaderPassKey() {
             this->fields.shader_pass = SHADER_PASS_COUNT;
             this->fields.custom_shader_id = 0;

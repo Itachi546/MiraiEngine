@@ -104,7 +104,7 @@ namespace mirai {
 
         virtual ~Scene();
 
-        std::unique_ptr<ComponentManager> component_manager;
+        std::unique_ptr<ECS> ecs;
         std::vector<std::unique_ptr<Material>> materials;
         std::vector<Entity> entities;
 

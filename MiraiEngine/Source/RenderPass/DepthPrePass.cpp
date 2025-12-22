@@ -17,6 +17,7 @@ namespace mirai {
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_DEPTH_PREPASS;
+        pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
 
         shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
         if (shader == nullptr) {
@@ -25,7 +26,28 @@ namespace mirai {
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
-        auto draw_batch = [&](MeshBatch *batch, PipelineID pipeline_id) {
+        auto draw_batch = [&](MeshBatch *batch, Shader *shader) {
+            if (shader->get_draw_mode() == DRAWMODE_INDEXED_INDIRECT) {
+                UniformSetID transform_set = command_buffer->create_uniform_set(&transform_layout, 1, 1);
+                UniformBinding binding = {
+                    .resource_id = batch->transform_buffer_view.buffer,
+                    .buffer_info = {
+                        .offset = batch->transform_buffer_view.offset,
+                        .range = batch->transform_buffer_view.size,
+                    },
+                };
+                device->update_uniform_set(transform_set, &binding, 1);
+
+                UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
+                command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+                command_buffer->set_index_buffer(batch->index_buffer.buffer);
+
+                uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
+                command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
+            } else {
+                ASSERT_MSG(0, "Draw mode not defined");
+            }
+            /*
             // Set Per Frame Data
             uint32_t push_constant_data[4] = {0, 0, 0, 0};
             PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
@@ -53,6 +75,7 @@ namespace mirai {
                                              batch->vertex_offsets[i],
                                              0);
             }
+            */
         };
 
         // Create PerFrame uniform set
@@ -88,7 +111,7 @@ namespace mirai {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
                     continue;
                 for (auto &mesh_batch : batch.meshes)
-                    draw_batch(&mesh_batch, shader->pipeline_id);
+                    draw_batch(&mesh_batch, shader);
             }
         }
 

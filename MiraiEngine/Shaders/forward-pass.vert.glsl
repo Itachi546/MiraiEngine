@@ -28,15 +28,9 @@ layout(set = 3, binding = 0) readonly buffer Transform {
     mat4 transforms[];
 };
 
-layout(push_constant) uniform PushConstants {
-    uint transform_id;
-    uint material_id;
-    uint padding[2];
-};
-
 void main() {
     Vertex vertex = vertices[gl_VertexIndex];
-    mat4 M = transforms[transform_id];
+    mat4 M = transforms[gl_DrawID];
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
@@ -48,5 +42,5 @@ void main() {
     vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
     vs_out.world_pos = world_pos.xyz;
     vs_out.uv = vec2(vertex.tu, vertex.tv);
-    vs_out.mat_id = material_id;
+    vs_out.mat_id = gl_DrawID;
 }

@@ -15,11 +15,11 @@
 namespace mirai {
 
     Scene::Scene(const std::string &name) : name(name), dirty(true) {
-        component_manager = std::make_unique<ComponentManager>();
-        component_manager->register_component<NameComponent>();
-        component_manager->register_component<HierarchyComponent>();
-        component_manager->register_component<MeshComponent>();
-        component_manager->register_component<TransformComponent>();
+        ecs = std::make_unique<ECS>();
+        ecs->component_manager->register_component<NameComponent>();
+        ecs->component_manager->register_component<HierarchyComponent>();
+        ecs->component_manager->register_component<MeshComponent>();
+        ecs->component_manager->register_component<TransformComponent>();
 
         RenderingDevice *device = RenderingDevice::get();
         directional_light_info.enable_shadow = true;
@@ -97,16 +97,16 @@ namespace mirai {
     }
 
     void Scene::remove_entity_tree(Entity entity) {
-        if (component_manager->has_component<HierarchyComponent>(entity)) {
-            HierarchyComponent *comp = component_manager->get_component<HierarchyComponent>(entity);
+        if (ecs->component_manager->has_component<HierarchyComponent>(entity)) {
+            HierarchyComponent *comp = ecs->component_manager->get_component<HierarchyComponent>(entity);
             for (auto child : comp->childrens)
                 remove_entity_tree(child);
         }
-        ecs::destroy_entity(component_manager.get(), entity);
+        ecs->destroy_entity(entity);
     }
 
     void Scene::update_transform_components() {
-        auto transform_array_ptr = component_manager->get_component_array<TransformComponent>();
+        auto transform_array_ptr = ecs->component_manager->get_component_array<TransformComponent>();
         std::vector<TransformComponent> &transforms = transform_array_ptr->components;
         std::for_each(std::execution::par_unseq,
                       transforms.begin(),
@@ -115,12 +115,12 @@ namespace mirai {
     }
 
     void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
-        TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+        TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
         if (transform->dirty || force_update) {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
 
-            HierarchyComponent *hierarchy_component = component_manager->get_component<HierarchyComponent>(entity);
+            HierarchyComponent *hierarchy_component = ecs->component_manager->get_component<HierarchyComponent>(entity);
             if (hierarchy_component != nullptr) {
                 for (auto &child : hierarchy_component->childrens)
                     update_hierarchy(child, transform->world_transform, true);
@@ -132,7 +132,7 @@ namespace mirai {
         for (auto &entity : entities)
             update_hierarchy(entity, glm::mat4(1.0f), false);
 
-        std::vector<TransformComponent> &transforms = component_manager->get_component_array<TransformComponent>()->components;
+        std::vector<TransformComponent> &transforms = ecs->component_manager->get_component_array<TransformComponent>()->components;
     }
 
     void Scene::generate_render_object_list() {
@@ -144,7 +144,7 @@ namespace mirai {
 
         ScopedCpuProfiling("Update Draw Data");
 
-        auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
+        auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
@@ -157,7 +157,7 @@ namespace mirai {
             const Entity entity = mesh_component_ptr->entities[i];
 
             GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
-            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+            TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
 
             BufferView vertex_buffer = mesh_component.vertex_buffer;
             BufferView index_buffer = mesh_component.index_buffer;
@@ -211,11 +211,12 @@ namespace mirai {
     Scene::~Scene() {
         release_all_entities();
 
-        for (auto &comp_array : component_manager->component_array) {
+        for (auto &comp_array : ecs->component_manager->component_array) {
             if (comp_array)
                 ASSERT(comp_array->size() == 0);
         }
-        ecs::destroy(component_manager.get());
+        ecs->destroy();
+        ecs = nullptr;
     }
 
 } // namespace mirai

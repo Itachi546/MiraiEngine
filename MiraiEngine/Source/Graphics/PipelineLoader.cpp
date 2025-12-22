@@ -31,6 +31,7 @@ namespace mirai {
             pipeline_state.render_state.fields.topology = get_topology(render_state.value("topology", "TOPOLOGY_TRIANGLE_LIST"));
             pipeline_state.render_state.fields.polygon_mode = get_polygon_mode(render_state.value("polygon-mode", "POLYGON_MODE_FILL"));
             pipeline_state.render_state.fields.pass_mode = get_pass_mode(render_state.value("pass", ""));
+            pipeline_state.render_state.fields.draw_mode = get_draw_mode(render_state.value("draw-mode", "DRAWMODE_INDEXED"));
 
             PipelineAttachmentInfo attachment_info{};
             if (render_state["color-attachments-format"] != nullptr) {
