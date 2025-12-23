@@ -125,9 +125,11 @@ namespace mirai {
         uint32_t draw_indirect_size_bytes = 0;
         for (auto &batch : scene->main_render_batches) {
             for (auto &mesh_batch : batch.meshes) {
-                uint32_t num_entity = cast_u32(mesh_batch.transform_indices.size());
+                uint32_t num_entity = cast_u32(mesh_batch.mesh_draw_infos.size());
                 total_entities += num_entity;
-                material_size_bytes += scene->materials[mesh_batch.material_indices[0]]->get_instance_data_size() * num_entity;
+
+                uint32_t material_index = mesh_batch.mesh_draw_infos[0].material_index;
+                material_size_bytes += scene->materials[material_index]->get_instance_data_size() * num_entity;
                 draw_indirect_size_bytes += sizeof(DrawIndexedIndirectCommand) * num_entity;
             }
         }
@@ -150,12 +152,13 @@ namespace mirai {
 
         for (auto &render_batch : scene->main_render_batches) {
             for (auto &batch : render_batch.meshes) {
-                uint32_t num_entity = cast_u32(batch.transform_indices.size());
+                uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
                 batch.transform_buffer_view.buffer = per_frame_staging_buffer;
                 batch.transform_buffer_view.offset = transform_offset_bytes;
                 batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
-                uint32_t instance_data_size = scene->materials[batch.material_indices[0]]->get_instance_data_size();
+                uint32_t material_index = batch.mesh_draw_infos[0].material_index;
+                uint32_t instance_data_size = scene->materials[material_index]->get_instance_data_size();
                 batch.material_buffer_view.buffer = per_frame_staging_buffer;
                 batch.material_buffer_view.offset = material_offset_bytes;
                 batch.material_buffer_view.size = num_entity * instance_data_size;
@@ -165,21 +168,16 @@ namespace mirai {
                 batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
 
                 for (uint32_t e = 0; e < num_entity; ++e) {
-                    TransformComponent &component = component_manager->get_component_array<TransformComponent>()->components[batch.transform_indices[e]];
+                    const MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
+                    TransformComponent &component = component_manager->get_component_array<TransformComponent>()->components[draw_info.transform_index];
                     std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
 
-                    auto &material = scene->materials[batch.material_indices[e]];
+                    auto &material = scene->materials[draw_info.material_index];
                     std::memcpy(material_array, material->get_instance_data(), instance_data_size);
                     material_array += instance_data_size;
                     transform_array += sizeof(glm::mat4);
 
-                    DrawIndexedIndirectCommand command{
-                        batch.index_counts[e],
-                        1,
-                        batch.index_offsets[e],
-                        batch.vertex_offsets[e],
-                        0};
-                    std::memcpy(draw_indirect_array, &command, sizeof(DrawIndexedIndirectCommand));
+                    std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                     draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
                 }
                 transform_offset_bytes += num_entity * sizeof(glm::mat4);

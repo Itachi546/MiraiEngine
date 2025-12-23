@@ -34,7 +34,7 @@ namespace mirai {
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, std::vector<RenderBatch> &render_batches, bool only_opaque) {
+    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, bool only_opaque) {
         auto &render_object_list = scene->render_object_list;
         CachedBatchInfo cached_batch_info = {
             .batch_type = RENDERBATCH_TYPE_OPAQUE,
@@ -51,8 +51,8 @@ namespace mirai {
 
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling) {
-                TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
                 if (!frustum->intersect(aabb))
@@ -82,9 +82,9 @@ namespace mirai {
                 mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, render_batches[shader_batch].meshes);
                 cached_batch_info.vertex_buffer = object.vertex_buffer;
             }
-
+            float distance_to_camera = glm::dot(transform->position, camera_position);
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
+            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, distance_to_camera);
         }
     }
 
@@ -96,7 +96,7 @@ namespace mirai {
     static const uint32_t MESH_LAYOUT_BINDING = 3;
 
     void DrawBatchIndirect(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
-        if (batch->transform_indices.size() == 0)
+        if (batch->mesh_draw_infos.size() == 0)
             return;
 
         RenderingDevice *device = RenderingDevice::get();

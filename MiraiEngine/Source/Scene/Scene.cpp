@@ -91,9 +91,11 @@ namespace mirai {
         Frustum &frustum = camera->get_frustum();
 
         main_render_batches.clear();
-        DrawBatchGenerator::CreateBatch(this, &frustum, main_render_batches, false);
+        DrawBatchGenerator::CreateBatch(this, &frustum, camera->position, main_render_batches, false);
 
-        glm::vec3 light_direction = sun->get_direction();
+        std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
     }
 
     void Scene::remove_entity_tree(Entity entity) {
