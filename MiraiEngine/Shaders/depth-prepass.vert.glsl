@@ -18,8 +18,14 @@ layout(set = 2, binding = 0) readonly buffer VertexData {
     Vertex vertices[];
 };
 
+layout(set = 3, binding = 0) readonly buffer DrawDataBindings {
+    DrawData draw_datas[];
+};
+
 void main() {
+    uint transform_index = draw_datas[gl_DrawID].transform_index;
     Vertex vertex = vertices[gl_VertexIndex];
-    mat4 M = transforms[gl_DrawID];
+
+    mat4 M = transforms[transform_index];
     gl_Position = per_frame_data.VP * M * vec4(vertex.px, vertex.py, vertex.pz, 1.0f);
 }

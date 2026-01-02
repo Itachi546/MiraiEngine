@@ -11,7 +11,12 @@ namespace mirai {
 
     void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         // Mesh Data
-        transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+        UniformLayout transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+        transform_uniform_set = device->create_uniform_set(&transform_layout, 1, 1);
+        UniformBinding binding = {
+            .resource_id = renderer->global_transform_buffer,
+        };
+        device->update_uniform_set(transform_uniform_set, &binding, 1);
 
         PipelineState pipeline_state;
         pipeline_state.render_state.fields.depth_test = true;
@@ -28,17 +33,7 @@ namespace mirai {
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         auto draw_batch = [&](MeshBatch *batch, Shader *shader) {
             if (shader->get_draw_mode() == DRAWMODE_INDEXED_INDIRECT) {
-                UniformSetID transform_set = command_buffer->create_uniform_set(&transform_layout, 1, 1);
-                UniformBinding binding = {
-                    .resource_id = batch->transform_buffer_view.buffer,
-                    .buffer_info = {
-                        .offset = batch->transform_buffer_view.offset,
-                        .range = batch->transform_buffer_view.size,
-                    },
-                };
-                device->update_uniform_set(transform_set, &binding, 1);
-
-                UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
+                UniformSetID uniform_sets[] = {transform_uniform_set, batch->vertex_binding_set};
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
                 command_buffer->set_index_buffer(batch->index_buffer.buffer);
 
@@ -47,35 +42,6 @@ namespace mirai {
             } else {
                 ASSERT_MSG(0, "Draw mode not defined");
             }
-            /*
-            // Set Per Frame Data
-            uint32_t push_constant_data[4] = {0, 0, 0, 0};
-            PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-
-            UniformSetID transform_set = command_buffer->create_uniform_set(&transform_layout, 1, 1);
-            UniformBinding binding = {
-                .resource_id = batch->transform_buffer_view.buffer,
-                .buffer_info = {
-                    .offset = batch->transform_buffer_view.offset,
-                    .range = batch->transform_buffer_view.size,
-                },
-            };
-            device->update_uniform_set(transform_set, &binding, 1);
-
-            UniformSetID uniform_sets[] = {transform_set, batch->vertex_binding_set};
-            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
-
-            command_buffer->set_index_buffer(batch->index_buffer.buffer);
-            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
-                push_constant_data[0] = i;
-                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-                command_buffer->draw_indexed(batch->index_counts[i],
-                                             1,
-                                             batch->index_offsets[i],
-                                             batch->vertex_offsets[i],
-                                             0);
-            }
-            */
         };
 
         // Create PerFrame uniform set
@@ -102,7 +68,12 @@ namespace mirai {
         command_buffer->begin_render_pass(node, frame_graph);
 
         shader->bind(command_buffer);
-        command_buffer->set_uniform_sets(shader->pipeline_id, &per_frame_uniform_set, 1);
+
+        UniformSetID uniform_sets[] = {
+            per_frame_uniform_set,
+            transform_uniform_set,
+        };
+        command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
         Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = scene->main_render_batches;
@@ -111,7 +82,7 @@ namespace mirai {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
                     continue;
                 for (auto &mesh_batch : batch.meshes)
-                    draw_batch(&mesh_batch, shader);
+                    DrawBatch(command_buffer, &mesh_batch, shader, 3);
             }
         }
 

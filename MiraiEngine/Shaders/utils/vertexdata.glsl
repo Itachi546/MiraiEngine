@@ -12,6 +12,12 @@ struct Vertex
     float tu, tv;
 };
 
+struct DrawData {
+    uint transform_index;
+    uint material_index;
+    uint _padding[2];
+};
+
 float unpack_u8_to_float(uint x)
 {
     return (x - 127.5f) / (127.0f);

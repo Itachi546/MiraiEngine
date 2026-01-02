@@ -28,9 +28,14 @@ layout(set = 3, binding = 0) readonly buffer Transform {
     mat4 transforms[];
 };
 
+layout(set = 4, binding = 0) readonly buffer DrawDataBindings {
+    DrawData draw_datas[];
+};
+
 void main() {
+    DrawData draw_data = draw_datas[gl_DrawID];
     Vertex vertex = vertices[gl_VertexIndex];
-    mat4 M = transforms[gl_DrawID];
+    mat4 M = transforms[draw_data.transform_index];
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
@@ -42,5 +47,5 @@ void main() {
     vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
     vs_out.world_pos = world_pos.xyz;
     vs_out.uv = vec2(vertex.tu, vertex.tv);
-    vs_out.mat_id = gl_DrawID;
+    vs_out.mat_id = draw_data.material_index;
 }

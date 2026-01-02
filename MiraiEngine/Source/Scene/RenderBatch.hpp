@@ -38,10 +38,8 @@ namespace mirai {
 
         // These are currently populated by renderer all at once for all batches
         // We can also move it inside this call
-        BufferView transform_buffer_view;
-        BufferView material_buffer_view;
-        // Only applied for draw indirect call
         BufferView draw_indirect_buffer_view;
+        BufferView draw_data_buffer_view;
 
         UniformSetID vertex_binding_set;
 
@@ -78,5 +76,5 @@ namespace mirai {
         static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, bool only_opaque);
     };
 
-    void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader);
+    void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id = 4);
 } // namespace mirai
