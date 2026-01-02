@@ -28,13 +28,8 @@ namespace mirai {
         float get_aspect_ratio() const { return static_cast<float>(width) / static_cast<float>(height); }
 
         void get_size(uint32_t *width, uint32_t *height) const {
-            if (fullscreen) {
-                *width = fullscreen_width;
-                *height = fullscreen_height;
-            } else {
-                *width = this->width;
-                *height = this->height;
-            }
+            *width = this->width;
+            *height = this->height;
         }
 
         void set_fullscreen(bool fullscreen);
@@ -80,7 +75,9 @@ namespace mirai {
 
         GLFWwindow *glfw_window;
         uint32_t width, height;
-        uint32_t fullscreen_width, fullscreen_height;
+
+        // Cached window details to restore when exiting fullscreen mode
+        int prev_x, prev_y, prev_width, prev_height;
         std::string title;
         bool fullscreen;
         bool minimized;

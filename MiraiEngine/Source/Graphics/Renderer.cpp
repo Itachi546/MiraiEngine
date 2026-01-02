@@ -154,8 +154,6 @@ namespace mirai {
     }
 
     void Renderer::copy_buffers() {
-        // @TODO this is not correct and shouldn't be done
-        ScopedCpuProfiling("Renderer::Copy Buffers");
         // Reset staging buffer offset
         per_frame_staging_buffer_offset = 0;
         uint32_t current_frame = device->get_current_frame();
@@ -178,65 +176,31 @@ namespace mirai {
         std::memcpy(staging_buffer_ptr, &cascade_info, sizeof(cascade_info));
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
-        uint32_t material_size_bytes = 0;
         uint32_t draw_indirect_size_bytes = 0;
         for (auto &batch : scene->main_render_batches) {
             for (auto &mesh_batch : batch.meshes) {
                 uint32_t num_entity = cast_u32(mesh_batch.mesh_draw_infos.size());
                 total_entities += num_entity;
-
-                uint32_t material_index = mesh_batch.mesh_draw_infos[0].material_index;
-                material_size_bytes += scene->materials[material_index]->get_instance_data_size() * num_entity;
                 draw_indirect_size_bytes += sizeof(DrawIndexedIndirectCommand) * num_entity;
             }
         }
-        /*
-        // Allocate memory in staging buffer
-        uint32_t transform_size_bytes = total_entities * sizeof(glm::mat4);
-        uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size_bytes, current_frame);
-        uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
 
-        uint32_t material_buffer_offset = allocate_staging_buffer(material_size_bytes, current_frame);
-        uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
-        */
-        struct DrawData {
-            uint32_t transform_id;
-            uint32_t material_id;
-            uint32_t _padding[2];
-        };
-
-        uint32_t draw_data_size_bytes = total_entities * sizeof(DrawData);
+        uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
+        uint32_t draw_data_size_bytes = total_entities * draw_data_instance_size;
         uint32_t draw_data_buffer_offset = allocate_staging_buffer(draw_data_size_bytes, current_frame);
         uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_data_buffer_offset);
 
         uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
         uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
 
-        // Copy the transform/material data in staging buffer
-        // uint32_t transform_offset_bytes = transform_buffer_offset;
-        // uint32_t material_offset_bytes = material_buffer_offset;
         auto &component_manager = scene->ecs->component_manager;
-
-        DrawData draw_data;
-        draw_data._padding[0] = 0;
-        draw_data._padding[1] = 0;
         for (auto &render_batch : scene->main_render_batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
-                /*
-                batch.transform_buffer_view.buffer = per_frame_staging_buffer;
-                batch.transform_buffer_view.offset = transform_offset_bytes;
-                batch.transform_buffer_view.size = sizeof(glm::mat4) * num_entity;
 
-                uint32_t material_index = batch.mesh_draw_infos[0].material_index;
-                uint32_t instance_data_size = scene->materials[material_index]->get_instance_data_size();
-                batch.material_buffer_view.buffer = per_frame_staging_buffer;
-                batch.material_buffer_view.offset = material_offset_bytes;
-                batch.material_buffer_view.size = num_entity * instance_data_size;
-                */
                 batch.draw_data_buffer_view.buffer = per_frame_staging_buffer;
                 batch.draw_data_buffer_view.offset = draw_data_buffer_offset;
-                batch.draw_data_buffer_view.size = num_entity * sizeof(DrawData);
+                batch.draw_data_buffer_view.size = num_entity * draw_data_instance_size;
 
                 batch.draw_indirect_buffer_view.buffer = per_frame_staging_buffer;
                 batch.draw_indirect_buffer_view.offset = draw_indirect_buffer_offset;
@@ -244,27 +208,20 @@ namespace mirai {
 
                 for (uint32_t e = 0; e < num_entity; ++e) {
                     const MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
-                    /*
-                    TransformComponent &component = component_manager->get_component_array<TransformComponent>()->components[draw_info.transform_index];
-                    std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
-
-                    auto &material = scene->materials[draw_info.material_index];
-                    std::memcpy(material_array, material->get_instance_data(), instance_data_size);
-                    material_array += instance_data_size;
-                    transform_array += sizeof(glm::mat4);
-                    */
                     std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                     draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
 
-                    draw_data.transform_id = draw_info.transform_index;
-                    draw_data.material_id = draw_info.material_index;
-                    std::memcpy(draw_data_array, &draw_data, sizeof(DrawData));
-                    draw_data_array += sizeof(DrawData);
+                    uint32_t draw_data[] = {
+                        draw_info.transform_index,
+                        draw_info.material_index,
+                        0,
+                        0,
+                    };
+                    std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
+                    draw_data_array += draw_data_instance_size;
                 }
-                // transform_offset_bytes += num_entity * sizeof(glm::mat4);
-                // material_offset_bytes += num_entity * instance_data_size;
                 draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
-                draw_data_buffer_offset += sizeof(DrawData) * num_entity;
+                draw_data_buffer_offset += draw_data_instance_size * num_entity;
             }
         }
     }
