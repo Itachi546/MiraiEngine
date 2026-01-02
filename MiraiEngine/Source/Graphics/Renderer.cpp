@@ -207,12 +207,14 @@ namespace mirai {
     }
 
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame) {
-        ASSERT_MSG(per_frame_staging_buffer_offset + size <= k_staging_buffer_size_per_frame, "Staging buffer size is not enough");
         uint32_t per_frame_offset = current_frame * k_staging_buffer_size_per_frame;
         uint32_t next_ptr = per_frame_offset + per_frame_staging_buffer_offset;
 
         // Round to the multiple of 16
         size = (size + 16 - 1) & ~15;
+        if (per_frame_staging_buffer_offset + size > k_staging_buffer_size_per_frame)
+            Log::Fatal("Not enough per frame staging buffer ");
+
         per_frame_staging_buffer_offset += size;
         return next_ptr;
     }
