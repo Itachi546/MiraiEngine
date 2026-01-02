@@ -32,6 +32,8 @@ namespace mirai {
             Timer timer;
             if (app)
                 app->start();
+
+            renderer->on_load_resources();
             Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
         }
 

@@ -481,7 +481,6 @@ namespace mirai {
             .base_path = utils::get_base_path(filename),
             .async_loader = &async_loader,
         };
-
         std::string file_extension = utils::get_file_extension(filename);
 
         bool ret = false;
@@ -503,9 +502,9 @@ namespace mirai {
             // Log::Error("Failed to load file: ", filename);
             return K_INVALID_ENTITY;
         }
+        scene->dirty = true;
 
         auto &comp_manager = scene->ecs->component_manager;
-
         Entity root_entity = scene->ecs->create_entity();
         std::string root_entity_name = utils::get_filename(filename);
         comp_manager->add_component<NameComponent>(root_entity, root_entity_name);

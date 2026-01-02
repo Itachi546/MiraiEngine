@@ -1600,7 +1600,7 @@ namespace mirai {
 
         CommandBuffer *cb = get_command_buffer(0);
         cb->begin();
-
+        begin_debug_utils_label(cb, "Create Acceleration Structure", nullptr);
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
@@ -1619,6 +1619,8 @@ namespace mirai {
             };
             vkCmdCopyAccelerationStructureKHR(cb->command_buffer, &copy_info);
         }
+
+        end_debug_utils_label(cb);
         submit_command_buffer_immediate(cb);
         cb->wait();
 

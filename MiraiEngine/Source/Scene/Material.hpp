@@ -7,6 +7,7 @@
 #include "Shader.hpp"
 namespace mirai {
 
+    constexpr const uint32_t K_MAX_MATERIAL_INSTANCE_DATA_SIZE = 64;
     enum MaterialFlags {
         FLAG_EMPTY = 0,
         FLAG_OPAQUE = 1 << 0,

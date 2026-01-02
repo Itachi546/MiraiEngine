@@ -102,6 +102,8 @@ namespace mirai {
 
         void release_all_entities();
 
+        void generate_render_object_list();
+
         virtual ~Scene();
 
         std::unique_ptr<ECS> ecs;
@@ -138,9 +140,9 @@ namespace mirai {
         std::vector<GpuMesh> gpu_meshes;
         std::vector<RenderableObjectData> render_object_list;
         std::vector<RenderBatch> main_render_batches;
+        bool dirty;
 
       protected:
-        bool dirty;
         std::string name;
 
         std::unique_ptr<Camera> camera;
@@ -153,6 +155,5 @@ namespace mirai {
         void update_transform_components();
         void update_hierarchy_component();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
-        void generate_render_object_list();
     };
 } // namespace mirai

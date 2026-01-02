@@ -52,6 +52,8 @@ namespace mirai {
 
         void initialize();
 
+        void on_load_resources();
+
         static Renderer *get() {
             return Instance;
         }
@@ -79,6 +81,9 @@ namespace mirai {
         // Uniform Buffer
         BufferView cascade_uniform_buffer;
         BufferView per_frame_uniform_buffer;
+
+        BufferID global_transform_buffer;
+        BufferID global_material_buffer;
 
         // Global Geometry Buffer
         const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;

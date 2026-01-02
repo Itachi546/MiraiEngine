@@ -32,9 +32,47 @@ namespace mirai {
     }
 
     void Renderer::initialize() {
+        // Per frame staging buffer
+        uint32_t total_frames = device->get_swapchain_image_count();
+        BufferDescription buffer_desc = {
+            .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+        Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
+        Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size / total_frames), " mb");
+
+        per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
+        per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
+
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
+        buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
+
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
+        BufferID geometry_buffer = device->create_buffer(&buffer_desc, "global_vertex_buffer");
+        vertex_buffer_allocator.init(geometry_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE, 0);
+
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT + BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
+        BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
+        index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
+
+        buffer_desc.size = K_MAX_ENTITIES * sizeof(glm::mat4);
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
+        global_transform_buffer = device->create_buffer(&buffer_desc, "global_transform_buffer");
+
+        buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        global_material_buffer = device->create_buffer(&buffer_desc, "global_material_buffer");
+    }
+
+    void Renderer::on_load_resources() {
+        // Trigger scene update so that transforms are updated
+        // @TODO Fix this
+        scene->update();
+
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
 
+        auto &component_manager = scene->ecs->component_manager;
         std::vector<AccelerationStructureMeshInfo> mesh_infos(render_list.size());
         for (uint32_t i = 0; i < render_list.size(); ++i) {
             RenderableObjectData &object = render_list[i];
@@ -54,7 +92,6 @@ namespace mirai {
             };
 
             // @TODO a very long function :D
-            auto &component_manager = scene->ecs->component_manager;
             TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
             // The default representation of glm is column major while the VkTransformKHR uses row major
             // glm::mat4 transform = glm::transpose(transform_component.world_transform);
@@ -71,29 +108,49 @@ namespace mirai {
         if (device->supports_raytracing())
             enable_rt_shadow = true;
 
-        // Per frame staging buffer
-        uint32_t total_frames = device->get_swapchain_image_count();
-        BufferDescription buffer_desc = {
-            .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
-            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT,
-            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
-        };
-        Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
-        Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size / total_frames), " mb");
+        // Update global transform buffer
+        auto transform_components_ptr = component_manager->get_component_array<TransformComponent>();
+        std::size_t transform_size_bytes = transform_components_ptr->components.size() * sizeof(glm::mat4);
+        uint32_t transform_buffer_offset = allocate_staging_buffer(cast_u32(transform_size_bytes), 1);
+        uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+        for (auto &component : transform_components_ptr->components) {
+            std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
+            transform_array += sizeof(glm::mat4);
+        }
 
-        per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
-        per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
+        // Update material buffer
+        std::size_t material_size_bytes = scene->materials.size() * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
+        uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
-        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
-        buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_INDEX_BUFFER_BIT;
+        uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
+        for (auto &mat : scene->materials) {
+            std::memset(temp_buffer, 0, 64);
+            uint32_t instance_data_size = mat->get_instance_data_size();
+            ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
+            std::memcpy(temp_buffer, mat->get_instance_data(), mat->get_instance_data_size());
 
-        BufferID geometry_buffer = device->create_buffer(&buffer_desc, "global_vertex_buffer");
-        vertex_buffer_allocator.init(geometry_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE, 0);
+            std::memcpy(material_array, temp_buffer, 64);
+            material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        }
 
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
-        BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
-        index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
+        CommandBuffer *command_buffer = device->get_command_buffer(0);
+        command_buffer->begin();
+        device->begin_debug_utils_label(command_buffer, "Copy global buffer", nullptr);
+        command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, {
+                                                                                           .src_offset = transform_buffer_offset,
+                                                                                           .dst_offset = 0,
+                                                                                           .size = transform_size_bytes,
+                                                                                       });
+        command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, {
+                                                                                          .src_offset = material_buffer_offset,
+                                                                                          .dst_offset = 0,
+                                                                                          .size = material_size_bytes,
+                                                                                      });
+
+        device->end_debug_utils_label(command_buffer);
+        device->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
     }
 
     void Renderer::copy_buffers() {
@@ -259,7 +316,7 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
-        BufferID buffers[] = {per_frame_staging_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer};
+        BufferID buffers[] = {per_frame_staging_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer, global_material_buffer, global_transform_buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         shader_hashmap->destroy();
         miProfiler::Destroy();
