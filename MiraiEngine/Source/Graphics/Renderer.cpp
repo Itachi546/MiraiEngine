@@ -5,18 +5,21 @@
 #include "Scene/ShaderHashMap.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/Scene.hpp"
+#include "Scene/Camera.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
 #include "PipelineLoader.hpp"
-#include <cstring>
 
+#include <cstring>
+#include <algorithm>
+#include <execution>
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
 
-    Renderer::Renderer() {
+    Renderer::Renderer(RenderMode render_mode) : render_mode(render_mode) {
         ASSERT(Instance == nullptr);
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>();
@@ -26,7 +29,6 @@ namespace mirai {
 
         // Preload shaders
         shader_hashmap = std::make_unique<ShaderHashMap>();
-        preload_shaders(shader_hashmap.get());
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
     }
@@ -65,6 +67,9 @@ namespace mirai {
     }
 
     void Renderer::on_load_resources() {
+        if (pipeline_description_file.size() > 0)
+            preload_shaders(shader_hashmap.get(), pipeline_description_file);
+
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
         scene->update();
@@ -151,6 +156,8 @@ namespace mirai {
         device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
+
+        frame_graph->compile(this);
     }
 
     void Renderer::copy_buffers() {
@@ -177,7 +184,7 @@ namespace mirai {
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
         uint32_t draw_indirect_size_bytes = 0;
-        for (auto &batch : scene->main_render_batches) {
+        for (auto &batch : main_render_batches) {
             for (auto &mesh_batch : batch.meshes) {
                 uint32_t num_entity = cast_u32(mesh_batch.mesh_draw_infos.size());
                 total_entities += num_entity;
@@ -194,7 +201,7 @@ namespace mirai {
         uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
 
         auto &component_manager = scene->ecs->component_manager;
-        for (auto &render_batch : scene->main_render_batches) {
+        for (auto &render_batch : main_render_batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
 
@@ -245,12 +252,12 @@ namespace mirai {
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
     }
 
-    uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame) {
+    uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t alignment) {
         uint32_t per_frame_offset = current_frame * k_staging_buffer_size_per_frame;
         uint32_t next_ptr = per_frame_offset + per_frame_staging_buffer_offset;
 
         // Round to the multiple of 16
-        size = (size + 16 - 1) & ~15;
+        size = align_memory(size, alignment);
         if (per_frame_staging_buffer_offset + size > k_staging_buffer_size_per_frame)
             Log::Fatal("Not enough per frame staging buffer ");
 
@@ -263,6 +270,17 @@ namespace mirai {
 
     void Renderer::update() {
         scene->update();
+
+        main_render_batches.clear();
+
+        Camera *camera = scene->get_camera();
+        Frustum &frustum = camera->get_frustum();
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, render_mode, false);
+
+        std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
+
         frame_graph->update(this);
 
         FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");

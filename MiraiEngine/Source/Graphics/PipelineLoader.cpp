@@ -6,9 +6,9 @@
 #include <fstream>
 
 namespace mirai {
-    void preload_shaders(ShaderHashMap *pipeline_hashmap) {
+    void preload_shaders(ShaderHashMap *pipeline_hashmap, const std::string &filename) {
         using json = nlohmann::json;
-        std::ifstream json_file("Assets/default-pipelines.json");
+        std::ifstream json_file(filename);
         if (!json_file) {
             Log::Fatal("Failed to compile pipeline");
         }

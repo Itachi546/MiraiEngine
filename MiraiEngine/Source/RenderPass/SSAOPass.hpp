@@ -1,19 +1,18 @@
 #pragma once
-/*
+
 #include "Graphics/RenderingDevice.hpp"
 #include "Scene/FrameGraph.hpp"
-#include "Scene/ShaderMaterial.hpp"
 #include "Math/Math.hpp"
 
 namespace mirai {
-
+    struct Shader;
     class SSAOPass : public FrameGraphRenderer {
       public:
         SSAOPass() : FrameGraphRenderer("ssao_pass") {}
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer* renderer) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer* renderer) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         void set_blur_radius(float radius) {
             this->blur_radius = radius;
@@ -40,7 +39,7 @@ namespace mirai {
         } constant_data;
 
       private:
-        std::unique_ptr<ComputeShader> ssao_shader, blur_shader;
+        Shader *ssao_shader, *blur_shader;
         UniformSetID ssao_set, blur_x_set, blur_y_set;
         TextureID noise_texture, blur_intermediate_texture;
 
@@ -48,4 +47,3 @@ namespace mirai {
         void ssao_blur(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene, float direction);
     };
 } // namespace mirai
- */

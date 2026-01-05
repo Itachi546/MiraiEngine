@@ -1,19 +1,15 @@
-/*
 #include "DirectionalShadowPassRT.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderMaterial.hpp"
+#include "Scene/Shader.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {
     void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        dir_shadow_shader = std::make_unique<ComputeShader>("rt_directional_light");
-        dir_shadow_shader->create_from_file("SPIRV/rt_directional_shadow.comp.spv");
-
-        blur_shader = std::make_unique<ComputeShader>("rt_shadow_blur");
-        blur_shader->create_from_file("SPIRV/gaussian-blur.comp.spv");
+        dir_shadow_shader = Shader::create_from_file("SPIRV/rt-directional-shadow.comp.spv", "rt-shadow-shader");
+        blur_shader = Shader::create_from_file("SPIRV/gaussian-blur.comp.spv", "rt-shadow-blur-shader");
 
         UniformLayout layouts[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
@@ -104,7 +100,7 @@ namespace mirai {
         };
 
         dir_shadow_shader->bind(command_buffer);
-        PipelineID pipeline_id = dir_shadow_shader->get_pipeline_id();
+        PipelineID pipeline_id = dir_shadow_shader->pipeline_id;
         command_buffer->set_uniform_sets(pipeline_id, &rt_uniform_set, 1);
         command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
@@ -149,7 +145,7 @@ namespace mirai {
         // Blur in X-direction
 
         blur_shader->bind(command_buffer);
-        PipelineID pipeline_id = blur_shader->get_pipeline_id();
+        PipelineID pipeline_id = blur_shader->pipeline_id;
 
         command_buffer->set_uniform_sets(pipeline_id, &blur_uniform_set_x, 1);
         command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
@@ -177,4 +173,3 @@ namespace mirai {
             device->destroy_textures(&blur_intermediate_texture, 1);
     }
 } // namespace mirai
-*/

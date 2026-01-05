@@ -1,9 +1,9 @@
 #pragma once
 #include "Scene/FrameGraph.hpp"
 #include "Common/Font.hpp"
+#include "Graphics/TextRenderManager.hpp"
 #include <memory>
 namespace mirai {
-    struct TextRenderManager;
     class DebugPass : public FrameGraphRenderer {
       public:
         DebugPass();

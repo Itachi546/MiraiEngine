@@ -37,7 +37,7 @@ namespace mirai {
         command_buffer->begin_render_pass(node, frame_graph);
 
         Scene *scene = renderer->get_scene();
-        std::vector<RenderBatch> &render_batches = scene->main_render_batches;
+        std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
 
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
             for (auto &batch : render_batches) {
@@ -48,7 +48,7 @@ namespace mirai {
                 Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
 
                 if (shader == nullptr) {
-                    Log::Fatal("Failed to load forward transparent pipeline");
+                    Log::Fatal("Failed to load forward pipeline shader");
                 }
 
                 shader->bind(command_buffer);

@@ -73,7 +73,7 @@ namespace mirai {
     };
 
     struct DrawBatchGenerator {
-        static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, bool only_opaque);
+        static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, RenderMode render_mode, bool only_opaque);
     };
 
     void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id = 4);

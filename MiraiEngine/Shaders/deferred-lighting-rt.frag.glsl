@@ -5,4 +5,4 @@
 #extension GL_EXT_ray_query : enable
 
 #define ENABLE_RT_SHADOW 1
-#include "utils/deferred_lighting.glsl"
+#include "utils/deferred-lighting.glsl"

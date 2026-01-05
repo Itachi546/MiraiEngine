@@ -1,18 +1,16 @@
-/*
 #include "SSAOPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Scene/Shader.hpp"
 
 namespace mirai {
 
     void SSAOPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        ssao_shader = std::make_unique<ComputeShader>("hbao_shader");
-        ssao_shader->create_from_file("SPIRV/hbao.comp.spv");
-        blur_shader = std::make_unique<ComputeShader>("cross-bilateral-blur-shader");
-        blur_shader->create_from_file("SPIRV/cross-bilateral-blur.comp.spv");
+        ssao_shader = Shader::create_from_file("SPIRV/hbao.comp.spv", "hbao-shader");
+        blur_shader = Shader::create_from_file("SPIRV/cross-bilateral-blur.comp.spv", "bilateral-blur-shader");
 
         noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/noise.png");
 
@@ -127,7 +125,7 @@ namespace mirai {
         command_buffer->begin_compute_pass(node, frame_graph);
         ssao_shader->bind(command_buffer);
 
-        PipelineID pipeline_id = ssao_shader->get_pipeline_id();
+        PipelineID pipeline_id = ssao_shader->pipeline_id;
         command_buffer->set_uniform_sets(pipeline_id, &ssao_set, 1);
         command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
 
@@ -157,7 +155,7 @@ namespace mirai {
 
         blur_shader->bind(command_buffer);
 
-        PipelineID pipeline_id = blur_shader->get_pipeline_id();
+        PipelineID pipeline_id = blur_shader->pipeline_id;
         command_buffer->set_push_constants(pipeline_id, &push_constants, 1);
         command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
         float ssao_push_constant = {};
@@ -175,4 +173,3 @@ namespace mirai {
     }
 
 } // namespace mirai
- */

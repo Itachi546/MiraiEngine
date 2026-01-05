@@ -47,6 +47,11 @@ namespace mirai {
 
     using SamplerID = uint64_t;
 
+    enum class RenderMode {
+        RENDERMODE_FORWARD,
+        RENDERMODE_DEFERRED,
+    };
+
     enum class DeviceType {
         DEVICE_TYPE_OTHER = 0x0,
         DEVICE_TYPE_INTEGRATED_GPU = 0x1,

@@ -3,9 +3,7 @@
 #include "ECS.hpp"
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
-#include "RenderBatch.hpp"
 #include "Material.hpp"
-
 #include <string>
 #include <mutex>
 
@@ -26,11 +24,14 @@ namespace mirai {
         float _padding;
     };
 
+    static_assert(sizeof(DirectionalLightCascadeInfo) % 16 == 0);
+
     struct DirectionalLightInfo {
         bool enable_shadow;
         DirectionalLightCascadeInfo cascade_info;
         uint32_t cascade_set_binding_id;
     };
+
     struct RenderableObjectData {
         Entity entity;
         uint32_t material_index;
@@ -139,7 +140,6 @@ namespace mirai {
 
         std::vector<GpuMesh> gpu_meshes;
         std::vector<RenderableObjectData> render_object_list;
-        std::vector<RenderBatch> main_render_batches;
         bool dirty;
 
       protected:

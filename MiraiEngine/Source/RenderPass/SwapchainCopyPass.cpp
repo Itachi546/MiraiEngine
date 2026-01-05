@@ -18,7 +18,7 @@ namespace mirai {
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         PipelineState pipeline_state = {};
-        pipeline_state.custom_shader_id = utils::djb2_hash_string("swapchain-copy-shader");
+        pipeline_state.custom_shader_id = Shader::create_shader_id();
         PipelineAttachmentInfo attachment_info = {
             .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
             .has_depth_attachment = false,

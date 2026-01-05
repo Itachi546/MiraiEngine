@@ -50,7 +50,7 @@ namespace mirai {
             .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
             .shader_stage = SHADER_STAGE_VERTEX,
         };
-        per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
+        UniformSetID per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
 
         UniformBinding binding = {
             .resource_id = renderer->per_frame_uniform_buffer.buffer,
@@ -76,7 +76,7 @@ namespace mirai {
         command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
         Scene *scene = renderer->get_scene();
-        std::vector<RenderBatch> &render_batches = scene->main_render_batches;
+        std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
         if (render_batches.size() > 0) {
             for (auto &batch : render_batches) {
                 if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)

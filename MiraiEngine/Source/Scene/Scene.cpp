@@ -7,10 +7,7 @@
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
 #include "Math/Math.hpp"
-#include "Math/MathUtils.hpp"
-
 #include <execution>
-#include <algorithm>
 
 namespace mirai {
 
@@ -87,15 +84,6 @@ namespace mirai {
         }
 
         generate_render_object_list();
-
-        Frustum &frustum = camera->get_frustum();
-
-        main_render_batches.clear();
-        DrawBatchGenerator::CreateBatch(this, &frustum, camera->position, main_render_batches, false);
-
-        std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
     }
 
     void Scene::remove_entity_tree(Entity entity) {

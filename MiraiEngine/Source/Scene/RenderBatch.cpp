@@ -1,6 +1,7 @@
 #include "RenderBatch.hpp"
 #include "Scene/Scene.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Graphics/Renderer.hpp"
 #include <unordered_map>
 
 namespace mirai {
@@ -34,7 +35,7 @@ namespace mirai {
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, bool only_opaque) {
+    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, RenderMode render_mode, bool only_opaque) {
         auto &render_object_list = scene->render_object_list;
         CachedBatchInfo cached_batch_info = {
             .batch_type = RENDERBATCH_TYPE_OPAQUE,
@@ -67,7 +68,7 @@ namespace mirai {
             }
 
             // Check Shader Batch
-            ShaderPassKey shader_key = material->get_shader_key();
+            ShaderPassKey shader_key = material->get_shader_key(render_mode);
             if (shader_key != cached_batch_info.shader_key) {
                 // We have a different batch
                 shader_batch = FindOrCreateShaderBatch(shader_key, render_batch_type, render_batches);
@@ -87,7 +88,7 @@ namespace mirai {
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, distance_to_camera);
         }
     }
-    
+
     static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
 
     void DrawBatchIndirect(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id, uint32_t draw_data_set_id) {

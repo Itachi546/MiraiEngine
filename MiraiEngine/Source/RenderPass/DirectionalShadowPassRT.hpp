@@ -1,5 +1,5 @@
 #pragma once
-/*
+
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
 #include "Scene/Scene.hpp"
@@ -8,21 +8,21 @@
 
 namespace mirai {
 
-    class ComputeShader;
+    struct Shader;
 
     class DirectionalShadowPassRT : public FrameGraphRenderer {
       public:
         DirectionalShadowPassRT() : FrameGraphRenderer("rt_directional_shadow_pass") {
         }
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer* scene) override;
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *scene) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer*scene) override;
+        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *scene) override;
 
         ~DirectionalShadowPassRT();
 
-        std::unique_ptr<ComputeShader> dir_shadow_shader;
-        std::unique_ptr<ComputeShader> blur_shader;
+        Shader *dir_shadow_shader;
+        Shader *blur_shader;
 
         float sigma = 1.0f;
         float blur_sample_count = 10.0f;
@@ -36,4 +36,3 @@ namespace mirai {
         void blur_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
     };
 } // namespace mirai
-*/

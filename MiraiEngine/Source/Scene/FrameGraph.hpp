@@ -222,15 +222,15 @@ namespace mirai {
             return nullptr;
         }
 
-        // Renderer must be set for each pass before calling compile function
-        // use set_renderer() function
-        void compile(Renderer *renderer);
-
       private:
         std::string name;
         FrameGraphBuilder *builder;
         std::vector<FrameGraphNodeDescription> node_descriptions;
         std::vector<FrameGraphNodeHandle> node_handles;
+
+        // Renderer must be set for each pass before calling compile function
+        // use set_renderer() function
+        void compile(Renderer *renderer);
 
         friend class Renderer;
     };

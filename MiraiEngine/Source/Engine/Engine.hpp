@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "App.hpp"
+#include "Graphics/RenderingDevice.hpp"
 
 namespace mirai {
 
@@ -9,7 +10,8 @@ namespace mirai {
     class Renderer;
 
     struct EngineInitializationOptions {
-        uint32_t width, height;
+        uint32_t width = 1920, height = 1080;
+        RenderMode render_mode = RenderMode::RENDERMODE_FORWARD;
     };
 
     class Engine {

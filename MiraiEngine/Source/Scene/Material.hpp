@@ -4,6 +4,7 @@
 
 #include "Math/Math.hpp"
 #include "Common/Hash.hpp"
+#include "Engine/Log.hpp"
 #include "Shader.hpp"
 namespace mirai {
 
@@ -67,7 +68,7 @@ namespace mirai {
          * CustomShaderID is used for custom shader types
          * id = shader_pass_id << 32 | custom_shader_id
          */
-        virtual ShaderPassKey get_shader_key() const = 0;
+        virtual ShaderPassKey get_shader_key(RenderMode render_mode) const = 0;
 
         virtual ~Material() = default;
 
@@ -95,9 +96,20 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
-        ShaderPassKey get_shader_key() const override {
+        ShaderPassKey get_shader_key(RenderMode render_mode) const override {
             ShaderPassKey shader_key;
-            shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_FORWARD_UNLIT_TRANSPARENT : SHADER_PASS_FORWARD_UNLIT;
+            switch (render_mode) {
+            case RenderMode::RENDERMODE_DEFERRED: {
+                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT : SHADER_PASS_DEFERRED_UNLIT;
+                break;
+            }
+            case RenderMode::RENDERMODE_FORWARD: {
+                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_FORWARD_UNLIT_TRANSPARENT : SHADER_PASS_FORWARD_UNLIT;
+                break;
+            }
+            default:
+                Log::Fatal("Unknown render mode");
+            };
             return shader_key;
         }
 
@@ -137,9 +149,20 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
-        ShaderPassKey get_shader_key() const override {
+        ShaderPassKey get_shader_key(RenderMode render_mode) const override {
             ShaderPassKey shader_key;
-            shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_FORWARD_TRANSPARENT : SHADER_PASS_PBR_FORWARD;
+            switch (render_mode) {
+            case RenderMode::RENDERMODE_DEFERRED: {
+                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_DEFERRED_TRANSPARENT : SHADER_PASS_PBR_DEFERRED;
+                break;
+            }
+            case RenderMode::RENDERMODE_FORWARD: {
+                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_FORWARD_TRANSPARENT : SHADER_PASS_PBR_FORWARD;
+                break;
+            }
+            default:
+                Log::Fatal("Unknown render mode");
+            };
             return shader_key;
         }
 
@@ -167,7 +190,7 @@ namespace mirai {
         ShaderMaterial(const std::string &name, ShaderPassKey pass_key) : Material(name), pass_key(pass_key) {
         }
 
-        ShaderPassKey get_shader_key() const override {
+        ShaderPassKey get_shader_key(RenderMode render_mode) const override {
             return pass_key;
         }
 

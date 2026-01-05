@@ -128,7 +128,9 @@ class TestApplication : public App {
         uint32_t width = 1920;
         uint32_t height = 1080;
 
-        scene = Renderer::get()->get_scene();
+        Renderer *renderer = Renderer::get();
+        renderer->set_pipeline_description_file("Assets/deferred-pipelines.json");
+        scene = renderer->get_scene();
 
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
 
@@ -140,27 +142,19 @@ class TestApplication : public App {
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();
-        initialize_frame_graph(frame_graph);
-        /*
-    #if 0
-        frame_graph->load_from_file("Assets/forward_pass.json");
-        frame_graph->set_renderer("forward_pass", std::make_shared<ForwardPass>());
-        frame_graph->set_renderer("depth_prepass", std::make_shared<DepthPrePass>());
-    #else
-        frame_graph->load_from_file("Assets/deferred_pass.json");
+        // initialize_frame_graph(frame_graph);
+        frame_graph->load_from_file("Assets/deferred-graph.json");
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
         frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
-        frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
-    #endif
+        // frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
+
         frame_graph->set_renderer("ssao_pass", std::make_shared<SSAOPass>());
-        frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());
+        // frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());
         frame_graph->set_renderer("rt_directional_shadow_pass", std::make_shared<DirectionalShadowPassRT>());
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
-        */
-        frame_graph->compile(Renderer::get());
 
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
@@ -233,7 +227,7 @@ class TestApplication : public App {
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
             uint32_t total_entities = 0;
-            for (auto &batch : scene->main_render_batches) {
+            for (auto &batch : Renderer::get()->main_render_batches) {
                 for (auto &mesh_batch : batch.meshes) {
                     total_entities += cast_u32(mesh_batch.mesh_draw_infos.size());
                 }
@@ -271,12 +265,11 @@ class TestApplication : public App {
             static float far_plane = camera->get_far_plane();
             if (ImGui::DragFloat("Far Plane", &far_plane, 1.0f, 50.0f, 5000.0f))
                 camera->set_far_plane(far_plane);
-            /*
+
             int projection_mode = cast_int(camera->get_projection_mode());
             const char *projection_options = "PERSPECTIVE\0ORTHOGRAPHIC";
             if (ImGui::Combo("Projection Mode", &projection_mode, projection_options))
                 camera->set_projection_mode(ProjectionMode(projection_mode));
-            */
         }
 
         if (ImGui::CollapsingHeader("Camera Controller")) {
@@ -317,12 +310,18 @@ class TestApplication : public App {
                         }
                     }
                 }
+            */
             }
-
-            auto *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
+            SSAOPass *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
             if (ssao_pass != nullptr) {
                 if (ImGui::CollapsingHeader("SSAO Pass")) {
                     ImGui::Text("SSAO Generation");
+                    static bool enable_ssao = true;
+                    ImGui::Checkbox("Enable SSAO", &enable_ssao);
+                    if (enable_ssao)
+                        ssao_pass->constant_data.intensity = 1.5f;
+                    else
+                        ssao_pass->constant_data.intensity = 0.0f;
                     ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
                     ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
                     ImGui::DragFloat("March Step Size", &ssao_pass->constant_data.step_size, 0.0001f, 0.0f, 0.1f);
@@ -335,7 +334,6 @@ class TestApplication : public App {
                     ImGui::DragFloat("Blur radius", &ssao_pass->blur_radius, 0.01f, 0.0f, 10.0f);
                     ImGui::DragFloat("Blur Sharpness", &ssao_pass->blur_sharpness, 0.01f, 0.0f, 100.0f);
                 }
-            */
             }
         }
     }
@@ -368,6 +366,7 @@ int main(int argc, char **argv) {
     EngineInitializationOptions options = {
         .width = 1360,
         .height = 769,
+        .render_mode = RenderMode::RENDERMODE_DEFERRED,
     };
 
     std::vector<std::string> model_paths;

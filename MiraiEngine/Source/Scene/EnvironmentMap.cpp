@@ -139,7 +139,7 @@ namespace mirai {
     void EnvironmentMap::create_pbr_env_map() {
         RenderingDevice *device = RenderingDevice::get();
 
-        Shader *convolute_shader = Shader::create_from_file("SPIRV/convolute_cubemap.comp.spv", "convolute-shader");
+        Shader *convolute_shader = Shader::create_from_file("SPIRV/convolute-cubemap.comp.spv", "convolute-shader");
 
         Shader *prefilter_shader = Shader::create_from_file("SPIRV/prefilter-envmap.comp.spv", "prefilter-shader");
 

@@ -245,7 +245,7 @@ namespace mirai {
         case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
             auto found = resources_map.find(utils::djb2_hash_string(input->name));
-            ASSERT(found->second != K_INVALID_ID);
+            ASSERT_MSG(found->second != K_INVALID_ID, "Input resource not found");
             handle = found->second;
         } break;
         default:

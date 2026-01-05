@@ -16,6 +16,6 @@ namespace mirai {
 
       private:
         Shader *shader;
-        UniformSetID per_frame_uniform_set, transform_uniform_set;
+        UniformSetID transform_uniform_set;
     };
 } // namespace mirai
