@@ -12,7 +12,8 @@ layout(location = 0) in FS_IN {
     vec3 world_pos;
     vec2 uv;
     flat uint mat_id;
-} fs_in;
+}
+fs_in;
 
 layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
@@ -20,10 +21,9 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
 
 #include "utils/pbr-lighting.glsl"
 
-layout(set = 3, binding = 1) readonly buffer Materials {
+layout(set = 3, binding = 1) readonly buffer MaterialBinding {
     PBRMaterial materials[];
 };
-
 
 void main() {
     vec3 col = vec3(0.0f);
@@ -35,7 +35,7 @@ void main() {
     vec3 normal = vec3(0.0f, 0.0f, 1.0f);
     if (material.normal_texture != K_INVALID_TEXTURE)
         normal = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
-    //normal = normalize(normal.x * normalize(fs_in.tangent) + normal.y * normalize(fs_in.bitangent) + normal.z * normalize(fs_in.normal));
+    // normal = normalize(normal.x * normalize(fs_in.tangent) + normal.y * normalize(fs_in.bitangent) + normal.z * normalize(fs_in.normal));
     normal = normalize(normal.x * fs_in.tangent + normal.y * fs_in.bitangent + normal.z * fs_in.normal);
 
     PBRParameter pbr_params = get_pbr_parameter(material, fs_in.uv);
@@ -51,4 +51,3 @@ void main() {
     vec3 Lo = calculateLightIntensity(light, view_dir, normal, pbr_params);
     fragColor = vec4(Lo, 1.0f);
 }
-

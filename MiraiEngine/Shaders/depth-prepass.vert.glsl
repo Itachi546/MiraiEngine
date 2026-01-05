@@ -10,15 +10,15 @@ layout(set = 0, binding = 0) uniform PerFrameDataBinding {
     PerFrameData per_frame_data;
 };
 
-layout(set = 1, binding = 0) readonly buffer Transform {
+layout(set = 1, binding = 0) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
-layout(set = 2, binding = 0) readonly buffer VertexData {
+layout(set = 2, binding = 0) readonly buffer VertexBinding {
     Vertex vertices[];
 };
 
-layout(set = 3, binding = 0) readonly buffer DrawDataBindings {
+layout(set = 3, binding = 0) readonly buffer DrawDataBinding {
     DrawData draw_datas[];
 };
 

@@ -17,7 +17,7 @@ vs_out;
 
 #include "utils/vertexdata.glsl"
 
-layout(set = 0, binding = 0) uniform PerFrameData {
+layout(set = 0, binding = 0) uniform PerFrameBinding {
     mat4 P;
     mat4 V;
     mat4 VP;
@@ -29,23 +29,22 @@ layout(set = 0, binding = 0) uniform PerFrameData {
     vec2 _padding;
 };
 
-layout(set = 2, binding = 0) readonly buffer VertexData {
+layout(set = 2, binding = 0) readonly buffer VertexBinding {
     Vertex vertices[];
 };
 
-layout(set = 3, binding = 0) readonly buffer Transform {
+layout(set = 3, binding = 0) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
-layout(push_constant) uniform PushConstants {
-    uint transform_id;
-    uint material_id;
-    uint padding[2];
+layout(set = 4, binding = 0) readonly buffer DrawDataBinding {
+    DrawData draw_datas[];
 };
 
 void main() {
+    DrawData draw_data = draw_datas[gl_DrawID];
     Vertex vertex = vertices[gl_VertexIndex];
-    mat4 M = transforms[transform_id];
+    mat4 M = transforms[draw_data.transform_index];
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
@@ -56,6 +55,6 @@ void main() {
     vs_out.uv = vec2(vertex.tu, vertex.tv);
     vs_out.tangent = normal_matrix * u32_to_vec3(vertex.tangent);
     vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
-    vs_out.mat_id = material_id;
+    vs_out.mat_id = draw_data.material_index;
     vs_out.world_pos = world_pos.xyz;
 }

@@ -20,11 +20,11 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
-layout(set = 2, binding = 0) readonly buffer VertexData {
+layout(set = 2, binding = 0) readonly buffer VertexBinding {
     Vertex vertices[];
 };
 
-layout(set = 3, binding = 0) readonly buffer Transform {
+layout(set = 3, binding = 0) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
