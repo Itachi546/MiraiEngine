@@ -2,6 +2,7 @@
 
 #define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 #include <imgui.h>
+#include <stdint.h>
 
 namespace mirai {
     class CommandBuffer;
@@ -18,6 +19,8 @@ namespace ImGuiService {
     inline bool IsAcceptingEvent() {
         return ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered();
     }
+
+    bool AddImageButton(const char *id, uint32_t texture, const ImVec2 &size);
 
     void Shutdown();
 

@@ -9,8 +9,8 @@ namespace mirai {
     class TextureCache {
       public:
         TextureCache();
-        TextureCache(const TextureCache&) = delete;
-        void operator=(const TextureCache&) = delete;
+        TextureCache(const TextureCache &) = delete;
+        void operator=(const TextureCache &) = delete;
 
         static TextureCache *get() {
             return Instance;
@@ -32,9 +32,9 @@ namespace mirai {
             }
         }
 
+        std::unordered_map<uint32_t, TextureID> textures_map;
       private:
         static TextureCache *Instance;
-        std::unordered_map<uint32_t, TextureID> textures_map;
     };
 
 } // namespace mirai

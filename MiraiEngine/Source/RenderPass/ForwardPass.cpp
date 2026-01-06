@@ -1,5 +1,4 @@
 #include "ForwardPass.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/ShaderHashMap.hpp"
 #include "Scene/RenderBatch.hpp"
@@ -36,7 +35,6 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
 
-        Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
 
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {

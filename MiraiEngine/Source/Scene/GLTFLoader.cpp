@@ -44,9 +44,6 @@ namespace mirai {
 
         for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
-            // std::string name = gltf_material->name;
-            // material].name = name.size() > 0 ? std::move(name) : "Unnamed" + std::to_string(i);
-
             std::unique_ptr<StandardPBRMaterial> material = std::make_unique<StandardPBRMaterial>(gltf_material->name);
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
 
@@ -509,6 +506,14 @@ namespace mirai {
         std::string root_entity_name = utils::get_filename(filename);
         comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
         comp_manager->add_component<TransformComponent>(root_entity);
+        // Make this entity child of scene root
+        HierarchyComponent &child_comp = comp_manager->add_component<HierarchyComponent>(root_entity);
+        child_comp.set_parent(scene->entities[0]);
+
+        // Update scene root hierarchy component
+        HierarchyComponent *parent_comp = comp_manager->get_component<HierarchyComponent>(scene->entities[0]);
+        parent_comp->add_children(root_entity);
+
         scene->add_entity(root_entity);
 
         LoadState load_state = {

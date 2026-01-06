@@ -1,5 +1,7 @@
 #include "ImGuiService.hpp"
 #include "Device/Window.hpp"
+#include <unordered_map>
+
 #ifdef MIRAI_BACKEND_VULKAN
 #include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
 #include "Graphics/Vulkan/VulkanSwapchain.hpp"
@@ -23,6 +25,7 @@ namespace ImGuiService {
 
     ImGuiID dockspace_id = 0;
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+    SamplerID sampler_id = {K_INVALID_ID};
 
     void Initialize() {
         IMGUI_CHECKVERSION();
@@ -61,6 +64,29 @@ namespace ImGuiService {
         init_info.CheckVkResultFn = check_vk_result;
         ImGui_ImplVulkan_Init(&init_info);
         // ImGui_ImplVulkan_CreateFontsTexture();
+
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.enable_anisotropy = false;
+        sampler_id = RenderingDevice::get()->create_sampler(&sampler_desc);
+    }
+
+    std::unordered_map<uint32_t, VkDescriptorSet> ImTextureIDMap;
+
+    bool ImGuiService::AddImageButton(const char *id, uint32_t texture, const ImVec2 &size) {
+        VulkanRenderingDevice *device = (VulkanRenderingDevice *)RenderingDevice::get();
+        auto found = ImTextureIDMap.find(texture);
+        ImTextureID textureId = K_INVALID_ID;
+        if (found == ImTextureIDMap.end()) {
+            VulkanTexture *vkTexture = device->access_texture(TextureID{texture});
+            if (vkTexture->image_type != VK_IMAGE_TYPE_2D)
+                return false;
+            VkSampler sampler = device->access_sampler(sampler_id);
+            VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(sampler, vkTexture->image_views[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            ImTextureIDMap[texture] = descriptorSet;
+            textureId = (ImTextureID)descriptorSet;
+        } else
+            textureId = (ImTextureID)found->second;
+        return ImGui::ImageButton(id, textureId, size);
     }
 
     void NewFrame() {

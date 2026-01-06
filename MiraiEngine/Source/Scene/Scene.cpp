@@ -33,6 +33,16 @@ namespace mirai {
         per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
+
+        Entity root_entity = ecs->create_entity();
+        ecs->component_manager->add_component<NameComponent>(root_entity, "root");
+        ecs->component_manager->add_component<TransformComponent>(root_entity);
+
+        HierarchyComponent hierarchy_comp = {
+            .parent = K_INVALID_ENTITY,
+        };
+        ecs->component_manager->add_component<HierarchyComponent>(root_entity, hierarchy_comp);
+        entities.push_back(root_entity);
     }
 
     void Scene::on_initialize() {

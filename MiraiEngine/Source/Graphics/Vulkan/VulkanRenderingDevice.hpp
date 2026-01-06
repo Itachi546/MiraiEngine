@@ -108,6 +108,13 @@ namespace mirai {
             return resource_pool_uniform_sets.access(uniform_set);
         }
 
+        VkSampler access_sampler(SamplerID sampler) {
+            auto found = sampler_caches.find(sampler);
+            if (found != sampler_caches.end())
+                return found->second;
+            return VK_NULL_HANDLE;
+        }
+
         VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
 
         // Raytracing utilities

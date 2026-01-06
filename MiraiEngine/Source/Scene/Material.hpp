@@ -51,7 +51,7 @@ namespace mirai {
      */
     struct Material {
 
-        Material(const std::string &name) : name(name) {
+        Material(const std::string &name) : name(name), dirty(false) {
         }
 
         virtual void *get_instance_data() = 0;
@@ -59,6 +59,8 @@ namespace mirai {
         virtual uint32_t get_instance_data_size() const = 0;
 
         virtual bool is_transparent() const = 0;
+
+        virtual const char *get_material_type_name() = 0;
 
         /**
          * ShaderID consist's of two part
@@ -73,6 +75,7 @@ namespace mirai {
         virtual ~Material() = default;
 
         std::string name;
+        bool dirty;
     };
 
     struct UnlitMaterial : public Material {
@@ -90,6 +93,10 @@ namespace mirai {
 
         uint32_t get_instance_data_size() const override {
             return sizeof(UnlitProperties);
+        }
+
+        const char *get_material_type_name() override {
+            return "UnlitMaterial";
         }
 
         bool is_transparent() const {
@@ -149,6 +156,10 @@ namespace mirai {
             return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
+        const char *get_material_type_name() override {
+            return "StandardPBRMaterial";
+        }
+
         ShaderPassKey get_shader_key(RenderMode render_mode) const override {
             ShaderPassKey shader_key;
             switch (render_mode) {
@@ -200,6 +211,10 @@ namespace mirai {
             uint32_t allocation_size = (size + alignment - 1) & ~(alignment - 1);
             instance_data.resize(allocation_size);
             std::memcpy(instance_data.data(), data, size);
+        }
+
+        const char *get_material_type_name() override {
+            return "ShaderMaterial";
         }
 
         void *get_instance_data() override {

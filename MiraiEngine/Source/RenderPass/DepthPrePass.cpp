@@ -1,5 +1,4 @@
 #include "DepthPrePass.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/ShaderHashMap.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -75,7 +74,6 @@ namespace mirai {
         };
         command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 
-        Scene *scene = renderer->get_scene();
         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
         if (render_batches.size() > 0) {
             for (auto &batch : render_batches) {

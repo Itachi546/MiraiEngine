@@ -11,6 +11,7 @@
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
+#include "Inspector.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"
@@ -344,6 +345,7 @@ class TestApplication : public App {
             add_profiler_ui();
             add_scene_ui();
             add_pass_ui();
+            add_entity_inspector_ui(scene);
             ImGui::End();
         }
     }

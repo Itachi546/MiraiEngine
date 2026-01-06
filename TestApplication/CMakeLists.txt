@@ -5,6 +5,7 @@ find_package(Vulkan REQUIRED)
 set(PROJECT_SOURCE_FILES 
     TestApplication.cpp
     ImGuiService.cpp
+    Inspector.cpp
     External/imgui/imgui.cpp
     External/imgui/imgui_draw.cpp
     External/imgui/imgui_tables.cpp
@@ -16,6 +17,7 @@ set(PROJECT_SOURCE_FILES
 set(PROJECT_INCLUDE_FILES
     ImGuiService.hpp
     ImGuiRenderPass.hpp
+    Inspector.hpp
 )
 
 add_executable(TestApplication ${PROJECT_SOURCE_FILES} ${PROJECT_INCLUDE_FILES})
