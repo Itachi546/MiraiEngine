@@ -21,10 +21,10 @@ namespace mirai {
         BufferID buffer_id;
         uint64_t offset = 0;
         uint64_t size = UINT64_MAX;
-        uint32_t src_stage_mask;
-        uint32_t src_access_mask;
-        uint32_t dst_stage_mask;
-        uint32_t dst_access_mask;
+        uint64_t src_stage_mask;
+        uint64_t src_access_mask;
+        uint64_t dst_stage_mask;
+        uint64_t dst_access_mask;
     };
 
     class CommandBuffer {
@@ -57,7 +57,7 @@ namespace mirai {
 
         void set_index_buffer(BufferID buffer);
 
-        void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region);
+        void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion *region, uint32_t region_count);
 
         void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
 

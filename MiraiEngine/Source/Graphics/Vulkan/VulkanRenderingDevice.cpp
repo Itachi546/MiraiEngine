@@ -804,7 +804,6 @@ namespace mirai {
             ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
             ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
-
         uint32_t buffer_id = resource_pool_buffers.obtain();
         VulkanBuffer *buffer = resource_pool_buffers.access(buffer_id);
         buffer->buffer = vk_buffer;

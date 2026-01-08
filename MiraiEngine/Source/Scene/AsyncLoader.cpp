@@ -52,11 +52,12 @@ namespace mirai {
                         // Immediate Copy
                         command_buffer->begin();
 
-                        command_buffer->copy_buffer(copy_task->dst, staging_buffer, {
-                                                                                        .src_offset = 0,
-                                                                                        .dst_offset = copy_task->offset_in_bytes,
-                                                                                        .size = copy_data_size,
-                                                                                    });
+                        BufferCopyRegion copy_region = {
+                            .src_offset = 0,
+                            .dst_offset = copy_task->offset_in_bytes,
+                            .size = copy_data_size,
+                        };
+                        command_buffer->copy_buffer(copy_task->dst, staging_buffer, &copy_region, 1);
                         RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
 
                         command_buffer->wait();

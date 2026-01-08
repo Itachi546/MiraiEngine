@@ -59,11 +59,16 @@ namespace mirai {
     void Scene::update() {
         ScopedCpuProfiling("Scene Update");
 
+        updated_transforms.clear();
+        updated_materials.clear();
+
         camera->update();
 
         update_transform_components();
 
         update_hierarchy_component();
+
+        update_materials();
 
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
@@ -94,6 +99,11 @@ namespace mirai {
         }
 
         generate_render_object_list();
+
+        if (updated_transforms.size() > 0)
+            std::sort(updated_transforms.begin(), updated_transforms.end());
+        if (updated_materials.size() > 0)
+            std::sort(updated_materials.begin(), updated_materials.end());
     }
 
     void Scene::remove_entity_tree(Entity entity) {
@@ -103,6 +113,15 @@ namespace mirai {
                 remove_entity_tree(child);
         }
         ecs->destroy_entity(entity);
+    }
+
+    void Scene::update_materials() {
+        for (uint32_t i = 0; i < materials.size(); ++i) {
+            if (!materials[i]->dirty)
+                continue;
+            updated_materials.push_back(i);
+            materials[i]->dirty = false;
+        }
     }
 
     void Scene::update_transform_components() {
@@ -116,23 +135,25 @@ namespace mirai {
 
     void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
         TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+
         if (transform->dirty || force_update) {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
+            uint32_t transform_component_index = ecs->component_manager->get_component_index<TransformComponent>(entity);
+            // Update list of transforms to be patched
+            updated_transforms.push_back(transform_component_index);
+            force_update = true;
+        }
 
-            HierarchyComponent *hierarchy_component = ecs->component_manager->get_component<HierarchyComponent>(entity);
-            if (hierarchy_component != nullptr) {
-                for (auto &child : hierarchy_component->childrens)
-                    update_hierarchy(child, transform->world_transform, true);
-            }
+        HierarchyComponent *hierarchy_component = ecs->component_manager->get_component<HierarchyComponent>(entity);
+        if (hierarchy_component != nullptr) {
+            for (auto &child : hierarchy_component->childrens)
+                update_hierarchy(child, transform->world_transform, force_update);
         }
     }
 
     void Scene::update_hierarchy_component() {
-        for (auto &entity : entities)
-            update_hierarchy(entity, glm::mat4(1.0f), false);
-
-        std::vector<TransformComponent> &transforms = ecs->component_manager->get_component_array<TransformComponent>()->components;
+        update_hierarchy(entities[0], glm::mat4(1.0f), false);
     }
 
     void Scene::generate_render_object_list() {

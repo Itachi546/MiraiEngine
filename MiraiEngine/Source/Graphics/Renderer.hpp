@@ -116,6 +116,8 @@ namespace mirai {
 
         void render();
 
+        void patch_global_data(CommandBuffer* command_buffer);
+
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
         const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);

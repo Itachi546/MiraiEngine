@@ -193,13 +193,17 @@ namespace mirai {
         vkCmdBindIndexBuffer(command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
     }
 
-    void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion &region) {
+    void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion *regions, uint32_t copy_region_count) {
         VulkanBuffer *src_buffer = device->access_buffer(src);
         VulkanBuffer *dst_buffer = device->access_buffer(dst);
 
-        ASSERT((region.src_offset + region.size) <= src_buffer->size);
-        ASSERT((region.dst_offset + region.size) <= dst_buffer->size);
-        vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, 1, (const VkBufferCopy *)&region);
+#ifdef _DEBUG
+        for (uint32_t i = 0; i < copy_region_count; ++i) {
+            ASSERT((regions[i].src_offset + regions[i].size) <= src_buffer->size);
+            ASSERT((regions[i].dst_offset + regions[i].size) <= dst_buffer->size);
+        }
+#endif
+        vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, copy_region_count, (const VkBufferCopy *)regions);
     }
 
     void CommandBuffer::copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size) {

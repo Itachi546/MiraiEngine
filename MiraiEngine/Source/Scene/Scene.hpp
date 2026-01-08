@@ -111,6 +111,10 @@ namespace mirai {
         std::vector<std::unique_ptr<Material>> materials;
         std::vector<Entity> entities;
 
+        // List of material/transforms that must be patched on gpu
+        std::vector<uint32_t> updated_transforms;
+        std::vector<uint32_t> updated_materials;
+
         struct FrameData {
             glm::mat4 P;
             glm::mat4 V;
@@ -152,6 +156,7 @@ namespace mirai {
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
+        void update_materials();
         void update_transform_components();
         void update_hierarchy_component();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);

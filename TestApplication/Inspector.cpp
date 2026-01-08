@@ -9,11 +9,12 @@ const ImVec2 UI_TEXTURE_SIZE = ImVec2{64, 64};
 const uint32_t UI_IMAGE_GRID_SIZE = 4;
 const char *LOADED_IMAGE_POPUP_NAME = "LoadedImages";
 
-#define INVALID_TEXTURE UINT32_MAX
+#define K_INVALID_TEXTURE UINT32_MAX
 
 bool add_selectable_image_button(const char *id, uint32_t &texture_id, uint32_t *&selection) {
-    if (texture_id != INVALID_TEXTURE) {
+    if (texture_id != K_INVALID_TEXTURE) {
         std::string formatted_id = id + std::to_string(texture_id);
+
         if (ImGuiService::AddImageButton(formatted_id.c_str(), texture_id, UI_TEXTURE_SIZE)) {
             selection = &texture_id;
             ImGui::OpenPopup(LOADED_IMAGE_POPUP_NAME);
@@ -32,8 +33,8 @@ bool add_selectable_image_button(const char *id, uint32_t &texture_id, uint32_t 
     return false;
 }
 
-uint32_t add_image_selection_popup() {
-    uint32_t selection = INVALID_TEXTURE;
+uint32_t add_image_selection_popup(uint32_t current_texture) {
+    uint32_t selection = current_texture;
     if (ImGui::BeginPopup(LOADED_IMAGE_POPUP_NAME)) {
         auto &textures = TextureCache::get()->textures_map;
         uint32_t count = 0;
@@ -49,6 +50,9 @@ uint32_t add_image_selection_popup() {
             if (count != 0)
                 ImGui::SameLine();
         }
+        if (ImGui::Button("Reset texture")) {
+            selection = K_INVALID_TEXTURE;
+        }
         ImGui::EndPopup();
     }
     return selection;
@@ -58,10 +62,10 @@ uint32_t *selected_texture_ptr = nullptr;
 
 void add_pbr_standard_material_ui(StandardPBRMaterial *material) {
     ImGui::Text("%s: %s", "material_type", material->is_transparent() ? "Transparent" : "Opaque");
-    material->dirty = ImGui::ColorEdit4("albedo", &material->instance_data.albedo[0]);
-    material->dirty = ImGui::DragFloat("roughness", &material->instance_data.roughness_factor, 0.01f, 0.0f, 1.0f);
-    material->dirty = ImGui::DragFloat("metallic", &material->instance_data.metallic_factor, 0.01f, 0.0f, 1.0f);
-    material->dirty = ImGui::ColorEdit3("emissive", &material->instance_data.emissive_factor[0]);
+    material->dirty |= ImGui::ColorEdit4("albedo", &material->instance_data.albedo[0]);
+    material->dirty |= ImGui::DragFloat("roughness", &material->instance_data.roughness_factor, 0.01f, 0.0f, 1.0f);
+    material->dirty |= ImGui::DragFloat("metallic", &material->instance_data.metallic_factor, 0.01f, 0.0f, 1.0f);
+    material->dirty |= ImGui::ColorEdit3("emissive", &material->instance_data.emissive_factor[0]);
 
     ImGui::Text("%s(%u)", "albedo_texture", material->instance_data.albedo_texture);
     add_selectable_image_button("albedo_texture", material->instance_data.albedo_texture, selected_texture_ptr);
@@ -81,8 +85,8 @@ void add_pbr_standard_material_ui(StandardPBRMaterial *material) {
     if (selected_texture_ptr == nullptr)
         return;
 
-    uint32_t selected_texture = add_image_selection_popup();
-    if (selected_texture != UINT32_MAX) {
+    uint32_t selected_texture = add_image_selection_popup(*selected_texture_ptr);
+    if (selected_texture != *selected_texture_ptr) {
         if (selected_texture != *selected_texture_ptr) {
             *selected_texture_ptr = selected_texture;
             selected_texture_ptr = nullptr;
@@ -183,10 +187,8 @@ void add_transform_component(TransformComponent *transform_component, Entity ent
             transform_component->rotation = glm::fquat(rotation);
             changed |= true;
         }
-
         changed |= ImGui::DragFloat3("scale", &transform_component->scale[0]);
         transform_component->dirty = changed;
-
         ImGui::PopID();
     }
 }

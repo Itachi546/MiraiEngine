@@ -142,16 +142,21 @@ namespace mirai {
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         device->begin_debug_utils_label(command_buffer, "Copy global buffer", nullptr);
-        command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, {
-                                                                                           .src_offset = transform_buffer_offset,
-                                                                                           .dst_offset = 0,
-                                                                                           .size = transform_size_bytes,
-                                                                                       });
-        command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, {
-                                                                                          .src_offset = material_buffer_offset,
-                                                                                          .dst_offset = 0,
-                                                                                          .size = material_size_bytes,
-                                                                                      });
+
+        BufferCopyRegion copy_region = {
+            .src_offset = transform_buffer_offset,
+            .dst_offset = 0,
+            .size = transform_size_bytes,
+        };
+
+        command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, &copy_region, 1);
+
+        copy_region = {
+            .src_offset = material_buffer_offset,
+            .dst_offset = 0,
+            .size = material_size_bytes,
+        };
+        command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, &copy_region, 1);
 
         device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);
@@ -291,6 +296,128 @@ namespace mirai {
             shadow_pass->enabled = !enable_rt_shadow;
     }
 
+    void copy_continuous_region(CommandBuffer *cb, const std::vector<uint32_t> &indices, BufferView src, BufferView dst, uint32_t data_element_size) {
+        BufferBarrierInfo barrier_infos[] = {
+            {
+                .buffer_id = dst.buffer,
+                .offset = dst.offset,
+                .size = dst.size,
+                .src_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
+                .src_access_mask = ACCESS_FLAG_SHADER_READ,
+                .dst_stage_mask = PIPELINE_STAGE_COPY_BIT,
+                .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
+            },
+        };
+
+        cb->prepare_buffer(barrier_infos, cast_u32(std::size(barrier_infos)));
+
+        uint32_t src_start_index = 0;
+        uint32_t dst_start_index = indices[0];
+
+        std::vector<BufferCopyRegion> copy_regions;
+        for (uint32_t i = 1; i < indices.size(); ++i) {
+            if (indices[i] == dst_start_index + 1)
+                continue;
+
+            uint32_t src_end_index = i;
+            uint32_t range = src_end_index - src_start_index;
+
+            copy_regions.push_back({
+                .src_offset = src.offset + src_start_index * sizeof(glm::mat4),
+                .dst_offset = dst.offset + dst_start_index * sizeof(glm::mat4),
+                .size = range * data_element_size,
+            });
+            src_start_index = i;
+            dst_start_index = indices[i];
+        }
+
+        uint32_t src_end_index = cast_u32(indices.size());
+        uint32_t range = src_end_index - src_start_index;
+        copy_regions.push_back({
+            .src_offset = src.offset + src_start_index * sizeof(glm::mat4),
+            .dst_offset = dst.offset + dst_start_index * sizeof(glm::mat4),
+            .size = range * data_element_size,
+        });
+        cb->copy_buffer(dst.buffer, src.buffer, copy_regions.data(), cast_u32(copy_regions.size()));
+
+        barrier_infos[0].src_access_mask = ACCESS_FLAG_TRANSFER_WRITE;
+        barrier_infos[0].dst_access_mask = ACCESS_FLAG_SHADER_READ;
+        barrier_infos[0].src_stage_mask = PIPELINE_STAGE_COPY_BIT;
+        barrier_infos[0].dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        cb->prepare_buffer(barrier_infos, 1);
+    }
+
+    void Renderer::patch_global_data(CommandBuffer *command_buffer) {
+        if (scene->updated_transforms.size() == 0 && scene->updated_materials.size() == 0)
+            return;
+
+        ScopedGpuProfiling(command_buffer, "Patch global buffers");
+        uint32_t current_frame = device->get_current_frame();
+
+        // Patch transforms
+        auto &comp_manager = scene->ecs->component_manager;
+        if (scene->updated_transforms.size() > 0) {
+            auto &transform_components = comp_manager->get_component_array<TransformComponent>()->components;
+            auto &updated_transforms = scene->updated_transforms;
+
+            uint32_t transform_count = cast_u32(updated_transforms.size());
+            uint32_t transform_size = transform_count * sizeof(glm::mat4);
+            uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size, current_frame);
+            uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+            for (uint32_t index : updated_transforms) {
+                std::memcpy(transform_array, &transform_components[index].world_transform[0][0], sizeof(glm::mat4));
+                transform_array += sizeof(glm::mat4);
+            }
+
+            copy_continuous_region(command_buffer, updated_transforms,
+                                   BufferView{
+                                       per_frame_staging_buffer,
+                                       transform_buffer_offset,
+                                       transform_size,
+                                   },
+                                   BufferView{
+                                       global_transform_buffer,
+                                       0,
+                                       K_MAX_ENTITIES * sizeof(glm::mat4),
+                                   },
+                                   sizeof(glm::mat4));
+        }
+
+        // Patch Materials
+        if (scene->updated_materials.size() > 0) {
+            auto &materials = scene->materials;
+            auto &updated_materials = scene->updated_materials;
+
+            uint32_t material_count = cast_u32(updated_materials.size());
+            uint32_t material_size = material_count * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+            uint32_t material_buffer_offset = allocate_staging_buffer(material_size, current_frame);
+            uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
+
+            uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
+            for (uint32_t index : updated_materials) {
+                std::memset(temp_buffer, 0, 64);
+                uint32_t instance_data_size = materials[index]->get_instance_data_size();
+                ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
+                std::memcpy(temp_buffer, materials[index]->get_instance_data(), instance_data_size);
+                std::memcpy(material_array, temp_buffer, 64);
+                material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+            }
+
+            copy_continuous_region(command_buffer, updated_materials,
+                                   BufferView{
+                                       per_frame_staging_buffer,
+                                       material_buffer_offset,
+                                       material_size,
+                                   },
+                                   BufferView{
+                                       global_material_buffer,
+                                       0,
+                                       K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE,
+                                   },
+                                   K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
+        }
+    }
+
     void Renderer::render() {
 
         device->new_frame();
@@ -303,6 +430,9 @@ namespace mirai {
             ScopedGpuProfiling(cb, "Gpu Time");
             // Copy per frame data from staging buffer to gpu uniform buffer
             copy_buffers();
+
+            // Patch transform and Materials if it has changed
+            patch_global_data(cb);
 
             update_uniform_set(cb);
 
