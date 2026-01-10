@@ -147,7 +147,7 @@ class TestApplication : public App {
         frame_graph->load_from_file("Assets/deferred-graph.json");
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
         frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
-        // frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
+        frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
 
         frame_graph->set_renderer("ssao_pass", std::make_shared<SSAOPass>());
         // frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());

@@ -1,5 +1,4 @@
 #include "ForwardPass.hpp"
-#include "Scene/Camera.hpp"
 #include "Scene/ShaderHashMap.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -8,21 +7,6 @@
 
 namespace mirai {
     ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass") {
-    }
-
-    void ForwardPass::initialize(FrameGraph *framegraph, const FrameGraphNode *node, Renderer *renderer) {
-        UniformLayout layouts[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
-        };
-        transform_material_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 3, "transform_material_set");
-
-        UniformBinding bindings[] = {
-            {.resource_id = renderer->global_transform_buffer},
-            {.resource_id = renderer->global_material_buffer},
-        };
-
-        device->update_uniform_set(transform_material_set, bindings, cast_u32(std::size(bindings)));
     }
 
     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -53,7 +37,7 @@ namespace mirai {
 
                 UniformSetID uniform_sets[] = {
                     renderer->per_frame_uniform_set,
-                    transform_material_set,
+                    renderer->transform_material_set,
                 };
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 

@@ -255,6 +255,25 @@ namespace mirai {
             },
         };
         device->update_uniform_set(per_frame_uniform_set, &binding, 1);
+
+        layout.shader_stage = SHADER_STAGE_VERTEX;
+        vt_per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
+        device->update_uniform_set(vt_per_frame_uniform_set, &binding, 1);
+
+        UniformLayout transform_material_layouts[] = {
+            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
+            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
+        };
+        transform_material_set = command_buffer->create_uniform_set(transform_material_layouts, cast_u32(std::size(transform_material_layouts)), 3);
+
+        UniformBinding bindings[] = {
+            {.resource_id = global_transform_buffer},
+            {.resource_id = global_material_buffer},
+        };
+        device->update_uniform_set(transform_material_set, bindings, cast_u32(std::size(bindings)));
+
+        transform_set = command_buffer->create_uniform_set(transform_material_layouts, 1, 3);
+        device->update_uniform_set(transform_set, bindings, 1);
     }
 
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t alignment) {

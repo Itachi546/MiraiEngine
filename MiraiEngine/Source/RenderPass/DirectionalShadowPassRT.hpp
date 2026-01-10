@@ -2,7 +2,6 @@
 
 #include "Scene/FrameGraph.hpp"
 #include "Math/Math.hpp"
-#include "Scene/Scene.hpp"
 
 #include <memory>
 

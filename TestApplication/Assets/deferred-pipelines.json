@@ -34,6 +34,25 @@
         }
     },
     {
+        "name": "pbr-deferred-transparent-shader",
+        "shaders": [
+            "SPIRV/forward-pass.vert.spv",
+            "SPIRV/transparent.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_PBR_DEFERRED_TRANSPARENT",
+            "cull-mode": "CULL_MODE_NONE",
+            "depth-test": true,
+            "depth-write": true,
+            "blend-mode": true,
+            "color-attachments-format": [
+                "R16G16B16A16_SFLOAT"
+            ],
+            "depth-attachment-format": "D32_SFLOAT",
+            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
+        }
+    },
+    {
         "name": "pbr-forward-transparent-shader",
         "shaders": [
             "SPIRV/forward-pass.vert.spv",

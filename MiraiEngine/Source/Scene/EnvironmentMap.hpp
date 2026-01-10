@@ -4,8 +4,6 @@
 #include "Scene/Shader.hpp"
 
 namespace mirai {
-    struct Shader;
-
     class EnvironmentMap {
       public:
         EnvironmentMap(const std::string &hdri_path);

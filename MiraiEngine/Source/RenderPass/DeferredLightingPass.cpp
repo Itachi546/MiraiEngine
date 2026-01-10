@@ -1,12 +1,8 @@
 #include "DeferredLightingPass.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Scene/ShaderHashMap.hpp"
-#include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
-#include "Math/Math.hpp"
-#include "Graphics/Renderer.hpp"
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {

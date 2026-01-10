@@ -1,6 +1,5 @@
 #include "DepthPrePass.hpp"
 #include "Scene/ShaderHashMap.hpp"
-#include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
@@ -10,13 +9,6 @@ namespace mirai {
 
     void DepthPrePass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         // Mesh Data
-        UniformLayout transform_layout = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
-        transform_uniform_set = device->create_uniform_set(&transform_layout, 1, 1);
-        UniformBinding binding = {
-            .resource_id = renderer->global_transform_buffer,
-        };
-        device->update_uniform_set(transform_uniform_set, &binding, 1);
-
         PipelineState pipeline_state;
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
@@ -32,7 +24,7 @@ namespace mirai {
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         auto draw_batch = [&](MeshBatch *batch, Shader *shader) {
             if (shader->get_draw_mode() == DRAWMODE_INDEXED_INDIRECT) {
-                UniformSetID uniform_sets[] = {transform_uniform_set, batch->vertex_binding_set};
+                UniformSetID uniform_sets[] = {renderer->vt_per_frame_uniform_set, batch->vertex_binding_set};
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
                 command_buffer->set_index_buffer(batch->index_buffer.buffer);
 
@@ -43,23 +35,6 @@ namespace mirai {
             }
         };
 
-        // Create PerFrame uniform set
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-        UniformSetID per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
-
-        UniformBinding binding = {
-            .resource_id = renderer->per_frame_uniform_buffer.buffer,
-            .buffer_info = {
-                .offset = renderer->per_frame_uniform_buffer.offset,
-                .range = renderer->per_frame_uniform_buffer.size,
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
-
         ScopedGpuProfiling(command_buffer, "DepthPrePass");
 
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);
@@ -69,8 +44,8 @@ namespace mirai {
         shader->bind(command_buffer);
 
         UniformSetID uniform_sets[] = {
-            per_frame_uniform_set,
-            transform_uniform_set,
+            renderer->vt_per_frame_uniform_set,
+            renderer->transform_set,
         };
         command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 

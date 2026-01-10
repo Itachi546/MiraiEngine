@@ -1,7 +1,6 @@
 #include "Overlay3DPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/ShaderHashMap.hpp"
 #include "Scene/EnvironmentMap.hpp"

@@ -47,7 +47,7 @@ void main() {
     rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, world_pos, 0.01, dir, 1000.0);
     rayQueryProceedEXT(ray_query);
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
-        shadow_factor = 0.01f;
+        shadow_factor = 0.0f;
 
     imageStore(u_rt_shadow_texture, id.xy, vec4(shadow_factor));
 }

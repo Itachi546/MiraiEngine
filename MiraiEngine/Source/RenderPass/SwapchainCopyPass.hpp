@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
-#include <memory>
 
 namespace mirai {
     struct FrameGraphNode;

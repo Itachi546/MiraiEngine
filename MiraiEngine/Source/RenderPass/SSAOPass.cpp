@@ -1,7 +1,6 @@
 #include "SSAOPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/Shader.hpp"

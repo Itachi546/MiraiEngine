@@ -1,12 +1,8 @@
 #include "SwapchainCopyPass.hpp"
 #include "Scene/ShaderHashMap.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Graphics/TextRenderManager.hpp"
 #include "Device/Window.hpp"
-#include "Device/InputDevice.hpp"
 #include "Engine/Profiler.hpp"
-#include "Math/Math.hpp"
-#include "Scene/Shader.hpp"
 #include "Graphics/Renderer.hpp"
 
 #include <string>

@@ -1,5 +1,4 @@
 #include "DirectionalShadowPassRT.hpp"
-#include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Scene/Shader.hpp"

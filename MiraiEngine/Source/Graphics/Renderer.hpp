@@ -85,7 +85,8 @@ namespace mirai {
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        UniformSetID per_frame_uniform_set{K_INVALID_ID};
+        UniformSetID per_frame_uniform_set, vt_per_frame_uniform_set;
+        UniformSetID transform_set, transform_material_set;
         std::vector<RenderBatch> main_render_batches;
 
       private:
@@ -116,7 +117,7 @@ namespace mirai {
 
         void render();
 
-        void patch_global_data(CommandBuffer* command_buffer);
+        void patch_global_data(CommandBuffer *command_buffer);
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
