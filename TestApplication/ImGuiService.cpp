@@ -72,7 +72,7 @@ namespace ImGuiService {
 
     std::unordered_map<uint32_t, VkDescriptorSet> ImTextureIDMap;
 
-    bool ImGuiService::AddImageButton(const char *id, uint32_t texture, const ImVec2 &size) {
+    ImTextureID GetTextureID(uint32_t texture) {
         VulkanRenderingDevice *device = (VulkanRenderingDevice *)RenderingDevice::get();
         auto found = ImTextureIDMap.find(texture);
         ImTextureID textureId = K_INVALID_ID;
@@ -86,7 +86,17 @@ namespace ImGuiService {
             textureId = (ImTextureID)descriptorSet;
         } else
             textureId = (ImTextureID)found->second;
+        return textureId;
+    }
+
+    bool ImGuiService::AddImageButton(const char *id, uint32_t texture, const ImVec2 &size) {
+        ImTextureID textureId = GetTextureID(texture);
         return ImGui::ImageButton(id, textureId, size);
+    }
+
+    void ImGuiService::AddImage(uint32_t texture, const ImVec2 &size) {
+        ImTextureID textureId = GetTextureID(texture);
+        ImGui::Image(textureId, size);
     }
 
     void NewFrame() {

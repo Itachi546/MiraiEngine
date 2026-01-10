@@ -21,6 +21,7 @@ namespace ImGuiService {
     }
 
     bool AddImageButton(const char *id, uint32_t texture, const ImVec2 &size);
+    void AddImage(uint32_t texture, const ImVec2 &size);
 
     void Shutdown();
 

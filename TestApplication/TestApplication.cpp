@@ -285,6 +285,20 @@ class TestApplication : public App {
         }
     }
 
+    bool show_render_pass_debug_popup = false;
+    bool add_rendertarget_texture_debug_ui(const char *id, FrameGraphResource *resource) {
+        ImGuiService::AddImage(resource->handle.id, ImVec2{128, 64});
+        ImGui::SameLine();
+        std::string formatted_id = std::string("Maximize##") + id;
+        if (ImGui::Button(formatted_id.c_str())) {
+            selected_renderpass_debug_resource = resource;
+            ImGui::OpenPopup("render_pass_debug_popup");
+            show_render_pass_debug_popup = true;
+            return true;
+        }
+        return false;
+    }
+
     void add_pass_ui() {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
@@ -294,6 +308,8 @@ class TestApplication : public App {
                 if (supports_raytracing) {
                     bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
                     ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
+                    FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
+                    add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
                 }
                 /*
                 if (!Renderer::get()->enable_rt_shadow) {
@@ -319,10 +335,6 @@ class TestApplication : public App {
                     ImGui::Text("SSAO Generation");
                     static bool enable_ssao = true;
                     ImGui::Checkbox("Enable SSAO", &enable_ssao);
-                    if (enable_ssao)
-                        ssao_pass->constant_data.intensity = 1.5f;
-                    else
-                        ssao_pass->constant_data.intensity = 0.0f;
                     ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
                     ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
                     ImGui::DragFloat("March Step Size", &ssao_pass->constant_data.step_size, 0.0001f, 0.0f, 0.1f);
@@ -334,7 +346,19 @@ class TestApplication : public App {
                     ImGui::Text("SSAO Blur");
                     ImGui::DragFloat("Blur radius", &ssao_pass->blur_radius, 0.01f, 0.0f, 10.0f);
                     ImGui::DragFloat("Blur Sharpness", &ssao_pass->blur_sharpness, 0.01f, 0.0f, 100.0f);
+
+                    FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
+                    add_rendertarget_texture_debug_ui("ssao_texture", resource);
                 }
+            }
+        }
+
+        if (show_render_pass_debug_popup) {
+            if (ImGui::BeginPopupModal("render_pass_debug_popup", &show_render_pass_debug_popup)) {
+                ImGui::SetNextWindowSize(ImVec2{800, 600});
+                ImVec2 available_size = ImGui::GetContentRegionAvail();
+                ImGuiService::AddImage(selected_renderpass_debug_resource->handle.id, available_size);
+                ImGui::EndPopup();
             }
         }
     }
@@ -359,7 +383,8 @@ class TestApplication : public App {
     bool show_debug_ui = false;
     bool fullscreen = false;
     Scene *scene;
-    FrameGraph *frame_graph;
+    FrameGraph *frame_graph = nullptr;
+    FrameGraphResource *selected_renderpass_debug_resource = nullptr;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
 };

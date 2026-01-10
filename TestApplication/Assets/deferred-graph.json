@@ -79,8 +79,8 @@
           "name": "rt_directional_shadow_map",
           "format": "R16_SFLOAT",
           "resolution": [
-            1920,
-            1080
+            1360,
+            770 
           ],
           "op": "LOAD_OP_CLEAR"
         }

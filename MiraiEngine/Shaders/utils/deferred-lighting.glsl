@@ -78,8 +78,9 @@ void main() {
         vec3 radiance = per_frame_data.light_color.xyz * per_frame_data.light_intensity;
         vec3 kD = (1.0 - F) * (1.0 - metallic);
 
+        diffuse = kD * diffuse;
         // Apply AO to direction light too
-        Lo += (kD * diffuse * ao + specular * ao) * shadow_factor * radiance * ndotl;
+        Lo += ((diffuse + specular) * ao * shadow_factor) * radiance * ndotl;
     }
 
     vec3 Ks = F_SchlickRoughness(ndotv, F0, roughness);
@@ -91,7 +92,7 @@ void main() {
     vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, roughness)).rg;
     vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
-    vec3 ambient = (Kd * diffuse + specular);
+    vec3 ambient = (Kd * diffuse + specular) * 0.2;
     Lo += ambient + emissive;
     fragColor = vec4(Lo, 1.0f);
 }
