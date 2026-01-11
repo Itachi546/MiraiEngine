@@ -54,7 +54,7 @@
         {
           "type": "attachment",
           "name": "cascaded_shadow_map",
-          "format": "D32_SFLOAT",
+          "format": "D16_UNORM",
           "resolution": [
             4096,
             4096

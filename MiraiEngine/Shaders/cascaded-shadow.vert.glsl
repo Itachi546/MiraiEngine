@@ -32,5 +32,5 @@ void main() {
     Vertex vertex = vertices[gl_VertexIndex];
     mat4 M = transforms[transform_index];
     gl_Position = cascade_info.VP[cascade_index] * M * vec4(vertex.px, vertex.py, vertex.pz, 1.0f);
-    gl_Position.z = max(gl_Position.z, -1.0f);
+    // gl_Position.z = max(gl_Position.z, -1.0f);
 }

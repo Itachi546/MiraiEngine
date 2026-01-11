@@ -15,12 +15,13 @@ namespace mirai {
         PipelineState pipeline_state;
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
+        pipeline_state.render_state.fields.depth_clamp = true;
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW;
         pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
 
         PipelineAttachmentInfo attachment_info = {
             .has_depth_attachment = true,
-            .depth_attachment_format = FORMAT_D32_SFLOAT,
+            .depth_attachment_format = FORMAT_D16_UNORM,
         };
         shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/cascaded-shadow.vert.spv"}, "cascaded-shadow-map-shader");
     }
@@ -210,7 +211,7 @@ namespace mirai {
             frustum.create_from_matrix(VP, glm::inverse(VP));
 
             std::vector<MeshBatch> mesh_batches;
-            DrawBatchGenerator::CreateMeshBatch(scene, &frustum, mesh_batches);
+            DrawBatchGenerator::CreateMeshBatch(scene, &frustum, mesh_batches, true, true);
             if (mesh_batches.size() > 0) {
                 command_buffer->begin_render_pass(node, frame_graph, &viewport);
                 shader->bind(command_buffer);

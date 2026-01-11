@@ -88,7 +88,7 @@ namespace mirai {
         }
     }
 
-    void DrawBatchGenerator::CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &mesh_batches, bool only_opaque) {
+    void DrawBatchGenerator::CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &mesh_batches, bool only_opaque, bool skip_near_plane) {
         auto &render_object_list = scene->render_object_list;
 
         BufferView cached_vertex_buffer = BufferView{BufferID{K_INVALID_ID}, 0, 0};
@@ -101,7 +101,7 @@ namespace mirai {
             if (!disable_frustum_culling && frustum != nullptr) {
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
-                if (!frustum->intersect(aabb))
+                if (!frustum->intersect(aabb, skip_near_plane))
                     continue;
             }
 

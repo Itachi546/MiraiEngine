@@ -307,26 +307,28 @@ class TestApplication : public App {
                 if (supports_raytracing) {
                     bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
                     ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
-                    FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
-                    add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
+
+                    if (enable_rt_shadow) {
+                        FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
+                        add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
+                    }
                 }
-                /*
                 if (!Renderer::get()->enable_rt_shadow) {
                     auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
                     ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
                     ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
                     if (cascaded_shadow_pass->calculate_distance_automatic) {
                         ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
-                        ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.01f, 0.0f, 1.0f);
+                        ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.001f, 0.0f, 1.0f);
                     } else {
-                        ImGui::Text("Material: %s", cascaded_shadow_pass->shader->get_name().c_str());
                         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
                             std::string cascadeName = "Cascade" + std::to_string(i);
-                            ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i]);
+                            ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i], 1.0f, 0.0f);
                         }
                     }
+                    FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
+                    add_rendertarget_texture_debug_ui("csm_shadow", resource);
                 }
-            */
             }
             SSAOPass *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
             if (ssao_pass != nullptr) {

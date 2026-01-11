@@ -105,7 +105,7 @@ namespace mirai {
 
         static void calculate_frustum_corners(const glm::mat4 &inv_m, std::array<glm::vec3, 8> &corners);
 
-        bool intersect(const AABB &aabb) const;
+        bool intersect(const AABB &aabb, bool skip_near_plane = false) const;
 
         std::array<Plane, 6> planes;
         std::array<glm::vec3, 8> points;

@@ -76,7 +76,7 @@ namespace mirai {
         static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &mesh_batches, RenderMode render_mode, bool only_opaque);
 
         // Used for Shadow/Cascaded shadow rendering where scene needs to be culled again
-        static void CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &render_batches, bool only_opaque = true);
+        static void CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &render_batches, bool only_opaque = true, bool skip_near_plane = false);
     };
 
     void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id = 4);

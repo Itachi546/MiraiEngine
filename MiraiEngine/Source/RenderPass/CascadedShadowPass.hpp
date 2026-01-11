@@ -17,12 +17,12 @@ namespace mirai {
 
         ~CascadedShadowPass();
 
-        float split_lamda = 0.9f;
-        float shadow_distance = 80.0f;
+        float split_lamda = 0.949f;
+        float shadow_distance = 400.0f;
         uint32_t shadow_map_size = 2048;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
-        bool calculate_distance_automatic = false;
+        bool calculate_distance_automatic = true;
 
       private:
         UniformSetID create_draw_data_binding(CommandBuffer *command_buffer, BufferID buffer, uint32_t offset, uint32_t size);

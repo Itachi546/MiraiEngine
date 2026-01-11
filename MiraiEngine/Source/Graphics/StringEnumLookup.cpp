@@ -22,6 +22,8 @@ namespace mirai {
             return FORMAT_R32_SFLOAT;
         } else if (inputFormat == "D24_UNORM_S8_UINT")
             return FORMAT_D24_UNORM_S8_UINT;
+        else if (inputFormat == "D16_UNORM")
+            return FORMAT_D16_UNORM;
 
         ASSERT(!"Undefined input format");
         return FORMAT_UNDEFINED;
