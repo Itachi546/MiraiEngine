@@ -49,7 +49,7 @@
     },
     {
       "name": "directional_shadow_pass",
-      "enabled": false,
+      "enabled": true,
       "outputs": [
         {
           "type": "attachment",
@@ -136,6 +136,10 @@
         {
           "type": "texture",
           "name": "rt_directional_shadow_map"
+        },
+        {
+          "type": "texture",
+          "name": "cascaded_shadow_map"
         }
       ],
       "outputs": [

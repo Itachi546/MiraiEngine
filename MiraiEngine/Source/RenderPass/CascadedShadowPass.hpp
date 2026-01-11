@@ -1,13 +1,9 @@
 #pragma once
-/*
 #include "Scene/FrameGraph.hpp"
-#include "Math/Math.hpp"
 #include "Scene/Scene.hpp"
-
 namespace mirai {
 
-    class ShaderMaterial;
-
+    struct Shader;
     class CascadedShadowPass : public FrameGraphRenderer {
       public:
         CascadedShadowPass() : FrameGraphRenderer("directional_shadow_pass") {
@@ -24,14 +20,13 @@ namespace mirai {
         float split_lamda = 0.9f;
         float shadow_distance = 80.0f;
         uint32_t shadow_map_size = 2048;
-        ShaderMaterial *shader;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
         bool calculate_distance_automatic = false;
 
       private:
+        UniformSetID create_draw_data_binding(CommandBuffer *command_buffer, BufferID buffer, uint32_t offset, uint32_t size);
         void calculate_split_distances(float znear, float zfar, Scene *scene);
-        UniformSetID mesh_instance_set;
+        Shader *shader;
     };
 } // namespace mirai
-*/

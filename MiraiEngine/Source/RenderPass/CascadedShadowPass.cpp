@@ -1,11 +1,9 @@
 #include "CascadedShadowPass.hpp"
-/*
-#include "Scene/ShaderMaterial.hpp"
-#include "Scene/ShaderManager.hpp"
+
+#include "Scene/ShaderHashMap.hpp"
 #include "Scene/Component.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/RenderBatch.hpp"
-#include "Graphics/LineRenderer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/Renderer.hpp"
@@ -13,17 +11,18 @@
 namespace mirai {
 
     void CascadedShadowPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
-        shader = ShaderManager::get()->get_shader("csm_shadow");
-        shadow_map_size = node->width / cast_u32(std::sqrt(NUM_DIRLIGHT_CASCADE));
-        UniformLayout mesh_instance_layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_STORAGE_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
+        // Mesh Data
+        PipelineState pipeline_state;
+        pipeline_state.render_state.fields.depth_test = true;
+        pipeline_state.render_state.fields.depth_write = true;
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW;
+        pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
 
-        mesh_instance_set = device->create_uniform_set(&mesh_instance_layout, 1, 1, "shadow_mesh_instance_set");
-        UniformBinding binding = {.resource_id = renderer->transform_buffer};
-        device->update_uniform_set(mesh_instance_set, &binding, 1);
+        PipelineAttachmentInfo attachment_info = {
+            .has_depth_attachment = true,
+            .depth_attachment_format = FORMAT_D32_SFLOAT,
+        };
+        shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/cascaded-shadow.vert.spv"}, "cascaded-shadow-map-shader");
     }
 
     void CascadedShadowPass::calculate_split_distances(float znear, float zfar, Scene *scene) {
@@ -104,28 +103,62 @@ namespace mirai {
         cascade_info.height = static_cast<float>(shadow_map_size);
     }
 
+    static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
     void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("CSM Render");
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
         device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
+        uint32_t current_frame = device->get_current_frame();
 
-        UniformSetID cascade_uniform_set = renderer->cascade_uniform_set;
+        auto draw_batch = [&renderer, current_frame](CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
+            if (batch->mesh_draw_infos.size() == 0)
+                return;
 
-        auto draw_batch = [&](RenderBatch *batch, PipelineID pipeline_id, uint32_t cascade_index) {
-            command_buffer->set_index_buffer(batch->index_buffer);
-            command_buffer->set_uniform_sets(pipeline_id, &batch->vertex_binding_set, 1);
+            RenderingDevice *device = RenderingDevice::get();
 
-            uint32_t instance_data[] = {0, cascade_index, 0, 0};
-            PushConstant push_constant = {.data = instance_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(uint32_t) * 4, .offset = 0};
-            for (uint32_t i = 0; i < batch->transform_indices.size(); ++i) {
-                instance_data[0] = batch->transform_indices[i];
-                command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-                command_buffer->draw_indexed(batch->index_counts[i],
-                                             1,
-                                             batch->index_offsets[i],
-                                             batch->vertex_offsets[i],
-                                             0);
+            uint32_t num_entity = cast_u32(batch->mesh_draw_infos.size());
+
+            uint32_t draw_data_instance_size = sizeof(uint32_t);
+            uint32_t draw_data_size_bytes = num_entity * draw_data_instance_size;
+            uint32_t draw_data_offset = renderer->allocate_staging_buffer(draw_data_size_bytes, current_frame);
+            uint32_t *draw_data_array = reinterpret_cast<uint32_t *>(renderer->per_frame_staging_buffer_ptr + draw_data_offset);
+
+            uint32_t indirect_data_size_bytes = num_entity * sizeof(DrawIndexedIndirectCommand);
+            uint32_t indirect_data_offset = renderer->allocate_staging_buffer(indirect_data_size_bytes, current_frame);
+            uint8_t *indirect_data_array = (renderer->per_frame_staging_buffer_ptr + indirect_data_offset);
+
+            /**
+             * Maybe the right way to do this is to do GPU Culling and generating
+             * indirect command.
+             * This way we can reuse same portion of staging buffer memory for other
+             * cascade as well instead of allocation new portion of memory for each cascade.
+             */
+            for (auto &draw_info : batch->mesh_draw_infos) {
+                std::memcpy(indirect_data_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
+                indirect_data_array += sizeof(DrawIndexedIndirectCommand);
+
+                *draw_data_array = draw_info.transform_index;
+                draw_data_array += draw_data_instance_size;
             }
+
+            UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, 1);
+            UniformBinding draw_data_binding = {
+                .resource_id = renderer->per_frame_staging_buffer,
+                .buffer_info{
+                    .offset = draw_data_offset,
+                    .range = draw_data_size_bytes,
+                },
+            };
+            device->update_uniform_set(draw_data_set, &draw_data_binding, 1);
+
+            UniformSetID uniform_sets[2] = {
+                batch->vertex_binding_set,
+                draw_data_set,
+            };
+            command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+
+            command_buffer->set_index_buffer(batch->index_buffer.buffer);
+            command_buffer->draw_indexed_indirect(renderer->per_frame_staging_buffer, indirect_data_offset, num_entity, sizeof(DrawIndexedIndirectCommand));
         };
 
         Scene *scene = renderer->get_scene();
@@ -133,9 +166,41 @@ namespace mirai {
         DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
         Frustum frustum;
 
+        UniformLayout layout = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+        UniformSetID cascade_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
+        UniformBinding binding = {
+            .resource_id = renderer->cascade_uniform_buffer.buffer,
+            .buffer_info = {
+                .offset = renderer->cascade_uniform_buffer.offset,
+                .range = renderer->cascade_uniform_buffer.size,
+            },
+        };
+
+        device->update_uniform_set(cascade_uniform_set, &binding, 1);
+        UniformSetID uniform_sets[] = {cascade_uniform_set, renderer->transform_set};
+        uint32_t push_constant_data[] = {0, 0, 0, 0};
+        PushConstant push_constant = {
+            .data = &push_constant_data,
+            .offset = 0,
+            .size = sizeof(uint32_t) * 4,
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
+
+        /**
+         * The i == 0  check for clearing the texture doesn't works if nothing is
+         * inside the frustum. This miss the clearing of texture entirely (LOAD_OP_CLEAR).
+         * So we keep track of the first render
+         */
+        bool first_render = true;
         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
             device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
-            node->renderpass_info.attachment_info[0].load_op = i == 0 ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
+            // Hack to set the attachment load op for multiple pass rendering to same texture
+            node->renderpass_info.attachment_info[0].load_op = first_render ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
+
             uint32_t y = i / 2;
             uint32_t x = i % 2;
             viewport.x = x * shadow_map_size;
@@ -144,29 +209,28 @@ namespace mirai {
             glm::mat4 &VP = cascade_info.VP[i];
             frustum.create_from_matrix(VP, glm::inverse(VP));
 
-            std::vector<RenderBatch> render_batches;
-            DrawBatchGenerator::CreateBatch(scene, &frustum, render_batches, true);
+            std::vector<MeshBatch> mesh_batches;
+            DrawBatchGenerator::CreateMeshBatch(scene, &frustum, mesh_batches);
+            if (mesh_batches.size() > 0) {
+                command_buffer->begin_render_pass(node, frame_graph, &viewport);
+                shader->bind(command_buffer);
+                command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
+                push_constant_data[0] = i;
+                command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
+                for (auto &batch : mesh_batches)
+                    draw_batch(command_buffer, &batch, shader->pipeline_id);
 
-            command_buffer->begin_render_pass(node, frame_graph, &viewport);
-            if (render_batches.size() > 0) {
-                UniformSetID uniform_sets[] = {cascade_uniform_set, mesh_instance_set};
-                shader->bind(command_buffer, &node->renderpass_info);
+                command_buffer->end_render_pass();
 
-                PipelineID pipeline_id = shader->get_pipeline_id();
-                command_buffer->set_uniform_sets(pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
-
-                for (auto &batch : render_batches)
-                    draw_batch(&batch, pipeline_id, i);
+                first_render = false;
             }
-            command_buffer->end_render_pass();
             device->end_debug_utils_label(command_buffer);
         }
 
         device->end_debug_utils_label(command_buffer);
-    }
+    } // namespace mirai
 
     CascadedShadowPass::~CascadedShadowPass() {
     }
 
 } // namespace mirai
- */

@@ -176,9 +176,9 @@ namespace mirai {
         float push_constant_data[] = {(float)cubemap_size, (float)cubemap_size, 0.0f, 0.0f};
         PushConstant push_constant = {
             .data = push_constant_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(uint32_t) * 4,
             .offset = 0,
+            .size = sizeof(uint32_t) * 4,
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         TextureBarrierInfo barrier_info = {
@@ -239,9 +239,9 @@ namespace mirai {
 
         PushConstant push_constant = {
             .data = &map_dims,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * 4,
             .offset = 0,
+            .size = sizeof(float) * 4,
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         convolute_shader->bind(command_buffer);
@@ -294,9 +294,9 @@ namespace mirai {
 
         PushConstant push_constant = {
             .data = &map_dims,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * 4,
             .offset = 0,
+            .size = sizeof(float) * 4,
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
@@ -358,9 +358,9 @@ namespace mirai {
 
         PushConstant push_constant = {
             .data = &map_dims,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * 2,
             .offset = 0,
+            .size = sizeof(float) * 2,
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         integrate_brdf_shader->bind(command_buffer);

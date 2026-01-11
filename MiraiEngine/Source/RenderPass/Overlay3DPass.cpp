@@ -62,7 +62,12 @@ namespace mirai {
         command_buffer->set_uniform_sets(skybox_shader->pipeline_id, &skybox_uniform_set, 1);
 
         glm::mat4 push_constant_data[] = {camera->get_inv_projection_transform(), camera->get_inv_view_transform()};
-        PushConstant push_constant = {.data = push_constant_data, .shader_stage = SHADER_STAGE_FRAGMENT, .size = sizeof(glm::mat4) * 2, .offset = 0};
+        PushConstant push_constant = {
+            .data = push_constant_data,
+            .offset = 0,
+            .size = sizeof(glm::mat4) * 2,
+            .shader_stage = SHADER_STAGE_FRAGMENT,
+        };
 
         command_buffer->set_push_constants(skybox_shader->pipeline_id, &push_constant, 1);
         command_buffer->draw(3, 1, 0, 0);
@@ -75,9 +80,9 @@ namespace mirai {
             glm::mat4 VP = camera->get_view_projection_transform();
             PushConstant push_constant = {
                 .data = &VP[0][0],
-                .shader_stage = SHADER_STAGE_VERTEX,
-                .size = sizeof(glm::mat4),
                 .offset = 0,
+                .size = sizeof(glm::mat4),
+                .shader_stage = SHADER_STAGE_VERTEX,
             };
 
             line_renderer->shader->bind(command_buffer);

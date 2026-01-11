@@ -69,9 +69,13 @@ namespace mirai {
             return render_mode;
         }
 
+        // Offset aligment align the offset address to the multiple of given value
+        // E.g. minUniformBufferOffesetAlignment for uniform buffer
+        uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t offset_alignment = 64);
+
         ~Renderer();
 
-        bool enable_rt_shadow = true;
+        bool enable_rt_shadow = false;
 
         // Uniform Buffer
         BufferView cascade_uniform_buffer;
@@ -79,6 +83,9 @@ namespace mirai {
 
         BufferID global_transform_buffer;
         BufferID global_material_buffer;
+
+        BufferID per_frame_staging_buffer;
+        uint8_t *per_frame_staging_buffer_ptr;
 
         // Global Geometry Buffer
         const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;
@@ -122,13 +129,7 @@ namespace mirai {
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
         const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);
-        BufferID per_frame_staging_buffer;
-        uint8_t *per_frame_staging_buffer_ptr;
         uint32_t per_frame_staging_buffer_offset = 0;
-
-        // Offset aligment align the offset address to the multiple of given value
-        // E.g. minUniformBufferOffesetAlignment for uniform buffer
-        uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t offset_alignment = 64);
 
         friend class Engine;
     };

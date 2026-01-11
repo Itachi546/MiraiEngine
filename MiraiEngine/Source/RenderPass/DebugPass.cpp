@@ -52,9 +52,9 @@ namespace mirai {
 
         PushConstant push_constant = {
             .data = &push_constant_data,
-            .shader_stage = SHADER_STAGE_VERTEX,
-            .size = sizeof(PushConstantData),
             .offset = 0,
+            .size = sizeof(PushConstantData),
+            .shader_stage = SHADER_STAGE_VERTEX,
         };
 
         // miProfiler::DrawData();

@@ -524,9 +524,9 @@ namespace mirai {
 
     struct PushConstant {
         void *data;
-        ShaderStage shader_stage;
-        uint32_t size;
         uint32_t offset;
+        uint32_t size;
+        ShaderStage shader_stage;
     };
 
     struct DrawIndexedIndirectCommand {

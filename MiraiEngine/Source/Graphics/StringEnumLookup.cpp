@@ -129,8 +129,8 @@ namespace mirai {
             return SHADER_PASS_DEFERRED_UNLIT;
         else if (pass_mode == "SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT")
             return SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT;
-        else if (pass_mode == "SHADER_PASS_SHADOW")
-            return SHADER_PASS_SHADOW;
+        else if (pass_mode == "SHADER_PASS_CASCADED_ SHADOW")
+            return SHADER_PASS_CASCADED_SHADOW;
         else if (pass_mode == "SHADER_PASS_TEXT2D")
             return SHADER_PASS_TEXT2D;
         else if (pass_mode == "SHADER_PASS_DEBUG_DRAW")

@@ -22,19 +22,6 @@ namespace mirai {
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
-        auto draw_batch = [&](MeshBatch *batch, Shader *shader) {
-            if (shader->get_draw_mode() == DRAWMODE_INDEXED_INDIRECT) {
-                UniformSetID uniform_sets[] = {renderer->vt_per_frame_uniform_set, batch->vertex_binding_set};
-                command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
-                command_buffer->set_index_buffer(batch->index_buffer.buffer);
-
-                uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
-                command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
-            } else {
-                ASSERT_MSG(0, "Draw mode not defined");
-            }
-        };
-
         ScopedGpuProfiling(command_buffer, "DepthPrePass");
 
         device->begin_debug_utils_label(command_buffer, "Depth PrePass", nullptr);

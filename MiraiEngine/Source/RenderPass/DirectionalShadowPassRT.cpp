@@ -93,9 +93,9 @@ namespace mirai {
         command_buffer->begin_compute_pass(node, frame_graph);
         PushConstant push_constant = {
             .data = &shader_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(shader_data),
             .offset = 0,
+            .size = sizeof(shader_data),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         dir_shadow_shader->bind(command_buffer);
@@ -136,9 +136,9 @@ namespace mirai {
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
         PushConstant push_constant = {
             .data = blur_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(blur_data),
             .offset = 0,
+            .size = sizeof(blur_data),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         // Blur in X-direction

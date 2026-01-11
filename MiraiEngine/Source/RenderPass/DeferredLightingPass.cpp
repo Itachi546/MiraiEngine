@@ -46,12 +46,12 @@ namespace mirai {
             {.resource_id = frame_graph->get_resource("gbuffer_normal")->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = frame_graph->get_resource("gbuffer_emissive")->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = frame_graph->get_resource("ssao_texture")->handle, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = /*frame_graph->get_resource("cascaded_shadow_map")->handle*/ {K_INVALID_ID}, .texture_info = {.sampler = depth_sampler}},
+            {.resource_id = frame_graph->get_resource("cascaded_shadow_map")->handle, .texture_info = {.sampler = depth_sampler}},
         };
 
         // Create normal uniform set
-        // cascaded_shadow_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_binding_set");
-        // device->update_uniform_set(cascaded_shadow_uniform_set, bindings, cast_u32(std::size(bindings)));
+        cascaded_shadow_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_binding_set");
+        device->update_uniform_set(cascaded_shadow_uniform_set, bindings, cast_u32(std::size(bindings)));
 
         // Create raytraced uniform set
         // For binding acceleration structure, we can only specify the descriptor type without actual

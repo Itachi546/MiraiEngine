@@ -116,9 +116,9 @@ namespace mirai {
         constant_data.inv_projection_matrix = scene->get_camera()->get_inv_projection_transform();
         PushConstant push_constants = {
             .data = &constant_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(PushConstants),
             .offset = 0,
+            .size = sizeof(PushConstants),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         command_buffer->begin_compute_pass(node, frame_graph);
@@ -145,9 +145,9 @@ namespace mirai {
 
         PushConstant push_constants = {
             .data = &push_constant_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(float) * std::size(push_constant_data),
             .offset = 0,
+            .size = sizeof(float) * std::size(push_constant_data),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         UniformSetID uniform_set = direction == 0 ? blur_x_set : blur_y_set;

@@ -48,8 +48,6 @@ namespace mirai {
 
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
-            const Material *material = scene->materials[object.material_index].get();
-
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
@@ -60,6 +58,7 @@ namespace mirai {
                     continue;
             }
 
+            const Material *material = scene->materials[object.material_index].get();
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
             if (material->is_transparent()) {
                 if (only_opaque)
@@ -86,6 +85,40 @@ namespace mirai {
             float distance_to_camera = glm::dot(transform->position, camera_position);
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, distance_to_camera);
+        }
+    }
+
+    void DrawBatchGenerator::CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &mesh_batches, bool only_opaque) {
+        auto &render_object_list = scene->render_object_list;
+
+        BufferView cached_vertex_buffer = BufferView{BufferID{K_INVALID_ID}, 0, 0};
+        uint32_t mesh_batch = UINT32_MAX;
+
+        auto &component_manager = scene->ecs->component_manager;
+        for (auto &object : render_object_list) {
+            bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
+            if (!disable_frustum_culling) {
+                AABB aabb = object.aabb;
+                aabb.transform(transform->world_transform);
+                if (!frustum->intersect(aabb))
+                    continue;
+            }
+
+            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
+            const Material *material = scene->materials[object.material_index].get();
+            if (material->is_transparent()) {
+                if (only_opaque)
+                    continue;
+            }
+
+            // Check Mesh Batch
+            if (cached_vertex_buffer != object.vertex_buffer) {
+                mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, mesh_batches);
+                cached_vertex_buffer = object.vertex_buffer;
+            }
+            uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
+            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, 0.0f);
         }
     }
 
