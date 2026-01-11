@@ -51,7 +51,7 @@ namespace mirai {
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
-            if (!disable_frustum_culling) {
+            if (!disable_frustum_culling && frustum != nullptr) {
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
                 if (!frustum->intersect(aabb))
@@ -98,7 +98,7 @@ namespace mirai {
         for (auto &object : render_object_list) {
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
-            if (!disable_frustum_culling) {
+            if (!disable_frustum_culling && frustum != nullptr) {
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
                 if (!frustum->intersect(aabb))

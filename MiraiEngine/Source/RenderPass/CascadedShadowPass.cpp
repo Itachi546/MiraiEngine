@@ -138,7 +138,7 @@ namespace mirai {
                 indirect_data_array += sizeof(DrawIndexedIndirectCommand);
 
                 *draw_data_array = draw_info.transform_index;
-                draw_data_array += draw_data_instance_size;
+                draw_data_array += 1;
             }
 
             UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, 1);
