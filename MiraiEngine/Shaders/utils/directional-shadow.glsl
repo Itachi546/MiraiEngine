@@ -63,7 +63,7 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
 
             vec4 shadow_coord = shadow_coord / shadow_coord.w;
             shadow_coord.xy = (cascade_uv + clamp(shadow_coord.xy, 0.0, 1.0)) * 0.5;
-            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res, 0.001f);
+            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res * 4.0, 0.001f);
             sample_count++;
         }
     }
@@ -82,7 +82,17 @@ float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_in
     }
     if (cascade_index == -1)
         return 1.0f;
-    return calculate_shadow_from_texture(world_pos, cascade_index);
+
+    float s0 = calculate_shadow_from_texture(world_pos, cascade_index);
+    if (cascade_index == NUM_DIRLIGHT_CASCADE - 1)
+        return s0;
+
+    float start = cascade_info.split_distances[cascade_index] * z_range;
+    float end = cascade_info.split_distances[cascade_index + 1] * z_range;
+
+    float blendFactor = (end - cam_dist) / (end - start);
+    float s1 = calculate_shadow_from_texture(world_pos, cascade_index + 1);
+    return mix(s1, s0, blendFactor * blendFactor);
 }
 
 #endif
