@@ -27,19 +27,15 @@ layout(set = 3, binding = 1) readonly buffer MaterialBinding {
 
 void main() {
     vec3 col = vec3(0.0f);
-    PBRMaterial material = materials[fs_in.mat_id];
-    vec4 albedo = material.albedo;
-    if (material.albedo_texture != K_INVALID_TEXTURE)
-        albedo *= sample_texture(material.albedo_texture, fs_in.uv);
-
     vec3 normal = vec3(0.0f, 0.0f, 1.0f);
+
+    PBRMaterial material = materials[fs_in.mat_id];
     if (material.normal_texture != K_INVALID_TEXTURE)
         normal = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
-    // normal = normalize(normal.x * normalize(fs_in.tangent) + normal.y * normalize(fs_in.bitangent) + normal.z * normalize(fs_in.normal));
     normal = normalize(normal.x * fs_in.tangent + normal.y * fs_in.bitangent + normal.z * fs_in.normal);
 
-    PBRParameter pbr_params = get_pbr_parameter(material, fs_in.uv);
-    pbr_params.albedo = albedo;
+    PBRParameter pbr_params = get_pbr_material_parameter(material, fs_in.uv);
+    pbr_params.ao = 1.0f;
 
     vec3 view_dir = normalize(per_frame_data.camera_position.xyz - fs_in.world_pos);
 
@@ -48,6 +44,8 @@ void main() {
     light.cast_shadow = per_frame_data.cast_shadow;
     light.color = per_frame_data.light_color;
     light.intensity = per_frame_data.light_intensity;
-    vec3 Lo = calculateLightIntensity(light, view_dir, normal, pbr_params);
+    
+    float shadow_factor = 1.0f;
+    vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor);
     fragColor = vec4(Lo, 1.0f);
 }

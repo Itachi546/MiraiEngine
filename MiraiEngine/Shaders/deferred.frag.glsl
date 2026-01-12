@@ -40,7 +40,8 @@ void main() {
     vec3 n = vec3(0.0f, 0.0f, 1.0f);
     if (material.normal_texture != K_INVALID_TEXTURE)
         n = sample_texture(material.normal_texture, fs_in.uv).rgb * 2.0f - 1.0f;
-    n = normalize(n.x * normalize(fs_in.tangent) + n.y * normalize(fs_in.bitangent) + n.z * normalize(fs_in.normal));
+    //n.xy *= 4.0f;
+    n = normalize(n.x * fs_in.tangent + n.y * fs_in.bitangent + n.z * fs_in.normal);
     vec2 oct_n = octahedral_encode(n) * 0.5 + 0.5;
 
     vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);

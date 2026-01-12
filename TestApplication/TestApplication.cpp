@@ -334,8 +334,6 @@ class TestApplication : public App {
             if (ssao_pass != nullptr) {
                 if (ImGui::CollapsingHeader("SSAO Pass")) {
                     ImGui::Text("SSAO Generation");
-                    static bool enable_ssao = true;
-                    ImGui::Checkbox("Enable SSAO", &enable_ssao);
                     ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
                     ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
                     ImGui::DragFloat("March Step Size", &ssao_pass->constant_data.step_size, 0.0001f, 0.0f, 0.1f);

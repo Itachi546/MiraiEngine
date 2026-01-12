@@ -26,33 +26,40 @@ struct PBRMaterial {
     uint occlusion_texture;
 };
 
+bool is_specular_glossiness_workflow(uint flags) {
+    return (flags & FLAG_SPECULAR_GLOSSINESS_WORKFLOW) == FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
+}
+
 struct PBRParameter {
     vec4 albedo;
     vec3 emissive;
     float metallic;
     float roughness;
+    float ao;
 };
 
-bool is_specular_glossiness_workflow(uint flags) {
-    return (flags & FLAG_SPECULAR_GLOSSINESS_WORKFLOW) == FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
-}
-
-PBRParameter get_pbr_parameter(PBRMaterial material, vec2 uv) {
+PBRParameter get_pbr_material_parameter(PBRMaterial material, vec2 uv) {
     PBRParameter out_params;
-    out_params.metallic = material.metallic_factor;
-    out_params.roughness = material.roughness_factor;
+    out_params.albedo = material.albedo;
+    out_params.emissive = material.emissive_factor;
+
+    if (material.albedo_texture != K_INVALID_TEXTURE)
+        out_params.albedo *= sample_texture(material.albedo_texture, uv);
+
     if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
         vec2 mr = sample_texture(material.metallic_roughness_texture, uv).bg;
         out_params.metallic = mr.x;
         out_params.roughness = mr.y;
+    } else {
+        out_params.metallic = material.metallic_factor;
+        out_params.roughness = material.roughness_factor;
     }
+
     out_params.roughness = is_specular_glossiness_workflow(material.flags) ? 1.0 - out_params.roughness : out_params.roughness;
 
-    out_params.emissive = material.emissive_factor;
     if (material.emissive_texture != K_INVALID_TEXTURE)
         out_params.emissive *= sample_texture(material.emissive_texture, uv).rgb;
 
     return out_params;
 }
-
 #endif

@@ -65,7 +65,7 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
 
             vec4 shadow_coord = shadow_coord / shadow_coord.w;
             shadow_coord.xy = (cascade_uv + clamp(shadow_coord.xy, 0.0, 1.0)) * 0.5;
-            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res * 4.0, 0.001f);
+            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res, 0.001f);
             sample_count++;
         }
     }
