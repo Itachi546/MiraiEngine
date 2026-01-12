@@ -1,0 +1,49 @@
+[
+    {
+        "name": "overlay-skybox-shader",
+        "shaders": [
+            "SPIRV/fullscreen.vert.spv",
+            "SPIRV/skybox.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_SKYBOX",
+            "depth-test": true,
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    },
+    {
+        "name": "2D-text-shader",
+        "shaders": [
+            "SPIRV/font.vert.spv",
+            "SPIRV/font.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_TEXT2D",
+            "blend-mode": true,
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ]
+        }
+    },
+    {
+        "name": "debug-draw-shader",
+        "shaders": [
+            "SPIRV/line.vert.spv",
+            "SPIRV/line.frag.spv"
+        ],
+        "state": {
+            "pass": "SHADER_PASS_DEBUG_DRAW",
+            "depth-test": true,
+            "depth-write": true,
+            "blend-mode": true,
+            "topology": "TOPOLOGY_LINE_LIST",
+            "color-attachments-format": [
+                "B8G8R8A8_UNORM"
+            ],
+            "depth-attachment-format": "D32_SFLOAT"
+        }
+    }
+]

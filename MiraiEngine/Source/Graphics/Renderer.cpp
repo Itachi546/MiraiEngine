@@ -113,50 +113,54 @@ namespace mirai {
         if (device->supports_raytracing())
             enable_rt_shadow = true;
 
-        // Update global transform buffer
-        auto transform_components_ptr = component_manager->get_component_array<TransformComponent>();
-        std::size_t transform_size_bytes = transform_components_ptr->components.size() * sizeof(glm::mat4);
-        uint32_t transform_buffer_offset = allocate_staging_buffer(cast_u32(transform_size_bytes), 1);
-        uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
-        for (auto &component : transform_components_ptr->components) {
-            std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
-            transform_array += sizeof(glm::mat4);
-        }
-
-        // Update material buffer
-        std::size_t material_size_bytes = scene->materials.size() * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
-        uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
-        uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
-
-        uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
-        for (auto &mat : scene->materials) {
-            std::memset(temp_buffer, 0, 64);
-            uint32_t instance_data_size = mat->get_instance_data_size();
-            ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
-            std::memcpy(temp_buffer, mat->get_instance_data(), mat->get_instance_data_size());
-
-            std::memcpy(material_array, temp_buffer, 64);
-            material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
-        }
-
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         device->begin_debug_utils_label(command_buffer, "Copy global buffer", nullptr);
 
-        BufferCopyRegion copy_region = {
-            .src_offset = transform_buffer_offset,
-            .dst_offset = 0,
-            .size = transform_size_bytes,
-        };
+        // Update global transform buffer
+        auto transform_components_ptr = component_manager->get_component_array<TransformComponent>();
+        std::size_t transform_size_bytes = transform_components_ptr->components.size() * sizeof(glm::mat4);
 
-        command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, &copy_region, 1);
+        if (transform_size_bytes > 0) {
+            uint32_t transform_buffer_offset = allocate_staging_buffer(cast_u32(transform_size_bytes), 1);
+            uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+            for (auto &component : transform_components_ptr->components) {
+                std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
+                transform_array += sizeof(glm::mat4);
+            }
 
-        copy_region = {
-            .src_offset = material_buffer_offset,
-            .dst_offset = 0,
-            .size = material_size_bytes,
-        };
-        command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, &copy_region, 1);
+            BufferCopyRegion copy_region = {
+                .src_offset = transform_buffer_offset,
+                .dst_offset = 0,
+                .size = transform_size_bytes,
+            };
+            command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, &copy_region, 1);
+        }
+
+        // Update material buffer
+        std::size_t material_size_bytes = scene->materials.size() * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        if (material_size_bytes > 0) {
+            uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
+            uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
+
+            uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
+            for (auto &mat : scene->materials) {
+                std::memset(temp_buffer, 0, 64);
+                uint32_t instance_data_size = mat->get_instance_data_size();
+                ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
+                std::memcpy(temp_buffer, mat->get_instance_data(), mat->get_instance_data_size());
+
+                std::memcpy(material_array, temp_buffer, 64);
+                material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+            }
+
+            BufferCopyRegion copy_region = {
+                .src_offset = material_buffer_offset,
+                .dst_offset = 0,
+                .size = material_size_bytes,
+            };
+            command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, &copy_region, 1);
+        }
 
         device->end_debug_utils_label(command_buffer);
         device->submit_command_buffer_immediate(command_buffer);

@@ -168,9 +168,9 @@ namespace mirai {
         uint32_t push_constant_data[] = {cbt_depth, initDepth};
         PushConstant push_constant = {
             .data = &push_constant_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(uint32_t) * cast_u32(std::size(push_constant_data)),
             .offset = 0,
+            .size = sizeof(uint32_t) * cast_u32(std::size(push_constant_data)),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         command_buffer->set_push_constants(cbt_init_program->pipeline_id, &push_constant, 1);
@@ -207,9 +207,9 @@ namespace mirai {
 
         PushConstant push_constants = {
             .data = &cbt_depth,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(uint32_t),
             .offset = 0,
+            .size = sizeof(uint32_t),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         command_buffer->set_push_constants(cbt_sum_reduction_prepass_program->pipeline_id, &push_constants, 1);
@@ -260,9 +260,9 @@ namespace mirai {
             command_buffer->prepare_buffer(cbt_buffer_barrier_info, cast_u32(std::size(cbt_buffer_barrier_info)));
             PushConstant push_constants = {
                 .data = &level,
-                .shader_stage = SHADER_STAGE_COMPUTE,
-                .size = sizeof(uint32_t),
                 .offset = 0,
+                .size = sizeof(uint32_t),
+                .shader_stage = SHADER_STAGE_COMPUTE,
             };
             command_buffer->set_push_constants(cbt_sum_reduction_program->pipeline_id, &push_constants, 1);
             uint32_t local_work_size = rendering_utils::get_workgroup_size(1 << level, 256);
@@ -289,9 +289,9 @@ namespace mirai {
 
         PushConstant push_constant = {
             .data = &push_constant_data,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-            .size = sizeof(push_constant_data),
             .offset = 0,
+            .size = sizeof(push_constant_data),
+            .shader_stage = SHADER_STAGE_COMPUTE,
         };
 
         command_buffer->set_push_constants(cbt_subdivision_program->pipeline_id, &push_constant, 1);
@@ -405,7 +405,12 @@ namespace mirai {
         } push_constant_data;
         push_constant_data.VP = scene->get_camera()->get_view_projection_transform();
         push_constant_data.dims = {float(width), float(height), float(maxHeight), float(enable_sumreduction_prepass)};
-        PushConstant push_constant = {.data = &push_constant_data, .shader_stage = SHADER_STAGE_VERTEX, .size = sizeof(push_constant_data), .offset = 0};
+        PushConstant push_constant = {
+            .data = &push_constant_data,
+            .offset = 0,
+            .size = sizeof(push_constant_data),
+            .shader_stage = SHADER_STAGE_VERTEX,
+        };
 
         command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
         command_buffer->draw_indirect(cbt_draw_indirect_buffer, 0, 1, sizeof(uint32_t) * 4);

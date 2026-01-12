@@ -24,13 +24,13 @@ class TerrainApplication : public App {
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
         scene->set_environment_map(env_map);
 
+        Renderer::get()->set_pipeline_description_file("Assets/pipelines.json");
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         frame_graph->load_from_file("Assets/terrain_pass.json");
         frame_graph->set_renderer("terrain_pass", std::make_shared<TerrainPass>(32000, 32000, 2400, 27));
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("sky_pass", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
-        frame_graph->compile(Renderer::get());
 
         Camera *camera = scene->get_camera();
         camera->set_near_plane(3.0f);
