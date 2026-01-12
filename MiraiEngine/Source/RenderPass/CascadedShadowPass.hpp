@@ -17,8 +17,8 @@ namespace mirai {
 
         ~CascadedShadowPass();
 
-        float split_lamda = 0.949f;
-        float shadow_distance = 400.0f;
+        float split_lamda = 0.909f;
+        float shadow_distance = 100.0f;
         uint32_t shadow_map_size = 2048;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};

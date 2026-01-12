@@ -94,5 +94,11 @@ void main() {
 
     vec3 ambient = (Kd * diffuse + specular) * 0.2;
     Lo += ambient + emissive;
+    /*
+    #ifndef ENABLE_RT_SHADOW
+        int cascade_index = 0;
+        Lo = show_debug_cascade_color(world_pos, cam_dist, cascade_index);
+    #endif
+    */
     fragColor = vec4(Lo, 1.0f);
 }

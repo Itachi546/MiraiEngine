@@ -1,6 +1,8 @@
 #ifndef DIRECTIONAL_SHADOW_GLSL
 #define DIRECTIONAL_SHADOW_GLSL
 
+#include "color.glsl"
+
 vec2 POISSON_DISK[16] = vec2[](
     vec2(-0.94201624, -0.39906216),
     vec2(0.94558609, -0.76890725),
@@ -70,8 +72,8 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
     return shadow_factor / sample_count;
 }
 
+const float CASCADE_BLEND_EDGE_LENGTH = 0.2f;
 float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_index) {
-
     cascade_index = -1;
     float z_range = cascade_info.dims[0];
     for (int i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
@@ -80,19 +82,46 @@ float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_in
             break;
         }
     }
-    if (cascade_index == -1)
-        return 1.0f;
 
     float s0 = calculate_shadow_from_texture(world_pos, cascade_index);
     if (cascade_index == NUM_DIRLIGHT_CASCADE - 1)
         return s0;
 
-    float start = cascade_info.split_distances[cascade_index] * z_range;
-    float end = cascade_info.split_distances[cascade_index + 1] * z_range;
+    float start = cascade_index == 0 ? 0.0f : cascade_info.split_distances[cascade_index - 1] * z_range;
+    float end = cascade_info.split_distances[cascade_index] * z_range;
 
-    float blendFactor = (end - cam_dist) / (end - start);
+    float blendFactor = (cam_dist - start) / (end - start);
+    blendFactor = smoothstep(1.0f - CASCADE_BLEND_EDGE_LENGTH, 1.0f, blendFactor);
+    if (blendFactor < 0.001f)
+        return s0;
+
     float s1 = calculate_shadow_from_texture(world_pos, cascade_index + 1);
-    return mix(s1, s0, blendFactor * blendFactor);
+    return mix(s0, s1, blendFactor);
+}
+
+vec3 show_debug_cascade_color(vec3 world_pos, float cam_dist, out int cascade_index) {
+    cascade_index = -1;
+    float z_range = cascade_info.dims[0];
+    for (int i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+        if (cam_dist <= cascade_info.split_distances[i] * z_range) {
+            cascade_index = i;
+            break;
+        }
+    }
+
+    float s0 = calculate_shadow_from_texture(world_pos, cascade_index);
+    if (cascade_index == NUM_DIRLIGHT_CASCADE - 1)
+        return u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
+
+    float start = cascade_index == 0 ? 0.0f : cascade_info.split_distances[cascade_index - 1] * z_range;
+    float end = cascade_info.split_distances[cascade_index] * z_range;
+
+    float blendFactor = (cam_dist - start) / (end - start);
+    blendFactor = smoothstep(1.0f - CASCADE_BLEND_EDGE_LENGTH, 1.0f, blendFactor);
+    if (blendFactor < 0.001f)
+        return u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb;
+    return mix(u32_to_rgba(CASCADE_COLORS[cascade_index]).rgb,
+               u32_to_rgba(CASCADE_COLORS[cascade_index + 1]).rgb, blendFactor);
 }
 
 #endif
