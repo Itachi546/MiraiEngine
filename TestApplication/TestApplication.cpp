@@ -302,6 +302,17 @@ class TestApplication : public App {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
 
+            if (ImGui::CollapsingHeader("Deferred Pass")) {
+                FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
+                add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
+
+                FrameGraphResource *normal_texture = frame_graph->get_resource("gbuffer_normal");
+                add_rendertarget_texture_debug_ui("normal_metallic_roughness", normal_texture);
+
+                FrameGraphResource *emissive_texture = frame_graph->get_resource("gbuffer_emissive");
+                add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
+            }
+
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
             if (ImGui::CollapsingHeader("Shadow Pass")) {
                 if (supports_raytracing) {
