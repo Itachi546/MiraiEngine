@@ -27,6 +27,6 @@ namespace mirai {
       private:
         UniformSetID create_draw_data_binding(CommandBuffer *command_buffer, BufferID buffer, uint32_t offset, uint32_t size);
         void calculate_split_distances(float znear, float zfar, Scene *scene);
-        Shader *shader;
+        Shader *shader, *shader_alpha_test;
     };
 } // namespace mirai

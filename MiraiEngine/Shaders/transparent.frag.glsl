@@ -33,7 +33,7 @@ void main() {
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
 
-    if (albedo.a < 0.5)
+    if (albedo.a <= material.alpha_cutoff)
         discard;
 
     PBRParameter pbr_params;

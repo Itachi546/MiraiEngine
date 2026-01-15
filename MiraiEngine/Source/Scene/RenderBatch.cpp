@@ -35,7 +35,22 @@ namespace mirai {
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, RenderMode render_mode, bool only_opaque) {
+    uint32_t FindOrCreateShadowMeshBatch(BufferView vertex_buffer, BufferView index_buffer, UniformSetID vertex_binding_set, std::vector<ShadowMeshBatch> &mesh_batches, RenderBatchType render_batch_type) {
+        for (uint32_t i = 0; i < mesh_batches.size(); ++i) {
+            // No need to check index buffer for now
+            if (mesh_batches[i].vertex_buffer.buffer == vertex_buffer.buffer && mesh_batches[i].index_buffer.buffer == index_buffer.buffer && mesh_batches[i].render_batch_type == render_batch_type)
+                return i;
+        }
+        mesh_batches.push_back(ShadowMeshBatch{
+            .vertex_buffer = vertex_buffer,
+            .index_buffer = index_buffer,
+            .vertex_binding_set = vertex_binding_set,
+            .render_batch_type = render_batch_type,
+        });
+        return cast_u32(mesh_batches.size() - 1);
+    }
+
+    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, RenderMode render_mode, uint32_t batch_filter_flags) {
         auto &render_object_list = scene->render_object_list;
         CachedBatchInfo cached_batch_info = {
             .batch_type = RENDERBATCH_TYPE_OPAQUE,
@@ -46,26 +61,33 @@ namespace mirai {
         uint32_t shader_batch = UINT32_MAX;
         uint32_t mesh_batch = UINT32_MAX;
 
+        bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
+            const Material *material = scene->materials[object.material_index].get();
+
+            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
+            uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
+            if (material->is_transparent()) {
+                render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
+                filter_flag |= BATCH_FILTER_FLAG_TRANSPARENT;
+            } else if (material->has_alpha_mask()) {
+                render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
+                filter_flag |= BATCH_FILTER_FLAG_ALPHA_MASK;
+            }
+
+            if ((batch_filter_flags & filter_flag) != filter_flag)
+                continue;
+
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling && frustum != nullptr) {
                 AABB aabb = object.aabb;
                 aabb.transform(transform->world_transform);
-                if (!frustum->intersect(aabb))
+                if (!frustum->intersect(aabb, skip_near_plane))
                     continue;
             }
-
-            const Material *material = scene->materials[object.material_index].get();
-            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
-            if (material->is_transparent()) {
-                if (only_opaque)
-                    continue;
-                render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
-            }
-
             // Check Shader Batch
             ShaderPassKey shader_key = material->get_shader_key(render_mode);
             if (shader_key != cached_batch_info.shader_key) {
@@ -88,14 +110,29 @@ namespace mirai {
         }
     }
 
-    void DrawBatchGenerator::CreateMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<MeshBatch> &mesh_batches, bool only_opaque, bool skip_near_plane) {
+    void DrawBatchGenerator::CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &mesh_batches, uint32_t batch_filter_flags, bool skip_near_plane) {
         auto &render_object_list = scene->render_object_list;
 
         BufferView cached_vertex_buffer = BufferView{BufferID{K_INVALID_ID}, 0, 0};
         uint32_t mesh_batch = UINT32_MAX;
+        RenderBatchType last_render_batch_type = RENDERBATCH_TYPE_OPAQUE;
 
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
+            const Material *material = scene->materials[object.material_index].get();
+            uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
+            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
+            if (material->is_transparent()) {
+                filter_flag |= BATCH_FILTER_FLAG_TRANSPARENT;
+                render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
+            } else if (material->has_alpha_mask()) {
+                filter_flag |= BATCH_FILTER_FLAG_ALPHA_MASK;
+                render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
+            }
+
+            if ((batch_filter_flags & filter_flag) != filter_flag)
+                continue;
+
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling && frustum != nullptr) {
@@ -105,20 +142,15 @@ namespace mirai {
                     continue;
             }
 
-            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
-            const Material *material = scene->materials[object.material_index].get();
-            if (material->is_transparent()) {
-                if (only_opaque)
-                    continue;
+            // Check Mesh Batch
+            if (cached_vertex_buffer != object.vertex_buffer || last_render_batch_type != render_batch_type) {
+                mesh_batch = FindOrCreateShadowMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, mesh_batches, render_batch_type);
+                cached_vertex_buffer = object.vertex_buffer;
+                last_render_batch_type = render_batch_type;
             }
 
-            // Check Mesh Batch
-            if (cached_vertex_buffer != object.vertex_buffer) {
-                mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, mesh_batches);
-                cached_vertex_buffer = object.vertex_buffer;
-            }
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, 0.0f);
+            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
         }
     }
 

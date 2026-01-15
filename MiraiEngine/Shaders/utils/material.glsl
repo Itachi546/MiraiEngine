@@ -16,7 +16,7 @@ struct PBRMaterial {
     float metallic_factor;
 
     float roughness_factor;
-    float transmission;
+    float alpha_cutoff;
     uint flags;
     uint emissive_texture;
 

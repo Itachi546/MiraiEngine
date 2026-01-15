@@ -303,7 +303,7 @@ namespace mirai {
 
         Camera *camera = scene->get_camera();
         Frustum &frustum = camera->get_frustum();
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, render_mode, false);
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, render_mode, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT);
 
         std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
             batch.sort();

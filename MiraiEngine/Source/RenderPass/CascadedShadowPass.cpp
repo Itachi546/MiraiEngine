@@ -18,12 +18,20 @@ namespace mirai {
         pipeline_state.render_state.fields.depth_clamp = true;
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW;
         pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
+        pipeline_state.render_state.fields.cull_mode = CULL_MODE_FRONT;
 
         PipelineAttachmentInfo attachment_info = {
             .has_depth_attachment = true,
             .depth_attachment_format = FORMAT_D16_UNORM,
         };
         shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/cascaded-shadow.vert.spv"}, "cascaded-shadow-map-shader");
+
+        pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW_ALPHA_MASK;
+        shader_alpha_test = Shader::create_from_file(pipeline_state, attachment_info, {
+                                                                                          "SPIRV/cascaded-shadow-alpha-test.vert.spv",
+                                                                                          "SPIRV/cascaded-shadow-alpha-test.frag.spv",
+                                                                                      },
+                                                     "cascaded-shadow-map-alpha-test-shader");
     }
 
     void CascadedShadowPass::calculate_split_distances(float znear, float zfar, Scene *scene) {
@@ -111,7 +119,7 @@ namespace mirai {
         device->begin_debug_utils_label(command_buffer, "CascadedShadowPass", nullptr);
         uint32_t current_frame = device->get_current_frame();
 
-        auto draw_batch = [&renderer, current_frame](CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id) {
+        auto draw_batch = [&](CommandBuffer *command_buffer, ShadowMeshBatch *batch, PipelineID pipeline_id) {
             if (batch->mesh_draw_infos.size() == 0)
                 return;
 
@@ -119,15 +127,16 @@ namespace mirai {
 
             uint32_t num_entity = cast_u32(batch->mesh_draw_infos.size());
 
-            uint32_t draw_data_instance_size = sizeof(uint32_t);
+            uint32_t draw_data_instance_size = pipeline_id == shader->pipeline_id ? sizeof(uint32_t) : sizeof(uint32_t) * 4;
             uint32_t draw_data_size_bytes = num_entity * draw_data_instance_size;
             uint32_t draw_data_offset = renderer->allocate_staging_buffer(draw_data_size_bytes, current_frame);
-            uint32_t *draw_data_array = reinterpret_cast<uint32_t *>(renderer->per_frame_staging_buffer_ptr + draw_data_offset);
+            uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(renderer->per_frame_staging_buffer_ptr + draw_data_offset);
 
             uint32_t indirect_data_size_bytes = num_entity * sizeof(DrawIndexedIndirectCommand);
             uint32_t indirect_data_offset = renderer->allocate_staging_buffer(indirect_data_size_bytes, current_frame);
             uint8_t *indirect_data_array = (renderer->per_frame_staging_buffer_ptr + indirect_data_offset);
 
+            uint32_t draw_data[] = {0, 0, 0, 0};
             /**
              * Maybe the right way to do this is to do GPU Culling and generating
              * indirect command.
@@ -138,8 +147,10 @@ namespace mirai {
                 std::memcpy(indirect_data_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                 indirect_data_array += sizeof(DrawIndexedIndirectCommand);
 
-                *draw_data_array = draw_info.transform_index;
-                draw_data_array += 1;
+                draw_data[0] = draw_info.transform_index;
+                draw_data[1] = draw_info.material_index;
+                std::memcpy(draw_data_array, draw_data, draw_data_instance_size);
+                draw_data_array += draw_data_instance_size;
             }
 
             UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, 1);
@@ -196,11 +207,9 @@ namespace mirai {
          * inside the frustum. This miss the clearing of texture entirely (LOAD_OP_CLEAR).
          * So we keep track of the first render
          */
-        bool first_render = true;
         for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
             device->begin_debug_utils_label(command_buffer, "SPLIT", nullptr);
-            // Hack to set the attachment load op for multiple pass rendering to same texture
-            node->renderpass_info.attachment_info[0].load_op = first_render ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
+            node->renderpass_info.attachment_info[0].load_op = i == 0 ? LOAD_OP_CLEAR : LOAD_OP_LOAD;
 
             uint32_t y = i / 2;
             uint32_t x = i % 2;
@@ -210,21 +219,27 @@ namespace mirai {
             glm::mat4 &VP = cascade_info.VP[i];
             frustum.create_from_matrix(VP, glm::inverse(VP));
 
-            std::vector<MeshBatch> mesh_batches;
-            DrawBatchGenerator::CreateMeshBatch(scene, &frustum, mesh_batches, true, true);
-            if (mesh_batches.size() > 0) {
-                command_buffer->begin_render_pass(node, frame_graph, &viewport);
+            std::vector<ShadowMeshBatch> mesh_batches;
+            DrawBatchGenerator::CreateShadowMeshBatch(scene, &frustum, mesh_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_SKIP_NEAR_PLANE);
+
+            std::vector<uint32_t> opaque_batches, alpha_mask_batches;
+            for (uint32_t b = 0; b < mesh_batches.size(); ++b) {
+                if (mesh_batches[b].render_batch_type == RENDERBATCH_TYPE_OPAQUE)
+                    opaque_batches.push_back(b);
+                else
+                    alpha_mask_batches.push_back(b);
+            }
+
+            command_buffer->begin_render_pass(node, frame_graph, &viewport);
+            if (opaque_batches.size() > 0) {
                 shader->bind(command_buffer);
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
                 push_constant_data[0] = i;
                 command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
-                for (auto &batch : mesh_batches)
-                    draw_batch(command_buffer, &batch, shader->pipeline_id);
-
-                command_buffer->end_render_pass();
-
-                first_render = false;
+                for (auto index : opaque_batches)
+                    draw_batch(command_buffer, &mesh_batches[index], shader->pipeline_id);
             }
+            command_buffer->end_render_pass();
             device->end_debug_utils_label(command_buffer);
         }
 

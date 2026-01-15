@@ -15,10 +15,7 @@ namespace mirai {
 
         device->begin_debug_utils_label(command_buffer, "DeferredTransparent", nullptr);
 
-        command_buffer->begin_render_pass(node, frame_graph);
-
         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
-
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
             for (auto &batch : render_batches) {
                 if (batch.batch_type != render_batch_type)
@@ -45,6 +42,7 @@ namespace mirai {
             }
         };
 
+        command_buffer->begin_render_pass(node, frame_graph);
         if (render_batches.size() > 0) {
             // Draw Opaque Object
             PipelineState pipeline_state = {};

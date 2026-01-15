@@ -52,6 +52,9 @@ namespace mirai {
             pipeline_state.render_state.fields.depth_write = true;
             pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
             draw_batch(RENDERBATCH_TYPE_OPAQUE, pipeline_state);
+
+            pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
+            draw_batch(RENDERBATCH_TYPE_ALPHA_MASK, pipeline_state);
         }
 
         command_buffer->end_render_pass();

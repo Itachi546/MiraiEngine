@@ -60,6 +60,8 @@ namespace mirai {
 
         virtual bool is_transparent() const = 0;
 
+        virtual bool has_alpha_mask() const = 0;
+
         virtual const char *get_material_type_name() = 0;
 
         /**
@@ -99,8 +101,12 @@ namespace mirai {
             return "UnlitMaterial";
         }
 
-        bool is_transparent() const {
-            return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
+        bool is_transparent() const override {
+            return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND);
+        }
+
+        bool has_alpha_mask() const override {
+            return ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
         ShaderPassKey get_shader_key(RenderMode render_mode) const override {
@@ -136,7 +142,7 @@ namespace mirai {
             instance_data.emissive_factor = glm::vec4(0.0f);
             instance_data.metallic_factor = 0.1f;
             instance_data.roughness_factor = 0.9f;
-            instance_data.transmission = 0.0f;
+            instance_data.alpha_cutoff = 0.9f;
             instance_data.emissive_texture = K_INVALID_ID;
             instance_data.albedo_texture = K_INVALID_ID;
             instance_data.normal_texture = K_INVALID_ID;
@@ -153,7 +159,11 @@ namespace mirai {
         }
 
         bool is_transparent() const override {
-            return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND) || ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
+            return ((instance_data.flags & FLAG_ALPHA_BLEND) == FLAG_ALPHA_BLEND);
+        }
+
+        bool has_alpha_mask() const override {
+            return ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK);
         }
 
         const char *get_material_type_name() override {
@@ -164,7 +174,12 @@ namespace mirai {
             ShaderPassKey shader_key;
             switch (render_mode) {
             case RenderMode::RENDERMODE_DEFERRED: {
-                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_DEFERRED_TRANSPARENT : SHADER_PASS_PBR_DEFERRED;
+                if (is_transparent())
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_DEFERRED_TRANSPARENT;
+                else if ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK)
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_DEFERRED_ALPHA;
+                else
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_DEFERRED;
                 break;
             }
             case RenderMode::RENDERMODE_FORWARD: {
@@ -184,7 +199,7 @@ namespace mirai {
             float metallic_factor;
 
             float roughness_factor;
-            float transmission;
+            float alpha_cutoff;
             uint32_t flags = 0;
             uint32_t emissive_texture;
 
@@ -226,6 +241,10 @@ namespace mirai {
         }
 
         bool is_transparent() const {
+            return false;
+        }
+
+        bool has_alpha_mask() const override {
             return false;
         }
 

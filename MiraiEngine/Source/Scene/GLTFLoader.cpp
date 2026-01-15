@@ -49,7 +49,7 @@ namespace mirai {
 
             StandardPBRMaterial::PBRProperties &instance_data = material->instance_data;
 
-            instance_data.transmission = static_cast<float>(pbr.baseColorFactor[3]);
+            // instance_data.transmission = static_cast<float>(pbr.baseColorFactor[3]);
             instance_data.flags = 0;
 
             const std::string &alpha_mode = gltf_material->alphaMode;
@@ -64,6 +64,8 @@ namespace mirai {
             if (gltf_material->doubleSided) {
                 instance_data.flags |= MaterialFlags::FLAG_DOUBLE_SIDED;
             }
+
+            instance_data.alpha_cutoff = cast_float(gltf_material->alphaCutoff);
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");

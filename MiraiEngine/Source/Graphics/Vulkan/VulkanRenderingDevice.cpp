@@ -243,14 +243,14 @@ namespace mirai {
 
     VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
         VkDescriptorPoolSize default_pools[] = {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 512},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 32},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 32},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32},
-            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32}};
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 128},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 128},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
+            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 128},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 128}};
 
-        uint32_t maxSets = pool_count > 0 ? max_sets : 512;
+        uint32_t maxSets = pool_count > 0 ? max_sets : 768;
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
             .flags = create_flags,

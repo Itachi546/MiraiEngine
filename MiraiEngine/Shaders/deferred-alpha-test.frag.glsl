@@ -35,6 +35,9 @@ void main() {
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
 
+    if (albedo.a <= material.alpha_cutoff)
+        discard;
+
     albedo_buffer = albedo;
 
     vec3 n = vec3(0.0f, 0.0f, 1.0f);
@@ -51,6 +54,8 @@ void main() {
     if (is_specular_glossiness_workflow(material.flags))
         metallic_roughness.g = 1.0 - metallic_roughness.g;
 
+    // @TODO Fix this, hacked to reduce indirect specular contribution
+    metallic_roughness.g *= 2.0f;
     normal_buffer = vec4(oct_n, metallic_roughness);
 
     vec3 emissive = material.emissive_factor;
