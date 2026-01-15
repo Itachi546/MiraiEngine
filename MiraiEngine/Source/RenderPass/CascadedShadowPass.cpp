@@ -27,6 +27,7 @@ namespace mirai {
         shader = Shader::create_from_file(pipeline_state, attachment_info, {"SPIRV/cascaded-shadow.vert.spv"}, "cascaded-shadow-map-shader");
 
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW_ALPHA_MASK;
+        pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
         shader_alpha_test = Shader::create_from_file(pipeline_state, attachment_info, {
                                                                                           "SPIRV/cascaded-shadow-alpha-test.vert.spv",
                                                                                           "SPIRV/cascaded-shadow-alpha-test.frag.spv",
@@ -124,10 +125,11 @@ namespace mirai {
                 return;
 
             RenderingDevice *device = RenderingDevice::get();
+            bool is_opaque_pass = shader->pipeline_id == pipeline_id ? true : false;
 
             uint32_t num_entity = cast_u32(batch->mesh_draw_infos.size());
 
-            uint32_t draw_data_instance_size = pipeline_id == shader->pipeline_id ? sizeof(uint32_t) : sizeof(uint32_t) * 4;
+            uint32_t draw_data_instance_size = is_opaque_pass ? sizeof(uint32_t) : sizeof(uint32_t) * 4;
             uint32_t draw_data_size_bytes = num_entity * draw_data_instance_size;
             uint32_t draw_data_offset = renderer->allocate_staging_buffer(draw_data_size_bytes, current_frame);
             uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(renderer->per_frame_staging_buffer_ptr + draw_data_offset);
@@ -153,7 +155,8 @@ namespace mirai {
                 draw_data_array += draw_data_instance_size;
             }
 
-            UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, 1);
+            uint32_t draw_data_set_id = is_opaque_pass ? 1 : 4;
+            UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, draw_data_set_id);
             UniformBinding draw_data_binding = {
                 .resource_id = renderer->per_frame_staging_buffer,
                 .buffer_info{
@@ -193,7 +196,10 @@ namespace mirai {
         };
 
         device->update_uniform_set(cascade_uniform_set, &binding, 1);
+
         UniformSetID uniform_sets[] = {cascade_uniform_set, renderer->transform_set};
+        UniformSetID uniform_sets_alpha_test[] = {cascade_uniform_set, renderer->transform_material_set};
+
         uint32_t push_constant_data[] = {0, 0, 0, 0};
         PushConstant push_constant = {
             .data = &push_constant_data,
@@ -238,6 +244,15 @@ namespace mirai {
                 command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
                 for (auto index : opaque_batches)
                     draw_batch(command_buffer, &mesh_batches[index], shader->pipeline_id);
+            }
+
+            if (alpha_mask_batches.size() > 0) {
+                shader_alpha_test->bind(command_buffer);
+                command_buffer->set_uniform_sets(shader_alpha_test->pipeline_id, uniform_sets_alpha_test, (uint32_t)std::size(uniform_sets_alpha_test));
+                push_constant_data[0] = i;
+                command_buffer->set_push_constants(shader_alpha_test->pipeline_id, &push_constant, 1);
+                for (auto index : alpha_mask_batches)
+                    draw_batch(command_buffer, &mesh_batches[index], shader_alpha_test->pipeline_id);
             }
             command_buffer->end_render_pass();
             device->end_debug_utils_label(command_buffer);

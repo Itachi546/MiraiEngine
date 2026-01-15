@@ -57,7 +57,7 @@ void main() {
     float shadow_factor = texture(shadow_texture, uv).r;
 #else
     int cascade_index = 0;
-    float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.1f, cam_dist, cascade_index), 0.0f);
+    float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.3f, cam_dist, cascade_index), 0.0f);
 #endif
 
     vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor);
