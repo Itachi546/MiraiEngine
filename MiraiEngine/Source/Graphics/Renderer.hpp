@@ -46,7 +46,7 @@ namespace mirai {
 
     class Renderer {
       public:
-        Renderer(RenderMode render_mode);
+        Renderer();
         Renderer(const Renderer &) = delete;
         Renderer operator=(const Renderer &) = delete;
 
@@ -65,17 +65,11 @@ namespace mirai {
             this->pipeline_description_file = pipeline_description_file;
         }
 
-        RenderMode get_render_mode() {
-            return render_mode;
-        }
-
         // Offset aligment align the offset address to the multiple of given value
         // E.g. minUniformBufferOffesetAlignment for uniform buffer
         uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t offset_alignment = 64);
 
         ~Renderer();
-
-        bool enable_rt_shadow = false;
 
         // Uniform Buffer
         BufferView cascade_uniform_buffer;
@@ -97,7 +91,6 @@ namespace mirai {
         std::vector<RenderBatch> main_render_batches;
 
       private:
-        RenderMode render_mode;
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
         std::unique_ptr<RenderingDevice> device;

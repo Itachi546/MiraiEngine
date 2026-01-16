@@ -50,7 +50,7 @@ vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec
         vec3 radiance = light.color * light.intensity;
         vec3 kD = (1.0 - F) * (1.0 - pbr_params.metallic);
 
-        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl * shadow_factor;
+        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }
     return Lo + calculateDirectionalAmbientContribution(normal, view_dir, ndotv, F0, pbr_params) + pbr_params.emissive;
 }

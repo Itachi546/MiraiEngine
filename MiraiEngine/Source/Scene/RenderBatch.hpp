@@ -94,10 +94,10 @@ namespace mirai {
     };
 
     struct DrawBatchGenerator {
-        static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &mesh_batches, RenderMode render_mode, uint32_t batch_filter_flags);
+        static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &mesh_batches, uint32_t batch_filter_flags);
 
         // Used for Shadow/Cascaded shadow rendering where scene needs to be culled again
-        static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags, bool skip_near_plane = false);
+        static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags);
     };
 
     void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id = 4);

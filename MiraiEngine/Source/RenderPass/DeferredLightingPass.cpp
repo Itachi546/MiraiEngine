@@ -4,6 +4,7 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Engine/AppSettings.hpp"
 
 namespace mirai {
     DeferredLightingPass::DeferredLightingPass() : FrameGraphRenderer("deferred_lighting_pass"), cascade_shader(nullptr) {
@@ -70,7 +71,7 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "Deferred Lighting");
 
-        Shader *active_shader = renderer->enable_rt_shadow ? rt_shader : cascade_shader;
+        Shader *active_shader = AppSettings::enable_rt_shadow ? rt_shader : cascade_shader;
 
         device->begin_debug_utils_label(command_buffer, "DeferredLightingPass", nullptr);
 

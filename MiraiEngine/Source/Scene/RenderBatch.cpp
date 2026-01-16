@@ -2,6 +2,7 @@
 #include "Scene/Scene.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Engine/AppSettings.hpp"
 #include <unordered_map>
 
 namespace mirai {
@@ -50,7 +51,7 @@ namespace mirai {
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, RenderMode render_mode, uint32_t batch_filter_flags) {
+    void DrawBatchGenerator::CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags) {
         auto &render_object_list = scene->render_object_list;
         CachedBatchInfo cached_batch_info = {
             .batch_type = RENDERBATCH_TYPE_OPAQUE,
@@ -89,7 +90,7 @@ namespace mirai {
                     continue;
             }
             // Check Shader Batch
-            ShaderPassKey shader_key = material->get_shader_key(render_mode);
+            ShaderPassKey shader_key = material->get_shader_key(AppSettings::render_mode);
             if (shader_key != cached_batch_info.shader_key) {
                 // We have a different batch
                 shader_batch = FindOrCreateShaderBatch(shader_key, render_batch_type, render_batches);
@@ -110,7 +111,7 @@ namespace mirai {
         }
     }
 
-    void DrawBatchGenerator::CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &mesh_batches, uint32_t batch_filter_flags, bool skip_near_plane) {
+    void DrawBatchGenerator::CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &mesh_batches, uint32_t batch_filter_flags) {
         auto &render_object_list = scene->render_object_list;
 
         BufferView cached_vertex_buffer = BufferView{BufferID{K_INVALID_ID}, 0, 0};
@@ -133,6 +134,7 @@ namespace mirai {
             if ((batch_filter_flags & filter_flag) != filter_flag)
                 continue;
 
+            bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling && frustum != nullptr) {

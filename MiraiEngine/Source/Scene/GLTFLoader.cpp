@@ -29,7 +29,115 @@ namespace mirai {
         AsyncLoader *async_loader;
     };
 
-    static void LoadMaterials(const tinygltf::Model *model, LoadState *load_state) {
+    struct UserData {
+        std::string base_path;
+        AsyncLoader *async_loader;
+        std::vector<BindlessTextureEntry> textures;
+    };
+
+    static Format get_image_format(dds::DXGI_FORMAT format) {
+        switch (format) {
+        case dds::DXGI_FORMAT_BC1_UNORM:
+            return FORMAT_BC1_UNORM;
+        case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
+            return FORMAT_BC7_SRGB_BLOCK;
+        case dds::DXGI_FORMAT_BC7_UNORM:
+            return FORMAT_BC7_UNORM_BLOCK;
+        default:
+            return FORMAT_UNDEFINED;
+        }
+    }
+
+    std::string FormatTextureURI(const std::string &uri) {
+        std::string result;
+        if (uri.empty()) {
+            result = "gltftexture_" + std::to_string(rand()) + ".dds";
+        } else {
+            std::string decoded_uri;
+            tinygltf::URIDecode(uri, &decoded_uri, nullptr);
+            result = decoded_uri;
+        }
+
+        if (utils::get_file_extension(uri) != "dds") {
+            result = utils::replace_file_extension(result, "dds");
+        }
+        return result;
+    }
+
+    bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
+                       std::string *warn, int req_width, int req_height,
+                       const unsigned char *bytes, int size, void *user_data) {
+
+        image->uri = FormatTextureURI(image->uri);
+        if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
+            return true;
+        }
+
+        UserData *p_user_data = (UserData *)user_data;
+        std::string full_path = p_user_data->base_path + image->uri;
+        FILE *file = fopen(full_path.c_str(), "rb");
+        if (!file) {
+            *err = "Failed to open texture file: " + image->uri;
+            return false;
+        }
+
+        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
+
+        dds::Header header;
+        if (fread(&header, sizeof(header), 1, file) != 1)
+            return false;
+        file_ptr.reset();
+        file_ptr.release();
+
+        ASSERT_MSG(header.header.dwWidth > 0 && header.header.dwWidth > 0, "zero width or height");
+        if (header.header10.resourceDimension != dds::D3D10_RESOURCE_DIMENSION_TEXTURE2D)
+            return false;
+
+        Format format = get_image_format(header.header10.dxgiFormat);
+        ASSERT_MSG(format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
+
+        uint32_t width = header.header.dwWidth;
+        uint32_t height = header.header.dwHeight;
+        uint32_t mip_count = header.header.dwMipMapCount;
+
+        if (SKIP_DDS_FIRST_N_LEVEL > 0 && mip_count > SKIP_DDS_FIRST_N_LEVEL) {
+            for (int i = 0; i < SKIP_DDS_FIRST_N_LEVEL; ++i) {
+                width = width / 2;
+                height = height / 2;
+                mip_count--;
+            }
+        }
+
+        TextureDescription texture_desc = {
+            .create_flags = 0,
+            .width = width,
+            .height = height,
+            .depth = 1,
+            .mip_levels = mip_count,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = format,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
+        };
+        // @TODO update sampler based on the gltf_sampler
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
+        TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
+        p_user_data->textures.emplace_back(texture, sampler);
+
+        TextureCache::get()->add_texture(image->uri, texture);
+
+        p_user_data->async_loader->add_texture_load_task({
+            .texture = texture,
+            .filename = full_path,
+            .block_size = 16,
+            .skip_n_levels = SKIP_DDS_FIRST_N_LEVEL,
+        });
+        return true;
+    }
+
+    static void LoadMaterials(tinygltf::Model *model, LoadState *load_state, UserData *user_data) {
         size_t material_count = model->materials.size();
 
         auto LoadTexture = [&](int texture_index) {
@@ -37,8 +145,23 @@ namespace mirai {
                 return K_INVALID_ID;
 
             const tinygltf::Texture &texture = model->textures[texture_index];
-            const tinygltf::Image &image = model->images[texture.source];
-            TextureID texture_id = TextureCache::get()->get_texture_id(image.uri);
+            tinygltf::Image &image = model->images[texture.source];
+
+            std::string texture_name = FormatTextureURI(image.uri);
+            TextureID texture_id = TextureCache::get()->get_texture_id(texture_name);
+            if (image.uri.size() > 0 && texture_id.id == K_INVALID_RESOURCE_HANDLE) {
+                // We forgot to load this texture somehow
+                std::string err, warn;
+                if (!LoadImageData(&image, 0, &err, &warn, 0, 0, nullptr, 0, user_data)) {
+                    Log::Warn(err);
+                    return K_INVALID_ID;
+                }
+                if (warn.size() > 0) {
+                    Log::Warn(err);
+                    return K_INVALID_ID;
+                }
+                texture_id = TextureCache::get()->get_texture_id(image.uri);
+            }
             return texture_id.id;
         };
 
@@ -375,104 +498,6 @@ namespace mirai {
             ParseNodes(model, child, entity, load_state);
     }
 
-    static Format get_image_format(dds::DXGI_FORMAT format) {
-        switch (format) {
-        case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
-            return FORMAT_BC7_SRGB_BLOCK;
-        case dds::DXGI_FORMAT_BC7_UNORM:
-            return FORMAT_BC7_UNORM_BLOCK;
-        default:
-            return FORMAT_UNDEFINED;
-        }
-    }
-
-    struct UserData {
-        std::string base_path;
-        AsyncLoader *async_loader;
-        std::vector<BindlessTextureEntry> textures;
-    };
-
-    bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
-                       std::string *warn, int req_width, int req_height,
-                       const unsigned char *bytes, int size, void *user_data) {
-
-        if (image->uri.empty()) {
-            image->uri = "gltftexture_" + std::to_string(rand()) + ".dds";
-        }
-
-        if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
-            return true;
-        }
-
-        if (utils::get_file_extension(image->uri) != "dds") {
-            image->uri = utils::replace_file_extension(image->uri, "dds");
-        }
-
-        UserData *p_user_data = (UserData *)user_data;
-        std::string full_path = p_user_data->base_path + image->uri;
-        FILE *file = fopen(full_path.c_str(), "rb");
-        if (!file) {
-            *err = "Failed to open texture file: " + image->uri;
-            return false;
-        }
-
-        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
-
-        dds::Header header;
-        if (fread(&header, sizeof(header), 1, file) != 1)
-            return false;
-        file_ptr.reset();
-        file_ptr.release();
-
-        ASSERT_MSG(header.header.dwWidth > 0 && header.header.dwWidth > 0, "zero width or height");
-        if (header.header10.resourceDimension != dds::D3D10_RESOURCE_DIMENSION_TEXTURE2D)
-            return false;
-
-        Format format = get_image_format(header.header10.dxgiFormat);
-        ASSERT_MSG(format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
-
-        uint32_t width = header.header.dwWidth;
-        uint32_t height = header.header.dwHeight;
-        uint32_t mip_count = header.header.dwMipMapCount;
-
-        if (SKIP_DDS_FIRST_N_LEVEL > 0 && mip_count > SKIP_DDS_FIRST_N_LEVEL) {
-            for (int i = 0; i < SKIP_DDS_FIRST_N_LEVEL; ++i) {
-                width = width / 2;
-                height = height / 2;
-                mip_count--;
-            }
-        }
-
-        TextureDescription texture_desc = {
-            .create_flags = 0,
-            .width = width,
-            .height = height,
-            .depth = 1,
-            .mip_levels = mip_count,
-            .array_layers = 1,
-            .texture_type = TEXTURE_TYPE_2D,
-            .format = format,
-            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
-        };
-        // @TODO update sampler based on the gltf_sampler
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
-        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
-        TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
-        p_user_data->textures.emplace_back(texture, sampler);
-
-        TextureCache::get()->add_texture(image->uri, texture);
-
-        p_user_data->async_loader->add_texture_load_task({
-            .texture = texture,
-            .filename = full_path,
-            .block_size = 16,
-            .skip_n_levels = SKIP_DDS_FIRST_N_LEVEL,
-        });
-
-        return true;
-    }
-
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene) {
         Timer load_timer;
         AsyncLoader async_loader;
@@ -504,19 +529,18 @@ namespace mirai {
         scene->dirty = true;
 
         auto &comp_manager = scene->ecs->component_manager;
-        Entity root_entity = scene->ecs->create_entity();
+        Entity root_entity = scene->entities[0];
         std::string root_entity_name = utils::get_filename(filename);
-        comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
-        comp_manager->add_component<TransformComponent>(root_entity);
+        // comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
+        // comp_manager->add_component<TransformComponent>(root_entity);
         // Make this entity child of scene root
-        HierarchyComponent &child_comp = comp_manager->add_component<HierarchyComponent>(root_entity);
-        child_comp.set_parent(scene->entities[0]);
+        // HierarchyComponent &child_comp = comp_manager->add_component<HierarchyComponent>(root_entity);
+        // child_comp.set_parent(scene->entities[0]);
 
         // Update scene root hierarchy component
-        HierarchyComponent *parent_comp = comp_manager->get_component<HierarchyComponent>(scene->entities[0]);
-        parent_comp->add_children(root_entity);
-
-        scene->add_entity(root_entity);
+        // HierarchyComponent *parent_comp = comp_manager->get_component<HierarchyComponent>(scene->entities[0]);
+        // parent_comp->add_children(root_entity);
+        // scene->add_entity(root_entity);
 
         LoadState load_state = {
             .scene = scene,
@@ -527,7 +551,7 @@ namespace mirai {
 
         LoadMeshes(&gltf_model, &load_state);
         async_loader.start();
-        LoadMaterials(&gltf_model, &load_state);
+        LoadMaterials(&gltf_model, &load_state, &user_data);
 
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)

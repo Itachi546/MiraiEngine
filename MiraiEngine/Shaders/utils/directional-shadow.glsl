@@ -54,6 +54,7 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
     int sample_count = 0;
 
     vec2 cascade_uv = vec2(cascade_index % 2, cascade_index / 2);
+
     const float k_pcf_radius_multiplier = 0.2f;
     float mx = inv_res.x * k_pcf_radius_multiplier;
     float my = inv_res.y * k_pcf_radius_multiplier;

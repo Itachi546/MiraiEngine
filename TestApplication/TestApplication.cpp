@@ -301,8 +301,8 @@ class TestApplication : public App {
     void add_pass_ui() {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
-
-            if (ImGui::CollapsingHeader("Deferred Pass")) {
+            bool has_deferred_pass = frame_graph->get_renderer("deferred_pass") != nullptr;
+            if (has_deferred_pass && ImGui::CollapsingHeader("Deferred Pass")) {
                 FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
                 add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
 
@@ -316,15 +316,14 @@ class TestApplication : public App {
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
             if (ImGui::CollapsingHeader("Shadow Pass")) {
                 if (supports_raytracing) {
-                    bool &enable_rt_shadow = Renderer::get()->enable_rt_shadow;
-                    ImGui::Checkbox("Ray Traced Shadow", &enable_rt_shadow);
+                    ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
 
-                    if (enable_rt_shadow) {
+                    if (AppSettings::enable_rt_shadow) {
                         FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
                         add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
                     }
                 }
-                if (!Renderer::get()->enable_rt_shadow) {
+                if (!AppSettings::enable_rt_shadow) {
                     auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
                     ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
                     ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);

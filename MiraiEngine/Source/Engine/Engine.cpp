@@ -22,7 +22,9 @@ namespace mirai {
         Log::Info("Initializing Engine ...");
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
 
-        renderer = std::make_unique<Renderer>(options.render_mode);
+        AppSettings::render_mode = options.render_mode;
+
+        renderer = std::make_unique<Renderer>();
         renderer->initialize();
         Log::Info("Initialization: ", timer.elapsed_seconds(), "s");
     }

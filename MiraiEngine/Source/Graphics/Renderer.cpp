@@ -19,7 +19,7 @@
 namespace mirai {
     Renderer *Renderer::Instance = nullptr;
 
-    Renderer::Renderer(RenderMode render_mode) : render_mode(render_mode) {
+    Renderer::Renderer() {
         ASSERT(Instance == nullptr);
         Instance = this;
         device = std::make_unique<VulkanRenderingDevice>();
@@ -111,7 +111,7 @@ namespace mirai {
             device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
 
         if (device->supports_raytracing())
-            enable_rt_shadow = true;
+            AppSettings::enable_rt_shadow = true;
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
@@ -303,7 +303,7 @@ namespace mirai {
 
         Camera *camera = scene->get_camera();
         Frustum &frustum = camera->get_frustum();
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, render_mode, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT);
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT);
 
         std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
             batch.sort();
@@ -314,9 +314,9 @@ namespace mirai {
         FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");
         FrameGraphNode *rt_shadow_pass = frame_graph->get_node("rt_directional_shadow_pass");
         if (rt_shadow_pass)
-            rt_shadow_pass->enabled = enable_rt_shadow;
+            rt_shadow_pass->enabled = AppSettings::enable_rt_shadow;
         if (shadow_pass)
-            shadow_pass->enabled = !enable_rt_shadow;
+            shadow_pass->enabled = !AppSettings::enable_rt_shadow;
     }
 
     void copy_continuous_region(CommandBuffer *cb, const std::vector<uint32_t> &indices, BufferView src, BufferView dst, uint32_t data_element_size) {
