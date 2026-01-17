@@ -8,7 +8,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #include "utils/transform.glsl"
 #include "utils/noise.glsl"
 
-layout(set = 0, binding = 0, r16f) uniform image2D u_rt_shadow_texture;
+layout(set = 0, binding = 0, r8) uniform image2D u_rt_shadow_texture;
 layout(set = 0, binding = 1) uniform sampler2D u_depth_texture;
 layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
 
@@ -28,7 +28,7 @@ void main() {
         return;
 
     vec2 inv_res = 1.0f / vec2(width, height);
-    vec2 uv = vec2(id.xy) * inv_res;
+    vec2 uv = vec2(id.xy + 0.5) * inv_res;
 
     float depth = texture(u_depth_texture, uv).r;
     vec3 clip_pos = vec3(uv * 2.0 - 1.0, depth);
@@ -42,12 +42,12 @@ void main() {
     dir.z += (dir1 * 2 - 1) * SUN_JITTER;
     dir = normalize(dir);
 
-    float shadow_factor = 1.0f;
+    float shadow_factor = 0.0f;
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, world_pos, 0.01, dir, 1000.0);
+    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT, 0xff, world_pos, 1e-2, dir, 1000.0);
     rayQueryProceedEXT(ray_query);
-    if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
-        shadow_factor = 0.0f;
+    if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT)
+        shadow_factor = 1.0f;
 
     imageStore(u_rt_shadow_texture, id.xy, vec4(shadow_factor));
 }

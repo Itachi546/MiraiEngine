@@ -2,7 +2,9 @@
 
 namespace mirai {
     Format get_texture_format(const std::string &inputFormat) {
-        if (inputFormat == "B8G8R8A8_UNORM") {
+        if (inputFormat == "R8_UNORM")
+            return FORMAT_R8_UNORM;
+        else if (inputFormat == "B8G8R8A8_UNORM") {
             return FORMAT_B8G8R8A8_UNORM;
         } else if (inputFormat == "R16G16B16A16_SFLOAT") {
             return FORMAT_R16G16B16A16_SFLOAT;

@@ -60,6 +60,6 @@ void main() {
     float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.3f, cam_dist, cascade_index), 0.0f);
 #endif
 
-    vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor);
+    vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
     fragColor = vec4(Lo, 1.0f);
 }

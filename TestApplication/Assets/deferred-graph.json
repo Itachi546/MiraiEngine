@@ -77,7 +77,7 @@
         {
           "type": "attachment",
           "name": "rt_directional_shadow_map",
-          "format": "R16_SFLOAT",
+          "format": "R8_UNORM",
           "resolution": [
             1920,
             1080

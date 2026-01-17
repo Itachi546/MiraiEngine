@@ -23,6 +23,7 @@ namespace mirai {
         TextureID depth_texture = frame_graph->get_resource(node->inputs[0])->handle;
 
         SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
         sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {
@@ -44,7 +45,7 @@ namespace mirai {
             .mip_levels = 1,
             .array_layers = 1,
             .texture_type = TEXTURE_TYPE_2D,
-            .format = FORMAT_R16_SFLOAT,
+            .format = FORMAT_R8_UNORM,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
         };
 

@@ -4,7 +4,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #extension GL_GOOGLE_include_directive : enable
 
-layout(set = 0, binding = 0, r16f) uniform image2D u_output_texture;
+layout(set = 0, binding = 0, r8) uniform image2D u_output_texture;
 layout(set = 0, binding = 1) uniform sampler2D u_input_texture;
 
 layout(push_constant) uniform BlurPushConstants {
