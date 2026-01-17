@@ -20,7 +20,7 @@ layout(push_constant) uniform RTShadowPushConstants {
     float height;
 };
 
-const float SUN_JITTER = 0.0001f;
+const float SUN_JITTER = 0.001f;
 
 void main() {
     ivec3 id = ivec3(gl_GlobalInvocationID.xyz);
@@ -44,7 +44,7 @@ void main() {
 
     float shadow_factor = 0.0f;
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT, 0xff, world_pos, 1e-2, dir, 1000.0);
+    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT, 0xff, world_pos, 0.05, dir, 1000.0);
     rayQueryProceedEXT(ray_query);
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT)
         shadow_factor = 1.0f;

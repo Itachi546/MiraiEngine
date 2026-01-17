@@ -28,6 +28,12 @@ layout(set = 2, binding = 1) uniform CascadeInfoUniform {
 #include "utils/directional-shadow.glsl"
 #endif
 
+// Used for debugging texture
+layout(push_constant) uniform PushConstants {
+    float split_percentage;
+    float debug_texture_index;
+};
+
 void main() {
     float depth = textureLod(depth_texture, uv, 0).r;
     vec3 clip_pos = vec3(uv * 2.0 - 1.0, depth);
@@ -52,7 +58,6 @@ void main() {
     light.cast_shadow = per_frame_data.cast_shadow;
     light.color = per_frame_data.light_color;
     light.intensity = per_frame_data.light_intensity;
-
 #if ENABLE_RT_SHADOW
     float shadow_factor = texture(shadow_texture, uv).r;
 #else
@@ -60,6 +65,23 @@ void main() {
     float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.3f, cam_dist, cascade_index), 0.0f);
 #endif
 
-    vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
+    vec3 Lo;
+    if (split_percentage.x >= uv.x) {
+        if (debug_texture_index > 4.5f)
+            Lo = vec3(shadow_factor);
+        else if (debug_texture_index > 3.5f)
+            Lo = vec3(pbr_params.ao);
+        else if (debug_texture_index > 2.5f)
+            Lo = vec3(pbr_params.roughness);
+        else if (debug_texture_index > 1.5f)
+            Lo = vec3(pbr_params.metallic);
+        else if (debug_texture_index > 0.5f)
+            Lo = normal;
+        else
+            Lo = pbr_params.albedo.xyz;
+    } else {
+        Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
+    }
+
     fragColor = vec4(Lo, 1.0f);
 }

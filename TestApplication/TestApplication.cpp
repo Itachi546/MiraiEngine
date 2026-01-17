@@ -301,8 +301,12 @@ class TestApplication : public App {
     void add_pass_ui() {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
-            bool has_deferred_pass = frame_graph->get_renderer("deferred_pass") != nullptr;
-            if (has_deferred_pass && ImGui::CollapsingHeader("Deferred Pass")) {
+            DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
+            if (deferred_pass != nullptr && ImGui::CollapsingHeader("Deferred Pass")) {
+                ImGui::SliderFloat("Split Percentage", &deferred_pass->split_percentage, 0.0f, 1.0f);
+                static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+                ImGui::Combo("Target", &deferred_pass->debug_texture, options);
+
                 FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
                 add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
 
@@ -317,7 +321,6 @@ class TestApplication : public App {
             if (ImGui::CollapsingHeader("Shadow Pass")) {
                 if (supports_raytracing) {
                     ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
-
                     if (AppSettings::enable_rt_shadow) {
                         FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
                         add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);

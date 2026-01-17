@@ -39,11 +39,12 @@ namespace mirai {
         SamplerID default_sampler = device->create_sampler(&desc);
 
         desc.min_filter = desc.mag_filter = FILTER_NEAREST;
+        desc.mipmap_mode = SAMPLER_MIPMAP_NEAREST;
         SamplerID depth_sampler = device->create_sampler(&desc);
 
         UniformBinding bindings[] = {
             {.resource_id = frame_graph->get_resource("gbuffer_color")->handle, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = frame_graph->get_resource("gbuffer_depth")->handle, .texture_info = {.sampler = depth_sampler}},
+            {.resource_id = frame_graph->get_resource("gbuffer_depth")->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = frame_graph->get_resource("gbuffer_normal")->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = frame_graph->get_resource("gbuffer_emissive")->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = frame_graph->get_resource("ssao_texture")->handle, .texture_info = {.sampler = default_sampler}},
@@ -60,7 +61,6 @@ namespace mirai {
         // is enough to distinguish it
         rt_shadow_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_rt_binding_set");
         bindings[5].resource_id = frame_graph->get_resource("rt_directional_shadow_map")->handle;
-        bindings[5].texture_info = {.sampler = depth_sampler};
         device->update_uniform_set(rt_shadow_uniform_set, bindings, cast_u32(std::size(bindings)));
     }
 
@@ -118,6 +118,15 @@ namespace mirai {
         PipelineID pipeline_id = active_shader->pipeline_id;
         UniformSetID uniform_sets[] = {per_frame_uniform_set, active_shader == rt_shader ? rt_shadow_uniform_set : cascaded_shadow_uniform_set};
         command_buffer->set_uniform_sets(pipeline_id, uniform_sets, static_cast<uint32_t>(std::size(uniform_sets)));
+
+        float push_constant_data[] = {split_percentage, (float)debug_texture, 0.0f, 0.0f};
+        PushConstant push_constant = {
+            .data = push_constant_data,
+            .offset = 0,
+            .size = sizeof(float) * 4,
+            .shader_stage = SHADER_STAGE_FRAGMENT,
+        };
+        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
 
         command_buffer->draw(3, 1, 0, 0);
 

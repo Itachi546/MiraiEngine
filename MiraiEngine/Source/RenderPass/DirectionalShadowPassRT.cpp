@@ -8,9 +8,9 @@
 namespace mirai {
     void DirectionalShadowPassRT::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         dir_shadow_shader = Shader::create_from_file("SPIRV/rt-directional-shadow.comp.spv", "rt-shadow-shader");
-        blur_shader = Shader::create_from_file("SPIRV/gaussian-blur.comp.spv", "rt-shadow-blur-shader");
+        blur_shader = Shader::create_from_file("SPIRV/shadow-blur.comp.spv", "rt-shadow-blur-shader");
 
-        UniformLayout layouts[] = {
+        UniformLayout rt_layouts[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
             {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
             {2, BINDING_TYPE_ACCELERATION_STRUCTURE, SHADER_STAGE_COMPUTE},
@@ -26,15 +26,15 @@ namespace mirai {
         sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
         sampler = device->create_sampler(&sampler_desc);
 
-        UniformBinding bindings[] = {
+        UniformBinding rt_bindings[] = {
             {.resource_id = rt_shadow_texture},
             {.resource_id = depth_texture, .texture_info = {.sampler = sampler}},
             // Acceleration structure is global and populated by the vulkan device
             {.resource_id = K_INVALID_ID},
         };
 
-        rt_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "rt_shadow_set");
-        device->update_uniform_set(rt_uniform_set, bindings, cast_u32(std::size(bindings)));
+        rt_uniform_set = device->create_uniform_set(rt_layouts, cast_u32(std::size(rt_layouts)), 0, "rt_shadow_set");
+        device->update_uniform_set(rt_uniform_set, rt_bindings, cast_u32(std::size(rt_bindings)));
 
         // Create blur intermediate texture
         TextureDescription texture_desc = {
@@ -51,16 +51,32 @@ namespace mirai {
 
         blur_intermediate_texture = device->create_texture(&texture_desc, "blur_intermediate_texture");
 
-        // Create blur uniform sets
-        bindings[0].resource_id = blur_intermediate_texture;
-        bindings[1].resource_id = rt_shadow_texture;
-        blur_uniform_set_x = device->create_uniform_set(layouts, 2, 0, "rt_shadow_blur_set");
-        device->update_uniform_set(blur_uniform_set_x, bindings, 2);
+        UniformLayout layouts[] = {
+            {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
+            {1, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+            {2, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
+        };
+
+        UniformBinding bindings[] = {
+            {.resource_id = blur_intermediate_texture},
+            {
+                .resource_id = rt_shadow_texture,
+                .texture_info = {.sampler = sampler},
+            },
+            {
+                .resource_id = depth_texture,
+                .texture_info = {.sampler = sampler},
+            },
+        };
+
+        uint32_t binding_count = cast_u32(std::size(bindings));
+        blur_uniform_set_x = device->create_uniform_set(layouts, binding_count, 0, "rt_shadow_blur_set");
+        device->update_uniform_set(blur_uniform_set_x, bindings, binding_count);
 
         bindings[0].resource_id = rt_shadow_texture;
         bindings[1].resource_id = blur_intermediate_texture;
-        blur_uniform_set_y = device->create_uniform_set(layouts, 2, 0, "rt_shadow_blur_set");
-        device->update_uniform_set(blur_uniform_set_y, bindings, 2);
+        blur_uniform_set_y = device->create_uniform_set(layouts, binding_count, 0, "rt_shadow_blur_set");
+        device->update_uniform_set(blur_uniform_set_y, bindings, binding_count);
     }
 
     void DirectionalShadowPassRT::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -132,7 +148,7 @@ namespace mirai {
 
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
-        float blur_data[] = {cast_float(node->width), cast_float(node->height), 0.0f, sigma, blur_sample_count};
+        float blur_data[] = {cast_float(node->width), cast_float(node->height), 0.0f, scene->get_camera()->get_near_plane()};
         uint32_t work_size_x = rendering_utils::get_workgroup_size(node->width, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(node->height, 32);
         PushConstant push_constant = {
