@@ -39,6 +39,10 @@ namespace mirai {
         switch (format) {
         case dds::DXGI_FORMAT_BC1_UNORM:
             return FORMAT_BC1_UNORM;
+        case dds::DXGI_FORMAT_BC3_UNORM:
+            return FORMAT_BC3_UNORM;
+        case dds::DXGI_FORMAT_BC5_UNORM:
+            return FORMAT_BC5_UNORM;
         case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
             return FORMAT_BC7_SRGB_BLOCK;
         case dds::DXGI_FORMAT_BC7_UNORM:
@@ -204,9 +208,9 @@ namespace mirai {
                     instance_data.metallic_roughness_texture = K_INVALID_ID;
 
                 if (ext->second.Has("glossinessFactor")) {
-                    instance_data.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
+                    instance_data.roughness_factor = 1.0f - cast_float(ext->second.Get("glossinessFactor").Get<double>());
                 } else {
-                    instance_data.roughness_factor = 1.0f;
+                    instance_data.roughness_factor = 0.5f;
                 }
 
                 if (ext->second.Has("specularFactor")) {

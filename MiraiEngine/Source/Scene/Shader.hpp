@@ -39,13 +39,14 @@ namespace mirai {
                 uint64_t depth_test : 1;   // 4
                 uint64_t depth_write : 1;  // 5
                 uint64_t depth_clamp : 1;  // 6
-                uint64_t blend_mode : 1;   // 7
-                uint64_t depth_op : 3;     // 10
-                uint64_t topology : 4;     // 14
-                uint64_t polygon_mode : 2; // 16
-                uint64_t pass_mode : 16;   // 32
-                uint64_t draw_mode : 2;
-                uint64_t _reserved : 30;
+                uint64_t depth_bias : 1;   // 7
+                uint64_t blend_mode : 1;   // 8
+                uint64_t depth_op : 3;     // 11
+                uint64_t topology : 4;     // 15
+                uint64_t polygon_mode : 2; // 17
+                uint64_t pass_mode : 16;   // 33
+                uint64_t draw_mode : 2;    // 35
+                uint64_t _reserved : 29;
             } fields;
             uint64_t hash;
         } render_state;
@@ -58,6 +59,7 @@ namespace mirai {
             render_state.fields.depth_write = false;
             render_state.fields.depth_clamp = false;
             render_state.fields.blend_mode = false;
+            render_state.fields.depth_bias = false;
             render_state.fields.depth_op = COMPARE_OP_LESS_OR_EQUAL;
             render_state.fields.topology = TOPOLOGY_TRIANGLE_LIST;
             render_state.fields.polygon_mode = POLYGON_MODE_FILL;

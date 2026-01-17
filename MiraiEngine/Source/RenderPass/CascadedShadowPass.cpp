@@ -16,6 +16,7 @@ namespace mirai {
         pipeline_state.render_state.fields.depth_test = true;
         pipeline_state.render_state.fields.depth_write = true;
         pipeline_state.render_state.fields.depth_clamp = true;
+        pipeline_state.render_state.fields.depth_bias = false;
         pipeline_state.render_state.fields.pass_mode = SHADER_PASS_CASCADED_SHADOW;
         pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
         pipeline_state.render_state.fields.cull_mode = CULL_MODE_FRONT;

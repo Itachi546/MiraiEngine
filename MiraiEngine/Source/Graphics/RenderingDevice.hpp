@@ -116,6 +116,8 @@ namespace mirai {
         FORMAT_D32_SFLOAT_S8_UINT,
         FORMAT_D24_UNORM_S8_UINT,
         FORMAT_BC1_UNORM,
+        FORMAT_BC3_UNORM,
+        FORMAT_BC5_UNORM,
         FORMAT_BC7_SRGB_BLOCK,
         FORMAT_BC7_UNORM_BLOCK,
         FORMAT_UNDEFINED,
@@ -195,6 +197,7 @@ namespace mirai {
         FrontFace front_face;
         bool conservative_mode;
         bool enable_depth_clamp;
+        bool enable_depth_bias;
 
         static RasterizationState create() {
             return RasterizationState{
@@ -204,6 +207,7 @@ namespace mirai {
                 .front_face = FRONT_FACE_CLOCKWISE,
                 .conservative_mode = false,
                 .enable_depth_clamp = false,
+                .enable_depth_bias = false,
             };
         }
     };

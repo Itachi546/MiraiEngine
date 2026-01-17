@@ -65,6 +65,8 @@ namespace mirai {
 
         void prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count);
 
+        void set_depth_bias(float depth_bias_constant_factor, float depth_bias_clamp, float depth_bias_slope_factor);
+
         UniformSetID create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set_id);
 
         VkCommandBuffer get_command_buffer() {

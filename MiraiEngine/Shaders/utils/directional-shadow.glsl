@@ -42,9 +42,14 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
         return 1.0f;
 
     mat4 cascade_VP = cascade_info.VP[cascade_index];
+
     // Transform into light NDC Coordinate
     vec4 shadow_coord = cascade_VP * vec4(world_pos, 1.0f);
-    shadow_coord.xy = shadow_coord.xy * 0.5 + 0.5;
+    shadow_coord.xy = vec2(shadow_coord.x * 0.5 + 0.5, 0.5 - 0.5 * shadow_coord.y);
+
+    vec2 cascade_uv = vec2(cascade_index % 2, cascade_index / 2);
+    shadow_coord = shadow_coord / shadow_coord.w;
+    shadow_coord.xy = (cascade_uv + clamp(shadow_coord.xy, 0.0, 1.0)) * 0.5;
 
     float shadow_factor = 0.0f;
     vec2 shadow_dims = vec2(cascade_info.dims[1], cascade_info.dims[2]);
@@ -53,20 +58,15 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
     int k_sample_radius = 4;
     int sample_count = 0;
 
-    vec2 cascade_uv = vec2(cascade_index % 2, cascade_index / 2);
+    const float k_pcf_radius_multiplier = 1.0f;
 
-    const float k_pcf_radius_multiplier = 0.2f;
-    float mx = inv_res.x * k_pcf_radius_multiplier;
-    float my = inv_res.y * k_pcf_radius_multiplier;
+    vec2 delta = vec2(inv_res.x, inv_res.y) * k_pcf_radius_multiplier;
 
     for (int x = -k_sample_radius; x <= k_sample_radius; ++x) {
         for (int y = -k_sample_radius; y <= k_sample_radius; ++y) {
-            vec2 coord = vec2((x + 0.5) * mx, (y + 0.5) * my);
-            int index = int(rand(coord));
-
-            vec4 shadow_coord = shadow_coord / shadow_coord.w;
-            shadow_coord.xy = (cascade_uv + clamp(shadow_coord.xy, 0.0, 1.0)) * 0.5;
-            shadow_factor += texture_proj(shadow_coord, coord + POISSON_DISK[index] * inv_res, 0.001f);
+            vec2 coord = vec2(x + 0.5, y + 0.5) * 10.0f;
+            int index = int(rand(world_pos.xy + coord) * 15);
+            shadow_factor += texture_proj(shadow_coord, POISSON_DISK[index] * delta, 0.0f);
             sample_count++;
         }
     }

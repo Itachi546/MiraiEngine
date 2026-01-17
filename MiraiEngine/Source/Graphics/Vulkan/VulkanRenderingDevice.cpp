@@ -384,7 +384,7 @@ namespace mirai {
             .polygonMode = (VkPolygonMode)pipeline_description->rasterization_state->polygon_mode,
             .cullMode = (VkCullModeFlags)pipeline_description->rasterization_state->cull_mode,
             .frontFace = (VkFrontFace)pipeline_description->rasterization_state->front_face,
-            .depthBiasEnable = false,
+            .depthBiasEnable = pipeline_description->rasterization_state->enable_depth_bias,
             .lineWidth = pipeline_description->rasterization_state->line_width,
         };
 
@@ -469,15 +469,18 @@ namespace mirai {
             .pAttachments = attachment_blend_states.data(),
         };
 
-        VkDynamicState dynamic_states[] = {
+        std::vector<VkDynamicState> dynamic_states = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
+        if (pipeline_description->rasterization_state->enable_depth_bias) {
+            dynamic_states.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+        }
 
         VkPipelineDynamicStateCreateInfo dynamic_state = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 2,
-            .pDynamicStates = dynamic_states,
+            .dynamicStateCount = cast_u32(dynamic_states.size()),
+            .pDynamicStates = dynamic_states.data(),
         };
 
         uint32_t pipeline_id = resource_pool_pipelines.obtain();

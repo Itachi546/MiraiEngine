@@ -84,9 +84,9 @@ namespace mirai {
         if (override_viewport != nullptr) {
             viewport = {
                 .x = cast_float(override_viewport->x),
-                .y = cast_float(override_viewport->y),
+                .y = cast_float(override_viewport->y) + cast_float(override_viewport->width),
                 .width = cast_float(override_viewport->width),
-                .height = cast_float(override_viewport->height),
+                .height = -cast_float(override_viewport->height),
                 .minDepth = override_viewport->min_depth,
                 .maxDepth = override_viewport->max_depth,
             };
@@ -97,9 +97,9 @@ namespace mirai {
         } else {
             viewport = {
                 .x = 0.0f,
-                .y = 0.0f,
+                .y = cast_float(height),
                 .width = cast_float(width),
-                .height = cast_float(height),
+                .height = -cast_float(height),
                 .minDepth = 0.0f,
                 .maxDepth = 1.0f,
             };
@@ -319,6 +319,10 @@ namespace mirai {
                                                             barrier_info->size);
         }
         pipeline_barrier(nullptr, 0, buffer_barriers.data(), cast_u32(buffer_barriers.size()));
+    }
+
+    void CommandBuffer::set_depth_bias(float depth_bias_constant_factor, float depth_bias_clamp, float depth_bias_slope_factor) {
+        vkCmdSetDepthBias(command_buffer, depth_bias_constant_factor, depth_bias_clamp, depth_bias_slope_factor);
     }
 
     UniformSetID CommandBuffer::create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set) {

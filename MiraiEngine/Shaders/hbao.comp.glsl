@@ -25,7 +25,7 @@ layout(push_constant) uniform HBAOPushConstants {
 
 vec3 get_view_pos_from_uv(vec2 uv) {
     float depth = texture(u_depth_texture, uv).r;
-    uv = uv * 2.0f - 1.0f;
+    uv = vec2(uv.x * 2.0f - 1.0f, 1 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), inv_projection_matrix);
 }
 

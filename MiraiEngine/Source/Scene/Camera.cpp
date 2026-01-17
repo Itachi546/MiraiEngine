@@ -10,7 +10,6 @@ namespace mirai {
                        near_plane(0.2f),
                        far_plane(100.0f),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
-        viewport_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
     }
 
     void Camera::update() {
@@ -61,12 +60,12 @@ namespace mirai {
 
     void Camera::update_projection_matrix() {
         if (projection_mode == PROJECTION_MODE_PERSPECTIVE) {
-            projection_matrix = viewport_matrix * glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);
+            projection_matrix = glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);
         } else {
             float cam_dist = glm::length(position + forward * near_plane);
             float y_span = cam_dist * tan(glm::radians(fov * 0.5f));
             float x_span = y_span * aspect_ratio;
-            projection_matrix = viewport_matrix * glm::ortho(-x_span, x_span, -y_span, y_span, near_plane, far_plane);
+            projection_matrix = glm::ortho(-x_span, x_span, -y_span, y_span, near_plane, far_plane);
         }
 
         inv_projection_matrix = glm::inverse(projection_matrix);

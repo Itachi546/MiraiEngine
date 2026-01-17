@@ -31,7 +31,7 @@ void main() {
     vec2 uv = vec2(id.xy + 0.5) * inv_res;
 
     float depth = texture(u_depth_texture, uv).r;
-    vec3 clip_pos = vec3(uv * 2.0 - 1.0, depth);
+    vec3 clip_pos = vec3(uv.x * 2.0 - 1.0, 1.0f - 2.0f * uv.y, depth);
     vec3 world_pos = clip_pos_to_world_pos(clip_pos, invVP);
 
     float dir0 = gradientNoise(vec2(id.xy));

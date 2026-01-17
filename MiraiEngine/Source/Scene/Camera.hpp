@@ -100,7 +100,6 @@ namespace mirai {
       private:
         glm::mat4 view_matrix, inv_view_matrix;
         glm::mat4 projection_matrix, inv_projection_matrix;
-        glm::mat4 viewport_matrix;
         glm::mat4 view_projection_matrix, inv_view_projection_matrix;
 
         ProjectionMode projection_mode;

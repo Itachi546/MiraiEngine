@@ -32,6 +32,7 @@ namespace mirai {
         rs.front_face = FrontFace(render_state.fields.front_face);
         rs.enable_depth_clamp = static_cast<bool>(render_state.fields.depth_clamp);
         rs.polygon_mode = PolygonMode(render_state.fields.polygon_mode);
+        rs.enable_depth_bias = render_state.fields.depth_bias;
 
         BlendState bs = BlendState::create();
         if (render_state.fields.blend_mode > 0)

@@ -36,7 +36,7 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
     float depth = textureLod(depth_texture, uv, 0).r;
-    vec3 clip_pos = vec3(uv * 2.0 - 1.0, depth);
+    vec3 clip_pos = vec3(uv.x * 2.0 - 1.0, 1 - 2.0 * uv.y, depth);
     vec3 world_pos = clip_pos_to_world_pos(clip_pos, per_frame_data.invVP);
 
     vec4 normal_pbr = textureLod(normal_pbr_texture, uv, 0);
@@ -47,7 +47,7 @@ void main() {
     pbr_params.emissive = textureLod(emissive_texture, uv, 0).rgb;
     pbr_params.metallic = normal_pbr.z;
     pbr_params.roughness = normal_pbr.w;
-    pbr_params.ao = clamp(texture(ssao_texture, uv).r, 0.0f, 1.0f);
+    pbr_params.ao = texture(ssao_texture, uv).r * 0.15f;
 
     vec3 view_dir = per_frame_data.camera_position.xyz - world_pos;
     float cam_dist = length(view_dir);
@@ -58,11 +58,12 @@ void main() {
     light.cast_shadow = per_frame_data.cast_shadow;
     light.color = per_frame_data.light_color;
     light.intensity = per_frame_data.light_intensity;
+
 #if ENABLE_RT_SHADOW
     float shadow_factor = texture(shadow_texture, uv).r;
 #else
     int cascade_index = 0;
-    float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.3f, cam_dist, cascade_index), 0.0f);
+    float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.001f, cam_dist, cascade_index), 0.0f);
 #endif
 
     vec3 Lo;
