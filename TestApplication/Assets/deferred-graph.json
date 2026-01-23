@@ -190,6 +190,36 @@
       ]
     },
     {
+      "name": "taa_resolve_pass",
+      "type": "compute",
+      "inputs": [
+        {
+          "type": "texture",
+          "name": "gbuffer_lighting"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_depth"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_velocity"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "attachment",
+          "name": "taa_history_buffer",
+          "format": "R16G16B16A16_SFLOAT",
+          "resolution": [
+            1920,
+            1080
+          ],
+          "op": "LOAD_OP_LOAD"
+        }
+      ]
+    },
+    {
       "name": "overlay3D",
       "enabled": true,
       "inputs": [

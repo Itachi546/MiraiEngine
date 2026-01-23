@@ -11,3 +11,4 @@
 #include "DirectionalShadowPassRT.hpp"
 #include "SSAOPass.hpp"
 #include "DeferredTransparentPass.hpp"
+#include "TAAResolvePass.hpp"

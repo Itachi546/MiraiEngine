@@ -283,6 +283,36 @@ namespace mirai {
         dst_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
+    void CommandBuffer::copy_texture(TextureID dst, TextureID src, uint32_t width, uint32_t height) {
+        VulkanTexture *vk_src = device->access_texture(src);
+        VulkanTexture *vk_dst = device->access_texture(dst);
+
+        VkImageCopy region = {
+            .srcSubresource = {
+                .aspectMask = vk_src->image_aspect,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .srcOffset = {0, 0, 0},
+            .dstSubresource = {
+                .aspectMask = vk_dst->image_aspect,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+
+            },
+            .dstOffset = {0, 0, 0},
+            .extent = {
+                width,
+                height,
+                1,
+            },
+        };
+
+        vkCmdCopyImage(command_buffer, vk_src->image, vk_src->current_layout, vk_dst->image, vk_dst->current_layout, 1, &region);
+    }
+
     void CommandBuffer::prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count) {
         std::vector<VkImageMemoryBarrier2> image_barriers(barrier_count);
 
@@ -300,6 +330,7 @@ namespace mirai {
 
             texture->current_layout = VkImageLayout(barrier_info->layout);
             texture->access_flags = VkAccessFlags(barrier_info->access_mask);
+            texture->stage_mask = VkPipelineStageFlags2(barrier_info->stage_mask);
         }
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
     }
@@ -360,11 +391,19 @@ namespace mirai {
         const std::vector<FrameGraphResourceState> &resources_state = node->resources_state;
         std::vector<VkImageMemoryBarrier2> image_barriers;
         for (auto &state : resources_state) {
+
             FrameGraphResource *resource = frame_graph->get_resource(state.resource_handle);
             if (resource->handle == K_SWAPCHAIN_TEXTURE_HANDLE) {
                 prepare_swapchain_image(&state, image_barriers);
             } else {
                 VulkanTexture *texture = device->access_texture(resource->handle);
+
+                // If by some mean it has changed the layout to required layout we skip it
+                if (texture->current_layout == state.layout &&
+                    texture->access_flags == state.access_flags &&
+                    texture->stage_mask == state.access_flags)
+                    continue;
+
                 VkPipelineStageFlags2 src_stage_mask = VkPipelineStageFlags2(texture->stage_mask);
 
                 // This is the special case for depth when the last stage is not same as current previous stage

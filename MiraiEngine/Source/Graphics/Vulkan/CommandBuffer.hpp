@@ -61,6 +61,8 @@ namespace mirai {
 
         void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
 
+        void copy_texture(TextureID dst, TextureID src, uint32_t dst_width, uint32_t dst_height);
+
         void prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count);
 
         void prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count);
