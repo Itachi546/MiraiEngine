@@ -3,7 +3,6 @@
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/ShaderHashMap.hpp"
-#include "Scene/Camera.hpp"
 namespace mirai {
 
     DeferredPass::DeferredPass() : FrameGraphRenderer("deferred_pass") {
@@ -20,11 +19,14 @@ namespace mirai {
 
         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
 
-        glm::mat4 last_frame_VP = renderer->get_scene()->get_camera()->get_last_frame_view_projection_matrix();
+        push_constant_data.last_frame_VP = renderer->prev_frame_VP;
+        push_constant_data.prev_frame_jitter = renderer->prev_frame_jitter;
+        push_constant_data.current_frame_jitter = renderer->current_frame_jitter;
+
         PushConstant push_constant = {
-            .data = &last_frame_VP[0][0],
+            .data = &push_constant_data,
             .offset = 0,
-            .size = sizeof(glm::mat4),
+            .size = sizeof(PushConstantData),
             .shader_stage = SHADER_STAGE_VERTEX,
         };
 

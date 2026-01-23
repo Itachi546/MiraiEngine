@@ -94,10 +94,6 @@ namespace mirai {
             return frustum;
         }
 
-        glm::mat4 get_last_frame_view_projection_matrix() const {
-            return last_frame_view_projection_matrix;
-        }
-
         void set_enable_camera_jitter(bool state) {
             enable_jitter = state;
         }
@@ -113,8 +109,6 @@ namespace mirai {
         glm::mat4 view_matrix, inv_view_matrix;
         glm::mat4 projection_matrix, inv_projection_matrix;
         glm::mat4 view_projection_matrix, inv_view_projection_matrix;
-
-        glm::mat4 last_frame_view_projection_matrix;
 
         ProjectionMode projection_mode;
 

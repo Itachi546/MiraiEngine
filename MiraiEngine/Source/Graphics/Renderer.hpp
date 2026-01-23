@@ -90,6 +90,11 @@ namespace mirai {
         UniformSetID transform_set, transform_material_set;
         std::vector<RenderBatch> main_render_batches;
 
+        glm::mat4 prev_frame_VP;
+
+        glm::vec2 prev_frame_jitter;
+        glm::vec2 current_frame_jitter;
+
         int jitter_index = 0;
 
       private:

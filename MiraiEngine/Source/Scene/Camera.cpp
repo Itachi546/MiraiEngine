@@ -13,12 +13,9 @@ namespace mirai {
                        jitter_factor(glm::vec2(0.0f)),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
         view_projection_matrix = glm::mat4(1.0f);
-        last_frame_view_projection_matrix = glm::mat4(1.0f);
     }
 
     void Camera::update() {
-        last_frame_view_projection_matrix = view_projection_matrix;
-
         glm::vec3 rotation_radians = glm::radians(rotation);
 
         glm::mat4 rotation_matrix = glm::eulerAngleZXY(rotation_radians.z, rotation_radians.x, rotation_radians.y);
@@ -79,6 +76,8 @@ namespace mirai {
             // Update the translation component
             glm::mat4 jitter_matrix = glm::translate(glm::mat4(1.0f), glm::vec3{jitter_factor.x, jitter_factor.y, 0.0f});
             projection_matrix = jitter_matrix * projection_matrix;
+            projection_matrix[2][0] = jitter_factor.x;
+            projection_matrix[2][1] = jitter_factor.y;
         }
 
         inv_projection_matrix = glm::inverse(projection_matrix);

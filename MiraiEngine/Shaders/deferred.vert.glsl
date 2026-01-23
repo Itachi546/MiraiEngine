@@ -18,6 +18,8 @@ vs_out;
 
 layout(push_constant) uniform PushConstant {
     mat4 last_frame_VP;
+    vec2 prev_frame_jitter;
+    vec2 current_frame_jitter;
 };
 
 #extension GL_GOOGLE_include_directive : enable
@@ -57,7 +59,10 @@ void main() {
     vec4 last_clip_pos = last_frame_VP * world_pos;
     last_clip_pos.xyz /= last_clip_pos.w;
 
-    vs_out.velocity = current_clip_pos.xy - last_clip_pos.xy;
+    vec2 velocity = (current_clip_pos.xy - last_clip_pos.xy);
+    velocity -= (current_frame_jitter - prev_frame_jitter);
+
+    vs_out.velocity = velocity;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);

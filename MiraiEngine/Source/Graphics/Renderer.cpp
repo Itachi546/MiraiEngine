@@ -65,6 +65,9 @@ namespace mirai {
 
         buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         global_material_buffer = device->create_buffer(&buffer_desc, "global_material_buffer");
+
+        prev_frame_VP = glm::mat4(1.0f);
+        prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
     }
 
     void Renderer::on_load_resources() {
@@ -74,6 +77,7 @@ namespace mirai {
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
         scene->update();
+        prev_frame_VP = scene->get_camera()->get_view_projection_transform();
 
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
@@ -302,14 +306,17 @@ namespace mirai {
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
         ASSERT(node != nullptr);
 
+        Camera *camera = scene->get_camera();
+        prev_frame_VP = camera->get_view_projection_transform();
+        prev_frame_jitter = current_frame_jitter;
+
         glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
 
-        glm::vec2 jitter_factor = halton23_sequence(jitter_index) * 2.0f - 1.0f;
-        jitter_factor *= inv_resolution;
+        current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
+        current_frame_jitter *= inv_resolution;
         jitter_index = (jitter_index + 1) % JITTER_PERIOD;
 
-        Camera *camera = scene->get_camera();
-        camera->set_jitter_factor(jitter_factor);
+        camera->set_jitter_factor(current_frame_jitter);
 
         scene->update();
 
