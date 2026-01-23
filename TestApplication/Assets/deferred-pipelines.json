@@ -27,7 +27,8 @@
             "color-attachments-format": [
                 "B8G8R8A8_UNORM",
                 "R16G16B16A16_SFLOAT",
-                "B8G8R8A8_UNORM"
+                "B8G8R8A8_UNORM",
+                "R16G16_SFLOAT"
             ],
             "depth-attachment-format": "D32_SFLOAT",
             "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
@@ -47,7 +48,8 @@
             "color-attachments-format": [
                 "B8G8R8A8_UNORM",
                 "R16G16B16A16_SFLOAT",
-                "B8G8R8A8_UNORM"
+                "B8G8R8A8_UNORM",
+                "R16G16_SFLOAT"
             ],
             "depth-attachment-format": "D32_SFLOAT",
             "draw-mode": "DRAWMODE_INDEXED_INDIRECT"

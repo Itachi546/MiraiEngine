@@ -99,6 +99,12 @@ namespace mirai {
             this->env_map = env_map;
         }
 
+        Entity create_entity() {
+            Entity entity = ecs->create_entity();
+            entities.push_back(entity);
+            return entity;
+        }
+
         void remove_entity(Entity entity);
 
         void release_all_entities();

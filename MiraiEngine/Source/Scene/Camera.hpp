@@ -94,6 +94,18 @@ namespace mirai {
             return frustum;
         }
 
+        glm::mat4 get_last_frame_view_projection_matrix() const {
+            return last_frame_view_projection_matrix;
+        }
+
+        void set_enable_camera_jitter(bool state) {
+            enable_jitter = state;
+        }
+
+        void set_jitter_factor(glm::vec2 jitter_factor) {
+            this->jitter_factor = jitter_factor;
+        }
+
         glm::vec3 position;
         glm::vec3 rotation;
 
@@ -101,6 +113,8 @@ namespace mirai {
         glm::mat4 view_matrix, inv_view_matrix;
         glm::mat4 projection_matrix, inv_projection_matrix;
         glm::mat4 view_projection_matrix, inv_view_projection_matrix;
+
+        glm::mat4 last_frame_view_projection_matrix;
 
         ProjectionMode projection_mode;
 
@@ -112,6 +126,9 @@ namespace mirai {
         float far_plane;
 
         Frustum frustum;
+
+        bool enable_jitter;
+        glm::vec2 jitter_factor;
 
         void update_projection_matrix();
     };

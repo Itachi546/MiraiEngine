@@ -1,6 +1,7 @@
 layout(location = 0) out vec4 albedo_buffer;
 layout(location = 1) out vec4 normal_buffer;
 layout(location = 2) out vec4 emissive_buffer;
+layout(location = 3) out vec2 velocity_buffer;
 
 layout(location = 0) in FS_IN {
     vec3 normal;
@@ -10,6 +11,7 @@ layout(location = 0) in FS_IN {
     vec3 light_pos;
     vec3 view_dir;
     vec2 uv;
+    vec2 velocity;
     flat uint mat_id;
 }
 fs_in;
@@ -64,4 +66,6 @@ void main() {
     if (material.emissive_texture != K_INVALID_TEXTURE)
         emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
     emissive_buffer = vec4(emissive, 1.0f);
+
+    velocity_buffer = vec2(fs_in.velocity);
 }

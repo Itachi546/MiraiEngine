@@ -90,6 +90,8 @@ namespace mirai {
         UniformSetID transform_set, transform_material_set;
         std::vector<RenderBatch> main_render_batches;
 
+        int jitter_index = 0;
+
       private:
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;
@@ -123,6 +125,8 @@ namespace mirai {
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
         const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);
         uint32_t per_frame_staging_buffer_offset = 0;
+
+        const int JITTER_PERIOD = 8;
 
         friend class Engine;
     };

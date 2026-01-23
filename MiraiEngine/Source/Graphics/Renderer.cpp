@@ -12,6 +12,7 @@
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
 #include "PipelineLoader.hpp"
+#include "Common/Random.hpp"
 
 #include <cstring>
 #include <algorithm>
@@ -297,11 +298,23 @@ namespace mirai {
     }
 
     void Renderer::update() {
+        // Update camera jitter
+        FrameGraphNode *node = frame_graph->get_node("deferred_pass");
+        ASSERT(node != nullptr);
+
+        glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
+
+        glm::vec2 jitter_factor = halton23_sequence(jitter_index) * 2.0f - 1.0f;
+        jitter_factor *= inv_resolution;
+        jitter_index = (jitter_index + 1) % JITTER_PERIOD;
+
+        Camera *camera = scene->get_camera();
+        camera->set_jitter_factor(jitter_factor);
+
         scene->update();
 
         main_render_batches.clear();
 
-        Camera *camera = scene->get_camera();
         Frustum &frustum = camera->get_frustum();
         DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT);
 

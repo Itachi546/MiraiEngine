@@ -11,9 +11,14 @@ layout(location = 0) out VS_OUT {
     vec3 light_pos;
     vec3 view_dir;
     vec2 uv;
+    vec2 velocity;
     flat uint mat_id;
 }
 vs_out;
+
+layout(push_constant) uniform PushConstant {
+    mat4 last_frame_VP;
+};
 
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
@@ -43,7 +48,16 @@ void main() {
 
     vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
     vec4 world_pos = M * vec4(position, 1.0f);
-    gl_Position = per_frame_data.VP * world_pos;
+
+    vec4 current_clip_pos = per_frame_data.VP * world_pos;
+    gl_Position = current_clip_pos;
+
+    current_clip_pos.xyz /= current_clip_pos.w;
+
+    vec4 last_clip_pos = last_frame_VP * world_pos;
+    last_clip_pos.xyz /= last_clip_pos.w;
+
+    vs_out.velocity = current_clip_pos.xy - last_clip_pos.xy;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);

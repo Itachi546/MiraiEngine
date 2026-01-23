@@ -442,7 +442,7 @@ namespace mirai {
         // Create parent as default entity to be passed on recursion
         // For camera, we don't create new entity
         auto &comp_manager = scene->ecs->component_manager;
-        Entity entity = scene->ecs->create_entity();
+        Entity entity = scene->create_entity();
         // NameComponent
         std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
         comp_manager->add_component<NameComponent>(entity, name);

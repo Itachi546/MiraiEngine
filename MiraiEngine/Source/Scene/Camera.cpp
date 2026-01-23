@@ -9,10 +9,16 @@ namespace mirai {
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.2f),
                        far_plane(100.0f),
+                       enable_jitter(false),
+                       jitter_factor(glm::vec2(0.0f)),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
+        view_projection_matrix = glm::mat4(1.0f);
+        last_frame_view_projection_matrix = glm::mat4(1.0f);
     }
 
     void Camera::update() {
+        last_frame_view_projection_matrix = view_projection_matrix;
+
         glm::vec3 rotation_radians = glm::radians(rotation);
 
         glm::mat4 rotation_matrix = glm::eulerAngleZXY(rotation_radians.z, rotation_radians.x, rotation_radians.y);
@@ -66,6 +72,13 @@ namespace mirai {
             float y_span = cam_dist * tan(glm::radians(fov * 0.5f));
             float x_span = y_span * aspect_ratio;
             projection_matrix = glm::ortho(-x_span, x_span, -y_span, y_span, near_plane, far_plane);
+        }
+
+        // Used for TAA
+        if (enable_jitter) {
+            // Update the translation component
+            glm::mat4 jitter_matrix = glm::translate(glm::mat4(1.0f), glm::vec3{jitter_factor.x, jitter_factor.y, 0.0f});
+            projection_matrix = jitter_matrix * projection_matrix;
         }
 
         inv_projection_matrix = glm::inverse(projection_matrix);

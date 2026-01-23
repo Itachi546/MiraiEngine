@@ -138,6 +138,7 @@ class TestApplication : public App {
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
+        camera->set_enable_camera_jitter(true);
         camera->position = glm::vec3(-18.264, 2.394f, 13.56f);
         camera->rotation = glm::vec3(29.0f, 66.0f, 0.0f);
         camera->set_far_plane(1000.0f);
@@ -161,7 +162,7 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-        controller = std::make_unique<FirstPersonController>(scene->get_camera());
+        controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(10.0f);
         controller->set_run_speed(20.0f);
     }
@@ -315,6 +316,9 @@ class TestApplication : public App {
 
                 FrameGraphResource *emissive_texture = frame_graph->get_resource("gbuffer_emissive");
                 add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
+
+                FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
+                add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
             }
 
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();

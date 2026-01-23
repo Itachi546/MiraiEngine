@@ -37,6 +37,16 @@
         },
         {
           "type": "attachment",
+          "name": "gbuffer_velocity",
+          "format": "R16G16_SFLOAT",
+          "resolution": [
+            1920,
+            1080
+          ],
+          "op": "LOAD_OP_CLEAR"
+        },
+        {
+          "type": "attachment",
           "name": "gbuffer_depth",
           "format": "D32_SFLOAT",
           "resolution": [
@@ -136,6 +146,10 @@
         {
           "type": "texture",
           "name": "rt_directional_shadow_map"
+        },
+        {
+          "type": "texture",
+          "name": "gbuffer_velocity"
         },
         {
           "type": "texture",

@@ -45,17 +45,6 @@ namespace mirai {
         entities.push_back(root_entity);
     }
 
-    void Scene::on_initialize() {
-        // @TODO This mustn't be done once we bake the transform matrix into position, rotation, scale
-        // and apply it at the beginning of everything
-        // Maybe we should update hierarchy when we create mesh and initialize it
-        update_transform_components();
-
-        update_hierarchy_component();
-
-        generate_render_object_list();
-    }
-
     void Scene::update() {
         ScopedCpuProfiling("Scene Update");
 
