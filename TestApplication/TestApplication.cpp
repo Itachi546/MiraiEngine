@@ -373,8 +373,13 @@ class TestApplication : public App {
             }
 
             TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
-            if (taa != nullptr) {
+            if (ImGui::CollapsingHeader("TAA") && taa != nullptr) {
+                ImGui::Checkbox("Enable TAA", &taa->enable_taa);
+                ImGui::Checkbox("TAA Simple", &taa->enable_taa_simple);
+                ImGui::Checkbox("Temporal filtering", &taa->enable_temporal_filtering);
                 ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
+                ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
+                ImGui::SliderFloat("Jitter Scale", &Renderer::get()->jitter_scale, 0.1f, 2.0f);
             }
         }
 

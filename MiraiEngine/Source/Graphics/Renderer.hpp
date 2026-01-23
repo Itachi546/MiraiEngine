@@ -96,6 +96,8 @@ namespace mirai {
         glm::vec2 current_frame_jitter;
 
         int jitter_index = 0;
+        int jitter_period = 4;
+        float jitter_scale = 1.0f;
 
       private:
         static Renderer *Instance;
@@ -130,8 +132,6 @@ namespace mirai {
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
         const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);
         uint32_t per_frame_staging_buffer_offset = 0;
-
-        const int JITTER_PERIOD = 4;
 
         friend class Engine;
     };

@@ -13,6 +13,7 @@
 #include "Math/MathUtils.hpp"
 #include "PipelineLoader.hpp"
 #include "Common/Random.hpp"
+#include "RenderPass/TAAResolvePass.hpp"
 
 #include <cstring>
 #include <algorithm>
@@ -313,10 +314,13 @@ namespace mirai {
         glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
 
         current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
+        current_frame_jitter *= jitter_scale;
         current_frame_jitter *= inv_resolution;
-        jitter_index = (jitter_index + 1) % JITTER_PERIOD;
+        jitter_index = (jitter_index + 1) % jitter_period;
 
-        camera->set_jitter_factor(current_frame_jitter);
+        TAAResolvePass *taa = (TAAResolvePass*)frame_graph->get_renderer("taa_resolve_pass");
+        if (taa->enable_taa)
+            camera->set_jitter_factor(current_frame_jitter);
 
         scene->update();
 

@@ -59,13 +59,17 @@ void main() {
     light.color = per_frame_data.light_color;
     light.intensity = per_frame_data.light_intensity;
 
-#if ENABLE_RT_SHADOW
-    float shadow_factor = texture(shadow_texture, uv).r;
-#else
-    int cascade_index = 0;
-    float shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.001f, cam_dist, cascade_index), 0.0f);
-#endif
+    float shadow_factor = 1.0f;
 
+    if (light.cast_shadow > 0.5) {
+
+#if ENABLE_RT_SHADOW
+        shadow_factor = texture(shadow_texture, uv).r;
+#else
+        int cascade_index = 0;
+        shadow_factor = max(calculate_shadow_factor(world_pos + normal * 0.001f, cam_dist, cascade_index), 0.0f);
+#endif
+    }
     vec3 Lo;
     if (split_percentage.x >= uv.x) {
         if (debug_texture_index > 4.5f)

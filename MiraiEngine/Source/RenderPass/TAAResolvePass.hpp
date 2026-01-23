@@ -16,6 +16,9 @@ namespace mirai {
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         bool should_sample_motion_vector = true;
+        bool enable_taa = true;
+        bool enable_taa_simple = false;
+        bool enable_temporal_filtering = true;
 
       private:
         bool first_frame = true;

@@ -15,7 +15,7 @@ layout(push_constant) uniform PushConstants {
 layout(set = 0, binding = 0) uniform samplerCube u_cubemap;
 
 void main() {
-    vec3 rd = generate_camera_ray(uv * 2.0f - 1.0f, invP, invV);
+    vec3 rd = generate_camera_ray(vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y), invP, invV);
     vec3 col = texture(u_cubemap, rd).rgb;
     fragColor = vec4(col, 1.0f);
 }

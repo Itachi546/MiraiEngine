@@ -80,9 +80,12 @@ namespace mirai {
         glm::mat4 V = camera->get_view_transform();
 
         glm::vec3 light_direction = light->get_direction();
+        glm::vec2 jitter_factor = renderer->current_frame_jitter;
+
         for (int cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
             float split_distance = cascade_info.split_distances[cascade] * z_range;
             glm::mat4 P = glm::perspective(fov, aspect_ratio, last_split_distance, split_distance);
+
             glm::mat4 VP = P * V;
 
             std::array<glm::vec3, 8> frustum_corners;

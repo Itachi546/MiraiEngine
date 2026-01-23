@@ -52,46 +52,39 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "TAAResolve");
         device->begin_debug_utils_label(command_buffer, "TAA Resolve", nullptr);
 
+        command_buffer->begin_compute_pass(node, frame_graph);
+
         FrameGraphResource *gbuffer_lighting = frame_graph->get_resource("gbuffer_lighting");
         ASSERT(gbuffer_lighting != nullptr);
 
         FrameGraphResource *taa_history = frame_graph->get_resource("taa_output");
         ASSERT(taa_history != nullptr);
 
+        FrameGraphResource *gbuffer_depth = frame_graph->get_resource("gbuffer_depth");
+        ASSERT(gbuffer_depth != nullptr);
+
+        int flags = 0;
+        flags = (flags | int(enable_taa)) |
+                (flags | (int(should_sample_motion_vector) << 1)) |
+                (flags | (int(enable_temporal_filtering) << 2)) |
+                (flags | (int(enable_taa_simple) << 3));
+
         // Copy output texture to TAA history
-        float push_constant_data[] = {
-            cast_float(gbuffer_lighting->resource_info.width),
-            cast_float(gbuffer_lighting->resource_info.height),
-            float(should_sample_motion_vector),
+        int push_constant_data[] = {
+            cast_int(gbuffer_lighting->resource_info.width),
+            cast_int(gbuffer_lighting->resource_info.height),
+            flags,
             0};
 
         PushConstant push_constants = {
             .data = push_constant_data,
             .offset = 0,
-            .size = sizeof(float) * 4,
+            .size = sizeof(int) * 4,
             .shader_stage = SHADER_STAGE_COMPUTE,
-        };
-
-        TextureBarrierInfo barrier_infos[] = {
-            {
-                .texture_id = taa_history->handle,
-                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
-                .layout = IMAGE_LAYOUT_GENERAL,
-            },
-            {
-                .texture_id = gbuffer_lighting->handle,
-                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .access_mask = ACCESS_FLAG_SHADER_READ,
-                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            },
         };
 
         // Copy the deferred texture output to TAA history if it is first frame
         if (first_frame) {
-            barrier_infos[0].access_mask = ACCESS_FLAG_SHADER_WRITE;
-            command_buffer->prepare_image(barrier_infos, first_frame ? 2 : 1);
-
             // Copy the TAA Output to History buffer
             copy_texture_shader->bind(command_buffer);
             command_buffer->set_uniform_sets(copy_texture_shader->pipeline_id, &copy_texture_uniform_set, 1);
@@ -102,7 +95,6 @@ namespace mirai {
 
             command_buffer->dispatch(work_size_x, work_size_y, 1);
         } else {
-            command_buffer->prepare_image(barrier_infos, 2);
             shader->bind(command_buffer);
             command_buffer->set_uniform_sets(shader->pipeline_id, &uniform_set, 1);
             command_buffer->set_push_constants(shader->pipeline_id, &push_constants, 1);
