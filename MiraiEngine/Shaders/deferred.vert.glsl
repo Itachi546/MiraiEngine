@@ -60,7 +60,7 @@ void main() {
     last_clip_pos.xyz /= last_clip_pos.w;
 
     vec2 velocity = (current_clip_pos.xy - last_clip_pos.xy);
-    velocity -= (current_frame_jitter - prev_frame_jitter);
+    velocity -= (current_frame_jitter - prev_frame_jitter) * 0.5;
 
     vs_out.velocity = velocity;
 

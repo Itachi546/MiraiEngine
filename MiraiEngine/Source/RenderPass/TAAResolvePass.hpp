@@ -15,6 +15,8 @@ namespace mirai {
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
+        bool should_sample_motion_vector = true;
+
       private:
         bool first_frame = true;
         Shader *shader, *copy_texture_shader;

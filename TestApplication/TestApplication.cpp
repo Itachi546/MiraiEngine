@@ -321,7 +321,7 @@ class TestApplication : public App {
                 FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
                 add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
 
-                FrameGraphResource *taa_output= frame_graph->get_resource("taa_output");
+                FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
                 add_rendertarget_texture_debug_ui("taa_output", taa_output);
             }
 
@@ -370,6 +370,11 @@ class TestApplication : public App {
                     FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
                     add_rendertarget_texture_debug_ui("ssao_texture", resource);
                 }
+            }
+
+            TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
+            if (taa != nullptr) {
+                ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
             }
         }
 

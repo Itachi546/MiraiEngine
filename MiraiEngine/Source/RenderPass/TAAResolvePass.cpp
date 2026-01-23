@@ -60,9 +60,9 @@ namespace mirai {
 
         // Copy output texture to TAA history
         float push_constant_data[] = {
-            1.0f / cast_float(gbuffer_lighting->resource_info.width),
-            1.0f / cast_float(gbuffer_lighting->resource_info.height),
-            0,
+            cast_float(gbuffer_lighting->resource_info.width),
+            cast_float(gbuffer_lighting->resource_info.height),
+            float(should_sample_motion_vector),
             0};
 
         PushConstant push_constants = {
