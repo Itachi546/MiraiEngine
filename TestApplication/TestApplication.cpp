@@ -320,6 +320,9 @@ class TestApplication : public App {
 
                 FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
                 add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
+
+                FrameGraphResource *taa_output= frame_graph->get_resource("taa_output");
+                add_rendertarget_texture_debug_ui("taa_output", taa_output);
             }
 
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();

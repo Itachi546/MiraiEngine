@@ -18,7 +18,7 @@ namespace mirai {
       private:
         bool first_frame = true;
         Shader *shader, *copy_texture_shader;
-        UniformSetID uniform_set;
+        UniformSetID uniform_set, copy_texture_uniform_set;
     };
 
 } // namespace mirai
