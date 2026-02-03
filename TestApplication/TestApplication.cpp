@@ -287,10 +287,11 @@ class TestApplication : public App {
     }
 
     bool show_render_pass_debug_popup = false;
-    bool add_rendertarget_texture_debug_ui(const char *id, FrameGraphResource *resource) {
-        ImGuiService::AddImage(resource->handle.id, ImVec2{128, 64});
+    bool add_rendertarget_texture_debug_ui(const char *id, FrameGraphResource *resource, const ImVec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f}) {
+        ImGuiService::AddImage(resource->handle.id, ImVec2{128, 64}, tint_color);
         ImGui::SameLine();
         std::string formatted_id = std::string("Maximize##") + id;
+        ImGui::Text(id);
         if (ImGui::Button(formatted_id.c_str())) {
             selected_renderpass_debug_resource = resource;
             ImGui::OpenPopup("render_pass_debug_popup");
@@ -304,7 +305,7 @@ class TestApplication : public App {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
             DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
-            if (deferred_pass != nullptr && ImGui::CollapsingHeader("Deferred Pass")) {
+            if (deferred_pass != nullptr && ImGui::TreeNodeEx("Deferred Pass")) {
                 ImGui::SliderFloat("Split Percentage", &deferred_pass->split_percentage, 0.0f, 1.0f);
                 static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
                 ImGui::Combo("Target", &deferred_pass->debug_texture, options);
@@ -319,14 +320,16 @@ class TestApplication : public App {
                 add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
 
                 FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
+
                 add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
 
                 FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
                 add_rendertarget_texture_debug_ui("taa_output", taa_output);
+                ImGui::TreePop();
             }
 
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
-            if (ImGui::CollapsingHeader("Shadow Pass")) {
+            if (ImGui::TreeNodeEx("Shadow Pass")) {
                 if (supports_raytracing) {
                     ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
                     if (AppSettings::enable_rt_shadow) {
@@ -350,10 +353,11 @@ class TestApplication : public App {
                     FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
                     add_rendertarget_texture_debug_ui("csm_shadow", resource);
                 }
+                ImGui::TreePop();
             }
             SSAOPass *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
             if (ssao_pass != nullptr) {
-                if (ImGui::CollapsingHeader("SSAO Pass")) {
+                if (ImGui::TreeNodeEx("SSAO Pass")) {
                     ImGui::Text("SSAO Generation");
                     ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
                     ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
@@ -369,17 +373,19 @@ class TestApplication : public App {
 
                     FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
                     add_rendertarget_texture_debug_ui("ssao_texture", resource);
+                    ImGui::TreePop();
                 }
             }
 
             TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
-            if (ImGui::CollapsingHeader("TAA") && taa != nullptr) {
+            if (ImGui::TreeNodeEx("TAA") && taa != nullptr) {
                 ImGui::Checkbox("Enable TAA", &taa->enable_taa);
                 ImGui::Checkbox("TAA Simple", &taa->enable_taa_simple);
                 ImGui::Checkbox("Temporal filtering", &taa->enable_temporal_filtering);
                 ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
                 ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
                 ImGui::SliderFloat("Jitter Scale", &Renderer::get()->jitter_scale, 0.1f, 2.0f);
+                ImGui::TreePop();
             }
         }
 

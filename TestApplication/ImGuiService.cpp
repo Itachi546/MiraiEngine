@@ -94,9 +94,9 @@ namespace ImGuiService {
         return ImGui::ImageButton(id, textureId, size);
     }
 
-    void ImGuiService::AddImage(uint32_t texture, const ImVec2 &size) {
+    void ImGuiService::AddImage(uint32_t texture, const ImVec2 &size, const ImVec4 &tint_color) {
         ImTextureID textureId = GetTextureID(texture);
-        ImGui::Image(textureId, size);
+        ImGui::Image(textureId, size, ImVec2{0.0, 0.0}, ImVec2{1.0, 1.0}, tint_color);
     }
 
     void NewFrame() {
