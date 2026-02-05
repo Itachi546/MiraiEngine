@@ -9,7 +9,6 @@ namespace mirai {
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.2f),
                        far_plane(100.0f),
-                       enable_jitter(false),
                        jitter_factor(glm::vec2(0.0f)),
                        projection_mode(PROJECTION_MODE_PERSPECTIVE) {
         view_projection_matrix = glm::mat4(1.0f);
@@ -18,15 +17,23 @@ namespace mirai {
     void Camera::update() {
         glm::vec3 rotation_radians = glm::radians(rotation);
 
-        glm::mat4 rotation_matrix = glm::eulerAngleZXY(rotation_radians.z, rotation_radians.x, rotation_radians.y);
-        view_matrix = rotation_matrix * glm::translate(glm::mat4(1.0f), -position);
+        float yaw = rotation_radians.y;
+        float pitch = rotation_radians.x;
+
+        forward = {
+            cos(pitch) * cos(yaw),
+            sin(pitch),
+            cos(pitch) * sin(yaw),
+        };
+
+        right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        up = glm::normalize(glm::cross(right, forward));
+
+        view_matrix = glm::lookAt(position, position + forward, up);
+
         inv_view_matrix = glm::inverse(view_matrix);
 
         update_projection_matrix();
-
-        right = glm::normalize(glm::vec3(rotation_matrix[0][0], rotation_matrix[1][0], rotation_matrix[2][0]));
-        up = glm::normalize(glm::vec3(rotation_matrix[0][1], rotation_matrix[1][1], rotation_matrix[2][1]));
-        forward = glm::normalize(glm::vec3(rotation_matrix[0][2], rotation_matrix[1][2], rotation_matrix[2][2]));
 
         view_projection_matrix = projection_matrix * view_matrix;
         inv_view_projection_matrix = glm::inverse(view_projection_matrix);
@@ -72,13 +79,11 @@ namespace mirai {
         }
 
         // Used for TAA
-        if (enable_jitter) {
-            // Update the translation component
-            glm::mat4 jitter_matrix = glm::translate(glm::mat4(1.0f), glm::vec3{jitter_factor.x, jitter_factor.y, 0.0f});
-            projection_matrix = jitter_matrix * projection_matrix;
-            projection_matrix[2][0] += jitter_factor.x;
-            projection_matrix[2][1] += jitter_factor.y;
-        }
+        // Update the translation component
+        // glm::mat4 jitter_matrix = glm::translate(glm::mat4(1.0f), glm::vec3{jitter_factor.x, jitter_factor.y, 0.0f});
+        // projection_matrix = jitter_matrix * projection_matrix;
+        projection_matrix[2][0] += jitter_factor.x;
+        projection_matrix[2][1] += jitter_factor.y;
 
         inv_projection_matrix = glm::inverse(projection_matrix);
     }

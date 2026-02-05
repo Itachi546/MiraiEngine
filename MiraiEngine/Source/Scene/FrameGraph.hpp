@@ -67,6 +67,7 @@ namespace mirai {
             Format format;
             uint32_t array_layers;
         } resource_info;
+        bool external;
     };
 
     struct FrameGraphResourceState {

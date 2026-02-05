@@ -90,14 +90,13 @@ namespace mirai {
         UniformSetID transform_set, transform_material_set;
         std::vector<RenderBatch> main_render_batches;
 
+        // TAA Options
         glm::mat4 prev_frame_VP;
-
         glm::vec2 prev_frame_jitter;
         glm::vec2 current_frame_jitter;
 
         int jitter_index = 0;
         int jitter_period = 4;
-        float jitter_scale = 1.0f;
 
       private:
         static Renderer *Instance;

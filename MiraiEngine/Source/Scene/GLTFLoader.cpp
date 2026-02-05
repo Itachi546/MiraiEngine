@@ -126,6 +126,7 @@ namespace mirai {
         // @TODO update sampler based on the gltf_sampler
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
+        //sampler_desc.lod_bias = -0.5f;
         SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
         p_user_data->textures.emplace_back(texture, sampler);

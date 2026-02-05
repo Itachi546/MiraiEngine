@@ -94,10 +94,6 @@ namespace mirai {
             return frustum;
         }
 
-        void set_enable_camera_jitter(bool state) {
-            enable_jitter = state;
-        }
-
         void set_jitter_factor(glm::vec2 jitter_factor) {
             this->jitter_factor = jitter_factor;
         }
@@ -121,7 +117,6 @@ namespace mirai {
 
         Frustum frustum;
 
-        bool enable_jitter;
         glm::vec2 jitter_factor;
 
         void update_projection_matrix();

@@ -8,6 +8,10 @@ namespace mirai {
     DeferredPass::DeferredPass() : FrameGraphRenderer("deferred_pass") {
     }
 
+    void DeferredPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
+        push_constant_data.last_frame_VP = renderer->prev_frame_VP;
+    }
+
     void DeferredPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ASSERT(node != nullptr);
         ScopedCpuProfiling("Deferred Render");
@@ -27,7 +31,7 @@ namespace mirai {
             .data = &push_constant_data,
             .offset = 0,
             .size = sizeof(PushConstantData),
-            .shader_stage = SHADER_STAGE_VERTEX,
+            .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
         };
 
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {

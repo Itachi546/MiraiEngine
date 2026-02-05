@@ -531,7 +531,8 @@ namespace mirai {
         void *data;
         uint32_t offset;
         uint32_t size;
-        ShaderStage shader_stage;
+        // ShaderStage
+        uint32_t shader_stage;
     };
 
     struct DrawIndexedIndirectCommand {

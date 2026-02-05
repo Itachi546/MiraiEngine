@@ -119,6 +119,9 @@ namespace mirai {
             }
             node->inputs.push_back(resource_handle);
 
+            if (resource->external)
+                continue;
+
             const std::string &resource_name = input_desc->name;
             auto found = resource_state_map.find(resource_name);
             if (found == resource_state_map.end())
@@ -133,8 +136,6 @@ namespace mirai {
 
         for (uint32_t i = 0; i < node_description.outputs.size(); ++i) {
             const FrameGraphResourceOutput *output = &node_description.outputs[i];
-            if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE)
-                continue;
 #ifdef _DEBUG
             if (i > 0) {
                 uint32_t output_width, output_height;
@@ -154,10 +155,14 @@ namespace mirai {
                 break;
             }
 
+            // External reference state are tracked externally
+            if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE)
+                continue;
             const std::string &resource_name = output->name;
             auto found = resource_state_map.find(resource_name);
             if (found == resource_state_map.end())
                 resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = resource_handle};
+
             create_resource_state(output->resource_type, output->load_op, &resource_state_map[resource_name], node_description.is_compute_pass, false);
         }
 
@@ -181,7 +186,9 @@ namespace mirai {
         switch (output->resource_type) {
         case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
             handle = resource_pool_resources.obtain();
+
             FrameGraphResource *resource = resource_pool_resources.access(handle);
+            resource->external = false;
             if (output->name == "swapchain") {
                 resource->name = output->name;
                 resource->handle = K_SWAPCHAIN_TEXTURE_HANDLE;
@@ -212,6 +219,7 @@ namespace mirai {
                 } else {
                     desc.usage_flags = compute_pass ? TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_SAMPLED_BIT : TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
                 }
+                desc.usage_flags |= TEXTURE_USAGE_TRANSFER_SRC_BIT;
 
                 TextureID texture = device->create_texture(&desc, output->name.c_str());
                 resource->name = output->name;
@@ -230,8 +238,17 @@ namespace mirai {
             handle = found->second;
             break;
         }
-        case FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE:
+        case FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE: {
+            // Create a dummy entry for external reference
+            // @TODO handle this
+            handle = resource_pool_resources.obtain();
+            FrameGraphResource *resource = resource_pool_resources.access(handle);
+            resource->handle = TextureID{K_INVALID_ID};
+            resource->name = output->name;
+            resource->external = true;
+            resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
             break;
+        }
         default:
             ASSERT_MSG(0, " Unknown framegraph output resource type");
             break;
@@ -257,7 +274,7 @@ namespace mirai {
     FrameGraphBuilder::~FrameGraphBuilder() {
         for (auto &[key, val] : resources_map) {
             FrameGraphResource *resource = resource_pool_resources.access(val);
-            if (resource->handle.is_valid() && resource->handle != K_SWAPCHAIN_TEXTURE_HANDLE) {
+            if (resource->handle.is_valid() && resource->handle != K_SWAPCHAIN_TEXTURE_HANDLE && !resource->external) {
                 TextureID texture_id = resource->handle;
                 device->destroy_textures(&texture_id, 1);
             }

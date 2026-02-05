@@ -29,5 +29,6 @@ namespace mirai {
         UniformSetID uniform_set;
         bool enable_aa;
         Shader *shader;
+        SamplerID default_sampler;
     };
 } // namespace mirai

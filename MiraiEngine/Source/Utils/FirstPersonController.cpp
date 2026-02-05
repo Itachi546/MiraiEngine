@@ -10,9 +10,9 @@ void FirstPersonController::update(float dt) {
         glm::vec3 direction{0.0f};
 
         if (input->is_down(KB_W))
-            direction.z = -1.0f;
-        else if (input->is_down(KB_S))
             direction.z = 1.0f;
+        else if (input->is_down(KB_S))
+            direction.z = -1.0f;
 
         if (input->is_down(KB_A))
             direction.x = -1.0f;
@@ -35,6 +35,8 @@ void FirstPersonController::update(float dt) {
     */
     if (input->is_down(MB_LEFT) && !disable_input) {
         glm::vec2 mouse_delta = Window::get()->get_mouse_delta() * sensitivity;
+        if (invert_yaxis)
+            mouse_delta.y = -mouse_delta.y;
         target_rotation += glm::vec3(mouse_delta.y, mouse_delta.x, 0.0f) * dt;
         target_rotation.x = glm::clamp(target_rotation.x, -89.0f, 89.0f);
     }

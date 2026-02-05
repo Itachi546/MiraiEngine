@@ -7,6 +7,8 @@ namespace mirai {
       public:
         DeferredPass();
 
+        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
+
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
         ~DeferredPass();

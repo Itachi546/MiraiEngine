@@ -75,6 +75,7 @@ class FirstPersonController {
 
     float smoothing_factor = 0.1f;
     float rotation_smoothing_factor = 0.04f;
+    bool invert_yaxis = true;
 
     glm::vec3 target_position;
     glm::vec3 target_rotation;

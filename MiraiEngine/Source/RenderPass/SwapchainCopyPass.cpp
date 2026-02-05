@@ -25,20 +25,8 @@ namespace mirai {
             Log::Fatal("Failed to create swapchain copy pipeline");
         }
 
-        FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
-
-        UniformLayout bounded_uniform = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-            .shader_stage = SHADER_STAGE_FRAGMENT,
-        };
-        uniform_set = device->create_uniform_set(&bounded_uniform, 1, 0, "full_screen_input");
-
         SamplerDescription sampler_desc = SamplerDescription::create();
-        SamplerID default_sampler = device->create_sampler(&sampler_desc);
-
-        UniformBinding bindings = {.resource_id = input_texture->handle, .texture_info = {.sampler = default_sampler}};
-        device->update_uniform_set(uniform_set, &bindings, 1);
+        default_sampler = device->create_sampler(&sampler_desc);
     }
 
     void SwapchainCopyPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -59,6 +47,17 @@ namespace mirai {
             .size = sizeof(float) * 4,
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
+
+        UniformLayout bounded_uniform = {
+            .binding = 0,
+            .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
+            .shader_stage = SHADER_STAGE_FRAGMENT,
+        };
+        uniform_set = command_buffer->create_uniform_set(&bounded_uniform, 1, 0);
+
+        FrameGraphResource *input_texture = frame_graph->get_resource(node->inputs[0]);
+        UniformBinding bindings = {.resource_id = input_texture->handle, .texture_info = {.sampler = default_sampler}};
+        device->update_uniform_set(uniform_set, &bindings, 1);
 
         command_buffer->begin_render_pass(node, frame_graph);
 

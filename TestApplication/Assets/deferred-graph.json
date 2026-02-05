@@ -228,14 +228,9 @@
       ],
       "outputs": [
         {
-          "type": "attachment",
+          "type": "texture",
           "name": "taa_output",
-          "format": "R16G16B16A16_SFLOAT",
-          "resolution": [
-            1920,
-            1080
-          ],
-          "op": "LOAD_OP_CLEAR"
+          "external": true
         }
       ]
     },

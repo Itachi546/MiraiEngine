@@ -33,6 +33,10 @@ namespace mirai {
         shader_hashmap = std::make_unique<ShaderHashMap>();
         frame_graph_builder = std::make_unique<FrameGraphBuilder>();
         frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
+
+        current_frame_jitter = glm::vec2(0.0f);
+        prev_frame_jitter = glm::vec2(0.0f);
+        prev_frame_VP = glm::mat4(1.0f);
     }
 
     void Renderer::initialize() {
@@ -67,7 +71,7 @@ namespace mirai {
         buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         global_material_buffer = device->create_buffer(&buffer_desc, "global_material_buffer");
 
-        prev_frame_VP = glm::mat4(1.0f);
+        prev_frame_VP = scene->get_camera()->get_view_projection_transform();
         prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
     }
 
@@ -314,13 +318,14 @@ namespace mirai {
         glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
 
         current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
-        current_frame_jitter *= jitter_scale;
         current_frame_jitter *= inv_resolution;
         jitter_index = (jitter_index + 1) % jitter_period;
 
-        TAAResolvePass *taa = (TAAResolvePass*)frame_graph->get_renderer("taa_resolve_pass");
-        if (taa->enable_taa)
+        TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
+        if (taa && taa->enable_taa)
             camera->set_jitter_factor(current_frame_jitter);
+        else
+            camera->set_jitter_factor(glm::vec2(0.0f));
 
         scene->update();
 

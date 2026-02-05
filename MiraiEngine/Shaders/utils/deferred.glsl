@@ -11,10 +11,17 @@ layout(location = 0) in FS_IN {
     vec3 light_pos;
     vec3 view_dir;
     vec2 uv;
-    vec2 velocity;
+    vec4 current_clip_pos;
+    vec4 prev_clip_pos;
     flat uint mat_id;
 }
 fs_in;
+
+layout(push_constant) uniform PushConstant {
+    mat4 last_frame_VP;
+    vec2 prev_frame_jitter;
+    vec2 current_frame_jitter;
+};
 
 #include "utils/bindless.glsl"
 #include "utils/material.glsl"
@@ -67,5 +74,10 @@ void main() {
         emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
     emissive_buffer = vec4(emissive, 1.0f);
 
-    velocity_buffer = vec2(fs_in.velocity);
+    vec2 current_ndc_pos = fs_in.current_clip_pos.xy / fs_in.current_clip_pos.w;
+    vec2 prev_ndc_pos = fs_in.prev_clip_pos.xy / fs_in.prev_clip_pos.w;
+
+    vec2 velocity = current_ndc_pos - prev_ndc_pos;
+    velocity -= (current_frame_jitter - prev_frame_jitter) * 0.5;
+    velocity_buffer = velocity;
 }

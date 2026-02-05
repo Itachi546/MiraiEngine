@@ -138,9 +138,8 @@ class TestApplication : public App {
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
-        camera->set_enable_camera_jitter(true);
         camera->position = glm::vec3(-18.264, 2.394f, 13.56f);
-        camera->rotation = glm::vec3(29.0f, 66.0f, 0.0f);
+        camera->rotation = glm::vec3(-19.7f, -23.0f, 0.0f);
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();
@@ -379,12 +378,16 @@ class TestApplication : public App {
 
             TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
             if (ImGui::TreeNodeEx("TAA") && taa != nullptr) {
-                ImGui::Checkbox("Enable TAA", &taa->enable_taa);
-                ImGui::Checkbox("TAA Simple", &taa->enable_taa_simple);
-                ImGui::Checkbox("Temporal filtering", &taa->enable_temporal_filtering);
-                ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
-                ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
-                ImGui::SliderFloat("Jitter Scale", &Renderer::get()->jitter_scale, 0.1f, 2.0f);
+                bool should_reset_history_texture = false;
+                should_reset_history_texture |= ImGui::Checkbox("Enable TAA", &taa->enable_taa);
+                ImGui::Checkbox("Reset History Texture", &taa->should_reset_history_texture);
+                should_reset_history_texture |= ImGui::Checkbox("TAA Simple", &taa->enable_taa_simple);
+                should_reset_history_texture |= ImGui::Checkbox("Temporal filtering", &taa->enable_temporal_filtering);
+                should_reset_history_texture |= ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
+                if (taa->should_sample_motion_vector)
+                    should_reset_history_texture |= ImGui::Checkbox("Enable min depth", &taa->should_enable_min_depth);
+                should_reset_history_texture |= ImGui::Checkbox("Enable History Sampling", &taa->should_enable_history_sampling);
+                should_reset_history_texture |= ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
                 ImGui::TreePop();
             }
         }
