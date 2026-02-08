@@ -2,7 +2,7 @@
 
 #include "ECS.hpp"
 #include "Graphics/RenderingDevice.hpp"
-#include "Math/Math.hpp"
+#include "Math/Angles.hpp"
 
 namespace mirai {
     struct NameComponent {

@@ -1,6 +1,7 @@
 #include "Camera.hpp"
 
 #include "Device/Window.hpp"
+#include "Math/Angles.hpp"
 
 namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
@@ -16,16 +17,7 @@ namespace mirai {
 
     void Camera::update() {
         glm::vec3 rotation_radians = glm::radians(rotation);
-
-        float yaw = rotation_radians.y;
-        float pitch = rotation_radians.x;
-
-        forward = {
-            cos(pitch) * cos(yaw),
-            sin(pitch),
-            cos(pitch) * sin(yaw),
-        };
-
+        forward = rotation_to_direction(rotation_radians);
         right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
         up = glm::normalize(glm::cross(right, forward));
 

@@ -18,7 +18,7 @@ vec3 calculateDirectionalAmbientContribution(vec3 normal, vec3 view_dir, float n
     vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
     vec3 diffuse = irradiance * pbr_params.albedo.rgb / PI;
     vec3 R = normalize(reflect(-view_dir, normal));
-    vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, R, pbr_params.roughness * MAX_REFLECTION_LOD).rgb;
+    vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, R, pbr_params.roughness * (MAX_REFLECTION_LOD - 1)).rgb;
     vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, pbr_params.roughness)).rg;
     vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
 
@@ -48,7 +48,7 @@ vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec
 
         // For directional light
         vec3 radiance = light.color * light.intensity;
-        vec3 kD = (1.0 - F) * (1.0 - pbr_params.metallic);
+        vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
 
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }

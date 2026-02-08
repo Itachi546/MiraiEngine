@@ -133,13 +133,13 @@ class TestApplication : public App {
         renderer->set_pipeline_description_file("Assets/deferred-pipelines.json");
         scene = renderer->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("C:/Users/Dell/OneDrive/Documents/3D-Assets/EnvironmentMap/kloofendal_48d_partly_cloudy_puresky_2k.hdr");
 
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
-        camera->position = glm::vec3(-6.0f, 2.394f, -0.5f);
-        camera->rotation = glm::vec3(-15.7f, -3.6f, 0.0f);
+        camera->position = glm::vec3(-0.529f, 1.127f, -0.067f);
+        camera->rotation = glm::vec3(-5.2f, -180.853f, 0.0f);
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();

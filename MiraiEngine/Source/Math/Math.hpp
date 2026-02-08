@@ -110,13 +110,4 @@ namespace mirai {
         std::array<Plane, 6> planes;
         std::array<glm::vec3, 8> points;
     };
-
-    inline glm::vec3 rotation_to_direction(glm::vec3 rotation) {
-        float theta = rotation.y;
-        float phi = rotation.x;
-        return normalize(glm::vec3(
-            cos(theta) * cos(phi),
-            sin(theta),
-            cos(theta) * sin(phi)));
-    }
 } // namespace mirai
