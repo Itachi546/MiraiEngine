@@ -113,11 +113,11 @@ namespace mirai {
 
         int flags = 0;
         flags = (flags | int(enable_taa)) |
-                (flags | (int(should_sample_motion_vector) << 1)) |
-                (flags | (int(enable_temporal_filtering) << 2)) |
-                (flags | (int(enable_taa_simple) << 3)) |
-                (flags | (int(should_enable_min_depth))) |
-                (flags | (int(should_enable_history_sampling)));
+                ((int(should_sample_motion_vector) << 1)) |
+                ((int(enable_temporal_filtering) << 2)) |
+                ((int(enable_taa_simple) << 3)) |
+                ((int(should_enable_min_depth) << 4)) |
+                ((int(should_enable_history_sampling) << 5));
 
         // Copy output texture to TAA history
         int push_constant_data[] = {

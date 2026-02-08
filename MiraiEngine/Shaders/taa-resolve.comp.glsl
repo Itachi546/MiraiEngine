@@ -27,7 +27,7 @@ bool has_flag(int flags, int flag) {
 }
 
 vec2 uv_nearest(ivec2 pixel, vec2 texture_size) {
-    return (pixel + 0.5) / texture_size;
+    return (vec2(pixel) + 0.5) / texture_size;
 }
 
 void find_closest_fragment_3x3(ivec2 p, out ivec2 closest_position) {
@@ -135,7 +135,6 @@ vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 previous_sample, float average
 vec3 taa_simple(ivec2 id) {
     vec2 image_size = vec2(width, height);
     vec2 uv = uv_nearest(id, image_size);
-
     vec2 velocity = vec2(0.0f);
     if (has_flag(flags, FLAG_SHOULD_SAMPLE_MOTION_VECTOR)) {
         velocity = texture(u_velocity, uv).rg;
@@ -239,6 +238,9 @@ vec3 taa(ivec2 id) {
 
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+    if (id.x > width - 1 || id.y > height - 1)
+        return;
+    
     if (has_flag(flags, FLAG_ENABLE_TAA)) {
         vec3 final_color = has_flag(flags, FLAG_TAA_SIMPLE) ? taa_simple(id) : taa(id);
         imageStore(u_output_texture, id, vec4(final_color, 1.0f));
