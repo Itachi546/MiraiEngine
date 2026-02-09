@@ -2,7 +2,7 @@
 #define PBR_GLSL
 
 #define PI 3.14159265359
-const float MAX_REFLECTION_LOD = 6.0;
+const float MAX_REFLECTION_LOD = 7.0;
 
 float D_GGX(float ndoth, float roughness) {
     float a2 = roughness * roughness;

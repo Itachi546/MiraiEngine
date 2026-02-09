@@ -62,7 +62,6 @@ namespace mirai {
         SamplerDescription sampler_desc = SamplerDescription::create();
         // @NOTE this is done to prevent the brdf texture wrap around when dot(N, V) = 1
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        sampler_desc.enable_anisotropy = false;
         SamplerID hdri_sampler = device->create_sampler(&sampler_desc);
 
         TextureDescription texture_desc = {

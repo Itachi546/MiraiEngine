@@ -11,11 +11,11 @@ vec4 u32_to_rgba(uint color) {
            INV_255;
 }
 
-vec3 gamma(vec3 col) {
+vec3 linear_to_srgb(vec3 col) {
     return pow(col, vec3(0.4545));
 }
 
-vec3 inv_gamma(vec3 col) {
+vec3 srgb_to_linear(vec3 col) {
     return pow(col, vec3(2.2f));
 }
 

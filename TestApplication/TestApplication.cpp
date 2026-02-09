@@ -133,7 +133,7 @@ class TestApplication : public App {
         renderer->set_pipeline_description_file("Assets/deferred-pipelines.json");
         scene = renderer->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("C:/Users/Dell/OneDrive/Documents/3D-Assets/EnvironmentMap/kloofendal_48d_partly_cloudy_puresky_2k.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/papermill.hdr");
 
         scene->set_environment_map(env_map);
 

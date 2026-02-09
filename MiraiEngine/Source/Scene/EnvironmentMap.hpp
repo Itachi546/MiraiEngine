@@ -60,7 +60,7 @@ namespace mirai {
         uint32_t irradiance_map_size = 64;
         uint32_t prefilter_map_size = 512;
         uint32_t brdf_texture_size = 512;
-        uint32_t prefilter_num_mip_levels = 6;
+        uint32_t prefilter_num_mip_levels = 7;
 
         void generate_cubemap(CommandBuffer *command_buffer, Shader *cubemap_shader);
         void convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader);

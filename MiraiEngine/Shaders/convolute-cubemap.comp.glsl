@@ -15,33 +15,29 @@ layout(push_constant) uniform PushConstants {
 };
 
 // https://www.youtube.com/watch?v=xFsJMUS94Fs&list=PL8vNj3osX2PzZ-cNSqhA8G6C1-Li5-Ck8&index=10&ab_channel=GSNComposer
-const int K_MAX_SAMPLES = 512;
-const int K_MAX_SAMPLES_IMPORTANCE = 256 * 256;
-const float PI = 3.141593;
-const float PI2 = 6.283185;
-const float PIH = 1.570796;
+const int K_MAX_SAMPLES = 180;
+const int K_MAX_SAMPLES_IMPORTANCE = 100000;
+
+#define PI 3.1415926535897932384626433832795
+#define PI2 (PI * 2.0f)
+#define PIH (PI * 0.5)
+
+const float dP = PI2 / K_MAX_SAMPLES;
+const float dT = PIH / K_MAX_SAMPLES;
 
 vec3 convolute(vec3 direction) {
-    float dP = PI2 / float(K_MAX_SAMPLES);
-    float dT = PIH / float(K_MAX_SAMPLES);
-
     // Orthonormal basis
     vec3 normal = normalize(direction);
-    vec3 tangent = normalize(cross(vec3(0.0, 1.0, 0.0), normal));
-    vec3 bitangent = normalize(cross(normal, tangent));
+    vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), normal));
+    vec3 up = cross(normal, right);
 
     int sample_count = 0;
     vec3 irradiance = vec3(0.0f);
-    for (float phi = 0.0f; phi <= PI2; phi += dP) {
-        float cos_phi = cos(phi);
-        float sin_phi = sin(phi);
-        for (float theta = 0.0f; theta <= PIH; theta += dT) {
-            float sin_theta = sin(theta);
-            float cos_theta = cos(theta);
-            vec3 sphere_coord = vec3(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
-
-            vec3 sample_dir = sphere_coord.x * tangent + sphere_coord.y * bitangent + sphere_coord.z * normal;
-            irradiance += texture(u_cubemap, sample_dir).rgb * cos_theta * sin_theta;
+    for (float phi = 0.0f; phi < PI2; phi += dP) {
+        for (float theta = 0.0f; theta < PIH; theta += dT) {
+            vec3 temp_vec = cos(phi) * right + sin(phi) * up;
+            vec3 sample_dir = cos(theta) * normal + sin(theta) * temp_vec;
+            irradiance += texture(u_cubemap, sample_dir).rgb * cos(theta) * sin(theta);
             sample_count++;
         }
     }

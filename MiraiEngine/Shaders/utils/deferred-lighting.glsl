@@ -47,7 +47,7 @@ void main() {
     pbr_params.emissive = textureLod(emissive_texture, uv, 0).rgb;
     pbr_params.metallic = normal_pbr.z;
     pbr_params.roughness = normal_pbr.w;
-    pbr_params.ao = texture(ssao_texture, uv).r * 0.15f;
+    pbr_params.ao = texture(ssao_texture, uv).r;
 
     vec3 view_dir = per_frame_data.camera_position.xyz - world_pos;
     float cam_dist = length(view_dir);

@@ -24,7 +24,7 @@ void main() {
         col = texture(u_texture, uv);
 
 #if 1
-    col.rgb = gamma(Filmic(col.rgb));
+    // col.rgb = linear_to_srgb(col.rgb);
     fragColor = col;
 #else
     fragColor = col.rrra;
