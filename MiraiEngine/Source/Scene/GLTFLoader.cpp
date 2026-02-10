@@ -209,7 +209,7 @@ namespace mirai {
                     instance_data.metallic_roughness_texture = K_INVALID_ID;
 
                 if (ext->second.Has("glossinessFactor")) {
-                    instance_data.roughness_factor = 1.0f - cast_float(ext->second.Get("glossinessFactor").Get<double>());
+                    instance_data.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
                 } else {
                     instance_data.roughness_factor = 0.5f;
                 }

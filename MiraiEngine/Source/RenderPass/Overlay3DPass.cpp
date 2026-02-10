@@ -25,7 +25,7 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_FRAGMENT,
         };
         skybox_uniform_set = device->create_uniform_set(&layout, 1, 0, "skybox_binding");
-        TextureID skybox = renderer->get_scene()->get_environment_map()->get_irradiance_map();
+        TextureID skybox = renderer->get_scene()->get_environment_map()->get_cubemap();
         UniformBinding binding = {.resource_id = skybox, .texture_info = {.sampler = default_sampler}};
         device->update_uniform_set(skybox_uniform_set, &binding, 1);
 
