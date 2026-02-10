@@ -158,13 +158,13 @@ class TestApplication : public App {
         Renderer *renderer = Renderer::get();
         scene = renderer->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/papermill.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/the_sky_is_on_fire_2k.hdr");
 
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
-        camera->position = glm::vec3(-0.529f, 1.127f, -0.067f);
-        camera->rotation = glm::vec3(-5.2f, -180.853f, 0.0f);
+        camera->position = glm::vec3(-18.264, 2.394f, 13.56f);
+        camera->rotation = glm::vec3(29.0f, 66.0f, 0.0f);
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();
