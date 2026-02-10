@@ -24,7 +24,7 @@ void main() {
         col = texture(u_texture, uv);
 
 #if 1
-    // col.rgb = linear_to_srgb(col.rgb);
+    col.rgb = linear_to_srgb(ACESFilm(col.rgb));
     fragColor = col;
 #else
     fragColor = col.rrra;

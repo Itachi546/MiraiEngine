@@ -21,6 +21,14 @@ namespace mirai {
 
         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
 
+        float push_constant_data[] = {(float)debug_texture, split_percentage * node->width, 0, 0};
+        PushConstant push_constant = {
+            .data = push_constant_data,
+            .offset = 0,
+            .size = sizeof(float) * 4,
+            .shader_stage = SHADER_STAGE_FRAGMENT,
+        };
+
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
             for (auto &batch : render_batches) {
                 if (batch.batch_type != render_batch_type)
@@ -40,6 +48,7 @@ namespace mirai {
                     renderer->transform_material_set,
                 };
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+                command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
 
                 for (auto &mesh_batch : batch.meshes) {
                     DrawBatch(command_buffer, &mesh_batch, shader);
@@ -54,7 +63,7 @@ namespace mirai {
             pipeline_state.render_state.fields.depth_write = false;
             pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
             draw_batch(RENDERBATCH_TYPE_OPAQUE, pipeline_state);
-
+            /*
             // Draw Transparent Object
             pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
             pipeline_state.render_state.fields.blend_mode = true;
@@ -62,6 +71,7 @@ namespace mirai {
             for (auto &batch : render_batches) {
                 draw_batch(RENDERBATCH_TYPE_TRANSPARENT, pipeline_state);
             }
+            */
         }
         command_buffer->end_render_pass();
 

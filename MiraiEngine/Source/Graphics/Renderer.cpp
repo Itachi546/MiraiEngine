@@ -309,24 +309,25 @@ namespace mirai {
     void Renderer::update() {
         // Update camera jitter
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
-        ASSERT(node != nullptr);
-
         Camera *camera = scene->get_camera();
-        prev_frame_VP = camera->get_view_projection_transform();
-        prev_frame_jitter = current_frame_jitter;
+        if (node) {
+            ASSERT(node != nullptr);
 
-        glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
+            prev_frame_VP = camera->get_view_projection_transform();
+            prev_frame_jitter = current_frame_jitter;
 
-        current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
-        current_frame_jitter *= inv_resolution;
-        jitter_index = (jitter_index + 1) % jitter_period;
+            glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
 
-        TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
-        if (taa && taa->enable_taa)
-            camera->set_jitter_factor(current_frame_jitter);
-        else
-            camera->set_jitter_factor(glm::vec2(0.0f));
+            current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
+            current_frame_jitter *= inv_resolution;
+            jitter_index = (jitter_index + 1) % jitter_period;
 
+            TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
+            if (taa && taa->enable_taa)
+                camera->set_jitter_factor(current_frame_jitter);
+            else
+                camera->set_jitter_factor(glm::vec2(0.0f));
+        }
         scene->update();
 
         main_render_batches.clear();

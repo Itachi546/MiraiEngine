@@ -73,12 +73,38 @@ class TestApplication : public App {
                     .array_layers = 1,
                     .format = FORMAT_B8G8R8A8_UNORM,
                     .load_op = LOAD_OP_CLEAR,
-                    .clear_color = 0x000000ff,
+                    .clear_color = 0x333333ff,
                 },
             },
             .renderer = std::make_shared<ForwardPass>(),
         };
         frame_graph->add_node(forward_pass);
+
+        FrameGraphNodeDescription overlay_pass = {
+            .name = "overlay3D",
+            .enabled = true,
+            .is_compute_pass = false,
+            .inputs = {
+                FrameGraphResourceInput{
+                    .name = "texture_depth",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .load_op = LOAD_OP_LOAD,
+                },
+                FrameGraphResourceInput{
+                    .name = "texture_color",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
+                    .load_op = LOAD_OP_LOAD,
+                },
+            },
+            .outputs = {
+                FrameGraphResourceOutput{
+                    .name = "texture_color",
+                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
+                },
+            },
+            .renderer = std::make_shared<Overlay3DPass>(),
+        };
+        frame_graph->add_node(overlay_pass);
 
         FrameGraphNodeDescription swapchain_copy_pass = {
             .name = "swapchain_copy",
@@ -130,7 +156,6 @@ class TestApplication : public App {
         uint32_t height = 1080;
 
         Renderer *renderer = Renderer::get();
-        renderer->set_pipeline_description_file("Assets/deferred-pipelines.json");
         scene = renderer->get_scene();
 
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/papermill.hdr");
@@ -143,7 +168,15 @@ class TestApplication : public App {
         camera->set_far_plane(1000.0f);
         // Create RenderPass
         frame_graph = Renderer::get()->get_frame_graph();
+#if 0
+        renderer->set_pipeline_description_file("Assets/forward-pipelines.json");
+        initialize_frame_graph(frame_graph);
+        AppSettings::render_mode = RenderMode::RENDERMODE_FORWARD;
+#else
+        renderer->set_pipeline_description_file("Assets/deferred-pipelines.json");
         frame_graph->load_from_file("Assets/deferred-graph.json");
+        AppSettings::render_mode = RenderMode::RENDERMODE_DEFERRED;
+
         frame_graph->set_renderer("deferred_pass", std::make_shared<DeferredPass>());
         frame_graph->set_renderer("deferred_lighting_pass", std::make_shared<DeferredLightingPass>());
         frame_graph->set_renderer("deferred_transparent_pass", std::make_shared<DeferredTransparentPass>());
@@ -151,12 +184,14 @@ class TestApplication : public App {
         frame_graph->set_renderer("ssao_pass", std::make_shared<SSAOPass>());
         frame_graph->set_renderer("directional_shadow_pass", std::make_shared<CascadedShadowPass>());
         frame_graph->set_renderer("rt_directional_shadow_pass", std::make_shared<DirectionalShadowPassRT>());
-        frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("debug_pass", std::make_shared<DebugPass>());
         frame_graph->set_renderer("overlay3D", std::make_shared<Overlay3DPass>());
         frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
         frame_graph->set_renderer("taa_resolve_pass", std::make_shared<TAAResolvePass>());
+        frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
+        frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
 
+#endif
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);
@@ -324,6 +359,14 @@ class TestApplication : public App {
 
                 FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
                 add_rendertarget_texture_debug_ui("taa_output", taa_output);
+                ImGui::TreePop();
+            }
+
+            ForwardPass *forward_pass = (ForwardPass *)frame_graph->get_renderer("forward_pass");
+            if (forward_pass && ImGui::TreeNodeEx("Forward Pass")) {
+                ImGui::SliderFloat("Split Percentage", &forward_pass->split_percentage, 0.0f, 1.0f);
+                static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+                ImGui::Combo("Target", &forward_pass->debug_texture, options);
                 ImGui::TreePop();
             }
 

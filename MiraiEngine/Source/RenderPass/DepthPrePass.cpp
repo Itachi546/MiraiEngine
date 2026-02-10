@@ -19,6 +19,16 @@ namespace mirai {
         if (shader == nullptr) {
             Log::Fatal("Failed to load pipeline for depth-prepass");
         }
+
+        UniformLayout transform_material_layouts[] = {
+            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
+        };
+        transform_set = device->create_uniform_set(transform_material_layouts, cast_u32(std::size(transform_material_layouts)), 1);
+
+        UniformBinding bindings[] = {
+            {.resource_id = renderer->global_transform_buffer},
+        };
+        device->update_uniform_set(transform_set, bindings, cast_u32(std::size(bindings)));
     }
 
     void DepthPrePass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -32,7 +42,7 @@ namespace mirai {
 
         UniformSetID uniform_sets[] = {
             renderer->vt_per_frame_uniform_set,
-            renderer->transform_set,
+            transform_set,
         };
         command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
 

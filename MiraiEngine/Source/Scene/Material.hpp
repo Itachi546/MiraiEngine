@@ -183,7 +183,12 @@ namespace mirai {
                 break;
             }
             case RenderMode::RENDERMODE_FORWARD: {
-                shader_key.fields.shader_pass = is_transparent() ? SHADER_PASS_PBR_FORWARD_TRANSPARENT : SHADER_PASS_PBR_FORWARD;
+                if (is_transparent())
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_FORWARD_TRANSPARENT;
+                else if ((instance_data.flags & FLAG_ALPHA_MASK) == FLAG_ALPHA_MASK)
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_FORWARD_TRANSPARENT;
+                else
+                    shader_key.fields.shader_pass = SHADER_PASS_PBR_FORWARD;
                 break;
             }
             default:

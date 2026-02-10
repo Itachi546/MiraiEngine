@@ -49,6 +49,6 @@ vec2 IntegrateBRDF(float ndotv, float roughness) {
 void main() {
     ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
     vec2 tex_coord = (vec2(uv.xy) + 0.5f) * inv_brdf_texture_size;
-    vec2 brdf = IntegrateBRDF(tex_coord.x, tex_coord.y);
+    vec2 brdf = IntegrateBRDF(tex_coord.x, 1.0f - tex_coord.y);
     imageStore(u_brdf_texture, uv.xy, vec4(brdf, 0.0f, 0.0f));
 }

@@ -26,6 +26,7 @@ layout(push_constant) uniform PushConstant {
 #include "utils/bindless.glsl"
 #include "utils/material.glsl"
 #include "utils/transform.glsl"
+#include "utils/color.glsl"
 
 layout(set = 3, binding = 1) readonly buffer Materials {
     PBRMaterial materials[];
@@ -37,8 +38,11 @@ void main() {
     PBRMaterial material = materials[fs_in.mat_id];
 
     vec4 albedo = material.albedo;
-    if (material.albedo_texture != K_INVALID_TEXTURE)
-        albedo *= sample_texture(material.albedo_texture, fs_in.uv);
+    if (material.albedo_texture != K_INVALID_TEXTURE) {
+        vec4 texture_albedo = sample_texture(material.albedo_texture, fs_in.uv);
+        texture_albedo.rgb = srgb_to_linear(texture_albedo.rgb);
+        albedo *= texture_albedo;
+    }
 
 #ifdef ALPHA_PASS
     if (albedo.a <= material.alpha_cutoff)
@@ -57,7 +61,7 @@ void main() {
     vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
     if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
         if (is_specular_glossiness_workflow(material.flags)) {
-            vec3 spec = sample_texture(material.metallic_roughness_texture, fs_in.uv).rgb;
+            vec3 spec = srgb_to_linear(sample_texture(material.metallic_roughness_texture, fs_in.uv).rgb);
             float spec_intensity = max(spec.r, max(spec.g, spec.b));
             metallic_roughness.x = clamp((spec_intensity - 0.04) / (1.0 - 0.04), 0.0, 1.0);
             vec3 base_color_dielectric = albedo.xyz / (1.0 - 0.04);
@@ -71,7 +75,7 @@ void main() {
 
     vec3 emissive = material.emissive_factor;
     if (material.emissive_texture != K_INVALID_TEXTURE)
-        emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
+        emissive *= srgb_to_linear(sample_texture(material.emissive_texture, fs_in.uv).rgb);
     emissive_buffer = vec4(emissive, 1.0f);
 
     vec2 current_ndc_pos = fs_in.current_clip_pos.xy / fs_in.current_clip_pos.w;

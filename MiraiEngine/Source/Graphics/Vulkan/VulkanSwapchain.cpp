@@ -94,7 +94,7 @@ namespace mirai {
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, surface_formats.data()));
 
         VkFormat required_format = VK_FORMAT_B8G8R8A8_UNORM;
-        VkColorSpaceKHR required_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        VkColorSpaceKHR required_colorspace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
         for (auto &supported : surface_formats) {
             if (supported.format == required_format && supported.colorSpace == required_colorspace)

@@ -4,6 +4,7 @@
 #include "material.glsl"
 #include "bindless.glsl"
 #include "pbr.glsl"
+#include "color.glsl"
 
 struct Light {
     vec3 direction_or_position;
@@ -12,7 +13,10 @@ struct Light {
     float intensity;
 };
 
-vec3 calculateDirectionalAmbientContribution(vec3 normal, vec3 view_dir, float ndotv, vec3 F0, PBRParameter pbr_params) {
+#define IBL_CONTRIBUTION 1.0f
+
+vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params) {
+    /*
     vec3 Ks = F_SchlickRoughness(ndotv, F0, pbr_params.roughness);
     vec3 Kd = (1.0 - Ks) * (1.0 - pbr_params.metallic);
     vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
@@ -24,15 +28,34 @@ vec3 calculateDirectionalAmbientContribution(vec3 normal, vec3 view_dir, float n
 
     vec3 ambient = (Kd * diffuse + specular) * pbr_params.ao;
     return ambient;
+    */
+    float lod = pbr_params.roughness * MAX_REFLECTION_LOD;
+    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, 1.0f - pbr_params.roughness)).rg;
+
+    vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
+    vec3 specular_light = sample_texture_cube_lod(per_frame_data.prefilter_map, reflection, lod).rgb;
+    vec3 f0 = vec3(0.04f);
+
+    vec3 diffuse_color = pbr_params.albedo.rgb * (vec3(1.0f) - f0);
+    diffuse_color *= (1.0f - pbr_params.metallic);
+    vec3 diffuse = diffuse_light * diffuse_color;
+
+    vec3 specular_color = mix(f0, pbr_params.albedo.rgb, pbr_params.metallic);
+
+    vec3 specular = specular_light * (specular_color * brdf.x + brdf.y);
+
+    return (diffuse + specular) * IBL_CONTRIBUTION;
 }
 
 vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
     vec3 light_direction = light.direction_or_position;
     vec3 halfway_vector = normalize(view_dir + light_direction);
-    float ndotl = max(dot(normal, light_direction), 0.0);
-    float ndotv = max(dot(normal, view_dir), 0.0);
-    float ndoth = max(dot(normal, halfway_vector), 0.0);
-    float ldoth = max(dot(light_direction, halfway_vector), 0.0);
+    vec3 reflection = normalize(reflect(-view_dir, normal));
+
+    float ndotl = clamp(dot(normal, light_direction), 0.001, 1.0);
+    float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
+    float ndoth = clamp(dot(normal, halfway_vector), 0.0, 1.0);
+    float ldoth = clamp(dot(light_direction, halfway_vector), 0.0, 1.0);
 
     // Directional Light Lighting calculation
     vec3 Lo = vec3(0.0f);
@@ -52,6 +75,6 @@ vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec
 
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }
-    return /*Lo +*/ calculateDirectionalAmbientContribution(normal, view_dir, ndotv, F0, pbr_params) + pbr_params.emissive;
+    return Lo + getIBLContribution(reflection, normal, ndotv, F0, pbr_params) * pbr_params.ao + pbr_params.emissive;
 }
 #endif

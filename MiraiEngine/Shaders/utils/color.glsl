@@ -12,11 +12,25 @@ vec4 u32_to_rgba(uint color) {
 }
 
 vec3 linear_to_srgb(vec3 col) {
-    return pow(col, vec3(0.4545));
+    bvec3 cutoff = lessThan(col, vec3(0.0031308));
+    vec3 higher = vec3(1.055) * pow(col, vec3(1.0 / 2.4)) - vec3(0.055);
+    vec3 lower = col * vec3(12.92);
+    return mix(higher, lower, cutoff);
 }
 
-vec3 srgb_to_linear(vec3 col) {
-    return pow(col, vec3(2.2f));
+vec3 srgb_to_linear(vec3 srgbIn) {
+#define MANUAL_SRGB 1
+#ifdef MANUAL_SRGB
+#ifdef SRGB_FAST_APPROXIMATION
+    vec3 linOut = pow(srgbIn.xyz, vec3(2.2));
+#else  // SRGB_FAST_APPROXIMATION
+    vec3 bLess = step(vec3(0.04045), srgbIn.xyz);
+    vec3 linOut = mix(srgbIn.xyz / vec3(12.92), pow((srgbIn.xyz + vec3(0.055)) / vec3(1.055), vec3(2.4)), bLess);
+#endif // SRGB_FAST_APPROXIMATION
+    return linOut;
+#else  // MANUAL_SRGB
+    return srgbIn;
+#endif // MANUAL_SRGB
 }
 
 float rgb_to_luma(vec3 col) {
@@ -32,9 +46,16 @@ vec3 ACESFilm(vec3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-vec3 Filmic(const vec3 hdr) {
-    vec3 x = max(vec3(0.0f), hdr - 0.004f);
-    return (x * (6.2f * x + 0.5f)) / (x * (6.2f * x + 1.7f) + 0.06f);
+// From http://filmicworlds.com/blog/filmic-tonemapping-operators/
+vec3 Uncharted2Tonemap(vec3 color) {
+    float A = 0.15;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    float W = 11.2;
+    return ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
 }
 
 #endif

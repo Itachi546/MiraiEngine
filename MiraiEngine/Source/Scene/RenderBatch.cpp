@@ -71,10 +71,10 @@ namespace mirai {
             uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
             if (material->is_transparent()) {
                 render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
-                filter_flag |= BATCH_FILTER_FLAG_TRANSPARENT;
+                filter_flag = BATCH_FILTER_FLAG_TRANSPARENT;
             } else if (material->has_alpha_mask()) {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
-                filter_flag |= BATCH_FILTER_FLAG_ALPHA_MASK;
+                filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
 
             if ((batch_filter_flags & filter_flag) != filter_flag)

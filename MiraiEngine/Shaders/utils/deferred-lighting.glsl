@@ -71,7 +71,7 @@ void main() {
 #endif
     }
     vec3 Lo;
-    if (split_percentage.x >= uv.x) {
+    if (split_percentage >= uv.x) {
         if (debug_texture_index > 4.5f)
             Lo = vec3(shadow_factor);
         else if (debug_texture_index > 3.5f)
@@ -81,12 +81,11 @@ void main() {
         else if (debug_texture_index > 1.5f)
             Lo = vec3(pbr_params.metallic);
         else if (debug_texture_index > 0.5f)
-            Lo = normal;
+            Lo = normal * 0.5 + 0.5;
         else
             Lo = pbr_params.albedo.xyz;
     } else {
         Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
     }
-
     fragColor = vec4(Lo, 1.0f);
 }

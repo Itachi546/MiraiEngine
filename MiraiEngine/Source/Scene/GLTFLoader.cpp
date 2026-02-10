@@ -126,7 +126,7 @@ namespace mirai {
         // @TODO update sampler based on the gltf_sampler
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
-        //sampler_desc.lod_bias = -0.5f;
+        // sampler_desc.lod_bias = -0.5f;
         SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
         p_user_data->textures.emplace_back(texture, sampler);
@@ -457,6 +457,12 @@ namespace mirai {
             transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
         if (node->scale.size() > 0)
             transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
+        if (node->matrix.size() > 0) {
+            glm::mat4 transformation_matrix = glm::make_mat4x4(node->matrix.data());
+            glm::vec3 skew;
+            glm::vec4 perspective;
+            glm::decompose(transformation_matrix, transform.scale, transform.rotation, transform.position, skew, perspective);
+        }
 
         // HierarchyComponent
         if (!comp_manager->has_component<HierarchyComponent>(parent))
@@ -490,12 +496,15 @@ namespace mirai {
             camera->set_far_plane(cast_float(perspective.zfar));
 
             if (node->translation.size() > 0)
-                camera->position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
+                camera->position = transform.position;
             if (node->rotation.size() > 0) {
                 glm::fquat rotation = glm::fquat{(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
                 camera->rotation = glm::degrees(glm::eulerAngles(rotation));
-                camera->rotation.x = -camera->rotation.x;
-                camera->rotation.y = -camera->rotation.y;
+            }
+            if (node->matrix.size()) {
+                camera->position = transform.position;
+                camera->rotation = glm::degrees(glm::eulerAngles(transform.rotation));
+                camera->rotation.y = -90.0f + camera->rotation.y;
             }
         }
 

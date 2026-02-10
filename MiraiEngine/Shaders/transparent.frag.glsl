@@ -52,8 +52,8 @@ void main() {
             metallic_roughness = sample_texture(material.metallic_roughness_texture, fs_in.uv).bg;
         }
     }
-    pbr_params.metallic= metallic_roughness.r;
-    pbr_params.roughness= metallic_roughness.g;
+    pbr_params.metallic = metallic_roughness.r;
+    pbr_params.roughness = metallic_roughness.g;
     if (material.emissive_texture != K_INVALID_TEXTURE)
         pbr_params.emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
 
