@@ -17,6 +17,7 @@
 #include "Engine/Timer.hpp"
 #include "TextureCache.hpp"
 #include "Material.hpp"
+#include "Graphics/RenderingDevice.hpp"
 #include "Graphics/Renderer.hpp"
 
 #include <memory>
@@ -54,6 +55,59 @@ namespace mirai {
         }
     }
 
+    FilterMode get_sampler_filter(int filter) {
+        switch (filter) {
+        case TINYGLTF_TEXTURE_FILTER_NEAREST:
+            return FILTER_NEAREST;
+        case TINYGLTF_TEXTURE_FILTER_LINEAR:
+            return FILTER_LINEAR;
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
+            return FILTER_NEAREST_MIPMAP_NEAREST;
+        case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
+            return FILTER_LINEAR_MIPMAP_NEAREST;
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
+            return FILTER_NEAREST_MIPMAP_LINEAR;
+        case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
+            return FILTER_LINEAR_MIPMAP_LINEAR;
+        default: return FILTER_LINEAR;
+        }
+    }
+
+    SamplerAddressMode get_sampler_address_mode(int address_mode) {
+        switch (address_mode) {
+        case TINYGLTF_TEXTURE_WRAP_REPEAT:
+            return SAMPLER_ADDRESS_MODE_REPEAT;
+        case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+            return SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
+            return SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        default:
+            return SAMPLER_ADDRESS_MODE_REPEAT;
+        };
+    }
+
+    bool is_srgb_format(dds::DXGI_FORMAT format) {
+        switch (format) {
+        case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    SamplerID CreateSampler(const tinygltf::Sampler *sampler) {
+        SamplerDescription sampler_desc = SamplerDescription::create();
+        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
+        if (sampler != nullptr) {
+            sampler_desc.min_filter = get_sampler_filter(sampler->minFilter);
+            sampler_desc.mag_filter = get_sampler_filter(sampler->magFilter);
+            sampler_desc.address_mode_u = get_sampler_address_mode(sampler->wrapS);
+            sampler_desc.address_mode_v = get_sampler_address_mode(sampler->wrapT);
+        }
+
+        return RenderingDevice::get()->create_sampler(&sampler_desc);
+    }
+
     std::string FormatTextureURI(const std::string &uri) {
         std::string result;
         if (uri.empty()) {
@@ -63,83 +117,85 @@ namespace mirai {
             tinygltf::URIDecode(uri, &decoded_uri, nullptr);
             result = decoded_uri;
         }
-
-        if (utils::get_file_extension(uri) != "dds") {
-            result = utils::replace_file_extension(result, "dds");
-        }
         return result;
     }
 
-    bool LoadImageData(tinygltf::Image *image, const int image_idx, std::string *err,
-                       std::string *warn, int req_width, int req_height,
-                       const unsigned char *bytes, int size, void *user_data) {
+    bool LoadImageData(tinygltf::Image *image, const tinygltf::Sampler *sampler, void *user_data, bool is_color_texture = false) {
 
         image->uri = FormatTextureURI(image->uri);
         if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
             return true;
         }
 
+        std::string extension = utils::get_file_extension(image->uri);
+
         UserData *p_user_data = (UserData *)user_data;
         std::string full_path = p_user_data->base_path + image->uri;
-        FILE *file = fopen(full_path.c_str(), "rb");
-        if (!file) {
-            *err = "Failed to open texture file: " + image->uri;
-            return false;
-        }
-
-        std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
-
-        dds::Header header;
-        if (fread(&header, sizeof(header), 1, file) != 1)
-            return false;
-        file_ptr.reset();
-        file_ptr.release();
-
-        ASSERT_MSG(header.header.dwWidth > 0 && header.header.dwWidth > 0, "zero width or height");
-        if (header.header10.resourceDimension != dds::D3D10_RESOURCE_DIMENSION_TEXTURE2D)
-            return false;
-
-        Format format = get_image_format(header.header10.dxgiFormat);
-        ASSERT_MSG(format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
-
-        uint32_t width = header.header.dwWidth;
-        uint32_t height = header.header.dwHeight;
-        uint32_t mip_count = header.header.dwMipMapCount;
-
-        if (SKIP_DDS_FIRST_N_LEVEL > 0 && mip_count > SKIP_DDS_FIRST_N_LEVEL) {
-            for (int i = 0; i < SKIP_DDS_FIRST_N_LEVEL; ++i) {
-                width = width / 2;
-                height = height / 2;
-                mip_count--;
-            }
-        }
 
         TextureDescription texture_desc = {
             .create_flags = 0,
-            .width = width,
-            .height = height,
+            .width = 0,
+            .height = 0,
             .depth = 1,
-            .mip_levels = mip_count,
+            .mip_levels = 0,
             .array_layers = 1,
             .texture_type = TEXTURE_TYPE_2D,
-            .format = format,
+            .format = FORMAT_UNDEFINED,
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
         };
-        // @TODO update sampler based on the gltf_sampler
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
-        // sampler_desc.lod_bias = -0.5f;
-        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
+
+        bool is_dds_texture = false;
+        if (extension == "dds") {
+            FILE *file = fopen(full_path.c_str(), "rb");
+            if (!file) {
+                return false;
+            }
+            std::unique_ptr<FILE, int (*)(FILE *)> file_ptr(file, fclose);
+
+            dds::Header header;
+            if (fread(&header, sizeof(header), 1, file) != 1)
+                return false;
+            file_ptr.reset();
+            file_ptr.release();
+
+            ASSERT_MSG(header.width() > 0 && header.height() > 0, "zero width or height");
+            if (!header.is_2d())
+                return false;
+
+            texture_desc.format = get_image_format(header.format());
+            ASSERT_MSG(texture_desc.format != FORMAT_UNDEFINED, "Unsupported DDS Image Format");
+            if (is_color_texture && !is_srgb_format(header.format())) {
+                Log::Warn("Unsupported color texture format, should be srgb", full_path);
+                return false;
+            }
+
+            uint32_t width = header.width();
+            uint32_t height = header.height();
+            uint32_t mip_count = header.mip_levels();
+
+            if (SKIP_DDS_FIRST_N_LEVEL > 0 && mip_count > SKIP_DDS_FIRST_N_LEVEL) {
+                for (int i = 0; i < SKIP_DDS_FIRST_N_LEVEL; ++i) {
+                    width = width / 2;
+                    height = height / 2;
+                    mip_count--;
+                }
+            }
+            texture_desc.width = width;
+            texture_desc.height = height;
+            texture_desc.mip_levels = mip_count;
+            is_dds_texture = true;
+        } else {
+        }
+        SamplerID sampler_id = CreateSampler(sampler);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
-        p_user_data->textures.emplace_back(texture, sampler);
+        p_user_data->textures.emplace_back(texture, sampler_id);
 
         TextureCache::get()->add_texture(image->uri, texture);
-
         p_user_data->async_loader->add_texture_load_task({
             .texture = texture,
             .filename = full_path,
-            .block_size = 16,
-            .skip_n_levels = SKIP_DDS_FIRST_N_LEVEL,
+            .is_dds_texture = is_dds_texture,
+            .skip_first_n_level = SKIP_DDS_FIRST_N_LEVEL,
         });
         return true;
     }
@@ -147,24 +203,24 @@ namespace mirai {
     static void LoadMaterials(tinygltf::Model *model, LoadState *load_state, UserData *user_data) {
         size_t material_count = model->materials.size();
 
-        auto LoadTexture = [&](int texture_index) {
+        auto LoadTexture = [&](int texture_index, bool is_color_texture) {
             if (texture_index < 0)
                 return K_INVALID_ID;
 
             const tinygltf::Texture &texture = model->textures[texture_index];
             tinygltf::Image &image = model->images[texture.source];
 
+            const tinygltf::Sampler *sampler = nullptr;
+            if (texture.sampler > 0)
+                sampler = &model->samplers[texture.sampler];
+
             std::string texture_name = FormatTextureURI(image.uri);
             TextureID texture_id = TextureCache::get()->get_texture_id(texture_name);
             if (image.uri.size() > 0 && texture_id.id == K_INVALID_RESOURCE_HANDLE) {
                 // We forgot to load this texture somehow
                 std::string err, warn;
-                if (!LoadImageData(&image, 0, &err, &warn, 0, 0, nullptr, 0, user_data)) {
-                    Log::Warn(err);
-                    return K_INVALID_ID;
-                }
-                if (warn.size() > 0) {
-                    Log::Warn(err);
+                if (!LoadImageData(&image, sampler, user_data, is_color_texture)) {
+                    Log::Warn("Failed to load texture: ", image.uri);
                     return K_INVALID_ID;
                 }
                 texture_id = TextureCache::get()->get_texture_id(image.uri);
@@ -201,12 +257,12 @@ namespace mirai {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
                 instance_data.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
                 if (ext->second.Has("diffuseTexture"))
-                    instance_data.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>());
+                    instance_data.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
                 else
                     instance_data.albedo_texture = K_INVALID_ID;
 
                 if (ext->second.Has("specularGlossinessTexture"))
-                    instance_data.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>());
+                    instance_data.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
                 else
                     instance_data.metallic_roughness_texture = K_INVALID_ID;
 
@@ -231,21 +287,21 @@ namespace mirai {
                 }
             } else {
                 // Process Textures
-                instance_data.albedo_texture = LoadTexture(pbr.baseColorTexture.index);
-                instance_data.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index);
+                instance_data.albedo_texture = LoadTexture(pbr.baseColorTexture.index, true);
+                instance_data.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index, false);
                 instance_data.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
                 instance_data.metallic_factor = static_cast<float>(pbr.metallicFactor);
                 instance_data.roughness_factor = static_cast<float>(pbr.roughnessFactor);
             }
 
             instance_data.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
-            instance_data.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index);
+            instance_data.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index, true);
 
             const tinygltf::NormalTextureInfo &normal_texture = gltf_material->normalTexture;
-            instance_data.normal_texture = LoadTexture(normal_texture.index);
+            instance_data.normal_texture = LoadTexture(normal_texture.index, false);
 
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
-            instance_data.occlusion_texture = LoadTexture(occlusion_texture.index);
+            instance_data.occlusion_texture = LoadTexture(occlusion_texture.index, false);
             load_state->scene->materials.push_back(std::move(material));
         }
     }
@@ -527,7 +583,7 @@ namespace mirai {
         std::string err, warn;
 
         tinygltf::TinyGLTF gltf_loader;
-        gltf_loader.SetImageLoader(LoadImageData, &user_data);
+        gltf_loader.SetImageLoader(nullptr, nullptr);
         gltf_loader.SetStoreOriginalJSONForExtrasAndExtensions(true);
 
         Log::Info("Loading Model: ", filename);
@@ -567,7 +623,7 @@ namespace mirai {
 
         LoadMaterials(&gltf_model, &load_state, &user_data);
         async_loader.start();
-        
+
         LoadMeshes(&gltf_model, &load_state);
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)

@@ -206,7 +206,7 @@ namespace mirai {
         vkCmdCopyBuffer(command_buffer, src_buffer->buffer, dst_buffer->buffer, copy_region_count, (const VkBufferCopy *)regions);
     }
 
-    void CommandBuffer::copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size) {
+    void CommandBuffer::copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size, uint32_t bit_per_element) {
         VulkanBuffer *src_buffer = device->access_buffer(src);
         VulkanTexture *dst_image = device->access_texture(dst);
 
@@ -255,7 +255,7 @@ namespace mirai {
 
             vkCmdCopyBufferToImage(command_buffer, src_buffer->buffer, dst_image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
 
-            buffer_offset += ((mip_width + 3) / 4) * ((mip_height + 3) / 4) * block_size;
+            buffer_offset += ((mip_width + block_size - 1) / block_size) * ((mip_height + block_size - 1) / block_size) * (bit_per_element / 8u);
             mip_width = mip_width > 1 ? mip_width / 2 : 1;
             mip_height = mip_height > 1 ? mip_height / 2 : 1;
         }

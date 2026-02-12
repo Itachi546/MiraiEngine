@@ -59,7 +59,7 @@ namespace mirai {
 
         void copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion *region, uint32_t region_count);
 
-        void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size);
+        void copy_texture(TextureID dst, BufferID src, uint32_t buffer_offset, uint32_t mip_count, uint32_t block_size, uint32_t bit_per_element);
 
         void copy_texture(TextureID dst, TextureID src, uint32_t dst_width, uint32_t dst_height);
 

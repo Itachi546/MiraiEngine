@@ -521,6 +521,13 @@ namespace dds {
                 return false;
             return header10.resourceDimension == D3D10_RESOURCE_DIMENSION_TEXTURE1D;
         }
+        // returns true if the texture is two dimensional, false otherwise
+        constexpr bool is_2d() const {
+            if (!is_dx10())
+                return false;
+            return header10.resourceDimension == D3D10_RESOURCE_DIMENSION_TEXTURE2D;
+        }
+
         // returns true if the texture is three dimensional, false otherwise
         constexpr bool is_3d() const {
             if (!is_dx10())
@@ -697,6 +704,7 @@ namespace dds {
             case DXGI_FORMAT_BC7_UNORM_SRGB:
                 return 4;
             default:
+                std::cerr << "Undefined format" << std::endl;
                 return 1;
             }
         }
