@@ -35,6 +35,7 @@ namespace mirai {
         command_buffer->begin();
         // Block size is ignored for single mip
         command_buffer->copy_texture(dst, staging_buffer, 0, 1, 1, 32);
+        command_buffer->prepare_image_for_shader_read(dst);
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
         device->destroy_buffers(&staging_buffer, 1);

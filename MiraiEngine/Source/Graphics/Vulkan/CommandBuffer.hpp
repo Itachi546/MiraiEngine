@@ -63,7 +63,11 @@ namespace mirai {
 
         void copy_texture(TextureID dst, TextureID src, uint32_t dst_width, uint32_t dst_height);
 
+        // Uses VkImageMemoryBarrier2
         void prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count);
+
+        // Uses VkImageMemoryBarrier2
+        void prepare_image_for_shader_read(TextureID texture);
 
         void prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count);
 

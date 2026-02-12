@@ -100,6 +100,7 @@ namespace mirai {
         FORMAT_R8G8B8A8_UNORM,
         FORMAT_R8G8B8A8_SRGB,
         FORMAT_R8G8B8_UNORM,
+        FORMAT_R8G8B8_SRGB,
         FORMAT_R8G8_UNORM,
         FORMAT_R8_UNORM,
         FORMAT_R16_UNORM,

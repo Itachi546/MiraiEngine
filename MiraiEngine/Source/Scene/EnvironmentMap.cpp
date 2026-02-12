@@ -78,6 +78,7 @@ namespace mirai {
 
         TextureID hdri_texture = device->create_texture(&texture_desc, "hdri_texture");
         rendering_utils::copy_texture_immediate(hdri_texture, data.get(), width * height * sizeof(float) * 4);
+        
 
         data.reset();
         data = nullptr;

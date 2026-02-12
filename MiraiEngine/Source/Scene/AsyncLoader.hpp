@@ -19,6 +19,7 @@ namespace mirai {
 
         bool is_dds_texture;
         uint32_t skip_first_n_level;
+        bool force_rgba;
     };
 
     class AsyncLoader {
@@ -47,5 +48,7 @@ namespace mirai {
         uint32_t total_texture_loaded = 0;
 
         void load_dds_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr);
+        void load_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr);
+        void copy_buffer(CommandBuffer *command_buffer, std::shared_ptr<BufferCopyTask> load_task, void *staging_buffer_ptr);
     };
 } // namespace mirai

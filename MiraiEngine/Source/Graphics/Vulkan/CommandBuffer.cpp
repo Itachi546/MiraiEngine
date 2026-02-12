@@ -259,28 +259,8 @@ namespace mirai {
             mip_width = mip_width > 1 ? mip_width / 2 : 1;
             mip_height = mip_height > 1 ? mip_height / 2 : 1;
         }
-
-        VkImageMemoryBarrier2 shader_read_barrier = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-            .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = dst_image->image,
-            .subresourceRange = {
-                .aspectMask = dst_image->image_aspect,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-        };
-        pipeline_barrier(&shader_read_barrier, 1, nullptr, 0);
-        dst_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        dst_image->access_flags = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        dst_image->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
 
     void CommandBuffer::copy_texture(TextureID dst, TextureID src, uint32_t width, uint32_t height) {
@@ -333,6 +313,33 @@ namespace mirai {
             texture->stage_mask = VkPipelineStageFlags2(barrier_info->stage_mask);
         }
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
+    }
+
+    void CommandBuffer::prepare_image_for_shader_read(TextureID texture) {
+        VulkanTexture *vk_image = device->access_texture(texture);
+        VkImageMemoryBarrier2 shader_read_barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = vk_image->stage_mask,
+            .srcAccessMask = vk_image->access_flags,
+            .dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            .dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout = vk_image->current_layout,
+            .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = vk_image->image,
+            .subresourceRange = {
+                .aspectMask = vk_image->image_aspect,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        };
+        pipeline_barrier(&shader_read_barrier, 1, nullptr, 0);
+        vk_image->access_flags = VK_ACCESS_2_SHADER_READ_BIT;
+        vk_image->stage_mask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+        vk_image->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
     void CommandBuffer::prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count) {

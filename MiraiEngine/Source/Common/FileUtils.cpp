@@ -45,6 +45,11 @@ namespace utils {
             return path;
         return path.substr(0, index + 1);
     }
+
+    bool get_image_info(const char *filename, int *width, int *height, int *n_channel) {
+        return stbi_info(filename, width, height, n_channel) == 1;
+    }
+
     std::unique_ptr<unsigned char, void (*)(void *)> load_from_file(FILE *file, int *width, int *height, int *n_channel, int req_channel) {
         return std::unique_ptr<unsigned char, void (*)(void *)>(
             stbi_load_from_file(file, width, height, n_channel, req_channel),

@@ -95,6 +95,24 @@ namespace mirai {
         }
     }
 
+    Format get_format(int nchannel, bool is_color_texture) {
+        switch (nchannel) {
+        case 1: {
+            ASSERT(is_color_texture == false);
+            return FORMAT_R8_UNORM;
+        }
+        case 2: {
+            ASSERT(is_color_texture == false);
+            return FORMAT_R8G8_UNORM;
+        }
+        case 3:
+        case 4:
+            return is_color_texture ? FORMAT_R8G8B8A8_SRGB : FORMAT_R8G8B8A8_UNORM;
+        default:
+            return FORMAT_UNDEFINED;
+        }
+    }
+
     SamplerID CreateSampler(const tinygltf::Sampler *sampler) {
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
@@ -145,6 +163,7 @@ namespace mirai {
         };
 
         bool is_dds_texture = false;
+        bool force_rgba = false;
         if (extension == "dds") {
             FILE *file = fopen(full_path.c_str(), "rb");
             if (!file) {
@@ -185,6 +204,23 @@ namespace mirai {
             texture_desc.mip_levels = mip_count;
             is_dds_texture = true;
         } else {
+            int width, height, nchannel;
+            if (!utils::get_image_info(full_path.c_str(), &width, &height, &nchannel)) {
+                return false;
+            }
+            texture_desc.width = width;
+            texture_desc.height = height;
+            texture_desc.mip_levels = 1 + int(std::log2(std::max(width, height)));
+            // Needed to generate mipmap
+            texture_desc.usage_flags |= TEXTURE_USAGE_TRANSFER_SRC_BIT;
+            texture_desc.format = get_format(nchannel, is_color_texture);
+            if (texture_desc.format == FORMAT_UNDEFINED) {
+                Log::Warn("Unsupported texture format", full_path);
+                return false;
+            }
+
+            if (is_color_texture && nchannel == 3)
+                force_rgba = true;
         }
         SamplerID sampler_id = CreateSampler(sampler);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
@@ -196,6 +232,7 @@ namespace mirai {
             .filename = full_path,
             .is_dds_texture = is_dds_texture,
             .skip_first_n_level = SKIP_DDS_FIRST_N_LEVEL,
+            .force_rgba = force_rgba,
         });
         return true;
     }

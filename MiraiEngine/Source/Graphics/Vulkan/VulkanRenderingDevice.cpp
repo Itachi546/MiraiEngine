@@ -1029,8 +1029,8 @@ namespace mirai {
         barriers[0] = CreateImageMemoryBarrier2(texture->image,
                                                 VkPipelineStageFlagBits2(src_pipeline_stage),
                                                 texture->access_flags,
-                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                VK_ACCESS_TRANSFER_READ_BIT,
+                                                VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                VK_ACCESS_2_TRANSFER_READ_BIT,
                                                 texture->current_layout,
                                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                 VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1038,8 +1038,8 @@ namespace mirai {
         barriers[1] = CreateImageMemoryBarrier2(texture->image,
                                                 VkPipelineStageFlagBits2(src_pipeline_stage),
                                                 texture->access_flags,
-                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                                 texture->current_layout,
                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                 VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1089,7 +1089,9 @@ namespace mirai {
         vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
 
         texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    } // namespace mirai
+        texture->access_flags = VK_ACCESS_2_TRANSFER_READ_BIT;
+        texture->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    } 
 
     void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
