@@ -41,7 +41,7 @@ void main() {
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE) {
         vec4 texture_albedo = sample_texture(material.albedo_texture, fs_in.uv);
-        texture_albedo.rgb = srgb_to_linear(texture_albedo.rgb);
+        // texture_albedo.rgb = srgb_to_linear(texture_albedo.rgb);
         albedo *= texture_albedo;
     }
 
@@ -61,7 +61,7 @@ void main() {
     if (is_specular_glossiness_workflow(material.flags)) {
         vec4 specular_glossiness = metallic_roughness.rrrg;
         if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            specular_glossiness.rgb = srgb_to_linear(sample_texture(material.metallic_roughness_texture, fs_in.uv).rgb);
+            specular_glossiness.rgb = sample_texture(material.metallic_roughness_texture, fs_in.uv).rgb;
 
         metallic_roughness.y = 1.0f - specular_glossiness.a;
 
@@ -84,7 +84,7 @@ void main() {
 
     vec3 emissive = material.emissive_factor;
     if (material.emissive_texture != K_INVALID_TEXTURE)
-        emissive *= srgb_to_linear(sample_texture(material.emissive_texture, fs_in.uv).rgb);
+        emissive *= sample_texture(material.emissive_texture, fs_in.uv).rgb;
     emissive_buffer = vec4(emissive, 1.0f);
 
     vec2 current_ndc_pos = fs_in.current_clip_pos.xy / fs_in.current_clip_pos.w;
