@@ -52,7 +52,7 @@ namespace mirai {
 
     EnvironmentMap::EnvironmentMap(const std::string &hdri_path) : hdri_path(hdri_path) {
         int width, height, n_channel;
-        float *data = utils::load_image_float(hdri_path.c_str(), &width, &height, &n_channel, 4);
+        auto data = utils::load_image_float(hdri_path.c_str(), &width, &height, &n_channel, 4);
         if (data == nullptr) {
             Log::Error("Failed to load hdri: ", hdri_path);
         }
@@ -77,8 +77,10 @@ namespace mirai {
         };
 
         TextureID hdri_texture = device->create_texture(&texture_desc, "hdri_texture");
-        rendering_utils::copy_texture_immediate(hdri_texture, data, width * height * sizeof(float) * 4);
-        utils::free_image(data);
+        rendering_utils::copy_texture_immediate(hdri_texture, data.get(), width * height * sizeof(float) * 4);
+
+        data.reset();
+        data = nullptr;
 
         initialize_textures();
 

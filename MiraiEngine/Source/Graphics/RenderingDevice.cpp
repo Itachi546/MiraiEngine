@@ -42,7 +42,7 @@ namespace mirai {
 
     TextureID rendering_utils::load_texture2d_from_path(const std::string &path) {
         int n_channel, width, height;
-        unsigned char *data = utils::load_image(path.c_str(), &width, &height, &n_channel, 4);
+        auto data = utils::load_image(path.c_str(), &width, &height, &n_channel, 4);
         ASSERT(data != nullptr);
         if (data == nullptr)
             return TextureID{K_INVALID_ID};
@@ -60,8 +60,10 @@ namespace mirai {
         };
 
         TextureID texture_id = RenderingDevice::get()->create_texture(&texture_desc, "hdri_texture");
-        rendering_utils::copy_texture_immediate(texture_id, data, width * height * sizeof(uint8_t) * 4);
-        utils::free_image(data);
+        rendering_utils::copy_texture_immediate(texture_id, data.get(), width * height * sizeof(uint8_t) * 4);
+
+        data.reset();
+        data = nullptr;
         return texture_id;
     }
 } // namespace mirai

@@ -2,7 +2,8 @@
 
 #include <fstream>
 
-#include <stb_image.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace mirai {
 namespace utils {
@@ -44,23 +45,31 @@ namespace utils {
             return path;
         return path.substr(0, index + 1);
     }
-
-    unsigned char *load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
-        return stbi_load(filename, width, height, n_channel, req_channel);
+    std::unique_ptr<unsigned char, void (*)(void *)> load_from_file(FILE *file, int *width, int *height, int *n_channel, int req_channel) {
+        return std::unique_ptr<unsigned char, void (*)(void *)>(
+            stbi_load_from_file(file, width, height, n_channel, req_channel),
+            stbi_image_free);
     }
 
-    uint16_t *load_image16(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
-        return stbi_load_16(filename, width, height, n_channel, req_channel);
+    std::unique_ptr<unsigned char, void (*)(void *)> load_image(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
+        return std::unique_ptr<unsigned char, void (*)(void *)>(
+            stbi_load(filename, width, height, n_channel, req_channel),
+            stbi_image_free);
     }
 
-    float *load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
+    std::unique_ptr<uint16_t, void (*)(void *)> load_image16(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
+        return std::unique_ptr<uint16_t, void (*)(void *)>(
+            stbi_load_16(filename, width, height, n_channel, req_channel),
+            stbi_image_free);
+    }
+
+    std::unique_ptr<float, void (*)(void *)> load_image_float(const char *filename, int *width, int *height, int *n_channel, int req_channel) {
         stbi_set_flip_vertically_on_load(true);
         float *data = stbi_loadf(filename, width, height, n_channel, req_channel);
-        return data;
-    }
-
-    void free_image(void *data) {
-        stbi_image_free(data);
+        stbi_set_flip_vertically_on_load(false);
+        return std::unique_ptr<float, void (*)(void *)>(
+            data,
+            stbi_image_free);
     }
 
     std::string replace_file_extension(const std::string &filename, const std::string &new_extension) {

@@ -35,12 +35,6 @@ if(NOT TARGET glm)
     set_target_properties(glm PROPERTIES FOLDER "External")
 endif()
 
-find_package(tinygltf QUIET)
-if(NOT TARGET tinygltf)
-    set(TINYGLTF_BUILD_BUILDER_EXAMPLE OFF CACHE BOOL "")
-    add_subdirectory(../External/tinygltf tinygltf)
-endif()
-
 find_package(volk QUIET)
 if(NOT TARGET volk)
     add_subdirectory(../External/volk volk)
@@ -50,7 +44,6 @@ endif()
 set(MIRAI_LIBRARIES
     glfw
     volk::volk
-    tinygltf
 )
 
 file(GLOB_RECURSE PROJECT_HEADER_FILES CONFIGURE_DEPENDS Source/*.hpp)
@@ -64,6 +57,8 @@ target_include_directories(${TARGET_NAME}
     PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ../External/SPIRV-Reflect
+    ../External/tinygltf
+    ../External/stb
 )
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${MIRAI_LIBRARIES})

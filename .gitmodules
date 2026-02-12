@@ -7,6 +7,3 @@
 [submodule "External/volk"]
 	path = External/volk
 	url = https://github.com/zeux/volk.git
-[submodule "External/tinygltf"]
-	path = External/tinygltf
-	url = https://github.com/syoyo/tinygltf.git

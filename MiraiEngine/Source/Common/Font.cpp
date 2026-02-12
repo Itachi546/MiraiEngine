@@ -1,7 +1,5 @@
 #include "Font.hpp"
-
-#define STB_IMAGE_IMPELMENTATION
-#include <stb_image.h>
+#include "FileUtils.hpp"
 #include <json.hpp>
 #include <fstream>
 
@@ -20,12 +18,10 @@ namespace mirai {
             return nullptr;
 
         int width, height, num_channel;
-        unsigned char *data = stbi_load_from_file(file, &width, &height, &num_channel, 1);
+        auto data = utils::load_from_file(file, &width, &height, &num_channel, 1);
+
         file_ptr.reset();
         file_ptr = nullptr;
-
-        if (data == nullptr)
-            return nullptr;
 
         TextureDescription tex_desc = {
             .create_flags = 0,
@@ -44,11 +40,13 @@ namespace mirai {
         SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
 
         TextureID texture = RenderingDevice::get()->create_texture(&tex_desc, "font_texture_" + name);
-        rendering_utils::copy_texture_immediate(texture, data, width * height);
+        rendering_utils::copy_texture_immediate(texture, data.get(), width * height);
 
         BindlessTextureEntry entry = {.texture = texture, .sampler = sampler};
         RenderingDevice::get()->add_bindless_texture(&entry, 1);
-        stbi_image_free(data);
+
+        data.reset();
+        data = nullptr;
 
         // RenderingDevice::get()->add_bindless_texture(&texture, 1);
 

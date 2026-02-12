@@ -3,7 +3,9 @@
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_EXTERNAL_IMAGE
-#include <tiny_gltf.h>
+#define TINYGLTF_IMPLEMENTATION
+#include "tiny_gltf.h"
+
 #include "Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/AsyncLoader.hpp"
@@ -563,10 +565,10 @@ namespace mirai {
 
         load_state.async_loader = &async_loader;
 
-        LoadMeshes(&gltf_model, &load_state);
-        async_loader.start();
         LoadMaterials(&gltf_model, &load_state, &user_data);
-
+        async_loader.start();
+        
+        LoadMeshes(&gltf_model, &load_state);
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
                 ParseNodes(&gltf_model, node, root_entity, &load_state);
