@@ -373,8 +373,7 @@ namespace mirai {
                             if (clear_color.size() == 4) {
                                 resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
                             } else {
-                                if (is_depth_format(resource.format))
-                                    resource.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+                                resource.clear_color = is_depth_format(resource.format) ? Color{1.0f, 0.0f, 0.0f, 1.0f} : Color{0.0f, 0.0f, 0.0f, 1.0f};
                             }
                         }
                     }

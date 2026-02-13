@@ -43,7 +43,13 @@
             1920,
             1080
           ],
-          "op": "LOAD_OP_CLEAR"
+          "op": "LOAD_OP_CLEAR",
+          "clear_color": [
+            0,
+            0,
+            0,
+            0
+          ]
         },
         {
           "type": "attachment",

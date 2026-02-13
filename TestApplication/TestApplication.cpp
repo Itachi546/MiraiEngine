@@ -335,6 +335,17 @@ class TestApplication : public App {
         return false;
     }
 
+    void show_popup() {
+        if (show_render_pass_debug_popup) {
+            if (ImGui::BeginPopupModal("render_pass_debug_popup", &show_render_pass_debug_popup)) {
+                ImGui::SetNextWindowSize(ImVec2{800, 600});
+                ImVec2 available_size = ImGui::GetContentRegionAvail();
+                ImGuiService::AddImage(selected_renderpass_debug_resource->handle.id, available_size);
+                ImGui::EndPopup();
+            }
+        }
+    }
+
     void add_pass_ui() {
         ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
@@ -359,6 +370,8 @@ class TestApplication : public App {
 
                 FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
                 add_rendertarget_texture_debug_ui("taa_output", taa_output);
+
+                show_popup();
                 ImGui::TreePop();
             }
 
@@ -377,6 +390,7 @@ class TestApplication : public App {
                     if (AppSettings::enable_rt_shadow) {
                         FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
                         add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
+                        show_popup();
                     }
                 }
                 if (!AppSettings::enable_rt_shadow) {
@@ -394,6 +408,7 @@ class TestApplication : public App {
                     }
                     FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
                     add_rendertarget_texture_debug_ui("csm_shadow", resource);
+                    show_popup();
                 }
                 ImGui::TreePop();
             }
@@ -415,6 +430,8 @@ class TestApplication : public App {
 
                     FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
                     add_rendertarget_texture_debug_ui("ssao_texture", resource);
+
+                    show_popup();
                     ImGui::TreePop();
                 }
             }
@@ -432,15 +449,6 @@ class TestApplication : public App {
                 should_reset_history_texture |= ImGui::Checkbox("Enable History Sampling", &taa->should_enable_history_sampling);
                 should_reset_history_texture |= ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
                 ImGui::TreePop();
-            }
-        }
-
-        if (show_render_pass_debug_popup) {
-            if (ImGui::BeginPopupModal("render_pass_debug_popup", &show_render_pass_debug_popup)) {
-                ImGui::SetNextWindowSize(ImVec2{800, 600});
-                ImVec2 available_size = ImGui::GetContentRegionAvail();
-                ImGuiService::AddImage(selected_renderpass_debug_resource->handle.id, available_size);
-                ImGui::EndPopup();
             }
         }
     }
