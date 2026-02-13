@@ -11,7 +11,7 @@ class ThreadSafeQueue {
     ThreadSafeQueue() = default;
     ThreadSafeQueue(const ThreadSafeQueue &other) {
         std::lock_guard<std::mutex> lk(other.mutex);
-        this->data = other->data;
+        this->data = other.data;
     }
 
     ThreadSafeQueue &operator=(const ThreadSafeQueue &other) = delete;
@@ -23,7 +23,7 @@ class ThreadSafeQueue {
 
     void push(T entry) {
         std::lock_guard<std::mutex> lk(mutex);
-        data.push(entry);
+        data.push(std::move(entry));
         data_cond.notify_one();
     }
 
@@ -31,7 +31,7 @@ class ThreadSafeQueue {
         std::lock_guard<std::mutex> lk(mutex);
         if (data.empty())
             return false;
-        val = data.front();
+        val = std::move(data.front());
         data.pop();
         return true;
     }
@@ -39,15 +39,15 @@ class ThreadSafeQueue {
     bool wait_and_pop(T &val) {
         std::unique_lock<std::mutex> lk(mutex);
         data_cond.wait(lk, [this]() { return !data.empty(); });
-        val = data.front();
+        val = std::move(data.front());
         data.pop();
         return true;
     }
 
     std::shared_ptr<T> wait_and_pop() {
-        std::lock_guard<std::mutex> lk(mutex);
+        std::unique_lock<std::mutex> lk(mutex);
         data_cond.wait(lk, [this]() { return !data.empty(); });
-        std::shared_ptr<T> result(std::make_shared<T>(data.front()));
+        std::shared_ptr<T> result(std::make_shared<T>(std::move(data.front())));
         data.pop();
         return result;
     }
@@ -56,7 +56,7 @@ class ThreadSafeQueue {
         std::lock_guard<std::mutex> lk(mutex);
         if (data.empty())
             return nullptr;
-        std::shared_ptr<T> result(std::make_shared<T>(data.front()));
+        std::shared_ptr<T> result(std::make_shared<T>(std::move(data.front())));
         data.pop();
         return result;
     }

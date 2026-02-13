@@ -227,13 +227,14 @@ namespace mirai {
         p_user_data->textures.emplace_back(texture, sampler_id);
 
         TextureCache::get()->add_texture(image->uri, texture);
-        p_user_data->async_loader->add_texture_load_task({
-            .texture = texture,
-            .filename = full_path,
-            .is_dds_texture = is_dds_texture,
-            .skip_first_n_level = SKIP_DDS_FIRST_N_LEVEL,
-            .force_rgba = force_rgba,
-        });
+        p_user_data->async_loader->push({.task_type = TaskType::LoadTexture,
+                                         .data = TextureLoadTask{
+                                             .texture = texture,
+                                             .filename = full_path,
+                                             .is_dds_texture = is_dds_texture,
+                                             .skip_first_n_levels = SKIP_DDS_FIRST_N_LEVEL,
+                                             .force_rgba = force_rgba,
+                                         }});
         return true;
     }
 
@@ -478,12 +479,13 @@ namespace mirai {
         }
 
         BufferView vertex_buffer = vertex_buffer_view.value();
-        load_state->async_loader->add_buffer_copy_task({
-            .dst = vertex_buffer.buffer,
-            .data = vertices.data(),
-            .offset_in_bytes = vertex_buffer.offset,
-            .size_in_bytes = vertex_buffer_size,
-        });
+        load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
+                                        .data = BufferCopyTask{
+                                            .dst = vertex_buffer.buffer,
+                                            .data = vertices.data(),
+                                            .offset_in_bytes = vertex_buffer.offset,
+                                            .size_in_bytes = vertex_buffer_size,
+                                        }});
 
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
         std::optional<BufferView> index_buffer_view = renderer->index_buffer_allocator.allocate(index_buffer_size);
@@ -492,12 +494,13 @@ namespace mirai {
         }
 
         BufferView index_buffer = index_buffer_view.value();
-        load_state->async_loader->add_buffer_copy_task({
-            .dst = index_buffer.buffer,
-            .data = indices.data(),
-            .offset_in_bytes = index_buffer.offset,
-            .size_in_bytes = index_buffer_size,
-        });
+        load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
+                                        .data = BufferCopyTask{
+                                            .dst = index_buffer.buffer,
+                                            .data = indices.data(),
+                                            .offset_in_bytes = index_buffer.offset,
+                                            .size_in_bytes = index_buffer_size,
+                                        }});
 
         for (auto &mesh_component : mesh_components) {
             mesh_component.vertex_buffer = vertex_buffer;
@@ -659,8 +662,6 @@ namespace mirai {
         load_state.async_loader = &async_loader;
 
         LoadMaterials(&gltf_model, &load_state, &user_data);
-        async_loader.start();
-
         LoadMeshes(&gltf_model, &load_state);
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
