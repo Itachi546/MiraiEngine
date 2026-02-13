@@ -7,25 +7,15 @@
 
 namespace mirai {
     using namespace std::chrono_literals;
-    const uint32_t K_STAGING_BUFFER_SIZE = static_cast<uint32_t>(utils::mb_to_bytes(68));
-    /*
-    static size_t get_image_size_bc(uint32_t width, uint32_t height, uint32_t mip_levels, uint32_t block_size) {
-        size_t size = 0;
-        for (uint32_t i = 0; i < mip_levels; ++i) {
-            size += ((width + 3) / 4) * ((height + 3) / 4) * block_size;
-            width = width > 1 ? width / 2 : 1;
-            height = height > 1 ? height / 2 : 1;
-        }
-        return size;
-    }
-    */
+
     void AsyncLoader::start() {
         BufferDescription buffer_desc = {
-            .size = K_STAGING_BUFFER_SIZE,
+            .size = staging_buffer_size,
             .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         staging_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "async_staging_buffer");
+
         task_thread = std::thread(
             [this]() {
                 CommandBuffer *command_buffer = RenderingDevice::get()->get_command_buffer(1);
@@ -51,7 +41,7 @@ namespace mirai {
             });
     }
 
-    void AsyncLoader::load_dds_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr) {
+    void AsyncLoader::load_dds_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *&staging_buffer_ptr) {
         FILE *file = fopen(load_task->filename.c_str(), "rb");
         if (!file)
             return;
@@ -60,7 +50,10 @@ namespace mirai {
         fread(&header, sizeof(header), 1, file);
 
         size_t image_size = header.data_size();
-        ASSERT(image_size <= K_STAGING_BUFFER_SIZE);
+        if (image_size > staging_buffer_size) {
+            resize_staging_buffer(staging_buffer_ptr, cast_u32(image_size));
+        }
+
         uint32_t mip_count = header.header.dwMipMapCount - load_task->skip_first_n_level;
         uint32_t buffer_offset = cast_u32(header.mip_offset(load_task->skip_first_n_level)) - sizeof(header);
 
@@ -87,7 +80,7 @@ namespace mirai {
         command_buffer->wait();
     }
 
-    void AsyncLoader::load_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr) {
+    void AsyncLoader::load_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *&staging_buffer_ptr) {
         int width, height, n_channel;
         auto data_ptr = utils::load_image(load_task->filename.c_str(), &width, &height, &n_channel, load_task->force_rgba ? 4 : 0);
         if (!data_ptr) {
@@ -98,7 +91,10 @@ namespace mirai {
             n_channel = 4;
 
         size_t image_size = width * height * n_channel;
-        ASSERT(image_size <= K_STAGING_BUFFER_SIZE);
+
+        if (image_size > staging_buffer_size) {
+            resize_staging_buffer(staging_buffer_ptr, cast_u32(image_size));
+        }
 
         std::memcpy(staging_buffer_ptr, data_ptr.get(), image_size);
         data_ptr.reset();
@@ -116,15 +112,15 @@ namespace mirai {
         uint32_t copy_data_size = copy_task->size_in_bytes;
 
         // Check if the copy size is greater than the staging buffer
-        if (copy_task->size_in_bytes > K_STAGING_BUFFER_SIZE) {
-            uint32_t remaining_data_size = copy_task->size_in_bytes - K_STAGING_BUFFER_SIZE;
+        if (copy_task->size_in_bytes > staging_buffer_size) {
+            uint32_t remaining_data_size = copy_task->size_in_bytes - staging_buffer_size;
             add_buffer_copy_task({
                 .dst = copy_task->dst,
-                .data = ((uint8_t *)copy_task->data + K_STAGING_BUFFER_SIZE),
-                .offset_in_bytes = K_STAGING_BUFFER_SIZE + copy_task->offset_in_bytes,
+                .data = ((uint8_t *)copy_task->data + staging_buffer_size),
+                .offset_in_bytes = staging_buffer_size + copy_task->offset_in_bytes,
                 .size_in_bytes = remaining_data_size,
             });
-            copy_data_size = K_STAGING_BUFFER_SIZE;
+            copy_data_size = staging_buffer_size;
             Log::Warn("Splitting data, total: ", copy_task->size_in_bytes, " remaining: ", remaining_data_size);
         }
 
@@ -144,10 +140,26 @@ namespace mirai {
         command_buffer->wait();
     }
 
+    void AsyncLoader::resize_staging_buffer(void *&staging_buffer_ptr, uint32_t req_size) {
+        RenderingDevice *device = RenderingDevice::get();
+        Log::Info("Resizing async loader staging buffer from ", utils::bytes_to_mb(staging_buffer_size), "mb to ", utils::bytes_to_mb(req_size), "mb");
+
+        BufferDescription buffer_desc = {
+            .size = req_size,
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        device->resize_buffer(&buffer_desc, staging_buffer, false, "async_staging_buffer");
+        staging_buffer_ptr = device->map_buffer(staging_buffer);
+        staging_buffer_size = req_size;
+    }
+
     void AsyncLoader::wait() {
         task_thread.join();
         Log::Info("buffer copy: ", total_buffer_loaded, " texture copy: ", total_texture_loaded);
         RenderingDevice::get()->destroy_buffers(&staging_buffer, 1);
+        Log::Info("Destroying async loader staging buffer ", staging_buffer.id);
     }
 
 } // namespace mirai

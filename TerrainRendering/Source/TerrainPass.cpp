@@ -19,7 +19,7 @@ namespace mirai {
     void TerrainPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
         // Load heightmap
         int width, height, n_channel;
-        uint16_t *data = utils::load_image16("Assets/kauai.png", &width, &height, &n_channel, 1);
+        auto data = utils::load_image16("Assets/kauai.png", &width, &height, &n_channel, 1);
         if (data == nullptr)
             Log::Error("Failed to load terrain heightmap");
         ASSERT(n_channel == 1);
@@ -37,7 +37,9 @@ namespace mirai {
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
         };
         texture_heightmap = device->create_texture(&texture_desc, "heightmap");
-        rendering_utils::copy_texture_immediate(texture_heightmap, data, width * height * sizeof(uint16_t));
+        rendering_utils::copy_texture_immediate(texture_heightmap, data.get(), width * height * sizeof(uint16_t));
+        data.reset();
+        data = nullptr;
 
         // Allocate CBT Buffer
         uint32_t allocation_size = (1 << (cbt_depth - 1));

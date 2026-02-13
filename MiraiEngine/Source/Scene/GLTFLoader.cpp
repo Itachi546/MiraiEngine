@@ -219,7 +219,7 @@ namespace mirai {
                 return false;
             }
 
-            if (is_color_texture && nchannel == 3)
+            if (nchannel == 3)
                 force_rgba = true;
         }
         SamplerID sampler_id = CreateSampler(sampler);

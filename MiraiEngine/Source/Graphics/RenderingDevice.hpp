@@ -583,6 +583,7 @@ namespace mirai {
         virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;
 
         virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
+        virtual void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
         virtual void unmap_buffer(BufferID buffer) = 0;
 

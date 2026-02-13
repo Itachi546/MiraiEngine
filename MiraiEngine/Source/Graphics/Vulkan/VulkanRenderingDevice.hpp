@@ -46,6 +46,7 @@ namespace mirai {
         void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) override;
 
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
+        void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name);
         uint8_t *map_buffer(BufferID buffer) override;
         void unmap_buffer(BufferID buffer) override;
 
@@ -156,6 +157,7 @@ namespace mirai {
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
         void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
         void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
+        VkBuffer create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
 
         std::vector<const char *> requested_instance_extensions;
         std::vector<const char *> requested_validation_layers;

@@ -771,7 +771,7 @@ namespace mirai {
         vkUpdateDescriptorSets(device, binding_count, write_sets.data(), 0, nullptr);
     }
 
-    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name) {
+    VkBuffer VulkanRenderingDevice::create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name) {
         ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
         VkBufferCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -796,7 +796,6 @@ namespace mirai {
         }
 
         VkBuffer vk_buffer = VK_NULL_HANDLE;
-        VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info = {};
         VK_CHECK(vmaCreateBuffer(vma_allocator, &create_info, &allocation_create_info, &vk_buffer, &allocation, &allocation_info));
         set_debug_marker_object_name(VK_OBJECT_TYPE_BUFFER, (uint64_t)vk_buffer, debug_name.c_str());
@@ -807,6 +806,15 @@ namespace mirai {
             ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
             ASSERT((memory_properties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
+        total_memory_usage += allocation->GetSize();
+        return vk_buffer;
+    }
+
+    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name) {
+
+        VmaAllocation allocation = nullptr;
+        VkBuffer vk_buffer = create_vk_buffer(buffer_description, allocation, debug_name);
+
         uint32_t buffer_id = resource_pool_buffers.obtain();
         VulkanBuffer *buffer = resource_pool_buffers.access(buffer_id);
         buffer->buffer = vk_buffer;
@@ -814,8 +822,36 @@ namespace mirai {
         buffer->size = buffer_description->size;
         buffer->buffer_ptr = nullptr;
 
-        total_memory_usage += allocation->GetSize();
         return BufferID{buffer_id};
+    }
+
+    void VulkanRenderingDevice::resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) {
+        VulkanBuffer temp_buffer;
+        VulkanBuffer *vk_buffer = resource_pool_buffers.access(resize_buffer);
+        std::memcpy(&temp_buffer, vk_buffer, sizeof(VulkanBuffer));
+
+        VmaAllocation allocation = nullptr;
+        VkBuffer buffer = create_vk_buffer(buffer_description, allocation, debug_name);
+        vk_buffer->buffer = buffer;
+        vk_buffer->allocation = allocation;
+        vk_buffer->size = buffer_description->size;
+        vk_buffer->buffer_ptr = nullptr;
+
+        if (should_copy_data) {
+            // Should have same buffer properties
+            if (temp_buffer.buffer_ptr != nullptr) {
+                vk_buffer->buffer_ptr = map_buffer(resize_buffer);
+                // CPU to CPU Copy
+                std::memcpy(vk_buffer->buffer_ptr, temp_buffer.buffer_ptr, temp_buffer.size);
+            } else {
+                // GPU to GPU Copy
+                Log::Fatal("GPU Buffer Not supported yet");
+            }
+        }
+
+        if (temp_buffer.buffer_ptr)
+            vmaUnmapMemory(vma_allocator, temp_buffer.allocation);
+        vmaDestroyBuffer(vma_allocator, temp_buffer.buffer, temp_buffer.allocation);
     }
 
     uint8_t *VulkanRenderingDevice::map_buffer(BufferID buffer) {
@@ -1091,7 +1127,7 @@ namespace mirai {
         texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         texture->access_flags = VK_ACCESS_2_TRANSFER_READ_BIT;
         texture->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    } 
+    }
 
     void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));

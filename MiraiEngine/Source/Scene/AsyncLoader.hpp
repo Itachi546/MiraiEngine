@@ -46,9 +46,11 @@ namespace mirai {
 
         uint32_t total_buffer_loaded = 0;
         uint32_t total_texture_loaded = 0;
+        uint32_t staging_buffer_size = 32 * 1024 * 1024; // 32MB
 
-        void load_dds_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr);
-        void load_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *staging_buffer_ptr);
+        void load_dds_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *&staging_buffer_ptr);
+        void load_texture(CommandBuffer *command_buffer, std::shared_ptr<TextureLoadTask> load_task, void *&staging_buffer_ptr);
         void copy_buffer(CommandBuffer *command_buffer, std::shared_ptr<BufferCopyTask> load_task, void *staging_buffer_ptr);
+        void resize_staging_buffer(void *&staging_buffer_ptr, uint32_t req_size);
     };
 } // namespace mirai
