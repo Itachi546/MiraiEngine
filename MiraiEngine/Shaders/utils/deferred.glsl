@@ -33,6 +33,10 @@ layout(set = 3, binding = 1) readonly buffer Materials {
     PBRMaterial materials[];
 };
 
+vec2 to_uv(vec2 uv) {
+    return vec2(uv.x * 0.5 + 0.5, 0.5 - 0.5 * uv.y);
+}
+
 void main() {
     vec3 col = vec3(0.0f);
 
@@ -90,7 +94,6 @@ void main() {
     vec2 current_ndc_pos = fs_in.current_clip_pos.xy / fs_in.current_clip_pos.w;
     vec2 prev_ndc_pos = fs_in.prev_clip_pos.xy / fs_in.prev_clip_pos.w;
 
-    vec2 velocity = current_ndc_pos - prev_ndc_pos;
-    velocity -= (current_frame_jitter - prev_frame_jitter) * 0.5;
+    vec2 velocity = to_uv(current_ndc_pos - current_frame_jitter) - to_uv(prev_ndc_pos - prev_frame_jitter);
     velocity_buffer = velocity;
 }

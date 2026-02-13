@@ -141,10 +141,16 @@ vec3 taa_simple(ivec2 id) {
     }
 
     vec2 reprojected_uv = uv - velocity;
-    vec3 taa_history_color = texture(u_taa_history, reprojected_uv).rgb;
+    bool valid_history = all(greaterThanEqual(reprojected_uv, vec2(0.0f))) &&
+                         all(lessThanEqual(reprojected_uv, vec2(1.0f)));
 
     vec3 current_sample = texture(u_color, uv).rgb;
-    return mix(current_sample, taa_history_color, 0.9);
+    if (valid_history) {
+        vec3 taa_history_color = texture(u_taa_history, reprojected_uv).rgb;
+        return mix(current_sample, taa_history_color, 0.9);
+    } else {
+        return current_sample;
+    }
 }
 
 vec3 taa(ivec2 id) {
@@ -240,7 +246,7 @@ void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
     if (id.x > width - 1 || id.y > height - 1)
         return;
-    
+
     if (has_flag(flags, FLAG_ENABLE_TAA)) {
         vec3 final_color = has_flag(flags, FLAG_TAA_SIMPLE) ? taa_simple(id) : taa(id);
         imageStore(u_output_texture, id, vec4(final_color, 1.0f));

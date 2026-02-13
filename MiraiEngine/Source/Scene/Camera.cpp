@@ -72,8 +72,6 @@ namespace mirai {
 
         // Used for TAA
         // Update the translation component
-        // glm::mat4 jitter_matrix = glm::translate(glm::mat4(1.0f), glm::vec3{jitter_factor.x, jitter_factor.y, 0.0f});
-        // projection_matrix = jitter_matrix * projection_matrix;
         projection_matrix[2][0] += jitter_factor.x;
         projection_matrix[2][1] += jitter_factor.y;
 

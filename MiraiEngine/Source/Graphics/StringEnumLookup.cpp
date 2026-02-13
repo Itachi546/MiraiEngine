@@ -22,6 +22,8 @@ namespace mirai {
             return FORMAT_R16_SFLOAT;
         } else if (inputFormat == "R16G16_SFLOAT") {
             return FORMAT_R16G16_SFLOAT;
+        } else if (inputFormat == "R32G32_SFLOAT") {
+            return FORMAT_R32G32_SFLOAT;
         } else if (inputFormat == "R32_SFLOAT") {
             return FORMAT_R32_SFLOAT;
         } else if (inputFormat == "D24_UNORM_S8_UINT")
