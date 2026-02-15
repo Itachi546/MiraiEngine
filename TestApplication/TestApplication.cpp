@@ -191,6 +191,12 @@ class TestApplication : public App {
         frame_graph->set_renderer("swapchain_copy", std::make_shared<SwapchainCopyPass>());
         frame_graph->set_renderer("imgui_pass", std::make_shared<ImGuiRenderPass>());
 
+        if (global_scene_scale != 1.0f) {
+            TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);
+            transform->scale = glm::vec3(global_scene_scale);
+            transform->dirty = true;
+        }
+
 #endif
         if (model_paths.size() > 0) {
             for (const auto &path : model_paths)
@@ -261,6 +267,12 @@ class TestApplication : public App {
 
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
+
+            if (ImGui::SliderFloat("Global Scene Scale", &global_scene_scale, 0.0f, 100.0f)) {
+                TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);
+                transform->scale = glm::vec3(global_scene_scale);
+                transform->dirty = true;
+            }
 
             uint32_t total_entities = 0;
             for (auto &batch : Renderer::get()->main_render_batches) {
@@ -472,6 +484,8 @@ class TestApplication : public App {
   private:
     bool show_debug_ui = false;
     bool fullscreen = false;
+
+    float global_scene_scale = 1.0f;
     Scene *scene;
     FrameGraph *frame_graph = nullptr;
     FrameGraphResource *selected_renderpass_debug_resource = nullptr;

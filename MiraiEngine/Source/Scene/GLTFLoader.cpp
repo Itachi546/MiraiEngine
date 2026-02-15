@@ -1,6 +1,5 @@
 #include "GLTFLoader.hpp"
 
-#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 #define TINYGLTF_IMPLEMENTATION
@@ -58,18 +57,27 @@ namespace mirai {
     FilterMode get_sampler_filter(int filter) {
         switch (filter) {
         case TINYGLTF_TEXTURE_FILTER_NEAREST:
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
             return FILTER_NEAREST;
         case TINYGLTF_TEXTURE_FILTER_LINEAR:
-            return FILTER_LINEAR;
-        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
-            return FILTER_NEAREST_MIPMAP_NEAREST;
         case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
-            return FILTER_LINEAR_MIPMAP_NEAREST;
-        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
-            return FILTER_NEAREST_MIPMAP_LINEAR;
         case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
-            return FILTER_LINEAR_MIPMAP_LINEAR;
+            return FILTER_LINEAR;
         default: return FILTER_LINEAR;
+        }
+    }
+
+    SamplerMipmapMode get_sampler_mipmap_mode(int filter) {
+        switch (filter) {
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
+        case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
+            return SAMPLER_MIPMAP_NEAREST;
+        case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
+        case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
+            return SAMPLER_MIPMAP_NEAREST;
+        default:
+            return SAMPLER_MIPMAP_LINEAR;
         }
     }
 
@@ -121,6 +129,7 @@ namespace mirai {
             sampler_desc.mag_filter = get_sampler_filter(sampler->magFilter);
             sampler_desc.address_mode_u = get_sampler_address_mode(sampler->wrapS);
             sampler_desc.address_mode_v = get_sampler_address_mode(sampler->wrapT);
+            sampler_desc.mipmap_mode = get_sampler_mipmap_mode(sampler->minFilter);
         }
 
         return RenderingDevice::get()->create_sampler(&sampler_desc);
@@ -138,7 +147,50 @@ namespace mirai {
         return result;
     }
 
-    bool LoadImageData(tinygltf::Image *image, const tinygltf::Sampler *sampler, void *user_data, bool is_color_texture = false) {
+    bool LoadEmbeddedImage(std::string filename, tinygltf::Image *image, const tinygltf::Sampler *sampler, UserData *p_user_data, bool is_color_texture = false) {
+        unsigned char *data = image->image.data();
+        uint32_t width = image->width;
+        uint32_t height = image->height;
+        uint32_t nchannel = image->component;
+        ASSERT(nchannel != 3);
+        ASSERT(width > 0 && height > 0);
+
+        uint32_t mip_level = cast_u32(1 + std::log2(std::max(width, height)));
+        Format format = get_format(image->component, is_color_texture);
+        TextureDescription texture_desc = {
+            .create_flags = 0,
+            .width = width,
+            .height = height,
+            .depth = 1,
+            .mip_levels = mip_level,
+            .array_layers = 1,
+            .texture_type = TEXTURE_TYPE_2D,
+            .format = format,
+            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+        };
+        TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
+        TextureCache::get()->add_texture(filename, texture);
+
+        SamplerID sampler_id = CreateSampler(sampler);
+        p_user_data->textures.emplace_back(texture, sampler_id);
+
+        TextureLoadEmbeddedTask load_task = {
+            .filename = filename,
+            .texture = texture,
+            .width = cast_int(width),
+            .height = cast_int(height),
+            .n_channel = cast_int(nchannel),
+        };
+
+        load_task.data = std::move(image->image);
+        p_user_data->async_loader->push({
+            .task_type = TaskType::LoadTextureEmbedded,
+            .data = std::move(load_task),
+        });
+        return true;
+    }
+
+    bool LoadExternalImage(tinygltf::Image *image, const tinygltf::Sampler *sampler, void *user_data, bool is_color_texture = false) {
 
         image->uri = FormatTextureURI(image->uri);
         if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
@@ -227,7 +279,7 @@ namespace mirai {
         p_user_data->textures.emplace_back(texture, sampler_id);
 
         TextureCache::get()->add_texture(image->uri, texture);
-        p_user_data->async_loader->push({.task_type = TaskType::LoadTexture,
+        p_user_data->async_loader->push({.task_type = TaskType::LoadTextureExternal,
                                          .data = TextureLoadTask{
                                              .texture = texture,
                                              .filename = full_path,
@@ -249,20 +301,22 @@ namespace mirai {
             tinygltf::Image &image = model->images[texture.source];
 
             const tinygltf::Sampler *sampler = nullptr;
-            if (texture.sampler > 0)
+            if (texture.sampler >= 0)
                 sampler = &model->samplers[texture.sampler];
 
-            std::string texture_name = FormatTextureURI(image.uri);
+            std::string texture_name = FormatTextureURI(image.uri.size() > 0 ? image.uri : texture.name);
             TextureID texture_id = TextureCache::get()->get_texture_id(texture_name);
-            if (image.uri.size() > 0 && texture_id.id == K_INVALID_RESOURCE_HANDLE) {
-                // We forgot to load this texture somehow
+
+            if (image.image.size() > 0 && !texture_id.is_valid()) {
+                LoadEmbeddedImage(texture_name, &image, sampler, user_data, is_color_texture);
+            } else if (texture_name.size() > 0 && !texture_id.is_valid()) {
                 std::string err, warn;
-                if (!LoadImageData(&image, sampler, user_data, is_color_texture)) {
-                    Log::Warn("Failed to load texture: ", image.uri);
+                if (!LoadExternalImage(&image, sampler, user_data, is_color_texture)) {
+                    Log::Warn("Failed to load texture: ", texture_name);
                     return K_INVALID_ID;
                 }
-                texture_id = TextureCache::get()->get_texture_id(image.uri);
             }
+            texture_id = TextureCache::get()->get_texture_id(texture_name);
             return texture_id.id;
         };
 
@@ -623,7 +677,6 @@ namespace mirai {
         std::string err, warn;
 
         tinygltf::TinyGLTF gltf_loader;
-        gltf_loader.SetImageLoader(nullptr, nullptr);
         gltf_loader.SetStoreOriginalJSONForExtrasAndExtensions(true);
 
         Log::Info("Loading Model: ", filename);

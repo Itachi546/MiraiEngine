@@ -11,7 +11,8 @@
 namespace mirai {
     enum class TaskType {
         UploadBuffer,
-        LoadTexture
+        LoadTextureExternal,
+        LoadTextureEmbedded
     };
     struct BufferCopyTask {
         BufferID dst;
@@ -28,9 +29,16 @@ namespace mirai {
         bool force_rgba;
     };
 
+    struct TextureLoadEmbeddedTask {
+        std::string filename;
+        TextureID texture;
+        int width, height, n_channel;
+        std::vector<uint8_t> data;
+    };
+
     struct Task {
         TaskType task_type;
-        std::variant<BufferCopyTask, TextureLoadTask> data;
+        std::variant<BufferCopyTask, TextureLoadTask, TextureLoadEmbeddedTask> data;
     };
 
     class AsyncLoader {
@@ -70,6 +78,7 @@ namespace mirai {
 
         void load_dds_texture(CommandBuffer *command_buffer, const TextureLoadTask &load_task, void *&staging_buffer_ptr);
         void load_texture(CommandBuffer *command_buffer, const TextureLoadTask &load_task, void *&staging_buffer_ptr);
+        void load_texture_from_memory(CommandBuffer *command_buffer, TextureID texture, unsigned char *data, int width, int height, int nchannel, void *&staging_buffer_ptr);
         void copy_buffer(CommandBuffer *command_buffer, const BufferCopyTask &load_task, void *staging_buffer_ptr);
         void resize_staging_buffer(void *&staging_buffer_ptr, uint32_t req_size);
         void worker_loop();

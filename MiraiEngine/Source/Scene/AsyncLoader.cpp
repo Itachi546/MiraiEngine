@@ -42,12 +42,18 @@ namespace mirai {
                 total_buffer_loaded++;
                 break;
             }
-            case TaskType::LoadTexture: {
+            case TaskType::LoadTextureExternal: {
                 TextureLoadTask texture_load_task = std::get<TextureLoadTask>(task.data);
                 if (texture_load_task.is_dds_texture)
                     load_dds_texture(command_buffer, texture_load_task, staging_buffer_ptr);
                 else
                     load_texture(command_buffer, texture_load_task, staging_buffer_ptr);
+                Log::Info("Texture Loaded: ", texture_load_task.filename, " id: ", texture_load_task.texture.id);
+                break;
+            }
+            case TaskType::LoadTextureEmbedded: {
+                TextureLoadEmbeddedTask texture_load_task = std::get<TextureLoadEmbeddedTask>(task.data);
+                load_texture_from_memory(command_buffer, texture_load_task.texture, texture_load_task.data.data(), texture_load_task.width, texture_load_task.height, texture_load_task.n_channel, staging_buffer_ptr);
                 Log::Info("Texture Loaded: ", texture_load_task.filename, " id: ", texture_load_task.texture.id);
                 break;
             }
@@ -96,6 +102,21 @@ namespace mirai {
         command_buffer->wait();
     }
 
+    void AsyncLoader::load_texture_from_memory(CommandBuffer *command_buffer, TextureID texture, unsigned char *data, int width, int height, int n_channel, void *&staging_buffer_ptr) {
+        size_t image_size = width * height * n_channel;
+        if (image_size > staging_buffer_size) {
+            resize_staging_buffer(staging_buffer_ptr, cast_u32(image_size));
+        }
+        std::memcpy(staging_buffer_ptr, data, image_size);
+
+        command_buffer->begin();
+        command_buffer->copy_texture(texture, staging_buffer, 0, 1, 1, 32);
+        RenderingDevice::get()->generate_mipmap(command_buffer, texture, PIPELINE_STAGE_TRANSFER_BIT);
+        command_buffer->prepare_image_for_shader_read(texture);
+        RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
+        command_buffer->wait();
+    }
+
     void AsyncLoader::load_texture(CommandBuffer *command_buffer, const TextureLoadTask &load_task, void *&staging_buffer_ptr) {
         int width, height, n_channel;
         auto data_ptr = utils::load_image(load_task.filename.c_str(), &width, &height, &n_channel, load_task.force_rgba ? 4 : 0);
@@ -106,22 +127,10 @@ namespace mirai {
         if (load_task.force_rgba)
             n_channel = 4;
 
-        size_t image_size = width * height * n_channel;
+        load_texture_from_memory(command_buffer, load_task.texture, data_ptr.get(), width, height, n_channel, staging_buffer_ptr);
 
-        if (image_size > staging_buffer_size) {
-            resize_staging_buffer(staging_buffer_ptr, cast_u32(image_size));
-        }
-
-        std::memcpy(staging_buffer_ptr, data_ptr.get(), image_size);
         data_ptr.reset();
         data_ptr = nullptr;
-
-        command_buffer->begin();
-        command_buffer->copy_texture(load_task.texture, staging_buffer, 0, 1, 1, 32);
-        RenderingDevice::get()->generate_mipmap(command_buffer, load_task.texture, PIPELINE_STAGE_TRANSFER_BIT);
-        command_buffer->prepare_image_for_shader_read(load_task.texture);
-        RenderingDevice::get()->submit_command_buffer_immediate(command_buffer);
-        command_buffer->wait();
     }
 
     void AsyncLoader::copy_buffer(CommandBuffer *command_buffer, const BufferCopyTask &copy_task, void *staging_buffer_ptr) {

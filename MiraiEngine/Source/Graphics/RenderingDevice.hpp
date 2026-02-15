@@ -300,10 +300,6 @@ namespace mirai {
     enum FilterMode {
         FILTER_NEAREST = 0,
         FILTER_LINEAR = 1,
-        FILTER_NEAREST_MIPMAP_NEAREST,
-        FILTER_LINEAR_MIPMAP_NEAREST,
-        FILTER_NEAREST_MIPMAP_LINEAR,
-        FILTER_LINEAR_MIPMAP_LINEAR,
     };
 
     enum SamplerMipmapMode {
