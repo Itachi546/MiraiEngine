@@ -33,9 +33,6 @@ void main() {
     if (material.albedo_texture != K_INVALID_TEXTURE)
         albedo *= sample_texture(material.albedo_texture, fs_in.uv);
 
-    if (albedo.a <= material.alpha_cutoff)
-        discard;
-
     PBRParameter pbr_params;
     pbr_params.albedo = albedo;
     pbr_params.emissive = material.emissive_factor;
@@ -74,5 +71,5 @@ void main() {
 
     float shadow_factor = 1.0f;
     vec3 Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor);
-    fragColor = vec4(Lo, 1.0f);
+    fragColor = vec4(Lo, albedo.a);
 }
