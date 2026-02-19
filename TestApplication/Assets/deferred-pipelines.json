@@ -63,9 +63,9 @@
         ],
         "state": {
             "pass": "SHADER_PASS_PBR_DEFERRED_TRANSPARENT",
-            "cull-mode": "CULL_MODE_NONE",
+            "cull-mode": "CULL_MODE_BACK",
             "depth-test": true,
-            "depth-write": true,
+            "depth-write": false,
             "blend-mode": true,
             "color-attachments-format": [
                 "R16G16B16A16_SFLOAT"

@@ -6,7 +6,7 @@
 #include "Graphics/Renderer.hpp"
 
 namespace mirai {
-    DeferredTransparentPass::DeferredTransparentPass() : FrameGraphRenderer("forward_pass") {
+    DeferredTransparentPass::DeferredTransparentPass() : FrameGraphRenderer("deferred_transparent_pass") {
     }
 
     void DeferredTransparentPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
@@ -44,16 +44,13 @@ namespace mirai {
 
         command_buffer->begin_render_pass(node, frame_graph);
         if (render_batches.size() > 0) {
-            // Draw Opaque Object
             PipelineState pipeline_state = {};
             pipeline_state.render_state.fields.depth_test = true;
-            pipeline_state.render_state.fields.depth_write = true;
+            pipeline_state.render_state.fields.depth_write = false;
             pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
-            pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
+            pipeline_state.render_state.fields.cull_mode = CULL_MODE_BACK;
             pipeline_state.render_state.fields.blend_mode = true;
-            for (auto &batch : render_batches) {
-                draw_batch(RENDERBATCH_TYPE_TRANSPARENT, pipeline_state);
-            }
+            draw_batch(RENDERBATCH_TYPE_TRANSPARENT, pipeline_state);
         }
         command_buffer->end_render_pass();
 

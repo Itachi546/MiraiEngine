@@ -176,7 +176,7 @@
       ]
     },
     {
-      "name": "deferred_transparent_pass",
+      "name": "overlay3D",
       "enabled": true,
       "inputs": [
         {
@@ -196,8 +196,8 @@
       ]
     },
     {
-      "name": "overlay3D",
-      "enabled": true,
+      "name": "deferred_transparent_pass",
+      "enabled": false,
       "inputs": [
         {
           "type": "attachment",

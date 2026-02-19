@@ -414,6 +414,8 @@ namespace mirai {
                 attachment_blend_states[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                 attachment_blend_states[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                 attachment_blend_states[i].colorBlendOp = VK_BLEND_OP_ADD;
+                attachment_blend_states[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                attachment_blend_states[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             }
             attachment_blend_states[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 

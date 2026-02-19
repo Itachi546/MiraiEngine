@@ -20,7 +20,7 @@ namespace mirai {
 
         bool should_sample_motion_vector = true;
         bool enable_taa = true;
-        bool enable_taa_simple = false;
+        bool enable_taa_simple = true;
         bool enable_temporal_filtering = true;
         bool should_reset_history_texture = true;
         bool should_enable_min_depth = true;
