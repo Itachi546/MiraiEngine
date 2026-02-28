@@ -15,6 +15,8 @@ set(MIRAI_LIBRARY_TYPE STATIC)
 message(STATUS "Building MiraiEngine as static library")
 endif()
 
+find_package(Vulkan REQUIRED)
+
 find_package(glfw QUIET)
 if(NOT TARGET glfw)
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "")
@@ -55,6 +57,9 @@ set( SOURCE_FILES ${PROJECT_SOURCE_FILES} "${CMAKE_SOURCE_DIR}/External/SPIRV-Re
 add_library(${TARGET_NAME} ${MIRAI_LIBRARY_TYPE} ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(${TARGET_NAME} 
     PUBLIC 
+    ${Vulkan_INCLUDE_DIRS}
+    ../External/volk
+    ../External/glfw/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ../External/SPIRV-Reflect
     ../External/tinygltf

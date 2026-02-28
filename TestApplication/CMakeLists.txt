@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
 
-find_package(Vulkan REQUIRED)
-
 set(PROJECT_SOURCE_FILES 
     TestApplication.cpp
     ImGuiService.cpp
@@ -25,9 +23,6 @@ add_executable(TestApplication ${PROJECT_SOURCE_FILES} ${PROJECT_INCLUDE_FILES})
 target_link_libraries(TestApplication MiraiEngine_Windows)
 target_include_directories(TestApplication PUBLIC 
   ./External/imgui
-  ../External/volk
-  ../External/glfw/include
-  ${Vulkan_INCLUDE_DIRS}
 )
 target_compile_definitions(TestApplication PRIVATE 
 IMGUI_IMPL_VULKAN_USE_VOLK
