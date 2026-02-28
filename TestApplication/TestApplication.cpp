@@ -256,7 +256,7 @@ class TestApplication : public App {
     }
 
     void add_scene_ui() {
-        if (ImGui::CollapsingHeader("Scene Stats")) {
+        if (ImGui::CollapsingHeader("Scene")) {
             auto *final_pass = (SwapchainCopyPass *)frame_graph->get_renderer("swapchain_copy");
             if (final_pass) {
                 static bool enable_aa = final_pass->is_antialiasing_enabled();
@@ -264,7 +264,6 @@ class TestApplication : public App {
                     final_pass->set_antialiasing(enable_aa);
                 }
             }
-
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
@@ -273,6 +272,8 @@ class TestApplication : public App {
                 transform->scale = glm::vec3(global_scene_scale);
                 transform->dirty = true;
             }
+
+            ImGui::Checkbox("Pause Animation", &scene->pause_animation);
 
             uint32_t total_entities = 0;
             for (auto &batch : Renderer::get()->main_render_batches) {
@@ -468,8 +469,8 @@ class TestApplication : public App {
     void add_debug_ui() {
         if (show_debug_ui) {
             ImGui::Begin("Debug UI", 0);
-            add_profiler_ui();
             add_scene_ui();
+            add_profiler_ui();
             add_pass_ui();
             add_entity_inspector_ui(scene);
             ImGui::End();

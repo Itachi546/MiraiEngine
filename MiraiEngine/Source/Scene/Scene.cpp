@@ -57,7 +57,8 @@ namespace mirai {
 
         update_transform_components();
 
-        update_animation_components();
+        if (!pause_animation)
+            update_animation_components();
 
         update_hierarchy_components();
 
@@ -120,6 +121,8 @@ namespace mirai {
     void Scene::update_animation_components() {
         auto component_array = ecs->component_manager->get_component_array<AnimationComponent>();
         std::vector<AnimationComponent> &animations = component_array->components;
+        if (animations.size() == 0)
+            return;
         float dt = Engine::get()->get_dt_seconds();
         for (uint32_t i = 0; i < animations.size(); ++i) {
             Entity entity = component_array->entities[i];

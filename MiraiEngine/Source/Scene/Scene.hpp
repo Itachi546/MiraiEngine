@@ -152,6 +152,8 @@ namespace mirai {
         std::vector<RenderableObjectData> render_object_list;
         bool dirty;
 
+        bool pause_animation = false;
+
       protected:
         std::string name;
 
