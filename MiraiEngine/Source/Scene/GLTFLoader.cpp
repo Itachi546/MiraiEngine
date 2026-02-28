@@ -8,6 +8,7 @@
 #include "Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/AsyncLoader.hpp"
+#include "Scene/Animation.hpp"
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
 #include "Math/MathUtils.hpp"
@@ -18,8 +19,8 @@
 #include "Material.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Graphics/Renderer.hpp"
-
 #include <memory>
+#include <unordered_map>
 
 constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
 
@@ -27,6 +28,8 @@ namespace mirai {
     struct LoadState {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
+        // Map of node and it's animation
+        std::unordered_map<int, AnimationComponent> animations;
         uint32_t material_base_offset;
         AsyncLoader *async_loader;
     };
@@ -304,7 +307,10 @@ namespace mirai {
             if (texture.sampler >= 0)
                 sampler = &model->samplers[texture.sampler];
 
-            std::string texture_name = FormatTextureURI(image.uri.size() > 0 ? image.uri : texture.name);
+            std::string texture_name = FormatTextureURI(image.uri.size() > 0 ? image.uri : image.name);
+            // Random texture name is generated if texture doesn't have name
+            image.name = texture_name;
+
             TextureID texture_id = TextureCache::get()->get_texture_id(texture_name);
 
             if (image.image.size() > 0 && !texture_id.is_valid()) {
@@ -588,6 +594,102 @@ namespace mirai {
         gpu_mesh.vertex_binding_set = vertex_binding_set;
     }
 
+    InterpolationMode get_interpolation_mode(const std::string &mode) {
+        if (mode == "CUBIC")
+            return InterpolationMode::Cubic;
+        else if (mode == "STEP")
+            return InterpolationMode::Step;
+        return InterpolationMode::Linear;
+    }
+
+    void LoadAnimationSampler(const tinygltf::Model *model, const tinygltf::AnimationSampler &sampler, AnimationComponent *animation, const std::string &target_path, float &start_time, float &end_time) {
+        // timestamp array for animation
+        const auto &input_accessor = model->accessors[sampler.input];
+        ASSERT(input_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT && input_accessor.type == TINYGLTF_TYPE_SCALAR);
+
+        float *input_ptr = reinterpret_cast<float *>(GetBufferPtr(model, input_accessor));
+        uint32_t num_timestamps = cast_u32(input_accessor.count);
+        // value array for animation
+        const auto &output_accessor = model->accessors[sampler.output];
+        float *output_ptr = reinterpret_cast<float *>(GetBufferPtr(model, output_accessor));
+        uint32_t num_values = cast_u32(output_accessor.count);
+
+        InterpolationMode interpolation_mode = get_interpolation_mode(sampler.interpolation);
+
+        if (output_accessor.type == TINYGLTF_TYPE_VEC3) {
+            ASSERT(target_path == "scale" || target_path == "translation");
+            AnimationTrackVec3 &track = target_path == "scale" ? animation->scalings : animation->positions;
+            ASSERT(track.values.size() == 0);
+
+            track.timestamps.assign(input_ptr, input_ptr + num_timestamps);
+            start_time = std::min(start_time, track.timestamps.front());
+            end_time = std::max(end_time, track.timestamps.back());
+
+            track.values.resize(num_values);
+            for (uint32_t i = 0; i < num_values; ++i)
+                track.values[i] = glm::vec3(output_ptr[i * 3], output_ptr[i * 3 + 1], output_ptr[i * 3 + 2]);
+            track.interpolation_mode = interpolation_mode;
+
+        } else if (output_accessor.type == TINYGLTF_TYPE_VEC4) {
+            ASSERT(target_path == "rotation");
+            AnimationTrackQuat &track = animation->rotations;
+            ASSERT(track.values.size() == 0);
+
+            track.timestamps.assign(input_ptr, input_ptr + num_timestamps);
+            start_time = std::min(start_time, track.timestamps.front());
+            end_time = std::max(end_time, track.timestamps.back());
+
+            track.values.resize(num_values);
+            for (uint32_t i = 0; i < num_values; ++i)
+                track.values[i] = glm::fquat(output_ptr[i * 4 + 3], output_ptr[i * 4], output_ptr[i * 4 + 1], output_ptr[i * 4 + 2]);
+            track.interpolation_mode = interpolation_mode;
+        } else {
+            Log::Error("Unknown component type for animation sampler");
+        }
+    }
+
+    void LoadAnimations(const tinygltf::Model *model, LoadState *load_state) {
+        if (model->animations.size() == 0)
+            return;
+
+        for (const auto &gltf_animation : model->animations) {
+            float start_time = std::numeric_limits<float>::max();
+            float end_time = std::numeric_limits<float>::lowest();
+            const std::string &name = gltf_animation.name;
+
+            /**
+             * Different channelof same animation can belong to different node,
+             * so in order to calculate the animation properly, we need to keep track of
+             * animation start/end time globally for all the channels and update to the node.
+             **/
+            std::vector<int> nodes;
+            for (const auto &channel : gltf_animation.channels) {
+                int target_node = channel.target_node;
+                auto found = load_state->animations.find(target_node);
+                if (found == load_state->animations.end()) {
+                    AnimationComponent animation = {};
+                    animation.name = name;
+                    load_state->animations.insert(std::make_pair(target_node, animation));
+                }
+                // @Note, taking ptr to stl container is bad
+                AnimationComponent *animation = &load_state->animations.find(target_node)->second;
+                ASSERT(name == animation->name);
+
+                const std::string &target_path = channel.target_path;
+                const tinygltf::AnimationSampler &sampler = gltf_animation.samplers[channel.sampler];
+                LoadAnimationSampler(model, sampler, animation, target_path, start_time, end_time);
+                nodes.push_back(target_node);
+            }
+
+            // Update animation time in next pass
+            for (auto node : nodes) {
+                auto found = load_state->animations.find(node);
+                found->second.start_time = start_time;
+                found->second.end_time = end_time;
+            }
+        }
+    }
+
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
@@ -598,7 +700,6 @@ namespace mirai {
         Entity entity = scene->create_entity();
         // NameComponent
         std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
-        comp_manager->add_component<NameComponent>(entity, name);
         comp_manager->add_component<HierarchyComponent>(entity);
 
         // TransformComponent
@@ -633,6 +734,7 @@ namespace mirai {
             if (mesh_id >= 0) {
                 ASSERT(mesh_id < load_state->mesh_components.size());
                 comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+                name = model->meshes[mesh_id].name;
             }
 
         } else if (node->camera >= 0) {
@@ -658,6 +760,14 @@ namespace mirai {
                 camera->rotation = glm::degrees(glm::eulerAngles(transform.rotation));
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
+        }
+
+        comp_manager->add_component<NameComponent>(entity, name);
+
+        // Check if node has animation
+        auto found = load_state->animations.find(node_index);
+        if (found != load_state->animations.end()) {
+            comp_manager->add_component<AnimationComponent>(entity, std::move(found->second));
         }
 
         for (const auto &child : node->children)
@@ -716,6 +826,7 @@ namespace mirai {
 
         LoadMaterials(&gltf_model, &load_state, &user_data);
         LoadMeshes(&gltf_model, &load_state);
+        LoadAnimations(&gltf_model, &load_state);
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
                 ParseNodes(&gltf_model, node, root_entity, &load_state);

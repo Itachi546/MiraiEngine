@@ -2,6 +2,7 @@
 #include "Component.hpp"
 #include "Camera.hpp"
 #include "EnvironmentMap.hpp"
+#include "Animation.hpp"
 
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
@@ -17,6 +18,7 @@ namespace mirai {
         ecs->component_manager->register_component<HierarchyComponent>();
         ecs->component_manager->register_component<MeshComponent>();
         ecs->component_manager->register_component<TransformComponent>();
+        ecs->component_manager->register_component<AnimationComponent>();
 
         RenderingDevice *device = RenderingDevice::get();
         directional_light_info.enable_shadow = true;
@@ -55,7 +57,9 @@ namespace mirai {
 
         update_transform_components();
 
-        update_hierarchy_component();
+        update_animation_components();
+
+        update_hierarchy_components();
 
         update_materials();
 
@@ -113,6 +117,18 @@ namespace mirai {
         }
     }
 
+    void Scene::update_animation_components() {
+        auto component_array = ecs->component_manager->get_component_array<AnimationComponent>();
+        std::vector<AnimationComponent> &animations = component_array->components;
+        float dt = Engine::get()->get_dt_seconds();
+        for (uint32_t i = 0; i < animations.size(); ++i) {
+            Entity entity = component_array->entities[i];
+            TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+            transform->local_transform = animations[i].calculate_transform(dt);
+            transform->dirty = true;
+        }
+    }
+
     void Scene::update_transform_components() {
         auto transform_array_ptr = ecs->component_manager->get_component_array<TransformComponent>();
         std::vector<TransformComponent> &transforms = transform_array_ptr->components;
@@ -141,7 +157,7 @@ namespace mirai {
         }
     }
 
-    void Scene::update_hierarchy_component() {
+    void Scene::update_hierarchy_components() {
         update_hierarchy(entities[0], glm::mat4(1.0f), false);
     }
 

@@ -197,7 +197,7 @@
     },
     {
       "name": "deferred_transparent_pass",
-      "enabled": false,
+      "enabled": true,
       "inputs": [
         {
           "type": "attachment",

@@ -101,10 +101,19 @@ namespace mirai {
 
         void update_local_transform() {
             if (dirty) {
-                local_transform = glm::translate(glm::mat4(1.0f), position) *
-                                  glm::mat4_cast(rotation) *
-                                  glm::scale(glm::mat4(1.0f), scale);
+                local_transform = get_local_transform();
             }
+        }
+
+        glm::mat4 get_local_transform() {
+            /*
+            glm::mat4 result = glm::mat4(1.0f);
+            result = glm::translate(result, position);
+            result = result * glm::mat4_cast(rotation);
+            result = glm::scale(result, scale);
+            return result;
+            */
+            return glm::translate(position) * glm::mat4_cast(rotation) * glm::scale(scale);
         }
 
         // Increment current rotation by given euler angles
