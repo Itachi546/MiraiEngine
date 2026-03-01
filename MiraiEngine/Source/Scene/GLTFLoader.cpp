@@ -416,7 +416,13 @@ namespace mirai {
         uint32_t tangent;
         uint32_t bitangent;
         glm::vec2 uv;
+
+        glm::u8vec4 joints;
+        glm::vec4 weights;
     };
+
+    const uint32_t VERTEX_DATA_SIZE = 32;
+    const uint32_t VERTEX_DATA_SIZE_SKINNED = sizeof(TempVertex);
 
     void LoadMeshes(const tinygltf::Model *model, LoadState *load_state) {
         size_t mesh_count = model->meshes.size();
@@ -438,7 +444,6 @@ namespace mirai {
             mesh_component.mesh_subsets.resize(primitive_count);
             mesh_component.aabbs.resize(primitive_count);
 
-            uint32_t vertex_stride = sizeof(TempVertex);
             for (uint32_t p = 0; p < primitive_count; ++p) {
                 const auto &primitive = gltf_mesh.primitives[p];
                 uint32_t vertex_offset_bytes = static_cast<uint32_t>(vertices.size());
@@ -466,16 +471,37 @@ namespace mirai {
                 auto uv_attributes = primitive.attributes.find("TEXCOORD_0");
                 if (uv_attributes != primitive.attributes.end()) {
                     const tinygltf::Accessor uv_accessor = model->accessors[uv_attributes->second];
-                    if (uv_attributes != primitive.attributes.end())
-                        uvs = (float *)GetBufferPtr(model, uv_accessor);
+                    uvs = (float *)GetBufferPtr(model, uv_accessor);
                 }
                 uint32_t num_position = static_cast<uint32_t>(position_accessor.count);
                 AABB &aabb = mesh_component.aabbs[p];
                 aabb.min = glm::vec3{FLT_MAX};
                 aabb.max = glm::vec3{-FLT_MAX};
 
+                // Parse animation data
                 bool has_animation_data = false;
 
+                uint8_t *joints = nullptr;
+                auto joint_attributes = primitive.attributes.find("JOINTS_0");
+                if (joint_attributes != primitive.attributes.end()) {
+                    has_animation_data = true;
+                    const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
+                    ASSERT(joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+                    ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
+                    joints = (uint8_t *)GetBufferPtr(model, joint_accessor);
+                }
+
+                float *weights = nullptr;
+                auto weights_attributes = primitive.attributes.find("WEIGHTS_0");
+                if (weights_attributes != primitive.attributes.end()) {
+                    const tinygltf::Accessor weights_accessor = model->accessors[weights_attributes->second];
+                    ASSERT(weights_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+                    ASSERT(weights_accessor.type == TINYGLTF_TYPE_VEC4);
+                    weights = (float *)GetBufferPtr(model, weights_accessor);
+                }
+
+                // Copy local vertex data
+                uint32_t vertex_stride = has_animation_data ? VERTEX_DATA_SIZE_SKINNED : VERTEX_DATA_SIZE;
                 for (uint32_t i = 0; i < num_position; ++i) {
                     TempVertex vertex;
                     vertex.position = glm::vec3{
@@ -514,7 +540,21 @@ namespace mirai {
                         vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
 
-                    // Copy local vertex data
+                    if (has_animation_data) {
+                        vertex.joints = {
+                            joints[i * 4],
+                            joints[i * 4 + 1],
+                            joints[i * 4 + 2],
+                            joints[i * 4 + 3],
+                        };
+                        vertex.weights = {
+                            weights[i * 4],
+                            weights[i * 4 + 1],
+                            weights[i * 4 + 2],
+                            weights[i * 4 + 3],
+                        };
+                    }
+
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
                     vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
                 }

@@ -37,18 +37,6 @@ namespace mirai {
         }
     };
 
-    /*
-    struct Vertex {
-        float px, py, pz;
-        uint32_t normal;
-
-        uint32_t tangent;
-        uint32_t bitangent;
-        float tu, tv;
-    };
-    static_assert(sizeof(Vertex) % 16 == 0);
-    */
-
     struct MeshComponent {
         enum FLAGS {
             EMPTY = 0,
@@ -59,6 +47,7 @@ namespace mirai {
             DEPTH_TEST = 1 << 4,
             DEPTH_WRITE = 1 << 5,
             DISABLE_FRUSTUM_CULLING = 1 << 6,
+            SKINNED = 1 << 7,
         };
 
         uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
