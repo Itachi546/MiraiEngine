@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "Common/CommonInclude.hpp"
+#include "Engine/Log.hpp"
 
 namespace mirai {
 
@@ -54,27 +55,41 @@ namespace mirai {
             return glm::clamp((time - start) / (end - start), 0.0f, 1.0f);
         }
 
-        glm::vec3 interpolate_position(uint32_t index, float time) {
+        glm::vec3 interpolate_position(uint32_t index, float time, InterpolationMode interpolation_mode) {
             if (positions.values.size() == 1)
                 return positions.values[0];
+
+            if (interpolation_mode == InterpolationMode::Step)
+                return positions.values[index];
+            else if (interpolation_mode == InterpolationMode::Cubic)
+                Log::Warn("Cubic interpolation not impelmented, falling back to linear");
 
             uint32_t next_index = (index + 1) % cast_u32(positions.values.size());
             float dt = calculate_time_scale(positions.timestamps[index], positions.timestamps[next_index], time);
             return glm::lerp(positions.values[index], positions.values[next_index], dt);
         }
 
-        glm::fquat interpolate_rotation(uint32_t index, float time) {
+        glm::fquat interpolate_rotation(uint32_t index, float time, InterpolationMode interpolation_mode) {
             if (rotations.values.size() == 1)
                 return rotations.values[0];
+
+            if (interpolation_mode == InterpolationMode::Step)
+                return rotations.values[index];
+            else if (interpolation_mode == InterpolationMode::Cubic)
+                Log::Warn("Cubic interpolation not impelmented, falling back to linear");
 
             uint32_t next_index = (index + 1) % cast_u32(rotations.values.size());
             float dt = calculate_time_scale(rotations.timestamps[index], rotations.timestamps[next_index], time);
             return glm::slerp(rotations.values[index], rotations.values[next_index], dt);
         }
 
-        glm::vec3 interpolate_scaling(uint32_t index, float time) {
+        glm::vec3 interpolate_scaling(uint32_t index, float time, InterpolationMode interpolation_mode) {
             if (scalings.values.size() == 1)
                 return scalings.values[0];
+            if (interpolation_mode == InterpolationMode::Step)
+                return scalings.values[index];
+            else if (interpolation_mode == InterpolationMode::Cubic)
+                Log::Warn("Cubic interpolation not impelmented, falling back to linear");
 
             uint32_t next_index = (index + 1) % cast_u32(scalings.values.size());
             float dt = calculate_time_scale(scalings.timestamps[index], scalings.timestamps[next_index], time);
