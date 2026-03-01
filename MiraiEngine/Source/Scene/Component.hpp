@@ -37,6 +37,7 @@ namespace mirai {
         }
     };
 
+    /*
     struct Vertex {
         float px, py, pz;
         uint32_t normal;
@@ -45,8 +46,8 @@ namespace mirai {
         uint32_t bitangent;
         float tu, tv;
     };
-
     static_assert(sizeof(Vertex) % 16 == 0);
+    */
 
     struct MeshComponent {
         enum FLAGS {
@@ -65,11 +66,10 @@ namespace mirai {
         BufferView index_buffer;
 
         struct MeshSubset {
-            uint32_t vertex_offset;
-            uint32_t vertex_size;
-            uint32_t index_offset;
-            uint32_t index_size;
-            uint32_t vertex_count;
+            uint32_t vertex_offset_bytes;
+            uint32_t index_offset_bytes;
+            uint32_t index_count;
+            uint32_t vertex_stride;
             uint32_t material_index;
             UniformSetID vertex_binding_set;
         };

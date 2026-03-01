@@ -107,7 +107,7 @@ namespace mirai {
             }
             float distance_to_camera = glm::dot(transform->position, camera_position);
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count, distance_to_camera);
+            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.first_index, object.index_count, distance_to_camera);
         }
     }
 
@@ -152,7 +152,7 @@ namespace mirai {
             }
 
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.index_offset, object.index_count);
+            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.first_index, object.index_count);
         }
     }
 

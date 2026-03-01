@@ -41,10 +41,9 @@ namespace mirai {
         BufferView index_buffer;
 
         uint32_t vertex_offset;
-        uint32_t vertex_count;
-
-        uint32_t index_offset;
+        uint32_t first_index;
         uint32_t index_count;
+        uint32_t vertex_stride;
 
         AABB aabb;
 
@@ -58,7 +57,7 @@ namespace mirai {
         uint32_t vertex_buffer_size;
         uint32_t index_buffer_size;
 
-        std::vector<Vertex> vertices;
+        std::vector<uint8_t> vertices;
         std::vector<uint32_t> indices;
 
         UniformSetID vertex_binding_set;

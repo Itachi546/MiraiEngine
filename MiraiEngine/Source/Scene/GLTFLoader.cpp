@@ -409,6 +409,15 @@ namespace mirai {
         return (uint8_t *)(model->buffers[buffer_view.buffer].data.data() + accessor.byteOffset + buffer_view.byteOffset);
     }
 
+    struct TempVertex {
+        glm::vec3 position;
+        uint32_t normal;
+
+        uint32_t tangent;
+        uint32_t bitangent;
+        glm::vec2 uv;
+    };
+
     void LoadMeshes(const tinygltf::Model *model, LoadState *load_state) {
         size_t mesh_count = model->meshes.size();
         std::vector<MeshComponent> &mesh_components = load_state->mesh_components;
@@ -417,7 +426,7 @@ namespace mirai {
         uint32_t gpu_mesh_index = static_cast<uint32_t>(load_state->scene->gpu_meshes.size());
         GpuMesh &gpu_mesh = load_state->scene->gpu_meshes.emplace_back(GpuMesh{});
 
-        std::vector<Vertex> &vertices = gpu_mesh.vertices;
+        std::vector<uint8_t> &vertices = gpu_mesh.vertices;
         std::vector<uint32_t> &indices = gpu_mesh.indices;
 
         for (uint32_t m = 0; m < mesh_count; ++m) {
@@ -429,10 +438,11 @@ namespace mirai {
             mesh_component.mesh_subsets.resize(primitive_count);
             mesh_component.aabbs.resize(primitive_count);
 
+            uint32_t vertex_stride = sizeof(TempVertex);
             for (uint32_t p = 0; p < primitive_count; ++p) {
                 const auto &primitive = gltf_mesh.primitives[p];
-                uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
-                uint32_t index_offset = static_cast<uint32_t>(indices.size());
+                uint32_t vertex_offset_bytes = static_cast<uint32_t>(vertices.size());
+                uint32_t index_offset_bytes = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
 
                 auto position_attributes = primitive.attributes.find("POSITION");
                 const tinygltf::Accessor position_accessor = model->accessors[position_attributes->second];
@@ -464,18 +474,17 @@ namespace mirai {
                 aabb.min = glm::vec3{FLT_MAX};
                 aabb.max = glm::vec3{-FLT_MAX};
 
+                bool has_animation_data = false;
+
                 for (uint32_t i = 0; i < num_position; ++i) {
-                    Vertex &vertex = vertices.emplace_back();
-                    glm::vec3 position = glm::vec3{
+                    TempVertex vertex;
+                    vertex.position = glm::vec3{
                         positions[i * 3],
                         positions[i * 3 + 1],
                         positions[i * 3 + 2]};
-                    vertex.px = position.x;
-                    vertex.py = position.y;
-                    vertex.pz = position.z;
 
-                    aabb.min = glm::min(aabb.min, position);
-                    aabb.max = glm::max(aabb.max, position);
+                    aabb.min = glm::min(aabb.min, vertex.position);
+                    aabb.max = glm::max(aabb.max, vertex.position);
 
                     glm::vec3 normal;
                     if (normals != nullptr)
@@ -502,9 +511,12 @@ namespace mirai {
                     vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
 
                     if (uvs != nullptr) {
-                        vertex.tu = uvs[i * 2 + 0];
-                        vertex.tv = uvs[i * 2 + 1];
+                        vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
+
+                    // Copy local vertex data
+                    uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
+                    vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
                 }
 
                 const tinygltf::Accessor &indices_accessor = model->accessors[primitive.indices];
@@ -518,11 +530,10 @@ namespace mirai {
                 }
 
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
-                mesh_subset.vertex_offset = vertex_offset * sizeof(Vertex);
-                mesh_subset.index_offset = index_offset * sizeof(uint32_t);
-                mesh_subset.vertex_size = cast_u32((vertices.size() - vertex_offset) * sizeof(Vertex));
-                mesh_subset.index_size = cast_u32((indices.size() - index_offset) * sizeof(uint32_t));
-                mesh_subset.vertex_count = index_count;
+                mesh_subset.vertex_offset_bytes = vertex_offset_bytes;
+                mesh_subset.index_offset_bytes = index_offset_bytes;
+                mesh_subset.vertex_stride = vertex_stride;
+                mesh_subset.index_count = index_count;
 
                 ASSERT(primitive.material >= 0);
                 mesh_subset.material_index = primitive.material + load_state->material_base_offset;
@@ -532,7 +543,7 @@ namespace mirai {
         // @TODO May cause issue later when multiple mesh are loaded in different thread
         // Pushing to the vector may invalidates all the reference
         Renderer *renderer = Renderer::get();
-        uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size() * sizeof(Vertex));
+        uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size());
         std::optional<BufferView> vertex_buffer_view = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
         if (!vertex_buffer_view.has_value()) {
             Log::Fatal(0, "Failed to allocate goemetry buffer");
@@ -562,12 +573,13 @@ namespace mirai {
                                             .size_in_bytes = index_buffer_size,
                                         }});
 
+        // Add global vertex buffer offset to the subset as well
         for (auto &mesh_component : mesh_components) {
             mesh_component.vertex_buffer = vertex_buffer;
             mesh_component.index_buffer = index_buffer;
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
-                mesh_subset.vertex_offset += vertex_buffer.offset;
-                mesh_subset.index_offset += index_buffer.offset;
+                mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
+                mesh_subset.index_offset_bytes += index_buffer.offset;
             }
         }
 

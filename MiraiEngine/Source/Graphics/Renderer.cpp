@@ -94,14 +94,14 @@ namespace mirai {
 
             mesh_infos[i].vertex_buffer = {
                 .buffer = object.vertex_buffer.buffer,
-                .offset = cast_u32(object.vertex_offset * sizeof(Vertex)),
-                .count = object.vertex_count,
-                .stride = sizeof(Vertex),
+                .offset = object.vertex_offset * object.vertex_stride,
+                .count = object.index_count,
+                .stride = object.vertex_stride,
             };
 
             mesh_infos[i].index_buffer = {
                 .buffer = object.index_buffer.buffer,
-                .offset = cast_u32(object.index_offset * sizeof(uint32_t)),
+                .offset = object.first_index * sizeof(uint32_t),
                 .count = object.index_count,
                 .stride = sizeof(uint32_t),
             };
