@@ -142,6 +142,15 @@ namespace mirai {
         }
     }
 
+    void Scene::update_animator_components() {
+        auto animator_component_ptr = ecs->component_manager->get_component_array<AnimatorComponent>();
+        std::vector<AnimatorComponent> &animator_components = animator_component_ptr->components;
+
+        for (auto &component : animator_components) {
+            Skeleton &skeleton = skeletons[component.skeleton_index];
+        }
+    }
+
     void Scene::update_transform_components() {
         auto transform_array_ptr = ecs->component_manager->get_component_array<TransformComponent>();
         std::vector<TransformComponent> &transforms = transform_array_ptr->components;

@@ -765,6 +765,21 @@ namespace mirai {
         }
     }
 
+    void ParseNodeTransform(const tinygltf::Node *node, TransformComponent *transform) {
+        if (node->translation.size() > 0)
+            transform->position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
+        if (node->rotation.size() > 0)
+            transform->rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
+        if (node->scale.size() > 0)
+            transform->scale = {node->scale[0], node->scale[1], node->scale[2]};
+        if (node->matrix.size() > 0) {
+            glm::mat4 transformation_matrix = glm::make_mat4x4(node->matrix.data());
+            glm::vec3 skew;
+            glm::vec4 perspective;
+            glm::decompose(transformation_matrix, transform->scale, transform->rotation, transform->position, skew, perspective);
+        }
+    }
+
     void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_map<int, int> &joints_lookup, int node_index, Skeleton *skeleton) {
         const tinygltf::Node *parent_node = &model->nodes[node_index];
 
@@ -791,7 +806,7 @@ namespace mirai {
             std::unordered_map<int, int> node_parent_lookup;
             std::unordered_map<int, int> joints_lookup;
 
-            Skeleton skeleton;
+            Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
 
             ASSERT(skin.inverseBindMatrices >= 0);
@@ -802,8 +817,11 @@ namespace mirai {
 
             glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
             skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
+            skeleton.local_transforms.resize(joint_count);
+
             for (uint32_t j = 0; j < joint_count; ++j) {
                 int parent_index = skin.joints[j];
+
                 joints_lookup[parent_index] = -1;
                 load_state->skeleton_nodes.insert(parent_index);
 
@@ -818,7 +836,13 @@ namespace mirai {
                 for (auto child : node->children) {
                     node_parent_lookup[child] = parent_index;
                 }
+
+                TransformComponent transform;
+                ParseNodeTransform(node, &transform);
+                transform.update_local_transform();
+                skeleton.local_transforms[j] = transform.get_local_transform();
             }
+
             for (auto [key, val] : node_parent_lookup) {
                 if (val == -1) {
                     skeleton.add_bone(-1, model->nodes[key].name);
@@ -859,18 +883,7 @@ namespace mirai {
 
         // TransformComponent
         TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
-        if (node->translation.size() > 0)
-            transform.position = {(float)node->translation[0], (float)node->translation[1], (float)node->translation[2]};
-        if (node->rotation.size() > 0)
-            transform.rotation = {(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
-        if (node->scale.size() > 0)
-            transform.scale = {node->scale[0], node->scale[1], node->scale[2]};
-        if (node->matrix.size() > 0) {
-            glm::mat4 transformation_matrix = glm::make_mat4x4(node->matrix.data());
-            glm::vec3 skew;
-            glm::vec4 perspective;
-            glm::decompose(transformation_matrix, transform.scale, transform.rotation, transform.position, skew, perspective);
-        }
+        ParseNodeTransform(node, &transform);
 
         // HierarchyComponent
         if (!comp_manager->has_component<HierarchyComponent>(parent))

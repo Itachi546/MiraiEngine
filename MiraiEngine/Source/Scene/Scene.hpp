@@ -168,6 +168,7 @@ namespace mirai {
         void remove_entity_tree(Entity entity);
         void update_materials();
         void update_node_animator_components();
+        void update_animator_components();
         void update_transform_components();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
