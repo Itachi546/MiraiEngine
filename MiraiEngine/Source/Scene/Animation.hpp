@@ -181,7 +181,7 @@ namespace mirai {
      glm::mat4 calculate_transform(float time);
  };
  */
-    struct SkeletonComponent {
+    struct Skeleton {
         std::string name;
 
         // Bone related informations

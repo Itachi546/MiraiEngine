@@ -126,7 +126,7 @@ namespace mirai {
         float dt = Engine::get()->get_dt_seconds();
         for (uint32_t i = 0; i < animations.size(); ++i) {
             NodeAnimatorComponent &component = animations[i];
-            const AnimationClip &clip = animation_clips[component.current_clip_index];
+            const AnimationClip &clip = animation_clips[component.current_animation_clip];
 
             float duration = clip.get_duration();
             float start_time = clip.start_time;

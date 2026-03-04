@@ -31,9 +31,9 @@ namespace mirai {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
+        uint32_t skeleton_base_offset;
         // Map of node and it's position in scene animation_clip vector
         std::unordered_map<int, uint32_t> animation_clip_lookup;
-        std::vector<SkeletonComponent> skeleton;
         std::unordered_set<int> skeleton_nodes;
         AsyncLoader *async_loader;
     };
@@ -765,7 +765,7 @@ namespace mirai {
         }
     }
 
-    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_map<int, int> &joints_lookup, int node_index, SkeletonComponent *skeleton) {
+    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_map<int, int> &joints_lookup, int node_index, Skeleton *skeleton) {
         const tinygltf::Node *parent_node = &model->nodes[node_index];
 
         // Breadth First Traversal
@@ -791,7 +791,7 @@ namespace mirai {
             std::unordered_map<int, int> node_parent_lookup;
             std::unordered_map<int, int> joints_lookup;
 
-            SkeletonComponent skeleton;
+            Skeleton skeleton;
             skeleton.name = skin.name;
 
             ASSERT(skin.inverseBindMatrices >= 0);
@@ -916,7 +916,9 @@ namespace mirai {
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
         } else if (node->skin >= 0) {
-            comp_manager->add_component<SkeletonComponent>(entity, load_state->skeleton[node->skin]);
+            comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
+                                                                       .skeleton_index = load_state->skeleton_base_offset + node->skin,
+                                                                   });
         }
 
         comp_manager->add_component<NameComponent>(entity, name);
@@ -977,6 +979,7 @@ namespace mirai {
         LoadState load_state = {
             .scene = scene,
             .material_base_offset = cast_u32(scene->materials.size()),
+            .skeleton_base_offset = cast_u32(scene->skeletons.size()),
         };
 
         load_state.async_loader = &async_loader;
