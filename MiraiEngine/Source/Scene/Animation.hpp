@@ -190,9 +190,10 @@ namespace mirai {
         std::vector<glm::mat4> inv_bind_matrices;
         std::vector<std::string> names;
 
-        void add_bone(int parent, const std::string &name) {
+        void add_bone(int parent, const std::string &name, const glm::mat4 &local_transform) {
             parents.push_back(parent);
             names.push_back(name);
+            local_transforms.push_back(local_transform);
         }
     };
 

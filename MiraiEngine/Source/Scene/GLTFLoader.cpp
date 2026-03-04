@@ -790,7 +790,10 @@ namespace mirai {
             if (joints_lookup.find(child_index) == joints_lookup.end())
                 continue;
             const tinygltf::Node *child_node = &model->nodes[child_index];
-            skeleton->add_bone(parent_index, child_node->name);
+
+            TransformComponent transform;
+            ParseNodeTransform(child_node, &transform);
+            skeleton->add_bone(parent_index, child_node->name, transform.get_local_transform());
             joints_lookup[child_index] = cast_int(skeleton->parents.size() - 1);
         }
 
@@ -818,7 +821,6 @@ namespace mirai {
 
             glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
             skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
-            skeleton.local_transforms.resize(joint_count);
 
             for (uint32_t j = 0; j < joint_count; ++j) {
                 int parent_index = skin.joints[j];
@@ -837,16 +839,14 @@ namespace mirai {
                 for (auto child : node->children) {
                     node_parent_lookup[child] = parent_index;
                 }
-
-                TransformComponent transform;
-                ParseNodeTransform(node, &transform);
-                transform.update_local_transform();
-                skeleton.local_transforms[j] = transform.get_local_transform();
             }
 
             for (auto [key, val] : node_parent_lookup) {
                 if (val == -1) {
-                    skeleton.add_bone(-1, model->nodes[key].name);
+                    const tinygltf::Node *node = &model->nodes[key];
+                    TransformComponent transform;
+                    ParseNodeTransform(node, &transform);
+                    skeleton.add_bone(-1, model->nodes[key].name, transform.get_local_transform());
                     joints_lookup[key] = cast_u32(skeleton.parents.size() - 1);
                     ParseSkeletonHierarchy(model, joints_lookup, key, &skeleton);
                 }
