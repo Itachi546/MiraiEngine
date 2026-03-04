@@ -64,7 +64,7 @@ namespace mirai {
         ScopedCpuProfiling("CSM Update");
 
         Scene *scene = renderer->get_scene();
-        Light *light = scene->get_sun();
+        LightComponent *light = scene->get_sun();
         Camera *camera = scene->get_camera();
 
         float z_near = camera->get_near_plane();

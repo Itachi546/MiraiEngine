@@ -19,8 +19,10 @@
 #include "Material.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Graphics/Renderer.hpp"
+
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
 
@@ -28,9 +30,11 @@ namespace mirai {
     struct LoadState {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
-        // Map of node and it's animation
-        std::unordered_map<int, AnimationComponent> animations;
         uint32_t material_base_offset;
+        // Map of node and it's position in scene animation_clip vector
+        std::unordered_map<int, uint32_t> animation_clip_lookup;
+        std::vector<SkeletonComponent> skeleton;
+        std::unordered_set<int> skeleton_nodes;
         AsyncLoader *async_loader;
     };
 
@@ -481,14 +485,21 @@ namespace mirai {
                 // Parse animation data
                 bool has_animation_data = false;
 
-                uint8_t *joints = nullptr;
                 auto joint_attributes = primitive.attributes.find("JOINTS_0");
+                std::vector<uint8_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
                     has_animation_data = true;
                     const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
-                    ASSERT(joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
                     ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
-                    joints = (uint8_t *)GetBufferPtr(model, joint_accessor);
+                    if (joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                        uint8_t *joint_ptr = (uint8_t *)GetBufferPtr(model, joint_accessor);
+                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * sizeof(uint8_t) * 4);
+                    } else if (joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                        uint8_t *joint_ptr = (uint8_t *)GetBufferPtr(model, joint_accessor);
+                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * sizeof(uint16_t) * 4);
+                    } else {
+                        ASSERT("Unknown component type for joint");
+                    }
                 }
 
                 float *weights = nullptr;
@@ -553,6 +564,12 @@ namespace mirai {
                             weights[i * 4 + 2],
                             weights[i * 4 + 3],
                         };
+
+#ifdef _DEBUG
+                        if (vertex.weights.x + vertex.weights.y + vertex.weights.z + vertex.weights.w > 1.0001f) {
+                            Log::Error("Vertex weight is not normalized");
+                        }
+#endif
                     }
 
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
@@ -654,46 +671,46 @@ namespace mirai {
         return InterpolationMode::Linear;
     }
 
-    void LoadAnimationSampler(const tinygltf::Model *model, const tinygltf::AnimationSampler &sampler, AnimationComponent *animation, const std::string &target_path, float &start_time, float &end_time) {
+    void LoadAnimationSampler(const tinygltf::Model *model, const tinygltf::AnimationSampler &sampler, AnimationClip *animation_clip, const std::string &target_path, float &start_time, float &end_time) {
         // timestamp array for animation
         const auto &input_accessor = model->accessors[sampler.input];
         ASSERT(input_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT && input_accessor.type == TINYGLTF_TYPE_SCALAR);
 
-        float *input_ptr = reinterpret_cast<float *>(GetBufferPtr(model, input_accessor));
-        uint32_t num_timestamps = cast_u32(input_accessor.count);
+        float *timestamps_ptr = reinterpret_cast<float *>(GetBufferPtr(model, input_accessor));
+        uint32_t num_timestamp = cast_u32(input_accessor.count);
         // value array for animation
         const auto &output_accessor = model->accessors[sampler.output];
-        float *output_ptr = reinterpret_cast<float *>(GetBufferPtr(model, output_accessor));
-        uint32_t num_values = cast_u32(output_accessor.count);
+        float *values_ptr = reinterpret_cast<float *>(GetBufferPtr(model, output_accessor));
+        uint32_t num_value = cast_u32(output_accessor.count);
 
         InterpolationMode interpolation_mode = get_interpolation_mode(sampler.interpolation);
 
         if (output_accessor.type == TINYGLTF_TYPE_VEC3) {
             ASSERT(target_path == "scale" || target_path == "translation");
-            AnimationTrackVec3 &track = target_path == "scale" ? animation->scalings : animation->positions;
+            Vec3Track &track = target_path == "scale" ? animation_clip->scalings : animation_clip->positions;
             ASSERT(track.values.size() == 0);
+            ASSERT(num_value = num_timestamp);
 
-            track.timestamps.assign(input_ptr, input_ptr + num_timestamps);
+            track.timestamps.assign(timestamps_ptr, timestamps_ptr + num_timestamp);
             start_time = std::min(start_time, track.timestamps.front());
             end_time = std::max(end_time, track.timestamps.back());
 
-            track.values.resize(num_values);
-            for (uint32_t i = 0; i < num_values; ++i)
-                track.values[i] = glm::vec3(output_ptr[i * 3], output_ptr[i * 3 + 1], output_ptr[i * 3 + 2]);
+            track.values.resize(num_value);
+            for (uint32_t i = 0; i < num_value; ++i)
+                track.values[i] = glm::vec3(values_ptr[i * 3], values_ptr[i * 3 + 1], values_ptr[i * 3 + 2]);
             track.interpolation_mode = interpolation_mode;
-
         } else if (output_accessor.type == TINYGLTF_TYPE_VEC4) {
             ASSERT(target_path == "rotation");
-            AnimationTrackQuat &track = animation->rotations;
+            QuatTrack &track = animation_clip->rotations;
             ASSERT(track.values.size() == 0);
 
-            track.timestamps.assign(input_ptr, input_ptr + num_timestamps);
+            track.timestamps.assign(timestamps_ptr, timestamps_ptr + num_timestamp);
             start_time = std::min(start_time, track.timestamps.front());
             end_time = std::max(end_time, track.timestamps.back());
 
-            track.values.resize(num_values);
-            for (uint32_t i = 0; i < num_values; ++i)
-                track.values[i] = glm::fquat(output_ptr[i * 4 + 3], output_ptr[i * 4], output_ptr[i * 4 + 1], output_ptr[i * 4 + 2]);
+            track.values.resize(num_value);
+            for (uint32_t i = 0; i < num_value; ++i)
+                track.values[i] = glm::fquat(values_ptr[i * 4 + 3], values_ptr[i * 4], values_ptr[i * 4 + 1], values_ptr[i * 4 + 2]);
             track.interpolation_mode = interpolation_mode;
         } else {
             Log::Error("Unknown component type for animation sampler");
@@ -703,6 +720,9 @@ namespace mirai {
     void LoadAnimations(const tinygltf::Model *model, LoadState *load_state) {
         if (model->animations.size() == 0)
             return;
+
+        auto &animation_clip_lookup = load_state->animation_clip_lookup;
+        auto &animation_clips = load_state->scene->animation_clips;
 
         for (const auto &gltf_animation : model->animations) {
             float start_time = std::numeric_limits<float>::max();
@@ -717,32 +737,115 @@ namespace mirai {
             std::vector<int> nodes;
             for (const auto &channel : gltf_animation.channels) {
                 int target_node = channel.target_node;
-                auto found = load_state->animations.find(target_node);
-                if (found == load_state->animations.end()) {
-                    AnimationComponent animation = {};
-                    animation.name = name;
-                    load_state->animations.insert(std::make_pair(target_node, animation));
+                auto found = animation_clip_lookup.find(target_node);
+
+                AnimationClip *animation_clip = nullptr;
+                if (found == animation_clip_lookup.end()) {
+                    animation_clips.push_back(AnimationClip{.name = name});
+                    animation_clip_lookup.insert(std::make_pair(target_node, cast_u32(animation_clips.size() - 1)));
+                    animation_clip = &animation_clips.back();
+                } else {
+                    animation_clip = &animation_clips[found->second];
                 }
-                // @Note, taking ptr to stl container is bad
-                AnimationComponent *animation = &load_state->animations.find(target_node)->second;
-                ASSERT(name == animation->name);
+                ASSERT(name == animation_clip->name);
 
                 const std::string &target_path = channel.target_path;
                 const tinygltf::AnimationSampler &sampler = gltf_animation.samplers[channel.sampler];
-                LoadAnimationSampler(model, sampler, animation, target_path, start_time, end_time);
+                LoadAnimationSampler(model, sampler, animation_clip, target_path, start_time, end_time);
                 nodes.push_back(target_node);
             }
 
             // Update animation time in next pass
             for (auto node : nodes) {
-                auto found = load_state->animations.find(node);
-                found->second.start_time = start_time;
-                found->second.end_time = end_time;
+                auto found = animation_clip_lookup.find(node);
+                AnimationClip *animation = &animation_clips[found->second];
+                animation->start_time = start_time;
+                animation->end_time = end_time;
             }
         }
     }
 
+    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_map<int, int> &joints_lookup, int node_index, SkeletonComponent *skeleton) {
+        const tinygltf::Node *parent_node = &model->nodes[node_index];
+
+        // Breadth First Traversal
+        uint32_t parent_index = joints_lookup[node_index];
+        for (auto child_index : parent_node->children) {
+            if (joints_lookup.find(child_index) == joints_lookup.end())
+                continue;
+            const tinygltf::Node *child_node = &model->nodes[child_index];
+            skeleton->add_bone(parent_index, child_node->name);
+            joints_lookup[child_index] = cast_int(skeleton->parents.size() - 1);
+        }
+
+        for (auto child_index : parent_node->children)
+            ParseSkeletonHierarchy(model, joints_lookup, child_index, skeleton);
+    }
+
+    void LoadSkins(const tinygltf::Model *model, LoadState *load_state) {
+
+        for (const auto &skin : model->skins) {
+            uint32_t joint_count = cast_u32(skin.joints.size());
+            // We don't have skeleton information, need to reconstruct it manually
+            // Lookup table between node and it's parent
+            std::unordered_map<int, int> node_parent_lookup;
+            std::unordered_map<int, int> joints_lookup;
+
+            SkeletonComponent skeleton;
+            skeleton.name = skin.name;
+
+            ASSERT(skin.inverseBindMatrices >= 0);
+            const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
+            ASSERT(bind_matrices_accessor.count == joint_count);
+            ASSERT(bind_matrices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+            ASSERT(bind_matrices_accessor.type == TINYGLTF_TYPE_MAT4);
+
+            glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
+            skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
+            for (uint32_t j = 0; j < joint_count; ++j) {
+                int parent_index = skin.joints[j];
+                joints_lookup[parent_index] = -1;
+                load_state->skeleton_nodes.insert(parent_index);
+
+                auto found = node_parent_lookup.find(parent_index);
+                if (found != node_parent_lookup.end())
+                    node_parent_lookup[parent_index] = found->second;
+                else
+                    node_parent_lookup[parent_index] = -1;
+
+                const tinygltf::Node *node = &model->nodes[parent_index];
+                ASSERT(node != nullptr);
+                for (auto child : node->children) {
+                    node_parent_lookup[child] = parent_index;
+                }
+            }
+            for (auto [key, val] : node_parent_lookup) {
+                if (val == -1) {
+                    skeleton.add_bone(-1, model->nodes[key].name);
+                    joints_lookup[key] = cast_u32(skeleton.parents.size() - 1);
+                    ParseSkeletonHierarchy(model, joints_lookup, key, &skeleton);
+                }
+            }
+            /*
+            #ifdef _DEBUG
+                        if (root_nodes.size() > 1) {
+                            Log::Info("Multiple root node found for skin ", skin.name, " Total root node: ", root_nodes.size());
+                        }
+
+                        if (skin.skeleton != -1 && root_nodes.size() == 1) {
+                            ASSERT(skin.skeleton == root_nodes[0]);
+                        }
+            #endif
+            */
+            Log::Info("Skin Name: ", skin.name);
+        }
+    }
+
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
+        // We skip skeleton node in node hierarchy
+        if (load_state->skeleton_nodes.find(node_index) != load_state->skeleton_nodes.end())
+            return;
+
         const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
 
@@ -812,14 +915,16 @@ namespace mirai {
                 camera->rotation = glm::degrees(glm::eulerAngles(transform.rotation));
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
+        } else if (node->skin >= 0) {
+            comp_manager->add_component<SkeletonComponent>(entity, load_state->skeleton[node->skin]);
         }
 
         comp_manager->add_component<NameComponent>(entity, name);
-
         // Check if node has animation
-        auto found = load_state->animations.find(node_index);
-        if (found != load_state->animations.end()) {
-            comp_manager->add_component<AnimationComponent>(entity, std::move(found->second));
+
+        auto found = load_state->animation_clip_lookup.find(node_index);
+        if (found != load_state->animation_clip_lookup.end()) {
+            comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{found->second});
         }
 
         for (const auto &child : node->children)
@@ -871,7 +976,7 @@ namespace mirai {
 
         LoadState load_state = {
             .scene = scene,
-            .material_base_offset = static_cast<uint32_t>(scene->materials.size()),
+            .material_base_offset = cast_u32(scene->materials.size()),
         };
 
         load_state.async_loader = &async_loader;
@@ -879,6 +984,8 @@ namespace mirai {
         LoadMaterials(&gltf_model, &load_state, &user_data);
         LoadMeshes(&gltf_model, &load_state);
         LoadAnimations(&gltf_model, &load_state);
+        LoadSkins(&gltf_model, &load_state);
+
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
                 ParseNodes(&gltf_model, node, root_entity, &load_state);
@@ -891,5 +998,5 @@ namespace mirai {
         RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));
 
         return root_entity;
-    }
+    } // namespace mirai
 } // namespace mirai

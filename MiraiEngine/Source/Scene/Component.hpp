@@ -120,7 +120,7 @@ namespace mirai {
         LIGHT_TYPE_SPOT = 2
     };
 
-    struct Light {
+    struct LightComponent {
         union {
             glm::vec3 position;
             glm::vec3 rotation;
@@ -135,6 +135,18 @@ namespace mirai {
         float intensity;
 
         bool cast_shadow;
+    };
+
+    struct NodeAnimatorComponent {
+        // Index to the array of AnimationClip stored in scene
+        uint32_t current_clip_index;
+        float current_time = 0.0f;
+        float playback_speed = 1.0f;
+        bool looping = true;
+        bool should_update_children = true;
+
+        float update() {
+        }
     };
 
 }; // namespace mirai

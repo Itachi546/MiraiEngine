@@ -294,7 +294,7 @@ class TestApplication : public App {
         }
 
         if (ImGui::CollapsingHeader("Directional Light")) {
-            Light *light = scene->get_sun();
+            LightComponent* light = scene->get_sun();
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
             ImGui::DragFloat3("Direction", &light->rotation[0], 1.0f, -360.0f, 360.0f);
             ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);

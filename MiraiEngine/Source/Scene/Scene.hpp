@@ -4,6 +4,7 @@
 #include "Component.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Material.hpp"
+#include "Animation.hpp"
 #include <string>
 #include <mutex>
 
@@ -78,7 +79,7 @@ namespace mirai {
             return env_map.get();
         }
 
-        Light *get_sun() {
+        LightComponent *get_sun() {
             return sun.get();
         }
 
@@ -114,6 +115,7 @@ namespace mirai {
 
         std::unique_ptr<ECS> ecs;
         std::vector<std::unique_ptr<Material>> materials;
+        std::vector<AnimationClip> animation_clips;
         std::vector<Entity> entities;
 
         // List of material/transforms that must be patched on gpu
@@ -157,14 +159,14 @@ namespace mirai {
         std::string name;
 
         std::unique_ptr<Camera> camera;
-        std::unique_ptr<Light> sun;
+        std::unique_ptr<LightComponent> sun;
         std::shared_ptr<EnvironmentMap> env_map;
 
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
         void update_materials();
-        void update_animation_components();
+        void update_node_animator_components();
         void update_transform_components();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);

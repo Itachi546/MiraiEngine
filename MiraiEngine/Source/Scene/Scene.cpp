@@ -18,14 +18,14 @@ namespace mirai {
         ecs->component_manager->register_component<HierarchyComponent>();
         ecs->component_manager->register_component<MeshComponent>();
         ecs->component_manager->register_component<TransformComponent>();
-        ecs->component_manager->register_component<AnimationComponent>();
+        ecs->component_manager->register_component<NodeAnimatorComponent>();
 
         RenderingDevice *device = RenderingDevice::get();
         directional_light_info.enable_shadow = true;
 
         // Initialize camera/sun
         camera = std::make_unique<Camera>();
-        sun = std::make_unique<Light>();
+        sun = std::make_unique<LightComponent>();
         sun->color = glm::vec3(1.0f);
         sun->rotation = glm::vec3(110.0f, 336.0f, 0.0f);
         sun->intensity = 1.0f;
@@ -58,7 +58,7 @@ namespace mirai {
         update_transform_components();
 
         if (!pause_animation)
-            update_animation_components();
+            update_node_animator_components();
 
         update_hierarchy_components();
 
@@ -118,16 +118,26 @@ namespace mirai {
         }
     }
 
-    void Scene::update_animation_components() {
-        auto component_array = ecs->component_manager->get_component_array<AnimationComponent>();
-        std::vector<AnimationComponent> &animations = component_array->components;
+    void Scene::update_node_animator_components() {
+        auto component_array = ecs->component_manager->get_component_array<NodeAnimatorComponent>();
+        std::vector<NodeAnimatorComponent> &animations = component_array->components;
         if (animations.size() == 0)
             return;
         float dt = Engine::get()->get_dt_seconds();
         for (uint32_t i = 0; i < animations.size(); ++i) {
+            NodeAnimatorComponent &component = animations[i];
+            const AnimationClip &clip = animation_clips[component.current_clip_index];
+
+            float duration = clip.get_duration();
+            float start_time = clip.start_time;
+            float end_time = clip.end_time;
+            component.current_time += dt;
+            if (component.looping && component.current_time > end_time)
+                component.current_time = fmod(component.current_time - start_time, duration) + start_time;
+
             Entity entity = component_array->entities[i];
             TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
-            transform->local_transform = animations[i].calculate_transform(dt);
+            transform->local_transform = clip.sample(component.current_time);
             transform->dirty = true;
         }
     }

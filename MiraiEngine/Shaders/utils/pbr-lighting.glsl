@@ -13,7 +13,7 @@ struct Light {
     float intensity;
 };
 
-#define IBL_CONTRIBUTION 1.0f
+#define IBL_CONTRIBUTION 0.5f
 
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params) {
     /*
