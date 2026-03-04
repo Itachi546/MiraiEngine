@@ -489,6 +489,8 @@ namespace mirai {
                 std::vector<uint8_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
                     has_animation_data = true;
+                    mesh_component._flags |= (MeshComponent::DYNAMIC | MeshComponent::SKINNED);
+
                     const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
                     ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
                     if (joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
