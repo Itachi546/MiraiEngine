@@ -19,6 +19,7 @@ namespace mirai {
         ecs->component_manager->register_component<MeshComponent>();
         ecs->component_manager->register_component<TransformComponent>();
         ecs->component_manager->register_component<NodeAnimatorComponent>();
+        ecs->component_manager->register_component<AnimatorComponent>();
 
         RenderingDevice *device = RenderingDevice::get();
         directional_light_info.enable_shadow = true;

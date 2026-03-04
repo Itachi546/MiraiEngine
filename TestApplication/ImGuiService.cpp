@@ -58,9 +58,9 @@ namespace ImGuiService {
         init_info.UseDynamicRendering = true;
 
         VkFormat color_attachment_format = device->swapchain->surface_format.format;
-        init_info.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-        init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-        init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats = &color_attachment_format;
+        init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+        init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+        init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &color_attachment_format;
         init_info.CheckVkResultFn = check_vk_result;
         ImGui_ImplVulkan_Init(&init_info);
         // ImGui_ImplVulkan_CreateFontsTexture();
@@ -96,7 +96,7 @@ namespace ImGuiService {
 
     void ImGuiService::AddImage(uint32_t texture, const ImVec2 &size, const ImVec4 &tint_color) {
         ImTextureID textureId = GetTextureID(texture);
-        ImGui::Image(textureId, size, ImVec2{0.0, 0.0}, ImVec2{1.0, 1.0}, tint_color);
+        ImGui::Image(textureId, size, ImVec2{0.0, 0.0}, ImVec2{1.0, 1.0}, tint_color, ImVec4{0.0f, 0.0f, 0.0f, 0.0f});
     }
 
     void NewFrame() {
@@ -111,10 +111,12 @@ namespace ImGuiService {
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer->get_command_buffer());
 
         ImGuiIO &io = ImGui::GetIO();
+        /*
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
             // ImGui::UpdatePlatformWindows();
             // ImGui::RenderPlatformWindowsDefault();
         }
+        */
     }
 
     void Shutdown() {

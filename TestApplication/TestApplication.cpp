@@ -12,6 +12,7 @@
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
+#include "AnimationDebug.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"
@@ -263,11 +264,12 @@ class TestApplication : public App {
                 if (ImGui::Checkbox("FXAA", &enable_aa)) {
                     final_pass->set_antialiasing(enable_aa);
                 }
+                ImGui::Checkbox("Show skeleton", &show_skeleton);
             }
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
-            if (ImGui::SliderFloat("Global Scene Scale", &global_scene_scale, 0.0f, 100.0f)) {
+            if (ImGui::DragFloat("Global Scene Scale", &global_scene_scale, 0.01f)) {
                 TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);
                 transform->scale = glm::vec3(global_scene_scale);
                 transform->dirty = true;
@@ -294,7 +296,7 @@ class TestApplication : public App {
         }
 
         if (ImGui::CollapsingHeader("Directional Light")) {
-            LightComponent* light = scene->get_sun();
+            LightComponent *light = scene->get_sun();
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
             ImGui::DragFloat3("Direction", &light->rotation[0], 1.0f, -360.0f, 360.0f);
             ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
@@ -474,6 +476,9 @@ class TestApplication : public App {
             add_pass_ui();
             add_entity_inspector_ui(scene);
             ImGui::End();
+
+            if (show_skeleton)
+                add_animation_debug_ui(scene);
         }
     }
 
@@ -483,7 +488,8 @@ class TestApplication : public App {
     }
 
   private:
-    bool show_debug_ui = false;
+    bool show_debug_ui = true;
+    bool show_skeleton = true;
     bool fullscreen = false;
 
     float global_scene_scale = 1.0f;

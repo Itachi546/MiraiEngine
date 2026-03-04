@@ -484,7 +484,7 @@ namespace mirai {
 
                 // Parse animation data
                 bool has_animation_data = false;
-
+                /*
                 auto joint_attributes = primitive.attributes.find("JOINTS_0");
                 std::vector<uint8_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
@@ -512,7 +512,7 @@ namespace mirai {
                     ASSERT(weights_accessor.type == TINYGLTF_TYPE_VEC4);
                     weights = (float *)GetBufferPtr(model, weights_accessor);
                 }
-
+                */
                 // Copy local vertex data
                 uint32_t vertex_stride = has_animation_data ? VERTEX_DATA_SIZE_SKINNED : VERTEX_DATA_SIZE;
                 for (uint32_t i = 0; i < num_position; ++i) {
@@ -552,7 +552,7 @@ namespace mirai {
                     if (uvs != nullptr) {
                         vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
-
+                    /*
                     if (has_animation_data) {
                         vertex.joints = {
                             joints[i * 4],
@@ -566,14 +566,13 @@ namespace mirai {
                             weights[i * 4 + 2],
                             weights[i * 4 + 3],
                         };
-
 #ifdef _DEBUG
                         if (vertex.weights.x + vertex.weights.y + vertex.weights.z + vertex.weights.w > 1.0001f) {
                             Log::Error("Vertex weight is not normalized");
                         }
 #endif
-                    }
-
+                }
+                    */
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
                     vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
                 }
@@ -868,12 +867,12 @@ namespace mirai {
     }
 
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
-        // We skip skeleton node in node hierarchy
         if (load_state->skeleton_nodes.find(node_index) != load_state->skeleton_nodes.end())
             return;
 
-        const tinygltf::Node *node = &model->nodes[node_index];
         Scene *scene = load_state->scene;
+        // We skip skeleton node in node hierarchy
+        const tinygltf::Node *node = &model->nodes[node_index];
 
         // Create parent as default entity to be passed on recursion
         // For camera, we don't create new entity
@@ -906,8 +905,9 @@ namespace mirai {
                 comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
                 name = model->meshes[mesh_id].name;
             }
+        }
 
-        } else if (node->camera >= 0) {
+        if (node->camera >= 0) {
             const auto &camera_properties = model->cameras[node->camera];
             ASSERT(camera_properties.type == "perspective");
 
@@ -930,7 +930,8 @@ namespace mirai {
                 camera->rotation = glm::degrees(glm::eulerAngles(transform.rotation));
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
-        } else if (node->skin >= 0) {
+        }
+        if (node->skin >= 0) {
             comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
                                                                        .skeleton_index = load_state->skeleton_base_offset + node->skin,
                                                                    });

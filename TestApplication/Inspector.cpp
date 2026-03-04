@@ -153,9 +153,12 @@ void add_entity_hierarchy(Entity parent, std::unique_ptr<ComponentManager> &comp
             name = name_component->name;
         }
         auto child_comp = comp_manager->get_component<HierarchyComponent>(children);
+
+        ImGuiTreeNodeFlags flags = selected_entity == children ? ImGuiTreeNodeFlags_Selected : 0;
+        flags |= ImGuiTreeNodeFlags_DrawLinesFull | ImGuiTreeNodeFlags_DrawLinesToNodes;
+
         if (child_comp->childrens.size() > 0) {
-            ImGuiTreeNodeFlags flags = selected_entity == children ? ImGuiTreeNodeFlags_Selected : 0;
-            flags |= ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+            flags |= ImGuiTreeNodeFlags_Framed;
             if (ImGui::TreeNodeEx(name.c_str(), flags)) {
                 if (ImGui::IsItemClicked())
                     selected_entity = children;
@@ -163,8 +166,7 @@ void add_entity_hierarchy(Entity parent, std::unique_ptr<ComponentManager> &comp
                 ImGui::TreePop();
             }
         } else {
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
-            flags |= selected_entity == children ? ImGuiTreeNodeFlags_Selected : 0;
+            flags |= ImGuiTreeNodeFlags_Leaf;
             if (ImGui::TreeNodeEx(name.c_str(), flags)) {
                 if (ImGui::IsItemClicked())
                     selected_entity = children;
@@ -193,6 +195,47 @@ void add_transform_component(TransformComponent *transform_component, Entity ent
     }
 }
 
+void add_skeleton_hierarchy(const Skeleton *skeleton, int node) {
+    std::string name = skeleton->names[node];
+    std::vector<int> childrens;
+    for (uint32_t i = 0; i < skeleton->parents.size(); ++i) {
+        if (skeleton->parents[i] == node) {
+            childrens.push_back(i);
+        }
+    }
+
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DrawLinesFull | ImGuiTreeNodeFlags_DrawLinesToNodes;
+    if (childrens.size() == 0) {
+        flags |= ImGuiTreeNodeFlags_Leaf;
+        if (ImGui::TreeNodeEx(name.c_str(), flags)) {
+            ImGui::TreePop();
+        }
+    } else {
+        if (ImGui::TreeNodeEx(name.c_str(), flags)) {
+            for (auto children : childrens) {
+                add_skeleton_hierarchy(skeleton, children);
+            }
+            ImGui::TreePop();
+        }
+    }
+}
+
+void add_animator_component(AnimatorComponent *animator_component, Scene *scene, Entity entity) {
+    if (!animator_component)
+        return;
+
+    if (ImGui::CollapsingHeader("AnimatorComponent")) {
+        ImGui::Text("Current Time: %s", animator_component->current_time);
+        ImGui::Text("Skeleton Index: %d", animator_component->skeleton_index);
+
+        Skeleton *skeleton = &scene->skeletons[animator_component->skeleton_index];
+
+        std::string name = skeleton->name.size() > 0 ? skeleton->name : "unnamed";
+        ImGui::Text("Skeleton Name: %s", skeleton->name.c_str());
+        add_skeleton_hierarchy(skeleton, 0);
+    }
+}
+
 void add_entity_components(Entity entity, Scene *scene) {
     auto &comp_manager = scene->ecs->component_manager;
     auto name_component = comp_manager->get_component<NameComponent>(entity);
@@ -204,6 +247,7 @@ void add_entity_components(Entity entity, Scene *scene) {
 
     add_transform_component(comp_manager->get_component<TransformComponent>(entity), entity);
     add_material_component_ui(comp_manager->get_component<MeshComponent>(entity), scene, entity);
+    add_animator_component(comp_manager->get_component<AnimatorComponent>(entity), scene, entity);
 }
 
 void add_entity_inspector_ui(Scene *scene) {

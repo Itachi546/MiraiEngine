@@ -47,10 +47,9 @@ namespace mirai {
                 if (window->is_minimized())
                     continue;
 
+                renderer->update();
                 if (app)
                     app->update();
-
-                renderer->update();
 
                 renderer->render();
 
