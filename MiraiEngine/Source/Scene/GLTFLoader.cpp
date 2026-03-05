@@ -813,15 +813,16 @@ namespace mirai {
             Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
 
-            ASSERT(skin.inverseBindMatrices >= 0);
-            const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
-            ASSERT(bind_matrices_accessor.count == joint_count);
-            ASSERT(bind_matrices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
-            ASSERT(bind_matrices_accessor.type == TINYGLTF_TYPE_MAT4);
+            // ASSERT(skin.inverseBindMatrices >= 0);
+            if (skin.inverseBindMatrices >= 0) {
+                const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
+                ASSERT(bind_matrices_accessor.count == joint_count);
+                ASSERT(bind_matrices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+                ASSERT(bind_matrices_accessor.type == TINYGLTF_TYPE_MAT4);
 
-            glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
-            skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
-
+                glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
+                skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
+            }
             for (uint32_t j = 0; j < joint_count; ++j) {
                 int parent_index = skin.joints[j];
 

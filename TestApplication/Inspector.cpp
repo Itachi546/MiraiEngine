@@ -2,6 +2,7 @@
 #include "Scene/ECS.hpp"
 #include "ImGuiService.hpp"
 #include "Scene/TextureCache.hpp"
+#include "AnimationDebug.hpp"
 #include <set>
 
 Entity selected_entity = K_INVALID_ENTITY;
@@ -220,18 +221,27 @@ void add_skeleton_hierarchy(const Skeleton *skeleton, int node) {
     }
 }
 
+Entity last_selected_entity = K_INVALID_ENTITY;
+bool show_skeleton = false;
 void add_animator_component(AnimatorComponent *animator_component, Scene *scene, Entity entity) {
     if (!animator_component)
         return;
 
     if (ImGui::CollapsingHeader("AnimatorComponent")) {
-        ImGui::Text("Current Time: %s", animator_component->current_time);
+        ImGui::Text("Current Time: %.2f", animator_component->current_time);
         ImGui::Text("Skeleton Index: %d", animator_component->skeleton_index);
 
         Skeleton *skeleton = &scene->skeletons[animator_component->skeleton_index];
-
         std::string name = skeleton->name.size() > 0 ? skeleton->name : "unnamed";
         ImGui::Text("Skeleton Name: %s", skeleton->name.c_str());
+
+        if (last_selected_entity != entity) {
+            show_skeleton = false;
+            last_selected_entity = entity;
+        }
+
+        ImGui::Checkbox("Show skeleton", &show_skeleton);
+
         add_skeleton_hierarchy(skeleton, 0);
     }
 }
@@ -251,7 +261,7 @@ void add_entity_components(Entity entity, Scene *scene) {
 }
 
 void add_entity_inspector_ui(Scene *scene) {
-    ImGui::Begin("Entity Inspector", 0);
+    ImGui::Begin("Entity Inspector");
     auto &comp_manager = scene->ecs->component_manager;
 
     add_entity_hierarchy(scene->entities[0], comp_manager, 0);
@@ -260,4 +270,9 @@ void add_entity_inspector_ui(Scene *scene) {
         add_entity_components(selected_entity, scene);
     }
     ImGui::End();
+}
+
+void add_skeleton_debug_ui(Scene *scene) {
+    if (show_skeleton)
+        add_skeleton_debug_ui(scene, last_selected_entity);
 }

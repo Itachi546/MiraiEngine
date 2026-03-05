@@ -65,7 +65,7 @@ void DrawPose(Scene *scene, Entity entity, ImDrawList *draw_list, float width, f
     DrawSkeleton(skeleton, VP, transform->world_transform, draw_list, width, height);
 }
 
-void add_animation_debug_ui(Scene *scene) {
+void add_skeleton_debug_ui(Scene *scene, Entity entity) {
     const ImU32 flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar |
                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
@@ -84,21 +84,11 @@ void add_animation_debug_ui(Scene *scene) {
 
     float width = io.DisplaySize.x;
     float height = io.DisplaySize.y;
-    auto animator_comp_ptr = scene->ecs->component_manager->get_component_array<AnimatorComponent>();
-    auto &entities = animator_comp_ptr->entities;
-    /*
-    Camera *camera = scene->get_camera();
-    glm::mat4 VP = camera->get_view_projection_transform();
-    glm::vec3 p0 = world_to_normalized_window_pos(glm::vec3(0.0f), VP);
-    glm::vec3 p1 = world_to_normalized_window_pos(glm::vec3(0.0f, 1.0f, 0.0f), VP);
-    static const uint32_t color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-    draw_list->AddLine(ImVec2(p0.x * width, p0.y * height), ImVec2(p1.x * width, p1.y * height), color, 2.0f);
-    */
 #if 0
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    DrawSkeleton(scene->skeletons[0], VP, glm::mat4(1.0f), draw_list, width, height);
+    for (const auto &skeleton : scene->skeletons)
+        DrawSkeleton(skeleton, VP, glm::mat4(1.0f), draw_list, width, height);
+#else
+    DrawPose(scene, entity, draw_list, width, height);
 #endif
-    for (uint32_t i = 0; i < entities.size(); ++i) {
-        DrawPose(scene, entities[i], draw_list, width, height);
-    }
 }

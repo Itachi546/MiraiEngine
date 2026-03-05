@@ -5,4 +5,4 @@
 
 using namespace mirai;
 
-void add_animation_debug_ui(Scene *scene);
+void add_skeleton_debug_ui(Scene *scene, Entity entity);

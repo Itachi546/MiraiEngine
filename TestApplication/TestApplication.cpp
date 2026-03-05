@@ -12,7 +12,6 @@
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
-#include "AnimationDebug.hpp"
 
 #include "ImGuiService.hpp"
 #include "ImGuiRenderPass.hpp"
@@ -264,7 +263,6 @@ class TestApplication : public App {
                 if (ImGui::Checkbox("FXAA", &enable_aa)) {
                     final_pass->set_antialiasing(enable_aa);
                 }
-                ImGui::Checkbox("Show skeleton", &show_skeleton);
             }
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
@@ -476,9 +474,7 @@ class TestApplication : public App {
             add_pass_ui();
             add_entity_inspector_ui(scene);
             ImGui::End();
-
-            if (show_skeleton)
-                add_animation_debug_ui(scene);
+            add_skeleton_debug_ui(scene);
         }
     }
 
@@ -489,7 +485,6 @@ class TestApplication : public App {
 
   private:
     bool show_debug_ui = true;
-    bool show_skeleton = true;
     bool fullscreen = false;
 
     float global_scene_scale = 1.0f;
