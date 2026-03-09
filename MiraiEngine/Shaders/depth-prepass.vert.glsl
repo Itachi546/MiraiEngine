@@ -3,7 +3,6 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
 
-#include "utils/vertexdata.glsl"
 #include "utils/per-frame-data.glsl"
 
 layout(set = 0, binding = 0) uniform PerFrameDataBinding {
@@ -15,17 +14,20 @@ layout(set = 1, binding = 0) readonly buffer TransformBinding {
 };
 
 layout(set = 2, binding = 0) readonly buffer VertexBinding {
-    Vertex vertices[];
+    uint vertices[];
 };
 
+#include "utils/vertexdata.glsl"
 layout(set = 3, binding = 0) readonly buffer DrawDataBinding {
     DrawData draw_datas[];
 };
 
 void main() {
-    uint transform_index = draw_datas[gl_DrawID].transform_index;
-    Vertex vertex = vertices[gl_VertexIndex];
+    DrawData draw_data = draw_datas[gl_DrawID];
 
-    mat4 M = transforms[transform_index];
-    gl_Position = per_frame_data.VP * M * vec4(vertex.px, vertex.py, vertex.pz, 1.0f);
+    uint vertex_address = draw_data.vertex_offset + gl_VertexIndex * draw_data.vertex_stride;
+    vec3 position = unpack_position(vertex_address);
+
+    mat4 M = transforms[draw_data.transform_index];
+    gl_Position = per_frame_data.VP * M * vec4(position, 1.0f);
 }

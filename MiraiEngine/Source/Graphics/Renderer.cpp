@@ -94,7 +94,7 @@ namespace mirai {
 
             mesh_infos[i].vertex_buffer = {
                 .buffer = object.vertex_buffer.buffer,
-                .offset = object.vertex_offset * object.vertex_stride,
+                .offset = object.vertex_offset_bytes,
                 .count = object.index_count,
                 .stride = object.vertex_stride,
             };
@@ -233,18 +233,19 @@ namespace mirai {
                 batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
 
                 for (uint32_t e = 0; e < num_entity; ++e) {
-                    const MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
-                    std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
-                    draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
-
+                    MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
                     uint32_t draw_data[] = {
                         draw_info.transform_index,
                         draw_info.material_index,
-                        0,
-                        0,
+                        draw_info.draw_info.vertex_offset_bytes / 4,
+                        draw_info.vertex_stride / 4, // Convert stride to uint32 offset
                     };
                     std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
                     draw_data_array += draw_data_instance_size;
+
+                    draw_info.draw_info.vertex_offset_bytes = 0;
+                    std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
+                    draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
                 }
                 draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
                 draw_data_buffer_offset += draw_data_instance_size * num_entity;
@@ -333,7 +334,7 @@ namespace mirai {
         main_render_batches.clear();
 
         Frustum &frustum = camera->get_frustum();
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT);
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
 
         std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
             batch.sort();

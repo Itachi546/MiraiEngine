@@ -9,7 +9,6 @@ vs_out;
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
 
-#include "utils/vertexdata.glsl"
 #include "utils/per-frame-data.glsl"
 
 layout(set = 0, binding = 0) uniform PerFrameBinding {
@@ -17,13 +16,14 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
 };
 
 layout(set = 2, binding = 0) readonly buffer VertexData {
-    Vertex vertices[];
+    uint vertices[];
 };
 
 layout(set = 3, binding = 0) readonly buffer Transform {
     mat4 transforms[];
 };
 
+#include "utils/vertexdata.glsl"
 layout(push_constant) uniform PushConstants {
     uint transform_id;
     uint material_id;
@@ -31,6 +31,7 @@ layout(push_constant) uniform PushConstants {
 };
 
 void main() {
+    /*
     Vertex vertex = vertices[gl_VertexIndex];
     mat4 M = transforms[transform_id];
 
@@ -40,4 +41,5 @@ void main() {
 
     vs_out.uv = vec2(vertex.tu, vertex.tv);
     vs_out.mat_id = material_id;
+    */
 }

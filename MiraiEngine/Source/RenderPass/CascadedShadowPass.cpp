@@ -117,7 +117,11 @@ namespace mirai {
         cascade_info.height = static_cast<float>(shadow_map_size);
     }
 
-    static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+    static UniformLayout DRAW_DATA_LAYOUT = {
+        .binding = 0,
+        .binding_type = BINDING_TYPE_STORAGE_BUFFER,
+        .shader_stage = SHADER_STAGE_VERTEX,
+    };
     void CascadedShadowPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
         ScopedCpuProfiling("CSM Render");
         ScopedGpuProfiling(command_buffer, "Cascaded Shadow Pass");
@@ -133,7 +137,7 @@ namespace mirai {
 
             uint32_t num_entity = cast_u32(batch->mesh_draw_infos.size());
 
-            uint32_t draw_data_instance_size = is_opaque_pass ? sizeof(uint32_t) : sizeof(uint32_t) * 4;
+            uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
             uint32_t draw_data_size_bytes = num_entity * draw_data_instance_size;
             uint32_t draw_data_offset = renderer->allocate_staging_buffer(draw_data_size_bytes, current_frame);
             uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(renderer->per_frame_staging_buffer_ptr + draw_data_offset);
@@ -150,12 +154,17 @@ namespace mirai {
              * cascade as well instead of allocation new portion of memory for each cascade.
              */
             for (auto &draw_info : batch->mesh_draw_infos) {
+                draw_data[0] = draw_info.transform_index;
+                draw_data[1] = draw_info.material_index;
+                draw_data[2] = draw_info.draw_info.vertex_offset_bytes / 4;
+                draw_data[3] = draw_info.vertex_stride / 4;
+
+                std::memcpy(draw_data_array, draw_data, draw_data_instance_size);
+
+                draw_info.draw_info.vertex_offset_bytes = 0;
                 std::memcpy(indirect_data_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                 indirect_data_array += sizeof(DrawIndexedIndirectCommand);
 
-                draw_data[0] = draw_info.transform_index;
-                draw_data[1] = draw_info.material_index;
-                std::memcpy(draw_data_array, draw_data, draw_data_instance_size);
                 draw_data_array += draw_data_instance_size;
             }
 
@@ -241,10 +250,11 @@ namespace mirai {
             }
 
             command_buffer->begin_render_pass(node, frame_graph, &viewport);
+
+            push_constant_data[0] = i;
             if (opaque_batches.size() > 0) {
                 shader->bind(command_buffer);
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, (uint32_t)std::size(uniform_sets));
-                push_constant_data[0] = i;
                 command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
                 for (auto index : opaque_batches)
                     draw_batch(command_buffer, &mesh_batches[index], shader->pipeline_id);
@@ -253,7 +263,6 @@ namespace mirai {
             if (alpha_mask_batches.size() > 0) {
                 shader_alpha_test->bind(command_buffer);
                 command_buffer->set_uniform_sets(shader_alpha_test->pipeline_id, uniform_sets_alpha_test, (uint32_t)std::size(uniform_sets_alpha_test));
-                push_constant_data[0] = i;
                 command_buffer->set_push_constants(shader_alpha_test->pipeline_id, &push_constant, 1);
                 for (auto index : alpha_mask_batches)
                     draw_batch(command_buffer, &mesh_batches[index], shader_alpha_test->pipeline_id);

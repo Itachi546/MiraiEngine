@@ -14,6 +14,7 @@ namespace mirai {
         RENDERBATCH_TYPE_OPAQUE = 1,
         RENDERBATCH_TYPE_ALPHA_MASK = 2,
         RENDERBATCH_TYPE_TRANSPARENT = 4,
+        RENDERBATCH_TYPE_SKINNED = 8
     };
 
     enum BatchFilterFlag {
@@ -21,6 +22,7 @@ namespace mirai {
         BATCH_FILTER_FLAG_ALPHA_MASK = 2,
         BATCH_FILTER_FLAG_TRANSPARENT = 4,
         BATCH_FILTER_SKIP_NEAR_PLANE = 8,
+        BATCH_FILTER_FLAG_SKINNED = 16
     };
 
     struct MeshDrawInfo {
@@ -29,14 +31,23 @@ namespace mirai {
         uint32_t transform_index;
         // Distance from camera, used for sorting
         float distance_to_camera;
+        uint32_t vertex_stride;
 
-        MeshDrawInfo(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera) : transform_index(transform_index), material_index(material_index), draw_info{
-                                                                                                                                                                                                                                               index_count,
-                                                                                                                                                                                                                                               1,
-                                                                                                                                                                                                                                               index_offset,
-                                                                                                                                                                                                                                               vertex_offset,
-                                                                                                                                                                                                                                               0},
-                                                                                                                                                                         distance_to_camera(distance_to_camera) {
+        MeshDrawInfo(uint32_t transform_index,
+                     uint32_t material_index,
+                     uint32_t vertex_offset_bytes,
+                     uint32_t index_offset,
+                     uint32_t index_count,
+                     float distance_to_camera,
+                     uint32_t vertex_stride) : transform_index(transform_index),
+                                               material_index(material_index),
+                                               draw_info{
+                                                   index_count,
+                                                   1,
+                                                   index_offset,
+                                                   vertex_offset_bytes,
+                                                   0},
+                                               vertex_stride(vertex_stride), distance_to_camera(distance_to_camera) {
         }
     };
 
@@ -53,8 +64,8 @@ namespace mirai {
 
         std::vector<MeshDrawInfo> mesh_draw_infos;
 
-        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera) {
-            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera);
+        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera, uint32_t vertex_stride) {
+            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera, vertex_stride);
         }
     };
 
@@ -65,8 +76,8 @@ namespace mirai {
         UniformSetID vertex_binding_set;
         std::vector<MeshDrawInfo> mesh_draw_infos;
 
-        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count) {
-            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, 0.0f);
+        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, uint32_t vertex_stride) {
+            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, 0.0f, vertex_stride);
         }
         RenderBatchType render_batch_type;
     };

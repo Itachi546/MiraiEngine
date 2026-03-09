@@ -41,7 +41,7 @@ namespace mirai {
         BufferView vertex_buffer;
         BufferView index_buffer;
 
-        uint32_t vertex_offset;
+        uint32_t vertex_offset_bytes;
         uint32_t first_index;
         uint32_t index_count;
         uint32_t vertex_stride;

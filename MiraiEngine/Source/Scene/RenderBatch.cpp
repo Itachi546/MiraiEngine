@@ -15,7 +15,7 @@ namespace mirai {
 
     uint32_t FindOrCreateShaderBatch(ShaderPassKey shader_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
         for (uint32_t i = 0; i < render_batches.size(); ++i) {
-            if (shader_key == render_batches[i].shader_key)
+            if (shader_key == render_batches[i].shader_key && render_batches[i].batch_type == render_batch_type)
                 return i;
         }
         render_batches.emplace_back(shader_key, render_batch_type);
@@ -77,6 +77,11 @@ namespace mirai {
                 filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
 
+            if ((object.render_flags & MeshComponent::FLAGS::SKINNED) == MeshComponent::FLAGS::SKINNED) {
+                render_batch_type = RENDERBATCH_TYPE_SKINNED;
+                filter_flag = BATCH_FILTER_FLAG_SKINNED;
+            }
+
             if ((batch_filter_flags & filter_flag) != filter_flag)
                 continue;
 
@@ -87,9 +92,10 @@ namespace mirai {
                 if (!frustum->intersect(object.transformed_aabb, skip_near_plane))
                     continue;
             }
+
             // Check Shader Batch
             ShaderPassKey shader_key = material->get_shader_key(AppSettings::render_mode);
-            if (shader_key != cached_batch_info.shader_key) {
+            if (shader_key != cached_batch_info.shader_key || cached_batch_info.batch_type != render_batch_type) {
                 // We have a different batch
                 shader_batch = FindOrCreateShaderBatch(shader_key, render_batch_type, render_batches);
                 cached_batch_info.shader_key = shader_key;
@@ -107,7 +113,7 @@ namespace mirai {
             TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             float distance_to_camera = glm::dot(transform->position, camera_position);
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.first_index, object.index_count, distance_to_camera);
+            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset_bytes, object.first_index, object.index_count, distance_to_camera, object.vertex_stride);
         }
     }
 
@@ -149,7 +155,7 @@ namespace mirai {
             }
 
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.first_index, object.index_count);
+            mesh_batches[mesh_batch].add(transform_index, object.material_index, object.vertex_offset_bytes, object.first_index, object.index_count, object.vertex_stride);
         }
     }
 

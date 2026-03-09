@@ -34,6 +34,35 @@ namespace mirai {
             .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
         };
 
+        auto draw_batch_skinned = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
+            for (auto &batch : render_batches) {
+                if (batch.batch_type != render_batch_type)
+                    continue;
+
+                pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
+                pipeline_state.render_state.fields.pass_mode = SHADER_PASS_PBR_DEFERRED_SKINNED;
+                Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
+
+                if (shader == nullptr) {
+                    Log::Fatal("Failed to load deferred pipeline shader");
+                }
+
+                shader->bind(command_buffer);
+
+                UniformSetID uniform_sets[] = {
+                    renderer->vt_per_frame_uniform_set,
+                    renderer->transform_material_set,
+                };
+
+                command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+                command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
+
+                for (auto &mesh_batch : batch.meshes) {
+                    DrawBatch(command_buffer, &mesh_batch, shader);
+                }
+            }
+        };
+
         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
             for (auto &batch : render_batches) {
                 if (batch.batch_type != render_batch_type)
@@ -69,6 +98,8 @@ namespace mirai {
             pipeline_state.render_state.fields.depth_write = true;
             pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
             draw_batch(RENDERBATCH_TYPE_OPAQUE, pipeline_state);
+
+            draw_batch_skinned(RENDERBATCH_TYPE_SKINNED, pipeline_state);
 
             pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
             draw_batch(RENDERBATCH_TYPE_ALPHA_MASK, pipeline_state);

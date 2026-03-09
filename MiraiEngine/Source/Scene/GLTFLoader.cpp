@@ -443,7 +443,7 @@ namespace mirai {
         uint32_t bitangent;
         glm::vec2 uv;
 
-        glm::u8vec4 joints;
+        uint32_t joints;
         glm::vec4 weights;
     };
 
@@ -506,7 +506,6 @@ namespace mirai {
 
                 // Parse animation data
                 bool has_animation_data = false;
-                /*
                 auto joint_attributes = primitive.attributes.find("JOINTS_0");
                 std::vector<uint8_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
@@ -534,7 +533,7 @@ namespace mirai {
                     ASSERT(weights_accessor.type == TINYGLTF_TYPE_VEC4);
                     weights = (float *)GetBufferPtr(model, weights_accessor);
                 }
-                */
+
                 // Copy local vertex data
                 uint32_t vertex_stride = has_animation_data ? VERTEX_DATA_SIZE_SKINNED : VERTEX_DATA_SIZE;
                 for (uint32_t i = 0; i < num_position; ++i) {
@@ -574,14 +573,11 @@ namespace mirai {
                     if (uvs != nullptr) {
                         vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
-                    /*
                     if (has_animation_data) {
-                        vertex.joints = {
-                            joints[i * 4],
-                            joints[i * 4 + 1],
-                            joints[i * 4 + 2],
-                            joints[i * 4 + 3],
-                        };
+                        vertex.joints = uint8_t(joints[i * 4]) << 24 |
+                                        uint8_t(joints[i * 4 + 1]) << 16 |
+                                        uint8_t(joints[i * 4 + 2]) |
+                                        uint8_t(joints[i * 4 + 3]);
                         vertex.weights = {
                             weights[i * 4],
                             weights[i * 4 + 1],
@@ -593,8 +589,7 @@ namespace mirai {
                             Log::Error("Vertex weight is not normalized");
                         }
 #endif
-                }
-                    */
+                    }
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
                     vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
                 }

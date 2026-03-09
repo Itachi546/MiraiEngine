@@ -131,6 +131,8 @@ namespace mirai {
             return SHADER_PASS_SKYBOX;
         else if (pass_mode == "SHADER_PASS_PBR_DEFERRED")
             return SHADER_PASS_PBR_DEFERRED;
+        else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_SKINNED")
+            return SHADER_PASS_PBR_DEFERRED_SKINNED;
         else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_ALPHA")
             return SHADER_PASS_PBR_DEFERRED_ALPHA;
         else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_TRANSPARENT")

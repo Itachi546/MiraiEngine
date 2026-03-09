@@ -25,7 +25,6 @@ namespace mirai {
         bool calculate_distance_automatic = true;
 
       private:
-        UniformSetID create_draw_data_binding(CommandBuffer *command_buffer, BufferID buffer, uint32_t offset, uint32_t size);
         void calculate_split_distances(float znear, float zfar, Scene *scene);
         Shader *shader, *shader_alpha_test;
     };

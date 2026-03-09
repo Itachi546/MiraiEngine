@@ -26,30 +26,31 @@ layout(push_constant) uniform PushConstant {
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
 
-#include "utils/vertexdata.glsl"
-
 layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
 layout(set = 2, binding = 0) readonly buffer VertexBinding {
-    Vertex vertices[];
+    uint vertices[];
 };
 
 layout(set = 3, binding = 0) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
+#include "utils/vertexdata.glsl"
 layout(set = 4, binding = 0) readonly buffer DrawDataBinding {
     DrawData draw_datas[];
 };
 
 void main() {
     DrawData draw_data = draw_datas[gl_DrawID];
-    Vertex vertex = vertices[gl_VertexIndex];
+
+    uint vertex_address = draw_data.vertex_offset + gl_VertexIndex * draw_data.vertex_stride;
+
     mat4 M = transforms[draw_data.transform_index];
 
-    vec3 position = vec3(vertex.px, vertex.py, vertex.pz);
+    vec3 position = unpack_position(vertex_address);
     vec4 world_pos = M * vec4(position, 1.0f);
 
     vec4 current_clip_pos = per_frame_data.VP * world_pos;
@@ -59,10 +60,10 @@ void main() {
     vs_out.prev_clip_pos = last_frame_VP * world_pos;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
-    vs_out.normal = normal_matrix * u32_to_vec3(vertex.normal);
-    vs_out.uv = vec2(vertex.tu, vertex.tv);
-    vs_out.tangent = normal_matrix * u32_to_vec3(vertex.tangent);
-    vs_out.bitangent = normal_matrix * u32_to_vec3(vertex.bitangent);
+    vs_out.normal = normal_matrix * unpack_normal(vertex_address);
+    vs_out.tangent = normal_matrix * unpack_tangent(vertex_address);
+    vs_out.bitangent = normal_matrix * unpack_bitangent(vertex_address);
+    vs_out.uv = unpack_uv(vertex_address);
     vs_out.mat_id = draw_data.material_index;
     vs_out.world_pos = world_pos.xyz;
 }

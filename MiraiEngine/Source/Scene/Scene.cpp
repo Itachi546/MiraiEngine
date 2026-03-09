@@ -243,7 +243,7 @@ namespace mirai {
                     .render_flags = mesh_component._flags,
                     .vertex_buffer = vertex_buffer,
                     .index_buffer = index_buffer,
-                    .vertex_offset = subset.vertex_offset_bytes / subset.vertex_stride,
+                    .vertex_offset_bytes = subset.vertex_offset_bytes, // Manually calculating in shader
                     .first_index = subset.index_offset_bytes / sizeof(uint32_t),
                     .index_count = subset.index_count,
                     .vertex_stride = subset.vertex_stride,

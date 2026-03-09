@@ -540,13 +540,13 @@ namespace mirai {
         uint32_t index_count;
         uint32_t instance_count;
         uint32_t first_index;
-        uint32_t vertex_offset;
+        uint32_t vertex_offset_bytes;
         uint32_t first_instance;
 
         DrawIndexedIndirectCommand(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance) : index_count(index_count),
                                                                                                                                                            instance_count(instance_count),
                                                                                                                                                            first_index(first_index),
-                                                                                                                                                           vertex_offset(vertex_offset),
+                                                                                                                                                           vertex_offset_bytes(vertex_offset),
                                                                                                                                                            first_instance(first_instance) {
         }
     };
