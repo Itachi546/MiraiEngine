@@ -82,11 +82,9 @@ namespace mirai {
 
             // Check if the AABB is visible or not in current frustum
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
-            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling && frustum != nullptr) {
-                AABB aabb = object.aabb;
-                aabb.transform(transform->world_transform);
-                if (!frustum->intersect(aabb, skip_near_plane))
+                // Cache AABB Transform
+                if (!frustum->intersect(object.transformed_aabb, skip_near_plane))
                     continue;
             }
             // Check Shader Batch
@@ -105,6 +103,8 @@ namespace mirai {
                 mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, render_batches[shader_batch].meshes);
                 cached_batch_info.vertex_buffer = object.vertex_buffer;
             }
+
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             float distance_to_camera = glm::dot(transform->position, camera_position);
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset, object.first_index, object.index_count, distance_to_camera);
@@ -136,11 +136,8 @@ namespace mirai {
 
             bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
             bool disable_frustum_culling = (object.render_flags & MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING) == MeshComponent::FLAGS::DISABLE_FRUSTUM_CULLING;
-            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
             if (!disable_frustum_culling && frustum != nullptr) {
-                AABB aabb = object.aabb;
-                aabb.transform(transform->world_transform);
-                if (!frustum->intersect(aabb, skip_near_plane))
+                if (!frustum->intersect(object.transformed_aabb, skip_near_plane))
                     continue;
             }
 

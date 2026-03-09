@@ -43,8 +43,10 @@ void main() {
     dir = normalize(dir);
 
     float shadow_factor = 0.0f;
+    uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
+
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, tlas, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT, 0xff, world_pos, 0.05, dir, 1000.0);
+    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, 0.05, dir, 1000.0);
     rayQueryProceedEXT(ray_query);
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT)
         shadow_factor = 1.0f;

@@ -188,10 +188,29 @@ namespace mirai {
 
         // Calculated only when object is added or removed
         // @TODO calculate it only once if possible
-        if (!dirty)
-            return;
-
         ScopedCpuProfiling("Update Draw Data");
+        // Even though the draw data hasn't changed, we must calculate the
+        // transformed AABB every frame
+        if (!dirty) {
+
+#ifdef NDEBUG
+            std::for_each(std::execution::par_unseq,
+                          render_object_list.begin(),
+                          render_object_list.end(),
+                          [&](RenderableObjectData &object) {
+                              TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(object.entity);
+                              object.transformed_aabb = object.local_aabb;
+                              object.transformed_aabb.transform(transform->world_transform);
+                          });
+#else
+            for (auto &object : render_object_list) {
+                TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(object.entity);
+                object.transformed_aabb = object.local_aabb;
+                object.transformed_aabb.transform(transform->world_transform);
+            }
+#endif
+            return;
+        }
 
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         std::vector<Entity> &entities = mesh_component_ptr->entities;
@@ -213,6 +232,9 @@ namespace mirai {
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
                 AABB aabb = mesh_component.aabbs[s];
+                AABB transformed_aabb = aabb;
+                transformed_aabb.transform(transform->world_transform);
+
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
@@ -223,10 +245,10 @@ namespace mirai {
                     .first_index = subset.index_offset_bytes / sizeof(uint32_t),
                     .index_count = subset.index_count,
                     .vertex_stride = subset.vertex_stride,
-                    .aabb = std::move(aabb),
+                    .local_aabb = std::move(aabb),
+                    .transformed_aabb = std::move(aabb),
                     .vertex_binding_set = gpu_mesh.vertex_binding_set,
                 };
-
                 render_object_list.push_back(std::move(render_data));
             }
 

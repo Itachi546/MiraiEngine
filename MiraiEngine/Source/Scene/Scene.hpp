@@ -46,8 +46,8 @@ namespace mirai {
         uint32_t index_count;
         uint32_t vertex_stride;
 
-        AABB aabb;
-
+        AABB local_aabb;
+        AABB transformed_aabb;
         UniformSetID vertex_binding_set;
     };
 
@@ -115,7 +115,7 @@ namespace mirai {
 
         std::unique_ptr<ECS> ecs;
         std::vector<std::unique_ptr<Material>> materials;
-        std::vector<AnimationClip> animation_clips;
+        // std::vector<AnimationClip> animation_clips;
         std::vector<Skeleton> skeletons;
         std::vector<Entity> entities;
 
