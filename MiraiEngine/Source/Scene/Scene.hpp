@@ -115,7 +115,7 @@ namespace mirai {
 
         std::unique_ptr<ECS> ecs;
         std::vector<std::unique_ptr<Material>> materials;
-        // std::vector<AnimationClip> animation_clips;
+        std::vector<AnimationClip> animation_clips;
         std::vector<Skeleton> skeletons;
         std::vector<Entity> entities;
 

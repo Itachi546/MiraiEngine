@@ -56,10 +56,10 @@ namespace mirai {
 
         camera->update();
 
-        update_transform_components();
-
         if (!pause_animation)
             update_node_animator_components();
+
+        update_transform_components();
 
         update_hierarchy_components();
 
@@ -125,6 +125,7 @@ namespace mirai {
         if (animations.size() == 0)
             return;
         float dt = Engine::get()->get_dt_seconds();
+
         for (uint32_t i = 0; i < animations.size(); ++i) {
             NodeAnimatorComponent &component = animations[i];
             const AnimationClip &clip = animation_clips[component.current_animation_clip];
@@ -138,7 +139,8 @@ namespace mirai {
 
             Entity entity = component_array->entities[i];
             TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
-            transform->local_transform = clip.sample(component.current_time);
+            // This doesn't handle existing local translation/rotation/scale, need to find a way to handle that as well
+            clip.sample_TRS(0, component.current_time, transform->position, transform->rotation, transform->scale);
             transform->dirty = true;
         }
     }

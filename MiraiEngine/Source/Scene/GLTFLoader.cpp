@@ -27,13 +27,35 @@
 constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
 
 namespace mirai {
+
+    struct TempAnimationChannel {
+        Vec3Track positions;
+        QuatTrack rotations;
+        Vec3Track scalings;
+    };
+
+    struct TempAnimation {
+        std::string name;
+        float start_time;
+        float end_time;
+        float tick_per_seconds;
+        std::unordered_map<int, TempAnimationChannel> channels;
+
+        bool has_node(int node_index) {
+            return channels.find(node_index) != channels.end();
+        }
+
+        TempAnimationChannel *get_channel(int node_index) {
+            return &channels.find(node_index)->second;
+        }
+    };
     struct LoadState {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
         uint32_t skeleton_base_offset;
         // Map of node and it's position in scene animation_clip vector
-        std::unordered_map<int, uint32_t> animation_clip_lookup;
+        std::vector<TempAnimation> animations;
         std::unordered_set<int> skeleton_nodes;
         AsyncLoader *async_loader;
     };
@@ -672,7 +694,7 @@ namespace mirai {
         return InterpolationMode::Linear;
     }
 
-    void LoadAnimationSampler(const tinygltf::Model *model, const tinygltf::AnimationSampler &sampler, AnimationClip *animation_clip, const std::string &target_path, float &start_time, float &end_time) {
+    void LoadAnimationSampler(const tinygltf::Model *model, const tinygltf::AnimationSampler &sampler, TempAnimationChannel *channel, const std::string &target_path, float &start_time, float &end_time) {
         // timestamp array for animation
         const auto &input_accessor = model->accessors[sampler.input];
         ASSERT(input_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT && input_accessor.type == TINYGLTF_TYPE_SCALAR);
@@ -685,10 +707,9 @@ namespace mirai {
         uint32_t num_value = cast_u32(output_accessor.count);
 
         InterpolationMode interpolation_mode = get_interpolation_mode(sampler.interpolation);
-
         if (output_accessor.type == TINYGLTF_TYPE_VEC3) {
             ASSERT(target_path == "scale" || target_path == "translation");
-            Vec3Track &track = target_path == "scale" ? animation_clip->scalings : animation_clip->positions;
+            Vec3Track &track = target_path == "scale" ? channel->scalings : channel->positions;
             ASSERT(track.values.size() == 0);
             ASSERT(num_value = num_timestamp);
 
@@ -702,7 +723,7 @@ namespace mirai {
             track.interpolation_mode = interpolation_mode;
         } else if (output_accessor.type == TINYGLTF_TYPE_VEC4) {
             ASSERT(target_path == "rotation");
-            QuatTrack &track = animation_clip->rotations;
+            QuatTrack &track = channel->rotations;
             ASSERT(track.values.size() == 0);
 
             track.timestamps.assign(timestamps_ptr, timestamps_ptr + num_timestamp);
@@ -722,47 +743,38 @@ namespace mirai {
         if (model->animations.size() == 0)
             return;
 
-        auto &animation_clip_lookup = load_state->animation_clip_lookup;
-        auto &animation_clips = load_state->scene->animation_clips;
+        for (uint32_t i = 0; i < model->animations.size(); ++i) {
+            const auto &gltf_animation = model->animations[i];
 
-        for (const auto &gltf_animation : model->animations) {
+            const std::string &name = gltf_animation.name.size() == 0 ? gltf_animation.name : "unnamed" + std::to_string(load_state->scene->animation_clips.size() + i);
+            TempAnimation *animation = &load_state->animations.emplace_back(TempAnimation{.name = name});
+
             float start_time = std::numeric_limits<float>::max();
             float end_time = std::numeric_limits<float>::lowest();
-            const std::string &name = gltf_animation.name;
-
             /**
              * Different channelof same animation can belong to different node,
              * so in order to calculate the animation properly, we need to keep track of
              * animation start/end time globally for all the channels and update to the node.
              **/
-            std::vector<int> nodes;
             for (const auto &channel : gltf_animation.channels) {
                 int target_node = channel.target_node;
-                auto found = animation_clip_lookup.find(target_node);
+                auto found = animation->channels.find(target_node);
 
-                AnimationClip *animation_clip = nullptr;
-                if (found == animation_clip_lookup.end()) {
-                    animation_clips.push_back(AnimationClip{.name = name});
-                    animation_clip_lookup.insert(std::make_pair(target_node, cast_u32(animation_clips.size() - 1)));
-                    animation_clip = &animation_clips.back();
+                TempAnimationChannel *node_channel = nullptr;
+                if (found == animation->channels.end()) {
+                    animation->channels.insert(std::make_pair(target_node, TempAnimationChannel{}));
+                    node_channel = &animation->channels.find(target_node)->second;
                 } else {
-                    animation_clip = &animation_clips[found->second];
+                    node_channel = &found->second;
                 }
-                ASSERT(name == animation_clip->name);
 
                 const std::string &target_path = channel.target_path;
                 const tinygltf::AnimationSampler &sampler = gltf_animation.samplers[channel.sampler];
-                LoadAnimationSampler(model, sampler, animation_clip, target_path, start_time, end_time);
-                nodes.push_back(target_node);
+                LoadAnimationSampler(model, sampler, node_channel, target_path, start_time, end_time);
             }
 
-            // Update animation time in next pass
-            for (auto node : nodes) {
-                auto found = animation_clip_lookup.find(node);
-                AnimationClip *animation = &animation_clips[found->second];
-                animation->start_time = start_time;
-                animation->end_time = end_time;
-            }
+            animation->start_time = start_time;
+            animation->end_time = end_time;
         }
     }
 
@@ -823,6 +835,7 @@ namespace mirai {
                 glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
                 skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
             }
+
             for (uint32_t j = 0; j < joint_count; ++j) {
                 int parent_index = skin.joints[j];
 
@@ -850,6 +863,40 @@ namespace mirai {
                     skeleton.add_bone(-1, model->nodes[key].name, transform.get_local_transform());
                     joints_lookup[key] = cast_u32(skeleton.parents.size() - 1);
                     ParseSkeletonHierarchy(model, joints_lookup, key, &skeleton);
+                }
+            }
+
+            // Find all the animation clip associated with this skeleton
+            // @TODO we can optimize this later
+            for (auto &animation : load_state->animations) {
+                bool is_match = true;
+                for (auto &[key, val] : joints_lookup) {
+                    if (!animation.has_node(key)) {
+                        is_match = false;
+                        break;
+                    }
+                }
+
+                if (is_match) {
+                    Log::Info("Found animation clip: ", animation.name);
+                    AnimationClip &animation_clip = load_state->scene->animation_clips.emplace_back(AnimationClip{
+                        .name = animation.name,
+                        .start_time = animation.start_time,
+                        .end_time = animation.end_time,
+                        // @TODO temp
+                        .tick_per_seconds = 24,
+                    });
+                    animation_clip.positions.resize(joints_lookup.size());
+                    animation_clip.rotations.resize(joints_lookup.size());
+                    animation_clip.scalings.resize(joints_lookup.size());
+
+                    for (auto &[key, val] : joints_lookup) {
+                        TempAnimationChannel &channel = animation.channels.at(key);
+                        animation_clip.positions[val] = std::move(channel.positions);
+                        animation_clip.rotations[val] = std::move(channel.rotations);
+                        animation_clip.scalings[val] = std::move(channel.scalings);
+                    }
+                    skeleton.supported_animations.push_back(cast_u32(load_state->scene->animation_clips.size() - 1));
                 }
             }
             /*
@@ -932,19 +979,44 @@ namespace mirai {
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
         }
+
+        // Either it is skeleton animation or it is a node animation
         if (node->skin >= 0) {
             comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
                                                                        .skeleton_index = load_state->skeleton_base_offset + node->skin,
                                                                    });
         }
 
+        uint32_t default_animation_clip = 0;
+        bool has_node_animation = false;
+        for (auto &animation : load_state->animations) {
+            if (animation.has_node(node_index)) {
+                ASSERT(node->skin == -1);
+                has_node_animation = true;
+
+                default_animation_clip = cast_u32(scene->animation_clips.size());
+                AnimationClip &animation_clip = scene->animation_clips.emplace_back(AnimationClip{
+                    .name = animation.name,
+                    .start_time = animation.start_time,
+                    .end_time = animation.end_time,
+                    // @TODO temp
+                    .tick_per_seconds = 24,
+                });
+
+                TempAnimationChannel &channel = animation.channels.at(node_index);
+                animation_clip.positions.push_back(std::move(channel.positions));
+                animation_clip.rotations.push_back(std::move(channel.rotations));
+                animation_clip.scalings.push_back(std::move(channel.scalings));
+            }
+        }
+
+        if (has_node_animation)
+            comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{
+                                                                           .current_animation_clip = default_animation_clip,
+                                                                       });
+
         comp_manager->add_component<NameComponent>(entity, name);
         // Check if node has animation
-
-        auto found = load_state->animation_clip_lookup.find(node_index);
-        if (found != load_state->animation_clip_lookup.end()) {
-            comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{found->second});
-        }
 
         for (const auto &child : node->children)
             ParseNodes(model, child, entity, load_state);
