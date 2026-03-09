@@ -104,7 +104,7 @@ namespace mirai {
         }
 
         glm::mat4 sample_mat4(uint32_t node_or_bone_index, float time) const;
-        void sample_TRS(uint32_t node_or_bone_index, float time, glm::vec3& position, glm::fquat& rotation, glm::vec3& scale) const;
+        void sample_TRS(uint32_t node_or_bone_index, float time, glm::vec3 &position, glm::fquat &rotation, glm::vec3 &scale) const;
     };
 
     /*
@@ -178,7 +178,7 @@ namespace mirai {
         // Bone related informations
         std::vector<int> parents;
         std::vector<glm::mat4> local_transforms;
-        std::vector<glm::mat4> inv_bind_matrices;
+        std::vector<glm::mat4> inv_bind_transforms;
         std::vector<std::string> names;
 
         std::vector<uint32_t> supported_animations;
@@ -187,6 +187,7 @@ namespace mirai {
             parents.push_back(parent);
             names.push_back(name);
             local_transforms.push_back(local_transform);
+            inv_bind_transforms.push_back(glm::inverse(local_transform));
         }
     };
 

@@ -4,16 +4,23 @@
 #include "Math/Transformation.hpp"
 #include "Scene/Animation.hpp"
 
-void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root_transform, ImDrawList *draw_list, float width, float height) {
+void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root_transform, ImDrawList *draw_list, float width, float height, Scene *scene) {
     static const uint32_t color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
     static const uint32_t color2 = ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
     std::vector<glm::mat4> cached_transforms(skeleton.parents.size());
     std::vector<glm::vec3> positions(skeleton.parents.size());
+
+    AnimationClip &clip = scene->animation_clips[skeleton.supported_animations[0]];
+    static float dt = 0.0016f;
     for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
         int parent = skeleton.parents[i];
         ASSERT(parent < int(i));
+
+        float t = fmodf(dt, clip.get_duration());
+        glm::mat4 animation_transform = clip.sample_mat4(i, t);
+
         glm::mat4 parent_transform = parent == -1 ? root_transform : cached_transforms[parent];
-        glm::mat4 current_transform = parent_transform * skeleton.local_transforms[i];
+        glm::mat4 current_transform = parent_transform * skeleton.local_transforms[i] * animation_transform * skeleton.inv_bind_transforms[i];
         cached_transforms[i] = current_transform;
 
         glm::vec3 bone_pos = current_transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -29,6 +36,8 @@ void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root
         draw_list->AddLine(ImVec2(p0.x * width, p0.y * height), ImVec2(p1.x * width, p1.y * height), color, 2.0f);
         draw_list->AddCircleFilled(ImVec2{p1.x * width, p1.y * height}, 5.0f, color2);
     }
+
+    dt += 0.0016f;
 }
 
 void DrawPose(Scene *scene, Entity entity, ImDrawList *draw_list, float width, float height) {
@@ -62,7 +71,7 @@ void DrawPose(Scene *scene, Entity entity, ImDrawList *draw_list, float width, f
     TransformComponent *transform = comp_manager->get_component<TransformComponent>(entity);
 
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    DrawSkeleton(skeleton, VP, transform->world_transform, draw_list, width, height);
+    DrawSkeleton(skeleton, VP, transform->world_transform, draw_list, width, height, scene);
 }
 
 void add_skeleton_debug_ui(Scene *scene, Entity entity) {
@@ -84,10 +93,12 @@ void add_skeleton_debug_ui(Scene *scene, Entity entity) {
 
     float width = io.DisplaySize.x;
     float height = io.DisplaySize.y;
-#if 0
+#if 1
+    TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(entity);
+    AnimatorComponent *animator_comp = scene->ecs->component_manager->get_component<AnimatorComponent>(entity);
+    ASSERT(animator_comp != nullptr);
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    for (const auto &skeleton : scene->skeletons)
-        DrawSkeleton(skeleton, VP, glm::mat4(1.0f), draw_list, width, height);
+    DrawSkeleton(scene->skeletons[animator_comp->skeleton_index], VP, transform->world_transform, draw_list, width, height, scene);
 #else
     DrawPose(scene, entity, draw_list, width, height);
 #endif

@@ -745,8 +745,10 @@ namespace mirai {
 
         for (uint32_t i = 0; i < model->animations.size(); ++i) {
             const auto &gltf_animation = model->animations[i];
+            if (gltf_animation.channels.size() == 0)
+                continue;
 
-            const std::string &name = gltf_animation.name.size() == 0 ? gltf_animation.name : "unnamed" + std::to_string(load_state->scene->animation_clips.size() + i);
+            const std::string &name = gltf_animation.name.size() > 0 ? gltf_animation.name : "unnamed" + std::to_string(load_state->scene->animation_clips.size() + i);
             TempAnimation *animation = &load_state->animations.emplace_back(TempAnimation{.name = name});
 
             float start_time = std::numeric_limits<float>::max();
@@ -824,7 +826,7 @@ namespace mirai {
 
             Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
-
+            /*
             // ASSERT(skin.inverseBindMatrices >= 0);
             if (skin.inverseBindMatrices >= 0) {
                 const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
@@ -835,7 +837,7 @@ namespace mirai {
                 glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
                 skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
             }
-
+            */
             for (uint32_t j = 0; j < joint_count; ++j) {
                 int parent_index = skin.joints[j];
 
@@ -869,15 +871,14 @@ namespace mirai {
             // Find all the animation clip associated with this skeleton
             // @TODO we can optimize this later
             for (auto &animation : load_state->animations) {
-                bool is_match = true;
+                float match_percent = 0.0f;
                 for (auto &[key, val] : joints_lookup) {
-                    if (!animation.has_node(key)) {
-                        is_match = false;
-                        break;
+                    if (animation.has_node(key)) {
+                        match_percent += 1.0f;
                     }
                 }
-
-                if (is_match) {
+                match_percent = match_percent / float(joint_count);
+                if (match_percent > 0.49f) {
                     Log::Info("Found animation clip: ", animation.name);
                     AnimationClip &animation_clip = load_state->scene->animation_clips.emplace_back(AnimationClip{
                         .name = animation.name,
@@ -891,7 +892,10 @@ namespace mirai {
                     animation_clip.scalings.resize(joints_lookup.size());
 
                     for (auto &[key, val] : joints_lookup) {
-                        TempAnimationChannel &channel = animation.channels.at(key);
+                        auto found = animation.channels.find(key);
+                        if (found == animation.channels.end())
+                            continue;
+                        TempAnimationChannel &channel = found->second;
                         animation_clip.positions[val] = std::move(channel.positions);
                         animation_clip.rotations[val] = std::move(channel.rotations);
                         animation_clip.scalings[val] = std::move(channel.scalings);
