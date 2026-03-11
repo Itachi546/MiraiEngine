@@ -148,6 +148,7 @@ namespace mirai {
     }
 
     void Scene::update_animator_components() {
+        //@TODO Should update the animation only if the object is visible
         auto animator_component_ptr = ecs->component_manager->get_component_array<AnimatorComponent>();
         std::vector<AnimatorComponent> &animator_components = animator_component_ptr->components;
 
@@ -175,10 +176,20 @@ namespace mirai {
             for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
                 int parent = skeleton.parents[i];
                 ASSERT(parent < int(i));
-                glm::mat4 animation_transform = clip.sample_mat4(i, component.current_time);
-                glm::mat4 parent_transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
-                glm::mat4 current_transform = parent_transform * skeleton.local_transforms[i] * animation_transform * skeleton.inv_bind_transforms[i];
-                pose.matrix_palletes[i] = current_transform;
+
+                glm::mat4 transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
+                // Some of the node in hierarchy doesn't have keyframes, for such we just
+                // apply parent transform with local transform
+                if (clip.has_animation(i)) {
+                    glm::mat4 animation_transform = clip.sample_mat4(i, component.current_time);
+                    transform = transform * animation_transform;
+                }
+                // parent_transform * animation_transform * skeleton.inv_bind_transforms[i]
+                pose.matrix_palletes[i] = transform;
+            }
+
+            for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
+                pose.matrix_palletes[i] = pose.matrix_palletes[i] * skeleton.inv_bind_transforms[i];
             }
         }
     }

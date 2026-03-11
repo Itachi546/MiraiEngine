@@ -65,27 +65,27 @@ vec3 hash13(uint seed) {
 void main() {
     DrawData draw_data = draw_datas[gl_DrawID];
     uint vertex_address = draw_data.vertex_offset + gl_VertexIndex * draw_data.vertex_stride;
-    vec3 local_position = unpack_position(vertex_address);
+    vec3 position = unpack_position(vertex_address);
     mat4 M = transforms[draw_data.transform_index];
 
     uvec4 joints = unpack_joints(vertex_address);
     vec4 weights = unpack_weights(vertex_address);
 
-    vec3 position = vec3(0.0f);
-    position += vec3(matrix_palletes[joints.x] * vec4(local_position, 1.0f) * weights.x);
-    position += vec3(matrix_palletes[joints.y] * vec4(local_position, 1.0f) * weights.y);
-    position += vec3(matrix_palletes[joints.z] * vec4(local_position, 1.0f) * weights.z);
-    position += vec3(matrix_palletes[joints.w] * vec4(local_position, 1.0f) * weights.w);
+    mat4 skinned_matrix = matrix_palletes[joints.x] * weights.x;
+    skinned_matrix += matrix_palletes[joints.y] * weights.y;
+    skinned_matrix += matrix_palletes[joints.z] * weights.z;
+    skinned_matrix += matrix_palletes[joints.w] * weights.w;
 
-    vec4 world_pos = M * vec4(position, 1.0f);
+    mat4 world_transform = M * skinned_matrix;
 
+    vec4 world_pos = world_transform * vec4(position, 1.0f);
     vec4 current_clip_pos = per_frame_data.VP * world_pos;
     gl_Position = current_clip_pos;
 
     vs_out.current_clip_pos = current_clip_pos;
     vs_out.prev_clip_pos = last_frame_VP * world_pos;
 
-    mat3 normal_matrix = mat3(transpose(inverse(M)));
+    mat3 normal_matrix = mat3(transpose(inverse(world_transform)));
     vs_out.normal = normal_matrix * unpack_normal(vertex_address);
     vs_out.tangent = normal_matrix * unpack_tangent(vertex_address);
     vs_out.bitangent = normal_matrix * unpack_bitangent(vertex_address);

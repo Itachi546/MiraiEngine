@@ -56,7 +56,7 @@ namespace mirai {
         uint32_t skeleton_base_offset;
         // Map of node and it's position in scene animation_clip vector
         std::vector<TempAnimation> animations;
-        std::unordered_set<int> skeleton_nodes;
+        std::unordered_set<int> global_joint_list;
         AsyncLoader *async_loader;
     };
 
@@ -507,7 +507,7 @@ namespace mirai {
                 // Parse animation data
                 bool has_animation_data = false;
                 auto joint_attributes = primitive.attributes.find("JOINTS_0");
-                std::vector<uint8_t> joints;
+                std::vector<uint32_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
                     has_animation_data = true;
                     mesh_component._flags |= (MeshComponent::DYNAMIC | MeshComponent::SKINNED);
@@ -516,10 +516,10 @@ namespace mirai {
                     ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
                     if (joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
                         uint8_t *joint_ptr = (uint8_t *)GetBufferPtr(model, joint_accessor);
-                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * sizeof(uint8_t) * 4);
+                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * 4);
                     } else if (joint_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                        uint8_t *joint_ptr = (uint8_t *)GetBufferPtr(model, joint_accessor);
-                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * sizeof(uint16_t) * 4);
+                        uint16_t *joint_ptr = (uint16_t *)GetBufferPtr(model, joint_accessor);
+                        joints.insert(joints.end(), joint_ptr, joint_ptr + joint_accessor.count * 4);
                     } else {
                         ASSERT("Unknown component type for joint");
                     }
@@ -574,10 +574,10 @@ namespace mirai {
                         vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
                     if (has_animation_data) {
-                        vertex.joints = uint8_t(joints[i * 4]) << 24 |
-                                        uint8_t(joints[i * 4 + 1]) << 16 |
-                                        uint8_t(joints[i * 4 + 2]) |
-                                        uint8_t(joints[i * 4 + 3]);
+                        vertex.joints = cast_u32(joints[i * 4]) << 24 |
+                                        cast_u32(joints[i * 4 + 1]) << 16 |
+                                        cast_u32(joints[i * 4 + 2]) << 8 |
+                                        cast_u32(joints[i * 4 + 3]);
                         vertex.weights = {
                             weights[i * 4],
                             weights[i * 4 + 1],
@@ -789,14 +789,13 @@ namespace mirai {
             glm::decompose(transformation_matrix, transform->scale, transform->rotation, transform->position, skew, perspective);
         }
     }
-
-    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_map<int, int> &joints_lookup, int node_index, Skeleton *skeleton) {
+    /*
+    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_set<int> &global_joint_list, int node_index, Skeleton *skeleton) {
         const tinygltf::Node *parent_node = &model->nodes[node_index];
 
         // Breadth First Traversal
-        uint32_t parent_index = joints_lookup[node_index];
         for (auto child_index : parent_node->children) {
-            if (joints_lookup.find(child_index) == joints_lookup.end())
+            if (global_joint_list.find(child_index) == joints_lookup.end())
                 continue;
             const tinygltf::Node *child_node = &model->nodes[child_index];
 
@@ -809,65 +808,67 @@ namespace mirai {
         for (auto child_index : parent_node->children)
             ParseSkeletonHierarchy(model, joints_lookup, child_index, skeleton);
     }
-
+    */
     void LoadSkins(const tinygltf::Model *model, LoadState *load_state) {
+
+        // List all the skeleton nodes
+        for (const auto &skin : model->skins) {
+            for (auto j : skin.joints) {
+                load_state->global_joint_list.insert(j);
+            }
+        }
 
         for (const auto &skin : model->skins) {
             uint32_t joint_count = cast_u32(skin.joints.size());
             // We don't have skeleton information, need to reconstruct it manually
-            // Lookup table between node and it's parent
-            std::unordered_map<int, int> node_parent_lookup;
-            std::unordered_map<int, int> joints_lookup;
-
+            // Lookup table between node and it's parent local index
+            std::unordered_map<int, int> joint_parent_lookup;
             Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
-            /*
+            skeleton.resize(joint_count);
+
             // ASSERT(skin.inverseBindMatrices >= 0);
+            glm::mat4 *inv_bind_matrix_ptr = nullptr;
             if (skin.inverseBindMatrices >= 0) {
                 const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
                 ASSERT(bind_matrices_accessor.count == joint_count);
                 ASSERT(bind_matrices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
                 ASSERT(bind_matrices_accessor.type == TINYGLTF_TYPE_MAT4);
-
-                glm::mat4 *inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
-                skeleton.inv_bind_matrices.insert(skeleton.inv_bind_matrices.end(), inv_bind_matrix_ptr, inv_bind_matrix_ptr + joint_count);
+                inv_bind_matrix_ptr = (glm::mat4 *)GetBufferPtr(model, bind_matrices_accessor);
             }
-            */
+
             for (uint32_t j = 0; j < joint_count; ++j) {
-                int parent_index = skin.joints[j];
-
-                joints_lookup[parent_index] = -1;
-                load_state->skeleton_nodes.insert(parent_index);
-
-                auto found = node_parent_lookup.find(parent_index);
-                if (found != node_parent_lookup.end())
-                    node_parent_lookup[parent_index] = found->second;
+                int joint_index = skin.joints[j];
+                auto found = joint_parent_lookup.find(joint_index);
+                // If we don't find any parent for this node then it must be root node
+                int parent_index = -1;
+                if (found == joint_parent_lookup.end())
+                    joint_parent_lookup[joint_index] = parent_index;
                 else
-                    node_parent_lookup[parent_index] = -1;
+                    parent_index = found->second;
 
-                const tinygltf::Node *node = &model->nodes[parent_index];
+                const tinygltf::Node *node = &model->nodes[joint_index];
                 ASSERT(node != nullptr);
                 for (auto child : node->children) {
-                    node_parent_lookup[child] = parent_index;
+                    // We check the global joint list and skip the child node that is not part of skeleton
+                    if (load_state->global_joint_list.find(child) != load_state->global_joint_list.end()) {
+                        // Instead of storing actual parent node, we store the local index of it
+                        joint_parent_lookup[child] = j;
+                    }
                 }
-            }
 
-            for (auto [key, val] : node_parent_lookup) {
-                if (val == -1) {
-                    const tinygltf::Node *node = &model->nodes[key];
-                    TransformComponent transform;
-                    ParseNodeTransform(node, &transform);
-                    skeleton.add_bone(-1, model->nodes[key].name, transform.get_local_transform());
-                    joints_lookup[key] = cast_u32(skeleton.parents.size() - 1);
-                    ParseSkeletonHierarchy(model, joints_lookup, key, &skeleton);
-                }
+                TransformComponent transform;
+                ParseNodeTransform(node, &transform);
+                skeleton.add_bone(j, parent_index, node->name, transform.get_local_transform(), inv_bind_matrix_ptr == nullptr ? glm::mat4(1.0f) : inv_bind_matrix_ptr[j]);
             }
+            if (inv_bind_matrix_ptr == nullptr)
+                skeleton.calculate_inv_bind_transform();
 
             // Find all the animation clip associated with this skeleton
             // @TODO we can optimize this later
             for (auto &animation : load_state->animations) {
                 float match_percent = 0.0f;
-                for (auto &[key, val] : joints_lookup) {
+                for (auto &[key, val] : joint_parent_lookup) {
                     if (animation.has_node(key)) {
                         match_percent += 1.0f;
                     }
@@ -882,18 +883,19 @@ namespace mirai {
                         // @TODO temp
                         .tick_per_seconds = 24,
                     });
-                    animation_clip.positions.resize(joints_lookup.size());
-                    animation_clip.rotations.resize(joints_lookup.size());
-                    animation_clip.scalings.resize(joints_lookup.size());
+                    animation_clip.positions.resize(joint_count);
+                    animation_clip.rotations.resize(joint_count);
+                    animation_clip.scalings.resize(joint_count);
 
-                    for (auto &[key, val] : joints_lookup) {
-                        auto found = animation.channels.find(key);
+                    for (uint32_t j = 0; j < joint_count; ++j) {
+                        uint32_t joint_index = skin.joints[j];
+                        auto found = animation.channels.find(joint_index);
                         if (found == animation.channels.end())
                             continue;
                         TempAnimationChannel &channel = found->second;
-                        animation_clip.positions[val] = std::move(channel.positions);
-                        animation_clip.rotations[val] = std::move(channel.rotations);
-                        animation_clip.scalings[val] = std::move(channel.scalings);
+                        animation_clip.positions[j] = std::move(channel.positions);
+                        animation_clip.rotations[j] = std::move(channel.rotations);
+                        animation_clip.scalings[j] = std::move(channel.scalings);
                     }
                     skeleton.supported_animations.push_back(cast_u32(load_state->scene->animation_clips.size() - 1));
                 }
@@ -914,7 +916,7 @@ namespace mirai {
     }
 
     void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
-        if (load_state->skeleton_nodes.find(node_index) != load_state->skeleton_nodes.end())
+        if (load_state->global_joint_list.find(node_index) != load_state->global_joint_list.end())
             return;
 
         Scene *scene = load_state->scene;

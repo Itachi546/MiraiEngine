@@ -49,6 +49,10 @@ namespace mirai {
                 return cast_u32(timestamps.size()) - 2;
             return cast_u32(std::distance(timestamps.begin(), found)) - 1;
         }
+
+        bool is_valid() const {
+            return values.size() > 0;
+        }
     };
 
     using Vec3Track = Track<glm::vec3>;
@@ -101,6 +105,11 @@ namespace mirai {
             uint32_t next_index = (current_index + 1) % cast_u32(track.values.size());
             float dt = calculate_time_scale(track.timestamps[current_index], track.timestamps[next_index], time);
             return glm::slerp(track.values[current_index], track.values[next_index], dt);
+        }
+
+        bool has_animation(uint32_t node_or_bone_index) const {
+            ASSERT(node_or_bone_index <= positions.size());
+            return positions[node_or_bone_index].is_valid() || rotations[node_or_bone_index].is_valid() || scalings[node_or_bone_index].is_valid();
         }
 
         glm::mat4 sample_mat4(uint32_t node_or_bone_index, float time) const;
@@ -197,11 +206,32 @@ namespace mirai {
         std::vector<uint32_t> supported_animations;
         Pose current_pose;
 
-        void add_bone(int parent, const std::string &name, const glm::mat4 &local_transform) {
-            parents.push_back(parent);
-            names.push_back(name);
-            local_transforms.push_back(local_transform);
-            inv_bind_transforms.push_back(glm::inverse(local_transform));
+        void resize(uint32_t joint_count) {
+            parents.resize(joint_count);
+            local_transforms.resize(joint_count);
+            inv_bind_transforms.resize(joint_count);
+            names.resize(joint_count);
+        }
+
+        void add_bone(int index, int parent, const std::string &name, const glm::mat4 &local_transform, const glm::mat4 &inv_bind_transform) {
+            ASSERT(index < parents.size());
+            parents[index] = parent;
+            names[index] = name;
+            local_transforms[index] = local_transform;
+            inv_bind_transforms[index] = inv_bind_transform;
+        }
+
+        void calculate_inv_bind_transform() {
+            std::vector<glm::mat4> global_transforms(parents.size());
+            for (uint32_t i = 0; i < parents.size(); ++i) {
+                ASSERT(parents[i] < int(i));
+                if (parents[i] == -1)
+                    global_transforms[i] = local_transforms[i];
+                else
+                    global_transforms[i] = global_transforms[parents[i]] * local_transforms[i];
+
+                inv_bind_transforms[i] = glm::inverse(global_transforms[i]);
+            }
         }
     };
 
