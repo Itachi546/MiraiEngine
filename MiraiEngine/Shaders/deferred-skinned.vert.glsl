@@ -38,16 +38,44 @@ layout(set = 3, binding = 0) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
+layout(set = 5, binding = 0) readonly buffer SkinnedMatrixPallets {
+    mat4 matrix_palletes[];
+};
+
 #include "utils/vertexdata.glsl"
 layout(set = 4, binding = 0) readonly buffer DrawDataBinding {
     DrawData draw_datas[];
 };
 
+// Function to generate a pseudo-random color based on a uint index
+vec3 hash13(uint seed) {
+    // A simple, fast hash function (e.g., Wang Hash or basic LCG)
+    uint x = seed * 1013904223u;
+    x = (x ^ (x >> 16u)) * 0x45d9f3b;
+    x = (x ^ (x >> 16u)) * 0x45d9f3b;
+    x = (x ^ (x >> 16u));
+
+    // Map the 32-bit hash to 0.0-1.0 float range for RGB
+    return vec3(
+        float(x & 0xFFu) / 255.0,
+        float((x >> 8u) & 0xFFu) / 255.0,
+        float((x >> 16u) & 0xFFu) / 255.0);
+}
+
 void main() {
     DrawData draw_data = draw_datas[gl_DrawID];
     uint vertex_address = draw_data.vertex_offset + gl_VertexIndex * draw_data.vertex_stride;
-    vec3 position = unpack_position(vertex_address);
+    vec3 local_position = unpack_position(vertex_address);
     mat4 M = transforms[draw_data.transform_index];
+
+    uvec4 joints = unpack_joints(vertex_address);
+    vec4 weights = unpack_weights(vertex_address);
+
+    vec3 position = vec3(0.0f);
+    position += vec3(matrix_palletes[joints.x] * vec4(local_position, 1.0f) * weights.x);
+    position += vec3(matrix_palletes[joints.y] * vec4(local_position, 1.0f) * weights.y);
+    position += vec3(matrix_palletes[joints.z] * vec4(local_position, 1.0f) * weights.z);
+    position += vec3(matrix_palletes[joints.w] * vec4(local_position, 1.0f) * weights.w);
 
     vec4 world_pos = M * vec4(position, 1.0f);
 

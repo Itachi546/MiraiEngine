@@ -70,4 +70,21 @@ vec2 unpack_uv(uint address) {
         uintBitsToFloat(vertices[address + 7]));
 }
 
+uvec4 unpack_joints(uint address) {
+    uint joints = vertices[address + 7];
+    return uvec4(
+        (joints >> 24) & 0xff,
+        (joints >> 16) & 0xff,
+        (joints >> 8) & 0xff,
+        joints & 0xff);
+}
+
+vec4 unpack_weights(uint address) {
+    return vec4(
+        uintBitsToFloat(vertices[address + 8]),
+        uintBitsToFloat(vertices[address + 9]),
+        uintBitsToFloat(vertices[address + 10]),
+        uintBitsToFloat(vertices[address + 11]));
+}
+
 #endif

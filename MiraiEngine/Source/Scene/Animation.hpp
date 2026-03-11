@@ -172,25 +172,6 @@ namespace mirai {
      glm::mat4 calculate_transform(float time);
  };
  */
-    struct Skeleton {
-        std::string name;
-
-        // Bone related informations
-        std::vector<int> parents;
-        std::vector<glm::mat4> local_transforms;
-        std::vector<glm::mat4> inv_bind_transforms;
-        std::vector<std::string> names;
-
-        std::vector<uint32_t> supported_animations;
-
-        void add_bone(int parent, const std::string &name, const glm::mat4 &local_transform) {
-            parents.push_back(parent);
-            names.push_back(name);
-            local_transforms.push_back(local_transform);
-            inv_bind_transforms.push_back(glm::inverse(local_transform));
-        }
-    };
-
     struct Pose {
         std::vector<glm::mat4> matrix_palletes;
         std::vector<glm::vec3> joints_position;
@@ -202,6 +183,25 @@ namespace mirai {
             joints_position.resize(size);
             joints_rotation.resize(size);
             joints_scaling.resize(size);
+        }
+    };
+    struct Skeleton {
+        std::string name;
+
+        // Bone related informations
+        std::vector<int> parents;
+        std::vector<glm::mat4> local_transforms;
+        std::vector<glm::mat4> inv_bind_transforms;
+        std::vector<std::string> names;
+
+        std::vector<uint32_t> supported_animations;
+        Pose current_pose;
+
+        void add_bone(int parent, const std::string &name, const glm::mat4 &local_transform) {
+            parents.push_back(parent);
+            names.push_back(name);
+            local_transforms.push_back(local_transform);
+            inv_bind_transforms.push_back(glm::inverse(local_transform));
         }
     };
 

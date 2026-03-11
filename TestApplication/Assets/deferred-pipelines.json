@@ -38,7 +38,7 @@
         "name": "pbr-deferred-shader-skinned",
         "shaders": [
             "SPIRV/deferred-skinned.vert.spv",
-            "SPIRV/deferred.frag.spv"
+            "SPIRV/deferred-skinned.frag.spv"
         ],
         "state": {
             "pass": "SHADER_PASS_PBR_DEFERRED_SKINNED",

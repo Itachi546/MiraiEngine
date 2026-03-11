@@ -56,8 +56,10 @@ namespace mirai {
 
         camera->update();
 
-        if (!pause_animation)
+        if (!pause_animation) {
             update_node_animator_components();
+            update_animator_components();
+        }
 
         update_transform_components();
 
@@ -149,8 +151,35 @@ namespace mirai {
         auto animator_component_ptr = ecs->component_manager->get_component_array<AnimatorComponent>();
         std::vector<AnimatorComponent> &animator_components = animator_component_ptr->components;
 
+        if (animation_clips.size() == 0 || animator_components.size() == 0)
+            return;
+
+        float dt = Engine::get()->get_dt_seconds();
         for (auto &component : animator_components) {
             Skeleton &skeleton = skeletons[component.skeleton_index];
+            Pose &pose = skeleton.current_pose;
+
+            if (pose.matrix_palletes.size() == 0)
+                pose.matrix_palletes.resize(skeleton.parents.size());
+
+            const AnimationClip &clip = animation_clips[0];
+
+            float duration = clip.get_duration();
+            float start_time = clip.start_time;
+            float end_time = clip.end_time;
+
+            component.current_time += dt;
+            if (component.current_time > end_time)
+                component.current_time = fmod(component.current_time - start_time, duration) + start_time;
+
+            for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
+                int parent = skeleton.parents[i];
+                ASSERT(parent < int(i));
+                glm::mat4 animation_transform = clip.sample_mat4(i, component.current_time);
+                glm::mat4 parent_transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
+                glm::mat4 current_transform = parent_transform * skeleton.local_transforms[i] * animation_transform * skeleton.inv_bind_transforms[i];
+                pose.matrix_palletes[i] = current_transform;
+            }
         }
     }
 

@@ -49,9 +49,34 @@ namespace mirai {
 
                 shader->bind(command_buffer);
 
+                uint32_t current_frame = device->get_current_frame();
+                Skeleton &skeleton = renderer->get_scene()->skeletons[0];
+                uint32_t total_matrices = cast_u32(skeleton.parents.size());
+                uint32_t staging_buffer_offset = renderer->allocate_staging_buffer(total_matrices * sizeof(glm::mat4), current_frame);
+
+                uint8_t *matrix_palletes = reinterpret_cast<uint8_t *>(renderer->per_frame_staging_buffer_ptr + staging_buffer_offset);
+                std::memcpy(matrix_palletes, skeleton.current_pose.matrix_palletes.data(), sizeof(glm::mat4) * total_matrices);
+
+                UniformLayout layouts = {
+                    .binding = 0,
+                    .binding_type = BINDING_TYPE_STORAGE_BUFFER,
+                    .shader_stage = SHADER_STAGE_VERTEX,
+                };
+
+                UniformSetID uniform_set = command_buffer->create_uniform_set(&layouts, 1, 5);
+                UniformBinding binding = {
+                    .resource_id = renderer->per_frame_staging_buffer,
+                    .buffer_info = {
+                        .offset = staging_buffer_offset,
+                        .range = sizeof(glm::mat4) * total_matrices,
+                    },
+                };
+                device->update_uniform_set(uniform_set, &binding, 1);
+
                 UniformSetID uniform_sets[] = {
                     renderer->vt_per_frame_uniform_set,
                     renderer->transform_material_set,
+                    uniform_set,
                 };
 
                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));

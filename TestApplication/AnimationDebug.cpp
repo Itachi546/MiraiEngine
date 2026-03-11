@@ -13,17 +13,7 @@ void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root
     AnimationClip &clip = scene->animation_clips[skeleton.supported_animations[0]];
     static float dt = 0.0016f;
     for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
-        int parent = skeleton.parents[i];
-        ASSERT(parent < int(i));
-
-        float t = fmodf(dt, clip.get_duration());
-        glm::mat4 animation_transform = clip.sample_mat4(i, t);
-
-        glm::mat4 parent_transform = parent == -1 ? root_transform : cached_transforms[parent];
-        glm::mat4 current_transform = parent_transform * skeleton.local_transforms[i] * animation_transform * skeleton.inv_bind_transforms[i];
-        cached_transforms[i] = current_transform;
-
-        glm::vec3 bone_pos = current_transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::vec3 bone_pos = root_transform * skeleton.current_pose.matrix_palletes[i] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         positions[i] = world_to_normalized_window_pos(bone_pos, VP);
     }
 
