@@ -88,27 +88,30 @@ namespace mirai {
         auto &render_list = scene->render_object_list;
 
         auto &component_manager = scene->ecs->component_manager;
-        std::vector<AccelerationStructureMeshInfo> mesh_infos(render_list.size());
+        std::vector<AccelerationStructureMeshInfo> mesh_infos;
+        mesh_infos.reserve(render_list.size());
         for (uint32_t i = 0; i < render_list.size(); ++i) {
             RenderableObjectData &object = render_list[i];
             auto &material = scene->materials[object.material_index];
             if (material->is_transparent())
                 continue;
 
-            mesh_infos[i].vertex_buffer = {
-                .buffer = object.vertex_buffer.buffer,
-                .offset = object.vertex_offset_bytes,
-                .count = object.index_count,
-                .stride = object.vertex_stride,
-            };
+            mesh_infos.push_back(AccelerationStructureMeshInfo{
+                .vertex_buffer = {
+                    .buffer = object.vertex_buffer.buffer,
+                    .offset = object.vertex_offset_bytes,
+                    .count = object.index_count,
+                    .stride = object.vertex_stride,
+                },
+                .index_buffer = {
+                    .buffer = object.index_buffer.buffer,
+                    .offset = object.first_index * sizeof(uint32_t),
+                    .count = object.index_count,
+                    .stride = sizeof(uint32_t),
+                },
+            });
 
-            mesh_infos[i].index_buffer = {
-                .buffer = object.index_buffer.buffer,
-                .offset = object.first_index * sizeof(uint32_t),
-                .count = object.index_count,
-                .stride = sizeof(uint32_t),
-            };
-
+            AccelerationStructureMeshInfo &mesh_info = mesh_infos.back();
             // @TODO a very long function :D
             TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
             // The default representation of glm is column major while the VkTransformKHR uses row major
@@ -116,7 +119,7 @@ namespace mirai {
             glm::mat4 transform = transform_component->world_transform;
             for (int y = 0; y < 3; ++y) {
                 for (int x = 0; x < 4; ++x) {
-                    mesh_infos[i].transform[y][x] = transform[x][y];
+                    mesh_info.transform[y][x] = transform[x][y];
                 }
             }
         }
