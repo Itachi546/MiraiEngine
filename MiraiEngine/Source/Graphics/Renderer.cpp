@@ -91,6 +91,9 @@ namespace mirai {
         std::vector<AccelerationStructureMeshInfo> mesh_infos(render_list.size());
         for (uint32_t i = 0; i < render_list.size(); ++i) {
             RenderableObjectData &object = render_list[i];
+            auto &material = scene->materials[object.material_index];
+            if (material->is_transparent())
+                continue;
 
             mesh_infos[i].vertex_buffer = {
                 .buffer = object.vertex_buffer.buffer,
