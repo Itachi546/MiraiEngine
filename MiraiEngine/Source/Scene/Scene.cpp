@@ -29,7 +29,7 @@ namespace mirai {
         sun = std::make_unique<LightComponent>();
         sun->color = glm::vec3(1.0f);
         sun->rotation = glm::vec3(110.0f, 336.0f, 0.0f);
-        sun->intensity = 1.0f;
+        sun->intensity = 5.0f;
         sun->cast_shadow = true;
 
         per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;

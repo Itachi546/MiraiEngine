@@ -187,7 +187,7 @@ void add_transform_component(TransformComponent *transform_component, Entity ent
 
         glm::vec3 rotation = glm::degrees(glm::eulerAngles(transform_component->rotation));
         if (ImGui::DragFloat3("rotation", &rotation[0], 1.0f, 0.0f, 360.0f)) {
-            transform_component->rotation = glm::fquat(rotation);
+            transform_component->rotation = glm::normalize(glm::fquat(glm::radians(rotation)));
             changed |= true;
         }
         changed |= ImGui::DragFloat3("scale", &transform_component->scale[0]);
