@@ -6,7 +6,7 @@ layout(set = 0, binding = 0) uniform sampler2D u_texture;
 layout(push_constant) uniform PushConstants {
     vec2 resolution;
     float u_enable_aa;
-    float _unused;
+    float enable_gamma_correction;
 };
 
 #include "utils/fxaa.glsl"
@@ -23,10 +23,7 @@ void main() {
     else
         col = texture(u_texture, uv);
 
-#if 1
-    col.rgb = linear_to_srgb(ACESFilm(col.rgb));
+    if (enable_gamma_correction > 0.5f)
+        col.rgb = linear_to_srgb(ACESFilm(col.rgb));
     fragColor = col;
-#else
-    fragColor = col.rrra;
-#endif
 }

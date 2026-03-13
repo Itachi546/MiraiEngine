@@ -14,8 +14,8 @@ namespace mirai {
 
         ~DeferredLightingPass();
 
-        float split_percentage = 0.0f;
-        int debug_texture = 0;
+        float split_percentage = 1.0f;
+        int debug_texture = 4;
 
       private:
         Shader *cascade_shader;

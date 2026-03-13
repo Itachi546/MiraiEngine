@@ -259,10 +259,8 @@ class TestApplication : public App {
         if (ImGui::CollapsingHeader("Scene")) {
             auto *final_pass = (SwapchainCopyPass *)frame_graph->get_renderer("swapchain_copy");
             if (final_pass) {
-                static bool enable_aa = final_pass->is_antialiasing_enabled();
-                if (ImGui::Checkbox("FXAA", &enable_aa)) {
-                    final_pass->set_antialiasing(enable_aa);
-                }
+                ImGui::Checkbox("FXAA", &final_pass->enable_aa);
+                ImGui::Checkbox("Gamma Correction", &final_pass->enable_gamma_correction);
             }
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));

@@ -11,12 +11,17 @@ namespace mirai {
         ssao_shader = Shader::create_from_file("SPIRV/hbao.comp.spv", "hbao-shader");
         blur_shader = Shader::create_from_file("SPIRV/cross-bilateral-blur.comp.spv", "bilateral-blur-shader");
 
-        noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/noise.png");
+        ASSERT(node->inputs.size() == 1);
+        ASSERT(node->outputs.size() == 1);
+        FrameGraphResource *depth_resource = frame_graph->get_resource(node->inputs[0]);
+        FrameGraphResource *ssao_resource = frame_graph->get_resource(node->outputs[0]);
+
+        noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
 
         TextureDescription texture_desc = {
             .create_flags = 0,
-            .width = node->width,
-            .height = node->height,
+            .width = ssao_resource->resource_info.width,
+            .height = ssao_resource->resource_info.height,
             .depth = 1,
             .mip_levels = 1,
             .array_layers = 1,
@@ -26,11 +31,6 @@ namespace mirai {
         };
 
         blur_intermediate_texture = device->create_texture(&texture_desc, "blur_intermediate_texture");
-
-        ASSERT(node->inputs.size() == 1);
-        ASSERT(node->outputs.size() == 1);
-        TextureID depth_texture = frame_graph->get_resource(node->inputs[0])->handle;
-        TextureID ssao_texture = frame_graph->get_resource(node->outputs[0])->handle;
 
         UniformLayout layouts[] = {
             {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
@@ -45,8 +45,8 @@ namespace mirai {
         SamplerID noise_sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {
-            {.resource_id = ssao_texture},
-            {.resource_id = depth_texture, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = ssao_resource->handle},
+            {.resource_id = depth_resource->handle, .texture_info = {.sampler = default_sampler}},
             {.resource_id = noise_texture, .texture_info = {.sampler = noise_sampler}},
         };
         // SSAO Uniform Set
@@ -56,17 +56,21 @@ namespace mirai {
         // Create BlurX Uniform Set
         blur_x_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "blur_x_set");
         bindings[0].resource_id = blur_intermediate_texture;
-        bindings[2].resource_id = ssao_texture;
+        bindings[2].resource_id = ssao_resource->handle;
         device->update_uniform_set(blur_x_set, bindings, cast_u32(std::size(bindings)));
 
         // Create BlurY Uniform Set
         blur_y_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "blur_y_set");
-        bindings[0].resource_id = ssao_texture;
+        bindings[0].resource_id = ssao_resource->handle;
         bindings[2].resource_id = blur_intermediate_texture;
         device->update_uniform_set(blur_y_set, bindings, cast_u32(std::size(bindings)));
 
-        constant_data.width = cast_float(node->width);
-        constant_data.height = cast_float(node->height);
+        constant_data.width = cast_float(ssao_resource->resource_info.width);
+        constant_data.height = cast_float(ssao_resource->resource_info.height);
+        constant_data.noise_texture_width = 128.0f;
+        constant_data.noise_texture_height = 128.0f;
+        constant_data.depth_texture_width = cast_float(depth_resource->resource_info.width);
+        constant_data.depth_texture_height = cast_float(depth_resource->resource_info.height);
         constant_data.direction_step = 4.0f;
         constant_data.num_step = 8.0f;
         constant_data.radius = 1.0f;

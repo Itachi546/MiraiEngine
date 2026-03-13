@@ -30,6 +30,10 @@ namespace mirai {
             glm::mat4 inv_projection_matrix;
             float width;
             float height;
+            float noise_texture_width;
+            float noise_texture_height;
+            float depth_texture_width;
+            float depth_texture_height;
             float radius;
             float num_step;
             float step_size;

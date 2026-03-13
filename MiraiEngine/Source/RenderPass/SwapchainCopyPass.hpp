@@ -15,19 +15,14 @@ namespace mirai {
 
         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
-        void set_antialiasing(bool state) {
-            this->enable_aa = state;
-        }
-
-        bool is_antialiasing_enabled() const {
-            return enable_aa;
-        }
-
         ~SwapchainCopyPass();
+
+        bool enable_aa;
+        bool enable_gamma_correction;
 
       private:
         UniformSetID uniform_set;
-        bool enable_aa;
+
         Shader *shader;
         SamplerID default_sampler;
     };

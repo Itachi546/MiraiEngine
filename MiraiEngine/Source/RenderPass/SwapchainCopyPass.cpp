@@ -9,7 +9,7 @@
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(false) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(false), enable_gamma_correction(false) {
     }
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {
@@ -40,7 +40,7 @@ namespace mirai {
         node->width = width;
         node->height = height;
 
-        float push_constant_data[4] = {(float)width, (float)height, static_cast<float>(enable_aa), 0.0f};
+        float push_constant_data[4] = {(float)width, (float)height, static_cast<float>(enable_aa), static_cast<float>(enable_gamma_correction)};
         PushConstant push_constants = {
             .data = push_constant_data,
             .offset = 0,

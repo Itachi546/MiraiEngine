@@ -12,7 +12,7 @@ layout(set = 0, binding = 2) uniform sampler2D u_ssao_texture;
 layout(push_constant) uniform BlurPushConstants {
     float width;
     float height;
-    float direction;
+    float blur_direction;
     float blur_radius;
 
     float sharpness;
@@ -45,9 +45,9 @@ void main() {
         return;
 
     vec2 inv_res = 1.0f / vec2(width, height);
-    vec2 uv = vec2(coord) * inv_res;
+    vec2 uv = vec2(coord + 0.5) * inv_res;
 
-    vec2 direction = direction == 0 ? vec2(1.0f, 0.0f) : vec2(0.0f, 1.0f);
+    vec2 direction = blur_direction == 0 ? vec2(1.0f, 0.0f) : vec2(0.0f, 1.0f);
     direction = direction * inv_res;
 
     float current_ao = texture(u_ssao_texture, uv).r;
