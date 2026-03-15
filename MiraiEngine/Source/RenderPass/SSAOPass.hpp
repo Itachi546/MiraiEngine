@@ -24,8 +24,9 @@ namespace mirai {
 
         ~SSAOPass();
 
-        float blur_radius = 2.0f;
-        float blur_sharpness = 5.0f;
+        float blur_radius = 10.0f;
+        float blur_sharpness = 40.0f;
+        float radius = 1.0f;
         struct PushConstants {
             glm::mat4 inv_projection_matrix;
             float width;
@@ -34,9 +35,9 @@ namespace mirai {
             float noise_texture_height;
             float depth_texture_width;
             float depth_texture_height;
-            float radius;
+            float radius_to_screen;
+            float neg_inv_r2;
             float num_step;
-            float step_size;
             float direction_step;
             float intensity;
             float tangent_bias;

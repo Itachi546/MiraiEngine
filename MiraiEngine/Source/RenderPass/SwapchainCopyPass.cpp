@@ -9,7 +9,7 @@
 
 namespace mirai {
 
-    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(false), enable_gamma_correction(false) {
+    SwapchainCopyPass::SwapchainCopyPass() : FrameGraphRenderer("swapchain_copy"), enable_aa(false), enable_gamma_correction(true) {
     }
 
     void SwapchainCopyPass::initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) {

@@ -429,10 +429,9 @@ class TestApplication : public App {
                     ImGui::Text("SSAO Generation");
                     ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
                     ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
-                    ImGui::DragFloat("March Step Size", &ssao_pass->constant_data.step_size, 0.0001f, 0.0f, 0.1f);
                     ImGui::DragFloat("SSAO Intensity", &ssao_pass->constant_data.intensity, 0.01f, 0.0f, 10.0f);
                     ImGui::DragFloat("Tangent Bias", &ssao_pass->constant_data.tangent_bias, 0.01f, 0.0f, 1.0f);
-                    ImGui::DragFloat("SSAO Radius", &ssao_pass->constant_data.radius, 0.01f, 0.0f, 5.0f);
+                    ImGui::DragFloat("SSAO Radius", &ssao_pass->radius, 0.01f, 0.0f, 5.0f);
 
                     ImGui::Separator();
                     ImGui::Text("SSAO Blur");

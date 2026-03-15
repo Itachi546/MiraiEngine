@@ -4,6 +4,7 @@
 #include "Scene/Camera.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/Shader.hpp"
+#include "Device/Window.hpp"
 
 namespace mirai {
 
@@ -41,12 +42,16 @@ namespace mirai {
         SamplerDescription sampler_desc = SamplerDescription::create();
         SamplerID default_sampler = device->create_sampler(&sampler_desc);
 
+        sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
+        SamplerID depth_sampler = device->create_sampler(&sampler_desc);
+
+        sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_LINEAR;
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
         SamplerID noise_sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding bindings[] = {
             {.resource_id = ssao_resource->handle},
-            {.resource_id = depth_resource->handle, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = depth_resource->handle, .texture_info = {.sampler = depth_sampler}},
             {.resource_id = noise_texture, .texture_info = {.sampler = noise_sampler}},
         };
         // SSAO Uniform Set
@@ -57,6 +62,8 @@ namespace mirai {
         blur_x_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "blur_x_set");
         bindings[0].resource_id = blur_intermediate_texture;
         bindings[2].resource_id = ssao_resource->handle;
+        // Use linear, clamp to edge sampler for blurring
+        bindings[2].texture_info.sampler = default_sampler;
         device->update_uniform_set(blur_x_set, bindings, cast_u32(std::size(bindings)));
 
         // Create BlurY Uniform Set
@@ -72,14 +79,30 @@ namespace mirai {
         constant_data.depth_texture_width = cast_float(depth_resource->resource_info.width);
         constant_data.depth_texture_height = cast_float(depth_resource->resource_info.height);
         constant_data.direction_step = 4.0f;
+        constant_data.neg_inv_r2 = -1.0f;
+        constant_data.radius_to_screen = 2.0f;
         constant_data.num_step = 8.0f;
-        constant_data.radius = 1.0f;
-        constant_data.step_size = 0.005f;
-        constant_data.intensity = 1.5f;
-        constant_data.tangent_bias = 0.6f;
+        constant_data.intensity = 2.0f;
+        constant_data.tangent_bias = 0.1f;
     }
 
     void SSAOPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
+        uint32_t width, height;
+        Window::get()->get_size(&width, &height);
+        float fov = glm::radians(renderer->get_scene()->get_camera()->get_fov());
+
+        // Convert view space radius to screen space pixels,
+        // y' = y / (z * tan(fov * 0.5))
+        // where y' = ndc height
+        // yscreen = (H * 0.5) * y'
+        // y' = yscreen / (H * 0.5)
+        // yscreen = (y * (H * 0.5)) / (z * tan(fov * 0.5))
+        // We want to calculate the projected radius in pixels, the divide
+        // by z occurs in the shader.
+        float projection_scale = float(height) / (tanf(fov * 0.5f) * 2.0f);
+        constant_data.radius_to_screen = radius * projection_scale;
+        constant_data.neg_inv_r2 = -1.0f * (radius * radius);
+
         ScopedCpuProfiling("SSAO Update");
         ScopedGpuProfiling(command_buffer, "SSAO Pass");
         device->begin_debug_utils_label(command_buffer, "SSAO Pass", nullptr);
@@ -141,11 +164,15 @@ namespace mirai {
 
     void SSAOPass::ssao_blur(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene, float direction) {
         Camera *camera = scene->get_camera();
+        FrameGraphResource *ssao_resource = frame_graph->get_resource(node->outputs[0]);
 
-        float push_constant_data[] = {cast_float(node->width), cast_float(node->height),
-                                      direction, blur_radius,
-                                      blur_sharpness,
-                                      camera->get_near_plane(), camera->get_far_plane()};
+        float push_constant_data[] = {
+            cast_float(ssao_resource->resource_info.width),
+            cast_float(ssao_resource->resource_info.height),
+            direction,
+            blur_radius,
+            blur_sharpness,
+            camera->get_near_plane(), camera->get_far_plane()};
 
         PushConstant push_constants = {
             .data = &push_constant_data,

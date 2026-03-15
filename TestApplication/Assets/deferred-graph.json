@@ -118,8 +118,8 @@
           "name": "ssao_texture",
           "format": "R16_SFLOAT",
           "resolution": [
-            960,
-            540
+            1920,
+            1080
           ],
           "op": "LOAD_OP_CLEAR"
         }

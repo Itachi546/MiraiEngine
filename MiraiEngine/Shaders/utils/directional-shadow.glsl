@@ -55,7 +55,7 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
     vec2 shadow_dims = vec2(cascade_info.dims[1], cascade_info.dims[2]);
     vec2 inv_res = 1.0f / shadow_dims.xy;
 
-    int k_sample_radius = 4;
+    int k_sample_radius = 2;
     int sample_count = 0;
 
     const float k_pcf_radius_multiplier = 1.0f;
