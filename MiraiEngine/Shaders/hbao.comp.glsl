@@ -21,7 +21,7 @@ layout(push_constant) uniform HBAOPushConstants {
     float radius;
     float num_step;
 
-    float step_size;
+    float _step_size;
     float direction_step;
     float intensity;
     float tangent_bias;
@@ -29,7 +29,7 @@ layout(push_constant) uniform HBAOPushConstants {
 
 vec3 get_view_pos_from_uv(vec2 uv) {
     float depth = texture(u_depth_texture, uv).r;
-    uv = vec2(uv.x * 2.0f - 1.0f, 1 - 2.0f * uv.y);
+    uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), inv_projection_matrix);
 }
 
@@ -49,13 +49,13 @@ vec3 get_view_space_normal(vec2 uv, vec3 P, vec2 offset) {
 
     vec3 R = min_diff(P, Pl, Pr);
     vec3 U = min_diff(P, Pb, Pt);
-    return normalize(cross(R, U));
+    return -normalize(cross(R, U));
 }
 
 float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     const float NUM_DIRECTIONS = direction_step;
     const float NUM_STEPS = num_step;
-    const float step_size = radius / (V.z * NUM_STEPS);
+    const float step_size = radius / (-V.z * NUM_STEPS);
 
     vec2 rand = texture(u_noise_texture, noise_uv).rg;
     float angle = rand.x * PI * 2.0;
@@ -68,11 +68,11 @@ float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     for (float d = 0.0f; d < NUM_DIRECTIONS; ++d) {
         float last_diff = 0.0f;
         float ang = d * d_angle;
-        vec2 dir = rotation * vec2(cos(ang), sin(ang));
-        float tangent_angle = acos(dot(N, vec3(dir, 0.0))) - PI * 0.5 + tangent_bias;
-        float horizon_angle = tangent_angle;
-        vec2 p = round((uv + dir * step_size * rand.y) * dims) * inv_dims;
+        vec2 dir = normalize(rotation * vec2(cos(ang), sin(ang)));
+        float tangent_angle = asin(dot(N, vec3(dir, 0.0)));
 
+        vec2 p = round((uv + dir * step_size * rand.y) * dims) * inv_dims;
+        float horizon_angle = 0.0;
         for (float s = 0.0f; s < NUM_STEPS; ++s) {
             vec3 S = get_view_pos_from_uv(p);
             vec3 dV = S - V;
@@ -87,11 +87,11 @@ float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
 
         float norm = last_diff / radius;
         float attenuation = 1.0 - norm * norm;
-        float occlusion = clamp(attenuation * (sin(horizon_angle) - sin(tangent_angle)), 0.0, 1.0) * intensity;
+        float occlusion = clamp(attenuation * (sin(horizon_angle) - sin(tangent_angle + tangent_bias)), 0.0, 1.0);
         ao += occlusion;
     }
     ao /= (NUM_DIRECTIONS);
-    return 1.0f - clamp(ao, 0.0, 1.0);
+    return 1.0f - clamp(ao * intensity, 0.0, 1.0);
 }
 
 void main() {
@@ -100,7 +100,7 @@ void main() {
         return;
 
     vec2 inv_ssao_res = 1.0f / vec2(width, height);
-    vec2 uv = vec2(id.xy) * inv_ssao_res;
+    vec2 uv = vec2(id.xy + 0.5) * inv_ssao_res;
 
     vec3 V = get_view_pos_from_uv(uv);
 
@@ -108,8 +108,7 @@ void main() {
     vec3 N = get_view_space_normal(uv, V, depth_pixel_size);
 
     vec2 noise_pixel_size = 1.0f / vec2(noise_texture_width, noise_texture_height);
-    vec2 noise_uv = vec2(id) * noise_pixel_size;
+    vec2 noise_uv = vec2(id + 0.5) * noise_pixel_size;
     float ao = calculate_ao(uv, noise_uv, V, N);
-
     imageStore(u_ssao_texture, id.xy, vec4(ao, ao, ao, 1.0f));
 }

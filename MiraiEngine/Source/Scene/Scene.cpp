@@ -160,9 +160,7 @@ namespace mirai {
             Skeleton &skeleton = skeletons[component.skeleton_index];
             Pose &pose = skeleton.current_pose;
 
-            if (pose.matrix_palletes.size() == 0)
-                pose.matrix_palletes.resize(skeleton.parents.size());
-
+            uint32_t bone_count = cast_u32(skeleton.names.size());
             const AnimationClip &clip = animation_clips[0];
 
             float duration = clip.get_duration();
@@ -173,7 +171,7 @@ namespace mirai {
             if (component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 
-            for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
+            for (uint32_t i = 0; i < bone_count; ++i) {
                 int parent = skeleton.parents[i];
                 ASSERT(parent < int(i));
 
@@ -181,8 +179,12 @@ namespace mirai {
                 // Some of the node in hierarchy doesn't have keyframes, for such we just
                 // apply parent transform with local transform
                 if (clip.has_animation(i)) {
-                    glm::mat4 animation_transform = clip.sample_mat4(i, component.current_time);
-                    transform = transform * animation_transform;
+                    clip.sample_TRS(i, component.current_time, pose.joints_position[i], pose.joints_rotation[i], pose.joints_scaling[i]);
+                    transform = transform * pose.get_transform(i);
+                } else {
+                    pose.joints_position[i] = glm::vec3(0.0f);
+                    pose.joints_rotation[i] = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
+                    pose.joints_scaling[i] = glm::vec3(1.0f);
                 }
                 // parent_transform * animation_transform * skeleton.inv_bind_transforms[i]
                 pose.matrix_palletes[i] = transform;
