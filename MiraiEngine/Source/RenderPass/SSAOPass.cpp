@@ -72,12 +72,10 @@ namespace mirai {
         bindings[2].resource_id = blur_intermediate_texture;
         device->update_uniform_set(blur_y_set, bindings, cast_u32(std::size(bindings)));
 
-        constant_data.width = cast_float(ssao_resource->resource_info.width);
-        constant_data.height = cast_float(ssao_resource->resource_info.height);
-        constant_data.noise_texture_width = 128.0f;
-        constant_data.noise_texture_height = 128.0f;
-        constant_data.depth_texture_width = cast_float(depth_resource->resource_info.width);
-        constant_data.depth_texture_height = cast_float(depth_resource->resource_info.height);
+        constant_data.ssao_texture_resolution = glm::vec2(cast_float(ssao_resource->resource_info.width), cast_float(ssao_resource->resource_info.height));
+        constant_data.depth_texture_resolution = glm::vec2(cast_float(depth_resource->resource_info.width), cast_float(depth_resource->resource_info.height));
+        constant_data.inv_depth_texture_resolution = 1.0f / constant_data.depth_texture_resolution;
+        constant_data.inv_noise_texture_resolution = 1.0f / glm::vec2(128.0f, 128.0f);
         constant_data.direction_step = 4.0f;
         constant_data.neg_inv_r2 = -1.0f;
         constant_data.radius_to_screen = 2.0f;

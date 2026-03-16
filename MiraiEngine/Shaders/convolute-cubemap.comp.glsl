@@ -18,7 +18,8 @@ layout(push_constant) uniform PushConstants {
 const int K_MAX_SAMPLES = 180;
 const int K_MAX_SAMPLES_IMPORTANCE = 100000;
 
-#define PI 3.1415926535897932384626433832795
+#define PI 3.14159265359
+
 #define PI2 (PI * 2.0f)
 #define PIH (PI * 0.5)
 

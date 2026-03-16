@@ -26,15 +26,13 @@ namespace mirai {
 
         float blur_radius = 10.0f;
         float blur_sharpness = 40.0f;
-        float radius = 1.0f;
+        float radius = 0.5f;
         struct PushConstants {
             glm::mat4 inv_projection_matrix;
-            float width;
-            float height;
-            float noise_texture_width;
-            float noise_texture_height;
-            float depth_texture_width;
-            float depth_texture_height;
+            glm::vec2 ssao_texture_resolution;
+            glm::vec2 depth_texture_resolution;
+            glm::vec2 inv_depth_texture_resolution;
+            glm::vec2 inv_noise_texture_resolution;
             float radius_to_screen;
             float neg_inv_r2;
             float num_step;

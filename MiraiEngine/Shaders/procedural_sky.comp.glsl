@@ -17,7 +17,7 @@ const vec3 sun_color = vec3(1.0, .8, .55);
 vec4 ground_bottom_color = vec4(0.2, 0.169, 0.133, 1.0);
 vec4 ground_horizon_color = vec4(0.646, 0.656, 0.67, 1.0);
 
-#define PI 3.141592
+#define PI 3.14159265359
 
 void main() {
     ivec3 cube_coord = ivec3(gl_GlobalInvocationID.xyz);
