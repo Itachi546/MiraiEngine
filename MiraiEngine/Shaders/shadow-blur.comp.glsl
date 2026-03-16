@@ -18,11 +18,13 @@ layout(binding = 1) uniform sampler2D u_shadow_texture;
 layout(binding = 2) uniform sampler2D u_depth_texture;
 
 float sample_depth_texture(ivec2 uv) {
-    return 1.0f - texelFetch(u_depth_texture, uv, 0).r;
+    return texelFetch(u_depth_texture, uv, 0).r;
 }
 
 void main() {
     uvec2 pos = gl_GlobalInvocationID.xy;
+    if (pos.x >= width || pos.y >= height)
+        return;
 
 #if BLUR
     float shadow = texelFetch(u_shadow_texture, ivec2(pos), 0).r;

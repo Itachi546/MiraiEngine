@@ -61,6 +61,7 @@ namespace mirai {
         // is enough to distinguish it
         rt_shadow_uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "deferred_rt_binding_set");
         bindings[5].resource_id = frame_graph->get_resource("rt_directional_shadow_map")->handle;
+        bindings[5].texture_info.sampler = default_sampler;
         device->update_uniform_set(rt_shadow_uniform_set, bindings, cast_u32(std::size(bindings)));
     }
 

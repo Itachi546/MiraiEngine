@@ -19,7 +19,7 @@ namespace mirai {
 
         float split_lamda = 0.909f;
         float shadow_distance = 100.0f;
-        uint32_t shadow_map_size = 2048;
+        uint32_t shadow_map_size = 1024;
 
         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
         bool calculate_distance_automatic = true;

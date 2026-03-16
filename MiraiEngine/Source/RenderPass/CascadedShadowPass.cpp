@@ -34,6 +34,8 @@ namespace mirai {
                                                                                           "SPIRV/cascaded-shadow-alpha-test.frag.spv",
                                                                                       },
                                                      "cascaded-shadow-map-alpha-test-shader");
+        ASSERT(node->width == node->height);
+        shadow_map_size = node->width / 2;
     }
 
     void CascadedShadowPass::calculate_split_distances(float znear, float zfar, Scene *scene) {

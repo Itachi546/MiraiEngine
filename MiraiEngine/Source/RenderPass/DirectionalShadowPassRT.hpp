@@ -29,7 +29,6 @@ namespace mirai {
       private:
         UniformSetID rt_uniform_set, blur_uniform_set_x, blur_uniform_set_y;
         TextureID blur_intermediate_texture;
-        SamplerID sampler;
 
         void render_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);
         void blur_shadow(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Scene *scene);

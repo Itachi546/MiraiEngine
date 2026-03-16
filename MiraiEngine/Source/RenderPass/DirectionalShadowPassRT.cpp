@@ -23,12 +23,14 @@ namespace mirai {
         TextureID depth_texture = frame_graph->get_resource(node->inputs[0])->handle;
 
         SamplerDescription sampler_desc = SamplerDescription::create();
+        SamplerID default_sampler = device->create_sampler(&sampler_desc);
+
         sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
-        sampler = device->create_sampler(&sampler_desc);
+        SamplerID depth_sampler = device->create_sampler(&sampler_desc);
 
         UniformBinding rt_bindings[] = {
-            {.resource_id = rt_shadow_texture},
-            {.resource_id = depth_texture, .texture_info = {.sampler = sampler}},
+            {.resource_id = rt_shadow_texture, .texture_info = {.sampler = default_sampler}},
+            {.resource_id = depth_texture, .texture_info = {.sampler = depth_sampler}},
             // Acceleration structure is global and populated by the vulkan device
             {.resource_id = K_INVALID_ID},
         };
@@ -61,11 +63,11 @@ namespace mirai {
             {.resource_id = blur_intermediate_texture},
             {
                 .resource_id = rt_shadow_texture,
-                .texture_info = {.sampler = sampler},
+                .texture_info = {.sampler = default_sampler},
             },
             {
                 .resource_id = depth_texture,
-                .texture_info = {.sampler = sampler},
+                .texture_info = {.sampler = depth_sampler},
             },
         };
 

@@ -72,8 +72,8 @@
           "name": "cascaded_shadow_map",
           "format": "D16_UNORM",
           "resolution": [
-            4096,
-            4096
+            2048,
+            2048
           ],
           "op": "LOAD_OP_CLEAR"
         }
@@ -95,8 +95,8 @@
           "name": "rt_directional_shadow_map",
           "format": "R8_UNORM",
           "resolution": [
-            1920,
-            1080
+            960,
+            540
           ],
           "op": "LOAD_OP_CLEAR"
         }
