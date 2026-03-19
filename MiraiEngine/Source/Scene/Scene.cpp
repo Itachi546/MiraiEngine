@@ -130,6 +130,9 @@ namespace mirai {
 
         for (uint32_t i = 0; i < animations.size(); ++i) {
             NodeAnimatorComponent &component = animations[i];
+
+            if (component.current_animation_clip == K_INVALID_ANIMATION_CLIP)
+                continue;
             const AnimationClip &clip = animation_clips[component.current_animation_clip];
 
             float duration = clip.get_duration();
@@ -157,11 +160,15 @@ namespace mirai {
 
         float dt = Engine::get()->get_dt_seconds();
         for (auto &component : animator_components) {
+            int current_animation_clip = component.current_animation_clip;
+            if (current_animation_clip == K_INVALID_ANIMATION_CLIP)
+                continue;
+
             Skeleton &skeleton = skeletons[component.skeleton_index];
             Pose &pose = skeleton.current_pose;
 
             uint32_t bone_count = cast_u32(skeleton.names.size());
-            const AnimationClip &clip = animation_clips[0];
+            const AnimationClip &clip = animation_clips[current_animation_clip];
 
             float duration = clip.get_duration();
             float start_time = clip.start_time;

@@ -139,7 +139,7 @@ namespace mirai {
 
     struct NodeAnimatorComponent {
         // Index to the array of AnimationClip stored in scene
-        uint32_t current_animation_clip;
+        int current_animation_clip;
         float current_time = 0.0f;
         float playback_speed = 1.0f;
         bool looping = true;
@@ -147,6 +147,7 @@ namespace mirai {
     };
 
     struct AnimatorComponent {
+        int current_animation_clip;
         uint32_t skeleton_index;
         float current_time = 0.0f;
     };

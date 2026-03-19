@@ -983,19 +983,25 @@ namespace mirai {
 
         // Either it is skeleton animation or it is a node animation
         if (node->skin >= 0) {
+            uint32_t skeleton_index = load_state->skeleton_base_offset + node->skin;
+            int default_animation_clip = -1;
+            if (scene->skeletons[skeleton_index].supported_animations.size() > 0)
+                default_animation_clip = cast_int(scene->skeletons[skeleton_index].supported_animations[0]);
             comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
-                                                                       .skeleton_index = load_state->skeleton_base_offset + node->skin,
+                                                                       .current_animation_clip = default_animation_clip,
+                                                                       .skeleton_index = skeleton_index,
+                                                                       .current_time = 0.0f,
                                                                    });
         }
 
-        uint32_t default_animation_clip = 0;
+        int default_animation_clip = -1;
         bool has_node_animation = false;
         for (auto &animation : load_state->animations) {
             if (animation.has_node(node_index)) {
                 ASSERT(node->skin == -1);
                 has_node_animation = true;
 
-                default_animation_clip = cast_u32(scene->animation_clips.size());
+                default_animation_clip = cast_int(scene->animation_clips.size());
                 AnimationClip &animation_clip = scene->animation_clips.emplace_back(AnimationClip{
                     .name = animation.name,
                     .start_time = animation.start_time,

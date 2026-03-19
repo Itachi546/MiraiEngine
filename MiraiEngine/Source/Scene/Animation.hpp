@@ -9,6 +9,8 @@
 
 namespace mirai {
 
+#define K_INVALID_ANIMATION_CLIP -1
+
     enum class InterpolationMode {
         Linear,
         Step,
