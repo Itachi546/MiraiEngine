@@ -3,10 +3,10 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/ResourcePool.hpp"
 #include "Common/Hash.hpp"
+#include "Common/HashMap.hpp"
 
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <memory>
 #include <algorithm>
 
@@ -166,10 +166,10 @@ namespace mirai {
       private:
         RenderingDevice *device;
         ResourcePool<FrameGraphNode> resource_pool_nodes;
-        std::unordered_map<uint32_t, uint32_t> nodes_maps;
+        HashMap<uint32_t, uint32_t> nodes_maps;
 
         ResourcePool<FrameGraphResource> resource_pool_resources;
-        std::unordered_map<uint32_t, uint32_t> resources_map;
+        HashMap<uint32_t, uint32_t> resources_map;
     };
 
     class FrameGraph {

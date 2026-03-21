@@ -30,7 +30,7 @@ void main() {
     vec2 inv_res = 1.0f / vec2(width, height);
     vec2 uv = vec2(id.xy + 0.5) * inv_res;
 
-    float depth = texelFetch(u_depth_texture, id.xy * 2, 0).r;
+    float depth = texelFetch(u_depth_texture, id.xy, 0).r;
     vec3 clip_pos = vec3(uv.x * 2.0 - 1.0, 1.0f - 2.0f * uv.y, depth);
     vec3 world_pos = clip_pos_to_world_pos(clip_pos, invVP);
 

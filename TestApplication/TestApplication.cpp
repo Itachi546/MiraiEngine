@@ -240,7 +240,7 @@ class TestApplication : public App {
             if (cpu.size() > 0) {
                 ImGui::Text("CPU Time");
                 ImGui::Separator();
-                for (auto &[name, time] : cpu) {
+                for (auto &[name, time, _index] : cpu) {
                     ImGui::Text("%s: %.2fms", name.c_str(), time);
                 }
             }
@@ -248,7 +248,7 @@ class TestApplication : public App {
             if (gpu.size() > 0) {
                 ImGui::Text("GPU Time");
                 ImGui::Separator();
-                for (auto &[name, time] : gpu) {
+                for (auto &[name, time, _index] : gpu) {
                     ImGui::Text("%s: %.2fms", name.c_str(), time);
                 }
             }

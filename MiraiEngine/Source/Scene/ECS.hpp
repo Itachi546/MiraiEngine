@@ -6,7 +6,7 @@
 #include <vector>
 #include <array>
 #include <memory>
-#include <unordered_map>
+#include "Common/HashMap.hpp"
 #include <algorithm>
 
 namespace mirai {
@@ -121,7 +121,7 @@ namespace mirai {
         std::vector<T> components;
 
       private:
-        std::unordered_map<uint32_t, uint32_t> lookup_;
+        HashMap<uint32_t, uint32_t> lookup_;
     };
 
     struct ComponentManager {
@@ -227,7 +227,7 @@ namespace mirai {
 
         // Global Component Array
         std::array<std::shared_ptr<IComponentArray>, K_MAX_COMPONENTS> component_array;
-        std::unordered_map<std::size_t, uint32_t> component_id_map;
+        HashMap<std::size_t, uint32_t> component_id_map;
     };
 
     class ECS {

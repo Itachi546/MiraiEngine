@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_map>
+#include "Common/HashMap.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Engine/Log.hpp"
 
@@ -32,7 +32,8 @@ namespace mirai {
             }
         }
 
-        std::unordered_map<uint32_t, TextureID> textures_map;
+        HashMap<uint32_t, TextureID> textures_map;
+
       private:
         static TextureCache *Instance;
     };

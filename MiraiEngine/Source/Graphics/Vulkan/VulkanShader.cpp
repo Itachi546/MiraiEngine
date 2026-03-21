@@ -36,7 +36,7 @@ namespace mirai {
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {
             SpvReflectBlockVariable &push_constant = reflection.push_constant_blocks[p];
 
-            std::unordered_map<std::string, ShaderReflectionPushConstantMember> field_info;
+            HashMap<std::string, ShaderReflectionPushConstantMember> field_info;
             for (uint32_t m = 0; m < push_constant.member_count; ++m) {
                 field_info.insert(std::make_pair(push_constant.members[m].name, ShaderReflectionPushConstantMember{
                                                                                     .offset = push_constant.members[m].offset,
@@ -79,7 +79,7 @@ namespace mirai {
         }
     }
 
-    void MergePushConstants(std::unordered_map<uint32_t, ShaderReflectionPushConstant> &dst, const std::unordered_map<uint32_t, ShaderReflectionPushConstant> &src) {
+    void MergePushConstants(HashMap<uint32_t, ShaderReflectionPushConstant> &dst, const HashMap<uint32_t, ShaderReflectionPushConstant> &src) {
         for (const auto &[key, val] : src) {
             auto found = dst.find(key);
             if (found != dst.end())

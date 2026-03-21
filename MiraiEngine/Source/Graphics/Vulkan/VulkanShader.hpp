@@ -2,9 +2,8 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/ResourcePool.hpp"
 #include "Common/ShaderReflect.hpp"
-
+#include "Common/HashMap.hpp"
 #include <vector>
-#include <unordered_map>
 
 VK_DEFINE_HANDLE(VmaAllocation);
 namespace mirai {
@@ -43,7 +42,7 @@ namespace mirai {
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
         std::vector<ShaderReflectionDescriptorSetInfo> descriptor_sets;
-        std::unordered_map<uint32_t, ShaderReflectionPushConstant> push_constants;
+        HashMap<uint32_t, ShaderReflectionPushConstant> push_constants;
         bool support_bindless_texture;
     };
 
@@ -76,7 +75,7 @@ namespace mirai {
     struct VulkanBindings
     {
         std::vector<VulkanDescriptorSet> descriptor_sets;
-        std::unordered_map<uint32_t, VulkanBindingLookupInfo> lookup_info;
+        HashMap<uint32_t, VulkanBindingLookupInfo> lookup_info;
     };
     */
 
@@ -95,14 +94,14 @@ namespace mirai {
     uint64_t GetDescriptorSetLayoutHash(const std::vector<ShaderReflectionDescriptorBinding> &bindings, uint32_t set);
     uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set);
 
-    void MergePushConstants(std::unordered_map<uint32_t, ShaderReflectionPushConstant>& dst, const std::unordered_map<uint32_t, ShaderReflectionPushConstant> &src);
+    void MergePushConstants(HashMap<uint32_t, ShaderReflectionPushConstant> &dst, const HashMap<uint32_t, ShaderReflectionPushConstant> &src);
 
     void MergeShaderBindings(std::vector<ShaderReflectionDescriptorBinding> &dst, const std::vector<ShaderReflectionDescriptorBinding> &src);
 
     void DestroyShader(VulkanShader *shader, VkDevice device);
 
     /*
-    void CreatePipelineBindings(const std::unordered_map<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets,
+    void CreatePipelineBindings(const HashMap<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets,
                                 VkDevice device, VulkanPipeline *pipeline,
                                 VkDescriptorPool descriptor_pool,
                                 uint32_t total_sets,

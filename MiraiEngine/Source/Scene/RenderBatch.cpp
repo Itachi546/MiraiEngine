@@ -3,7 +3,6 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Engine/AppSettings.hpp"
-#include <unordered_map>
 
 namespace mirai {
 

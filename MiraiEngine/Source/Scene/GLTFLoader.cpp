@@ -19,10 +19,10 @@
 #include "Material.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Common/HashMap.hpp"
+#include "Common/HashSet.hpp"
 
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 
 constexpr uint32_t SKIP_DDS_FIRST_N_LEVEL = 0;
 
@@ -39,7 +39,7 @@ namespace mirai {
         float start_time;
         float end_time;
         float tick_per_seconds;
-        std::unordered_map<int, TempAnimationChannel> channels;
+        HashMap<int, TempAnimationChannel> channels;
 
         bool has_node(int node_index) {
             return channels.find(node_index) != channels.end();
@@ -56,7 +56,7 @@ namespace mirai {
         uint32_t skeleton_base_offset;
         // Map of node and it's position in scene animation_clip vector
         std::vector<TempAnimation> animations;
-        std::unordered_set<int> global_joint_list;
+        HashSet<int> global_joint_list;
         AsyncLoader *async_loader;
     };
 
@@ -789,26 +789,7 @@ namespace mirai {
             glm::decompose(transformation_matrix, transform->scale, transform->rotation, transform->position, skew, perspective);
         }
     }
-    /*
-    void ParseSkeletonHierarchy(const tinygltf::Model *model, std::unordered_set<int> &global_joint_list, int node_index, Skeleton *skeleton) {
-        const tinygltf::Node *parent_node = &model->nodes[node_index];
 
-        // Breadth First Traversal
-        for (auto child_index : parent_node->children) {
-            if (global_joint_list.find(child_index) == joints_lookup.end())
-                continue;
-            const tinygltf::Node *child_node = &model->nodes[child_index];
-
-            TransformComponent transform;
-            ParseNodeTransform(child_node, &transform);
-            skeleton->add_bone(parent_index, child_node->name, transform.get_local_transform());
-            joints_lookup[child_index] = cast_int(skeleton->parents.size() - 1);
-        }
-
-        for (auto child_index : parent_node->children)
-            ParseSkeletonHierarchy(model, joints_lookup, child_index, skeleton);
-    }
-    */
     void LoadSkins(const tinygltf::Model *model, LoadState *load_state) {
 
         // List all the skeleton nodes
@@ -822,7 +803,7 @@ namespace mirai {
             uint32_t joint_count = cast_u32(skin.joints.size());
             // We don't have skeleton information, need to reconstruct it manually
             // Lookup table between node and it's parent local index
-            std::unordered_map<int, int> joint_parent_lookup;
+            HashMap<int, int> joint_parent_lookup;
             Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
             skeleton.resize(joint_count);

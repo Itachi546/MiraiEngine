@@ -95,8 +95,8 @@
           "name": "rt_directional_shadow_map",
           "format": "R8_UNORM",
           "resolution": [
-            960,
-            540
+            1920,
+           1080 
           ],
           "op": "LOAD_OP_CLEAR"
         }

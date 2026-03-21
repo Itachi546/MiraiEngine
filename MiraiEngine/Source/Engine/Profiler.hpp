@@ -16,6 +16,7 @@ namespace mirai::miProfiler {
     struct ProfilerOutput {
         std::string name;
         float time_in_ms;
+        uint32_t sort_index;
     };
 
     void Initialize();

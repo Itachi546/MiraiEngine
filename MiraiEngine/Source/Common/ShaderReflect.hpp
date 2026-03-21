@@ -2,7 +2,7 @@
 
 #include "Graphics/RenderingDevice.hpp"
 #include <string>
-#include <unordered_map>
+#include "Common/HashMap.hpp"
 
 namespace mirai {
 
@@ -29,7 +29,7 @@ namespace mirai {
         uint32_t shader_stage;
         uint32_t offset;
         uint32_t size;
-        std::unordered_map<std::string, ShaderReflectionPushConstantMember> field_info;
+        HashMap<std::string, ShaderReflectionPushConstantMember> field_info;
     };
 
     struct ShaderReflection {

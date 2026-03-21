@@ -102,7 +102,7 @@ namespace mirai {
 
         FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
 
-        std::unordered_map<std::string, FrameGraphResourceState> resource_state_map;
+        HashMap<std::string, FrameGraphResourceState> resource_state_map;
 
         for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
             const FrameGraphResourceInput *input_desc = &node_description.inputs[i];
@@ -386,7 +386,7 @@ namespace mirai {
     }
 
     void FrameGraph::compile(Renderer *renderer) {
-        std::unordered_map<FrameGraphResourceHandle, FrameGraphResourceState *> resource_state_map;
+        HashMap<FrameGraphResourceHandle, FrameGraphResourceState *> resource_state_map;
         for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
             FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
             FrameGraphNode *node = builder->get_node(node_handle);

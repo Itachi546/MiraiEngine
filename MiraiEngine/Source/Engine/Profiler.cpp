@@ -2,11 +2,11 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Engine/Timer.hpp"
 #include "Common/Hash.hpp"
+#include "Common/HashMap.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Math/Math.hpp"
 
 #include <iomanip>
-#include <map>
 #include <sstream>
 #include <cstring>
 
@@ -25,6 +25,7 @@ namespace mirai::miProfiler {
         int query_index_begin = -1;
         int query_index_end = -1;
         bool updated_last_frame = false;
+        uint32_t sort_index = K_INVALID_ID;
 
         CommandBuffer *command_buffer;
 
@@ -39,7 +40,8 @@ namespace mirai::miProfiler {
     QueryID gpu_query_pools[2];
 
     bool enabled = true;
-    std::map<uint32_t, Range> ranges;
+    uint32_t range_sort_id = 0;
+    HashMap<uint32_t, Range> ranges;
 
     void Initialize() {
         if (!enabled)
@@ -70,11 +72,16 @@ namespace mirai::miProfiler {
             return 0;
 
         uint32_t id = utils::djb2_hash_string(name);
-        ranges[id].name = name;
-        ranges[id].avg_counter += 1;
-        ranges[id].cpu_timer.record();
-        ranges[id].command_buffer = nullptr;
-        ranges[id].updated_last_frame = true;
+        auto found = ranges.find(id);
+        if (found == ranges.end()) {
+            ranges.insert(std::make_pair(id, Range{.sort_index = range_sort_id++}));
+            found = ranges.find(id);
+        }
+        found->second.name = name;
+        found->second.avg_counter += 1;
+        found->second.cpu_timer.record();
+        found->second.command_buffer = nullptr;
+        found->second.updated_last_frame = true;
         return id;
     }
 
@@ -83,10 +90,16 @@ namespace mirai::miProfiler {
             return 0;
 
         uint32_t id = utils::djb2_hash_string(name);
-        ranges[id].name = name;
-        ranges[id].avg_counter += 1;
-        ranges[id].command_buffer = command_buffer;
-        ranges[id].updated_last_frame = true;
+        auto found = ranges.find(id);
+        if (found == ranges.end()) {
+            ranges.insert(std::make_pair(id, Range{.sort_index = range_sort_id++}));
+            found = ranges.find(id);
+        }
+
+        found->second.name = name;
+        found->second.avg_counter += 1;
+        found->second.command_buffer = command_buffer;
+        found->second.updated_last_frame = true;
 
         uint32_t current_query_index = query_indices[frame_id]++;
         RenderingDevice::get()->query(command_buffer, gpu_query_pools[frame_id], current_query_index);
@@ -126,15 +139,22 @@ namespace mirai::miProfiler {
                 continue;
 
             if (val.is_cpu_profiler()) {
-                cpu_profiler_output.emplace_back(val.name, val.time);
+                cpu_profiler_output.emplace_back(val.name, val.time, val.sort_index);
             } else {
                 // GPU is always one frame behind
                 float delta = (float(query_results[val.query_index_end] - query_results[val.query_index_begin]) * gpu_timestamp_period) / 1000000.0f;
                 val.time += delta;
-                gpu_profiler_output.emplace_back(val.name, delta);
+                gpu_profiler_output.emplace_back(val.name, delta, val.sort_index);
             }
             val.updated_last_frame = false;
         }
+
+        std::sort(cpu_profiler_output.begin(), cpu_profiler_output.end(), [](const ProfilerOutput &a, const ProfilerOutput &b) {
+            return a.sort_index < b.sort_index;
+        });
+        std::sort(gpu_profiler_output.begin(), gpu_profiler_output.end(), [](const ProfilerOutput &a, const ProfilerOutput &b) {
+            return a.sort_index < b.sort_index;
+        });
     }
 
     void DrawData() {

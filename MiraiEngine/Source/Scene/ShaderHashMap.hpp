@@ -2,7 +2,7 @@
 
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
-#include <unordered_map>
+#include "Common/HashMap.hpp"
 #include <vector>
 
 namespace mirai {
@@ -28,7 +28,7 @@ namespace mirai {
 
       private:
         static ShaderHashMap *Instance;
-        std::unordered_map<uint64_t, std::shared_ptr<Shader>> shader_map;
+        HashMap<uint64_t, std::shared_ptr<Shader>> shader_map;
     };
 
 } // namespace mirai

@@ -2,7 +2,6 @@
 
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
-#include <unordered_map>
 
 namespace mirai {
 

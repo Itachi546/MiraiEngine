@@ -1,6 +1,6 @@
 #include "ImGuiService.hpp"
 #include "Device/Window.hpp"
-#include <unordered_map>
+#include "Common/HashMap.hpp"
 
 #ifdef MIRAI_BACKEND_VULKAN
 #include "Graphics/Vulkan/VulkanRenderingDevice.hpp"
@@ -70,7 +70,7 @@ namespace ImGuiService {
         sampler_id = RenderingDevice::get()->create_sampler(&sampler_desc);
     }
 
-    std::unordered_map<uint32_t, VkDescriptorSet> ImTextureIDMap;
+    HashMap<uint32_t, VkDescriptorSet> ImTextureIDMap;
 
     ImTextureID GetTextureID(uint32_t texture) {
         VulkanRenderingDevice *device = (VulkanRenderingDevice *)RenderingDevice::get();

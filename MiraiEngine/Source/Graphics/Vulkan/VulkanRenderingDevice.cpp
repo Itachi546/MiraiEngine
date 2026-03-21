@@ -7,12 +7,12 @@
 #include "VulkanUtils.hpp"
 #include "Common/Hash.hpp"
 #include "Math/MathUtils.hpp"
+#include "Common/HashMap.hpp"
 
 #define VMA_IMPLEMENTATION
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vma/vk_mem_alloc.h>
 
-#include <unordered_map>
 #include <algorithm>
 
 namespace mirai {
@@ -344,8 +344,8 @@ namespace mirai {
 
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
-        std::unordered_map<uint32_t, std::vector<ShaderReflectionDescriptorBinding>> descriptor_sets_map;
-        std::unordered_map<uint32_t, ShaderReflectionPushConstant> push_constants_map;
+        HashMap<uint32_t, std::vector<ShaderReflectionDescriptorBinding>> descriptor_sets_map;
+        HashMap<uint32_t, ShaderReflectionPushConstant> push_constants_map;
         bool support_bindless_texture = false;
         for (uint32_t i = 0; i < pipeline_description->shader_count; ++i) {
             VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);

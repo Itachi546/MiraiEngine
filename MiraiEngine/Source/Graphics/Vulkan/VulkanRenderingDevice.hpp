@@ -4,10 +4,10 @@
 #include "Vulkan.hpp"
 #include "VulkanShader.hpp"
 #include "Common/ResourcePool.hpp"
+#include "Common/HashMap.hpp"
 
 #include <vector>
 #include <memory>
-#include <unordered_map>
 
 VK_DEFINE_HANDLE(VmaAllocator)
 VK_DEFINE_HANDLE(VmaAllocation)
@@ -169,8 +169,8 @@ namespace mirai {
         ResourcePool<VulkanBuffer> resource_pool_buffers;
         ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
         ResourcePool<VulkanQuery> resource_pool_queries;
-        std::unordered_map<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
-        std::unordered_map<uint64_t, VkSampler> sampler_caches;
+        HashMap<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
+        HashMap<uint64_t, VkSampler> sampler_caches;
 
         static const uint32_t K_NUM_THREAD = 2;
         static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;

@@ -3,6 +3,7 @@
 #include "ImGuiService.hpp"
 #include "Scene/TextureCache.hpp"
 #include "AnimationDebug.hpp"
+#include "Common/HashSet.hpp"
 #include <set>
 #include <sstream>
 
@@ -100,7 +101,7 @@ void add_pbr_standard_material_ui(StandardPBRMaterial *material) {
 void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Entity entity) {
     if (!mesh_component)
         return;
-    std::set<uint32_t> unique_materials;
+    HashSet<uint32_t> unique_materials;
     for (auto &mesh_subset : mesh_component->mesh_subsets) {
         unique_materials.emplace(mesh_subset.material_index);
     }
