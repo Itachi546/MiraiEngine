@@ -1,415 +1,188 @@
 #include "FrameGraph.hpp"
-#include "Engine/Log.hpp"
-#include "Engine/Profiler.hpp"
-#include "Graphics/StringEnumLookup.hpp"
-#include <json.hpp>
-#include <fstream>
+#include <cassert>
+#include <stack>
+#include <unordered_map>
+
+#include <iostream>
 
 namespace mirai {
-    FrameGraphBuilder::FrameGraphBuilder() : resource_pool_nodes(64, "frame_graph_node"),
-                                             resource_pool_resources(512, "frame_graph_resources"),
-                                             device(RenderingDevice::get()) {
+    PassNode &FrameGraph::create_pass_node(const std::string_view name, std::unique_ptr<FrameGraphPassBase> pass) {
+        uint32_t id = static_cast<uint32_t>(passes.size());
+        return passes.emplace_back(name, id, std::move(pass));
     }
 
-    void FrameGraphBuilder::get_output_attachment_size(uint32_t *width, uint32_t *height, const FrameGraphResourceOutput *output) {
-        if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT) {
-            *width = output->width;
-            *height = output->height;
-        } else if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_REFERENCE) {
-            auto found = resources_map.find(utils::djb2_hash_string(output->name));
-            ASSERT(found != resources_map.end());
-            FrameGraphResource *resource = resource_pool_resources.access(found->second);
-            *width = resource->resource_info.width;
-            *height = resource->resource_info.height;
-        }
-    }
-
-    void FrameGraphBuilder::add_renderpass_info(Format format, TextureID texture_id, FrameGraphRenderpassInfo &renderpass, const Color &clear_color, AttachmentLoadOp load_op) {
-        // Check if input consists of an attachment
-        // if such is the case we have to specify it while rendering
-        if (is_depth_format(format)) {
-            renderpass.depth_attachment_index = (uint32_t)renderpass.attachment_info.size();
-            renderpass.has_stencil_attachment = is_stencil_format(format);
-        }
-
-        renderpass.attachment_info.push_back(FrameGraphAttachmentInfo{
-            .clear_color = clear_color,
-            .format = format,
-            .load_op = load_op,
-            .texture = texture_id,
-        });
-    }
-
-    void FrameGraphBuilder::create_resource_state(FrameGraphResourceType resource_type, AttachmentLoadOp load_op, FrameGraphResourceState *state, bool compute_pass, bool is_input_resource) {
-        Format format = FORMAT_B8G8R8A8_UNORM;
-        if (state->resource_handle != K_INVALID_RESOURCE_HANDLE) {
-            FrameGraphResource *resource = resource_pool_resources.access(state->resource_handle);
-            format = resource->resource_info.format;
-        }
-        if (compute_pass) {
-            switch (resource_type) {
-            case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
-                ASSERT(is_input_resource == true);
-                state->access_flags = ACCESS_FLAG_SHADER_READ;
-                state->layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                state->stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                break;
-            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                ASSERT(is_input_resource == false);
-                state->access_flags |= ACCESS_FLAG_SHADER_WRITE;
-                state->layout = IMAGE_LAYOUT_GENERAL;
-                state->stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                break;
+    void FrameGraph::compile() {
+        const uint32_t INVALID_PRODUCER = UINT32_MAX;
+        // Update reference for the passes and resources
+        for (uint32_t i = 0; i < passes.size(); ++i) {
+            PassNode &pass_node = passes[i];
+            pass_node.ref_count = static_cast<uint32_t>(pass_node.writes.size());
+            for (auto read : pass_node.reads) {
+                resources[read].ref_count++;
             }
-        } else {
-            switch (resource_type) {
-            case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
-                ASSERT(is_input_resource == true);
-                state->access_flags |= ACCESS_FLAG_SHADER_READ;
-                state->layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                state->stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-                break;
-            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                if (is_depth_format(format)) {
-                    state->access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE;
-                    if (load_op == LOAD_OP_LOAD)
-                        state->access_flags |= is_input_resource ? ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ : 0;
-                    state->stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 
-                    state->layout = is_stencil_format(format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                } else {
-                    state->access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE;
-                    if (load_op == LOAD_OP_LOAD)
-                        state->access_flags |= ACCESS_FLAG_COLOR_ATTACHMENT_READ;
-                    state->layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                    state->stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            for (auto write : pass_node.writes) {
+                assert(resources[write].producer == INVALID_PRODUCER);
+                resources[write].producer = i;
+            }
+        }
+
+        // Cull passes/resources
+        std::stack<ResourceNode *> unreferenced_resources;
+        for (auto &resource : resources) {
+            if (resource.ref_count == 0)
+                unreferenced_resources.push(&resource);
+        }
+
+        while (!unreferenced_resources.empty()) {
+            ResourceNode *resource = unreferenced_resources.top();
+            unreferenced_resources.pop();
+
+            uint32_t producer_index = resource->producer;
+            PassNode *producer = &passes[producer_index];
+            if (producer_index == INVALID_PRODUCER || producer->has_side_effect) {
+                continue;
+            }
+
+            assert(producer->ref_count >= 1);
+
+            if (--producer->ref_count == 0) {
+                for (auto &read : producer->reads) {
+                    ResourceNode *referenced = &resources[read];
+                    if (--referenced->ref_count == 0)
+                        unreferenced_resources.push(referenced);
                 }
-                break;
-                /*
-            case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE:
-                ASSERT(is_input_resource == false);
-                state->access_flags |= ACCESS_FLAG_SHADER_WRITE;
-            */
             }
         }
-    }
 
-    FrameGraphNodeHandle FrameGraphBuilder::create_node(const FrameGraphNodeDescription &node_description) {
-        uint32_t node_index = resource_pool_nodes.obtain();
-        FrameGraphNode *node = resource_pool_nodes.access(node_index);
-        node->name = node_description.name;
-        node->enabled = node_description.enabled;
+        // Calculate resource lifetime
+        struct ResourceLifetime {
+            uint32_t created_by;
+            uint32_t last_used_by;
+        };
 
-        FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
-
-        HashMap<std::string, FrameGraphResourceState> resource_state_map;
-
-        for (uint32_t i = 0; i < node_description.inputs.size(); ++i) {
-            const FrameGraphResourceInput *input_desc = &node_description.inputs[i];
-            FrameGraphResourceHandle resource_handle = create_node_input(input_desc);
-            ASSERT(resource_handle != K_INVALID_RESOURCE_HANDLE);
-
-            FrameGraphResource *resource = resource_pool_resources.access(resource_handle);
-            Format format = resource->resource_info.format;
-
-            switch (input_desc->resource_type) {
-            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                add_renderpass_info(format, resource->handle, renderpass, input_desc->load_op);
-                break;
-            }
-            node->inputs.push_back(resource_handle);
-
-            if (resource->external)
+        std::unordered_map<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
+        for (uint32_t i = 0; i < passes.size(); ++i) {
+            PassNode &pass = passes[i];
+            if (!pass.can_execute())
                 continue;
 
-            const std::string &resource_name = input_desc->name;
-            auto found = resource_state_map.find(resource_name);
-            if (found == resource_state_map.end())
-                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = resource_handle};
-            create_resource_state(input_desc->resource_type, input_desc->load_op, &resource_state_map[resource_name], node_description.is_compute_pass, true);
-        }
-
-        ASSERT(node_description.outputs.size() > 0);
-        uint32_t width = 0;
-        uint32_t height = 0;
-        get_output_attachment_size(&width, &height, &node_description.outputs[0]);
-
-        for (uint32_t i = 0; i < node_description.outputs.size(); ++i) {
-            const FrameGraphResourceOutput *output = &node_description.outputs[i];
-#ifdef _DEBUG
-            if (i > 0) {
-                uint32_t output_width, output_height;
-                get_output_attachment_size(&output_width, &output_height, output);
-                ASSERT(width == output_width);
-                ASSERT(height == output_height);
-            }
-#endif
-            const FrameGraphResourceType &resource_type = output->resource_type;
-            FrameGraphResourceHandle resource_handle = create_node_output(output, node_description.is_compute_pass);
-            FrameGraphResource *resource = resource_pool_resources.access(resource_handle);
-            node->outputs.push_back(resource_handle);
-
-            switch (resource_type) {
-            case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                add_renderpass_info(output->format, resource->handle, renderpass, output->clear_color, output->load_op);
-                break;
+            for (auto &write : pass.writes) {
+                auto found = resources_lifetime.find(write);
+                assert(found == resources_lifetime.end());
+                resources_lifetime[write].created_by = i;
+                resources_lifetime[write].last_used_by = UINT32_MAX;
             }
 
-            // External reference state are tracked externally
-            if (output->resource_type == FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE)
-                continue;
-            const std::string &resource_name = output->name;
-            auto found = resource_state_map.find(resource_name);
-            if (found == resource_state_map.end())
-                resource_state_map[resource_name] = FrameGraphResourceState{.resource_handle = resource_handle};
-
-            create_resource_state(output->resource_type, output->load_op, &resource_state_map[resource_name], node_description.is_compute_pass, false);
-        }
-
-        for (auto &entry : resource_state_map)
-            node->resources_state.push_back(entry.second);
-
-        node->width = width;
-        node->height = height;
-
-        node->renderer = node_description.renderer;
-
-        nodes_maps.insert(std::make_pair(utils::djb2_hash_string(node->name), node_index));
-
-        return FrameGraphNodeHandle{node_index};
-    }
-
-    FrameGraphResourceHandle FrameGraphBuilder::create_node_output(const FrameGraphResourceOutput *output, bool compute_pass) {
-        // SamplerDescription sampler_desc = SamplerDescription::create();
-        uint32_t handle = K_INVALID_RESOURCE_HANDLE;
-
-        switch (output->resource_type) {
-        case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
-            handle = resource_pool_resources.obtain();
-
-            FrameGraphResource *resource = resource_pool_resources.access(handle);
-            resource->external = false;
-            if (output->name == "swapchain") {
-                resource->name = output->name;
-                resource->handle = K_SWAPCHAIN_TEXTURE_HANDLE;
-                resource->resource_info.format = output->format;
-                resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
-            } else {
-                TextureDescription desc = {
-                    .create_flags = 0,
-                    .width = output->width,
-                    .height = output->height,
-                    .depth = 1,
-                    .mip_levels = 1,
-                    .array_layers = output->array_layers,
-                    .texture_type = TEXTURE_TYPE_2D,
-                    .format = output->format,
-                    .usage_flags = 0,
-                };
-
-                SamplerDescription sampler = SamplerDescription::create();
-                sampler.address_mode_u = sampler.address_mode_v = sampler.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                if (is_depth_format(output->format)) {
-                    desc.usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT;
-                    if (is_stencil_format(output->format))
-                        desc.usage_flags |= TEXTURE_USAGE_STENCIL_ATTACHMENT_BIT;
-                    else {
-                        desc.usage_flags |= TEXTURE_USAGE_SAMPLED_BIT; // if the image is not stencil format then it is most likely to be used as sampler
-                    }
-                } else {
-                    desc.usage_flags = compute_pass ? TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_SAMPLED_BIT : TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT;
-                }
-                desc.usage_flags |= TEXTURE_USAGE_TRANSFER_SRC_BIT;
-
-                TextureID texture = device->create_texture(&desc, output->name.c_str());
-                resource->name = output->name;
-                resource->handle = texture;
-                resource->resource_info.width = output->width;
-                resource->resource_info.height = output->height;
-                resource->resource_info.array_layers = output->array_layers;
-                resource->resource_info.format = output->format;
-                resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
-            }
-            break;
-        }
-        case FRAMEGRAPH_RESOURCE_TYPE_REFERENCE: {
-            auto found = resources_map.find(utils::djb2_hash_string(output->name));
-            ASSERT(found != resources_map.end());
-            handle = found->second;
-            break;
-        }
-        case FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE: {
-            // Create a dummy entry for external reference
-            // @TODO handle this
-            handle = resource_pool_resources.obtain();
-            FrameGraphResource *resource = resource_pool_resources.access(handle);
-            resource->handle = TextureID{K_INVALID_ID};
-            resource->name = output->name;
-            resource->external = true;
-            resources_map.insert(std::make_pair(utils::djb2_hash_string(output->name), handle));
-            break;
-        }
-        default:
-            ASSERT_MSG(0, " Unknown framegraph output resource type");
-            break;
-        }
-        return FrameGraphResourceHandle{handle};
-    }
-
-    FrameGraphResourceHandle FrameGraphBuilder::create_node_input(const FrameGraphResourceInput *input) {
-        uint32_t handle = K_INVALID_RESOURCE_HANDLE;
-        switch (input->resource_type) {
-        case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE:
-        case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT: {
-            auto found = resources_map.find(utils::djb2_hash_string(input->name));
-            ASSERT_MSG(found->second != K_INVALID_ID, "Input resource not found");
-            handle = found->second;
-        } break;
-        default:
-            ASSERT_MSG(0, "Unknown framegraph input attachment");
-        }
-        return FrameGraphResourceHandle{handle};
-    }
-
-    FrameGraphBuilder::~FrameGraphBuilder() {
-        for (auto &[key, val] : resources_map) {
-            FrameGraphResource *resource = resource_pool_resources.access(val);
-            if (resource->handle.is_valid() && resource->handle != K_SWAPCHAIN_TEXTURE_HANDLE && !resource->external) {
-                TextureID texture_id = resource->handle;
-                device->destroy_textures(&texture_id, 1);
+            for (auto &read : pass.reads) {
+                auto found = resources_lifetime.find(read);
+                assert(found != resources_lifetime.end());
+                resources_lifetime[read].last_used_by = i;
             }
         }
-        resource_pool_resources.release_all();
-        resource_pool_nodes.release_all();
-    }
 
-    static FrameGraphResourceType get_resource_type_from_string(std::string input_type) {
-        if (input_type == "attachment")
-            return FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT;
-        else if (input_type == "texture")
-            return FRAMEGRAPH_RESOURCE_TYPE_TEXTURE;
-        else if (input_type == "reference")
-            return FRAMEGRAPH_RESOURCE_TYPE_REFERENCE;
+        /*
+         // Skip resource aliasing if flag is set
+         if (!disable_resource_aliasing) {
+             // Create aliases
+             std::vector<FrameGraphResourceHandle> expired_resources;
+             for (uint32_t i = 1; i < passes.size(); ++i) {
+                 PassNode *pass = &passes[i];
+                 if (pass->has_side_effect)
+                     continue;
 
-        ASSERT_MSG(0, "Invalid FrameGraphResourceType");
-        return FRAMEGRAPH_RESOURCE_TYPE_INVALID;
-    }
+                 for (auto &read : pass->reads) {
+                     auto found = resources_lifetime.find(read);
+                     assert(found != resources_lifetime.end());
+                     if (found->second.last_used_by == i)
+                         expired_resources.push_back(read);
+                 }
 
-    FrameGraph::FrameGraph(FrameGraphBuilder *builder) : builder(builder), name("default_framegraph") {
-    }
+                 for (auto &write : pass->writes) {
+                     ResourceNode *resource = &resources[write];
 
-    void FrameGraph::load_from_file(const std::string &filename) {
-        using json = nlohmann::json;
-        std::ifstream json_file(filename);
-        if (!json_file) {
-            Log::Error("Failed to load framegraph: " + filename);
-            return;
-        }
+                     for (auto expired : expired_resources) {
+                         auto found = resources_lifetime.find(expired);
+                         assert(found != resources_lifetime.end());
+                         if (found->second.last_used_by >= i)
+                             continue;
 
-        Log::Info("Parsing FrameGraph: " + filename);
+                         if (*resource == resources[expired]) {
+                             std::cout << "Resource Aliased: " << resource->name << " uses resource " << resources[expired].name << std::endl;
+                             expired_resources.erase(std::remove(expired_resources.begin(), expired_resources.end(), expired), expired_resources.end());
+                             break;
+                         }
+                     }
+                 }
+             }
+         }
+         */
 
-        // Start parsing frame graph
-        json data = json::parse(json_file);
-
-        this->name = data.value("name", "");
-        Log::Info("FrameGraph Name: " + name);
-
-        json passes = data["passes"];
-        Log::Info("Total passes: " + std::to_string(passes.size()));
-
-        for (std::size_t i = 0; i < passes.size(); ++i) {
-            json pass = passes[i];
-            bool enabled = pass.value("enabled", true);
-            if (!enabled)
-                continue;
-
-            FrameGraphNodeDescription node_description;
-            node_description.name = pass.value("name", "");
-            node_description.is_compute_pass = pass.value("type", "") == "compute" ? true : false;
-            node_description.enabled = enabled;
-
-            json inputs = pass["inputs"];
-            json outputs = pass["outputs"];
-
-            node_description.inputs.resize(inputs.size());
-            node_description.outputs.resize(outputs.size());
-
-            // Parse Inputs for the pass
-            for (std::size_t j = 0; j < inputs.size(); ++j) {
-                json passInput = inputs[j];
-                FrameGraphResourceInput &resource = node_description.inputs[j];
-                resource.name = passInput.value("name", "");
-                std::string resourceType = passInput.value("type", "");
-                resource.load_op = get_attachment_load_op(passInput.value("op", "LOAD_OP_LOAD"));
-                resource.resource_type = get_resource_type_from_string(resourceType);
+        RenderingDevice *device = RenderingDevice::get();
+        // Allocate actual resources
+        for (auto &resource : resources) {
+            std::variant<FrameGraphBuffer, FrameGraphTexture> &raw_resource = resource.resource;
+            if (resource.resource_type == FrameGraphResourceType::Buffer) {
+                FrameGraphBuffer &buffer = resource.get<FrameGraphBuffer>();
+                buffer.buffer = device->create_buffer(&buffer.desc, resource.name);
+            } else if (resource.resource_type == FrameGraphResourceType::Texture) {
+                FrameGraphTexture &texture = resource.get<FrameGraphTexture>();
+                texture.texture = device->create_texture(&texture.desc, resource.name);
             }
+        }
+    }
 
-            for (std::size_t j = 0; j < outputs.size(); ++j) {
-                json passOutput = outputs[j];
-                FrameGraphResourceOutput &resource = node_description.outputs[j];
-
-                resource.name = passOutput.value("name", "");
-                resource.load_op = LOAD_OP_CLEAR;
-
-                std::string resourceType = passOutput.value("type", "");
-                resource.resource_type = get_resource_type_from_string(resourceType);
-                switch (resource.resource_type) {
-                case FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT:
-                case FRAMEGRAPH_RESOURCE_TYPE_TEXTURE: {
-                    if (resource.name == "swapchain") {
-                        resource.format = FORMAT_B8G8R8A8_UNORM;
-                    } else {
-                        bool external = passOutput.value("external", false);
-                        if (external) {
-                            resource.resource_type = FRAMEGRAPH_RESOURCE_TYPE_EXTERNAL_REFERENCE;
-                        } else {
-                            json resolution = passOutput["resolution"];
-                            resource.width = resolution[0];
-                            resource.height = resolution[1];
-                            resource.format = get_texture_format(std::string(passOutput["format"]));
-                            resource.load_op = get_attachment_load_op(passOutput.value("op", "LOAD_OP_LOAD"));
-                            resource.array_layers = passOutput.value("layer", 1);
-                            json clear_color = passOutput["clear_color"];
-                            if (clear_color.size() == 4) {
-                                resource.clear_color = {clear_color[0], clear_color[1], clear_color[2], clear_color[3]};
-                            } else {
-                                resource.clear_color = is_depth_format(resource.format) ? Color{1.0f, 0.0f, 0.0f, 1.0f} : Color{0.0f, 0.0f, 0.0f, 1.0f};
-                            }
-                        }
-                    }
-                    break;
-                }
-                }
+    void FrameGraph::execute(void *context) {
+        for (const auto &pass_node : passes) {
+            if (pass_node.can_execute()) {
+                FrameGraphPassResource resource{*this, pass_node};
+                std::invoke(*pass_node.pass, resource, context);
             }
-            node_descriptions.push_back(node_description);
         }
     }
 
-    void FrameGraph::compile(Renderer *renderer) {
-        HashMap<FrameGraphResourceHandle, FrameGraphResourceState *> resource_state_map;
-        for (uint32_t i = 0; i < node_descriptions.size(); ++i) {
-            FrameGraphNodeHandle node_handle = builder->create_node(node_descriptions[i]);
-            FrameGraphNode *node = builder->get_node(node_handle);
-            ASSERT_MSG(node->renderer != nullptr, "Did you forgot to call set_renderer() before compile?");
-            node->renderer->initialize(this, node, renderer);
-            node_handles.push_back(node_handle);
-        }
+    FrameGraphResourceHandle FrameGraph::create_texture(const std::string_view name, const TextureDescription &desc) {
+        uint32_t resource_id = static_cast<uint32_t>(resources.size());
+        resources.emplace_back(name, FrameGraphTexture{.texture = TextureID{K_INVALID_ID}, .desc = desc}, FrameGraphResourceType::Texture);
+        return resource_id;
     }
 
-    void FrameGraph::update(Renderer *renderer) {
-        for (auto handle : node_handles) {
-            FrameGraphNode *node = builder->get_node(handle);
-            if (node->enabled)
-                node->renderer->update(this, node, renderer);
-        }
+    FrameGraphResourceHandle FrameGraph::create_buffer(const std::string_view name, const BufferDescription &desc) {
+        uint32_t resource_id = static_cast<uint32_t>(resources.size());
+        resources.emplace_back(name, FrameGraphBuffer{.buffer = BufferID{K_INVALID_ID}, .desc = desc}, FrameGraphResourceType::Buffer);
+        return resource_id;
     }
 
-    void FrameGraph::render(CommandBuffer *command_buffer, Renderer *renderer) {
-        ScopedCpuProfiling("FrameGraph::Render");
-        for (auto handle : node_handles) {
-            FrameGraphNode *node = builder->get_node(handle);
-            if (node->enabled)
-                node->renderer->render(command_buffer, this, node, renderer);
+    FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_texture(const std::string_view name, const TextureDescription &desc) {
+        return frame_graph->create_texture(name, desc);
+    }
+
+    FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_buffer(const std::string_view name, const BufferDescription &desc) {
+        return frame_graph->create_buffer(name, desc);
+    }
+
+    void FrameGraph::FrameGraphBuilder::read(FrameGraphResourceHandle resource) {
+        assert(resource < frame_graph->resources.size());
+        ResourceNode *resource_node = &frame_graph->resources[resource];
+
+        if (!resource_node->is_read_by_pass(pass_index)) {
+            resource_node->read_by.push_back(resource);
         }
+
+        auto &pass = frame_graph->passes[pass_index];
+        pass._read(resource);
+    }
+
+    void FrameGraph::FrameGraphBuilder::write(FrameGraphResourceHandle resource) {
+        assert(resource < frame_graph->resources.size());
+        ResourceNode *resource_node = &frame_graph->resources[resource];
+
+        assert(resource_node->producer == UINT32_MAX && "Resource already written by other");
+        auto &pass = frame_graph->passes[pass_index];
+        pass._write(resource);
+    }
+
+    void FrameGraph::FrameGraphBuilder::set_side_effect() {
+        frame_graph->passes[pass_index].has_side_effect = true;
     }
 } // namespace mirai
