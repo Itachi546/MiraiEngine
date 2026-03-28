@@ -423,7 +423,7 @@ namespace mirai {
         };
 
         VkFormat depth_format = RD_FORMAT_TO_VK_FORMAT[pipeline_description->depth_attachment_format];
-        VkFormat stencil_format = is_stencil_format(pipeline_description->depth_attachment_format) ? depth_format : VK_FORMAT_UNDEFINED;
+        VkFormat stencil_format = is_stencil_format(depth_format) ? depth_format : VK_FORMAT_UNDEFINED;
 
         VkPipelineRenderingCreateInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
@@ -1188,8 +1188,8 @@ namespace mirai {
         if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
 
             VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->get_current_image(),
-                                                                              VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                                              VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                                                              VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                                              VK_ACCESS_2_TRANSFER_WRITE_BIT,
                                                                               VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
                                                                               0,
                                                                               current_layout,

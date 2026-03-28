@@ -7,6 +7,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/FrameGraph.hpp"
+#include "Scene/FrameGraphBlackBoard.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
@@ -31,8 +32,8 @@ namespace mirai {
 
         // Preload shaders
         shader_hashmap = std::make_unique<ShaderHashMap>();
-        frame_graph_builder = std::make_unique<FrameGraphBuilder>();
-        frame_graph = std::make_unique<FrameGraph>(frame_graph_builder.get());
+        frame_graph = std::make_unique<FrameGraph>();
+        frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
 
         current_frame_jitter = glm::vec2(0.0f);
         prev_frame_jitter = glm::vec2(0.0f);
@@ -182,7 +183,7 @@ namespace mirai {
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
-        frame_graph->compile(this);
+        frame_graph->compile();
     }
 
     void Renderer::copy_buffers() {
@@ -314,6 +315,7 @@ namespace mirai {
     }
 
     void Renderer::update() {
+        /*
         // Update camera jitter
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
         Camera *camera = scene->get_camera();
@@ -354,6 +356,7 @@ namespace mirai {
             rt_shadow_pass->enabled = AppSettings::enable_rt_shadow;
         if (shadow_pass)
             shadow_pass->enabled = !AppSettings::enable_rt_shadow;
+        */
     }
 
     void copy_continuous_region(CommandBuffer *cb, const std::vector<uint32_t> &indices, BufferView src, BufferView dst, uint32_t data_element_size) {
@@ -487,7 +490,8 @@ namespace mirai {
 
         miProfiler::BeginFrame(cb);
         {
-            ScopedGpuProfiling(cb, "Gpu Time");
+            ScopedCpuProfiling("CPU Render Time");
+            ScopedGpuProfiling(cb, "GPU Time");
             // Copy per frame data from staging buffer to gpu uniform buffer
             copy_buffers();
 
@@ -496,7 +500,11 @@ namespace mirai {
 
             update_uniform_set(cb);
 
-            frame_graph->render(cb, this);
+            RenderContext context{this, cb};
+
+            frame_graph->execute(&context);
+
+            cb->copy_to_swapchain(frame_graph->get_present_texture());
 
             device->queue_command_buffer(cb);
         }

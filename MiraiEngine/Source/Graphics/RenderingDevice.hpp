@@ -33,6 +33,7 @@ namespace mirai {
         inline bool operator==(const m_name##ID &p_other) const { return id == p_other.id; } \
         inline bool operator!=(const m_name##ID &p_other) const { return id != p_other.id; } \
         inline m_name##ID(const m_name##ID &p_other) : ID(p_other.id) {}                     \
+        inline m_name##ID(ID id) : ID(id) {}                                                 \
         inline explicit m_name##ID(uint32_t p_int) : ID(p_int) {}                            \
         inline m_name##ID() = default;                                                       \
     };
@@ -65,6 +66,11 @@ namespace mirai {
         QUEUE_TYPE_GRAPHICS = 0,
         QUEUE_TYPE_COMPUTE = 1,
         QUEUE_TYPE_TRANSFER = 2,
+    };
+
+    enum class ResourceType {
+        Texture = 0,
+        Buffer = 1
     };
 
     struct AccelerationStructureBufferInfo {
@@ -125,31 +131,6 @@ namespace mirai {
         FORMAT_MAX
     };
 
-    inline bool is_depth_format(Format format) {
-        switch (format) {
-        case FORMAT_D16_UNORM:
-        case FORMAT_D32_SFLOAT:
-        case FORMAT_D32_SFLOAT_S8_UINT:
-        case FORMAT_D24_UNORM_S8_UINT:
-            return true;
-        default:
-            return false;
-        }
-
-        return false;
-    }
-
-    inline bool is_stencil_format(Format format) {
-        switch (format) {
-        case FORMAT_D32_SFLOAT_S8_UINT:
-        case FORMAT_D24_UNORM_S8_UINT:
-            return true;
-        default:
-            return false;
-        }
-        return false;
-    }
-
     enum Topology {
         TOPOLOGY_POINT_LIST = 0,
         TOPOLOGY_LINE_LIST = 1,
@@ -187,7 +168,8 @@ namespace mirai {
     };
 
     struct Viewport {
-        uint32_t x, y, width, height;
+        float x, y;
+        float width, height;
         float min_depth, max_depth;
     };
 
@@ -368,6 +350,19 @@ namespace mirai {
         PIPELINE_STAGE_MAX
     };
 
+    struct AccessDeclaration {
+        uint64_t access_flags = ACCESS_FLAG_NONE;
+        uint64_t stage_mask = PIPELINE_STAGE_NONE;
+        // Only applicable for texture
+        ImageLayout layout = IMAGE_LAYOUT_UNDEFINED;
+    };
+
+    struct ResourceAccessDeclaration {
+        ID resource;
+        ResourceType resource_type;
+        const AccessDeclaration *declaration;
+    };
+
     struct SamplerDescription {
         SamplerAddressMode address_mode_u, address_mode_v, address_mode_w;
         FilterMode min_filter, mag_filter;
@@ -455,12 +450,6 @@ namespace mirai {
         SamplerID sampler;
     };
 
-    enum AttachmentType {
-        ATTACHMENT_TYPE_IMAGE,
-        ATTACHMENT_TYPE_DEPTH,
-        ATTACHMENT_TYPE_SWAPCHAIN
-    };
-
     enum AttachmentLoadOp {
         LOAD_OP_LOAD = 0,
         LOAD_OP_CLEAR = 1,
@@ -470,6 +459,13 @@ namespace mirai {
     enum AttachmentStoreOp {
         STORE_OP_STORE = 0,
         STORE_OP_DONT_CARE = 0
+    };
+
+    struct AttachmentInfo {
+        TextureID texture;
+        AttachmentLoadOp load_op;
+        AttachmentStoreOp store_op;
+        Color clear_color;
     };
 
     enum ShaderStage {

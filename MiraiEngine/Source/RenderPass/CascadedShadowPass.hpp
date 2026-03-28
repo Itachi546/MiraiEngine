@@ -1,31 +1,31 @@
-#pragma once
-#include "Scene/FrameGraph.hpp"
-#include "Scene/Scene.hpp"
-namespace mirai {
+// #pragma once
+// #include "Scene/FrameGraph.hpp"
+// #include "Scene/Scene.hpp"
+// namespace mirai {
 
-    struct Shader;
-    class CascadedShadowPass : public FrameGraphRenderer {
-      public:
-        CascadedShadowPass() : FrameGraphRenderer("directional_shadow_pass") {
-        }
+//     struct Shader;
+//     class CascadedShadowPass : public FrameGraphRenderer {
+//       public:
+//         CascadedShadowPass() : FrameGraphRenderer("directional_shadow_pass") {
+//         }
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
+//         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
+//         void update(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
+//         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
-        ~CascadedShadowPass();
+//         ~CascadedShadowPass();
 
-        float split_lamda = 0.909f;
-        float shadow_distance = 100.0f;
-        uint32_t shadow_map_size = 1024;
+//         float split_lamda = 0.909f;
+//         float shadow_distance = 100.0f;
+//         uint32_t shadow_map_size = 1024;
 
-        std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
-        bool calculate_distance_automatic = true;
+//         std::array<float, NUM_DIRLIGHT_CASCADE> split_distances_constants = {5.0f, 15.0f, 40.0f, 100.0f};
+//         bool calculate_distance_automatic = true;
 
-      private:
-        void calculate_split_distances(float znear, float zfar, Scene *scene);
-        Shader *shader, *shader_alpha_test;
-    };
-} // namespace mirai
+//       private:
+//         void calculate_split_distances(float znear, float zfar, Scene *scene);
+//         Shader *shader, *shader_alpha_test;
+//     };
+// } // namespace mirai

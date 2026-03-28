@@ -9,6 +9,8 @@ namespace AppSettings {
     extern uint32_t default_window_width;
     extern uint32_t default_window_height;
 
+    extern float resolution_scale;
+
     // Renderer Settings
     extern RenderMode render_mode;
     extern bool enable_rt_shadow;

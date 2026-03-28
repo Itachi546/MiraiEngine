@@ -13,19 +13,25 @@ namespace mirai {
 
     void FrameGraph::compile() {
         const uint32_t INVALID_PRODUCER = UINT32_MAX;
-        // Update reference for the passes and resources
+
+        // Update reference for the passes and resources and it's access flag
         for (uint32_t i = 0; i < passes.size(); ++i) {
             PassNode &pass_node = passes[i];
             pass_node.ref_count = static_cast<uint32_t>(pass_node.writes.size());
             for (auto read : pass_node.reads) {
-                resources[read].ref_count++;
+                resources[read.resource].ref_count++;
+                resources[read.resource].access_flag |= read.access.access_flags;
             }
 
             for (auto write : pass_node.writes) {
-                assert(resources[write].producer == INVALID_PRODUCER);
-                resources[write].producer = i;
+                resources[write.resource].producer = i;
+                resources[write.resource].access_flag |= write.access.access_flags;
             }
         }
+
+        // Present texture should also update reference
+        resources[present_texture].ref_count += 1;
+        resources[present_texture].access_flag |= ACCESS_FLAG_TRANSFER_READ;
 
         // Cull passes/resources
         std::stack<ResourceNode *> unreferenced_resources;
@@ -48,14 +54,14 @@ namespace mirai {
 
             if (--producer->ref_count == 0) {
                 for (auto &read : producer->reads) {
-                    ResourceNode *referenced = &resources[read];
+                    ResourceNode *referenced = &resources[read.resource];
                     if (--referenced->ref_count == 0)
                         unreferenced_resources.push(referenced);
                 }
             }
         }
 
-        // Calculate resource lifetime
+        // Calculate resource lifetime and state
         struct ResourceLifetime {
             uint32_t created_by;
             uint32_t last_used_by;
@@ -64,20 +70,27 @@ namespace mirai {
         std::unordered_map<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
         for (uint32_t i = 0; i < passes.size(); ++i) {
             PassNode &pass = passes[i];
+
             if (!pass.can_execute())
                 continue;
 
             for (auto &write : pass.writes) {
-                auto found = resources_lifetime.find(write);
-                assert(found == resources_lifetime.end());
-                resources_lifetime[write].created_by = i;
-                resources_lifetime[write].last_used_by = UINT32_MAX;
+                FrameGraphResourceHandle resource = write.resource;
+                auto found = resources_lifetime.find(resource);
+                // If this is not the first write, then update only last_used_by field
+                if (found != resources_lifetime.end()) {
+                    resources_lifetime[resource].last_used_by = i;
+                } else {
+                    // On first write, we update the create_by and initialize last_used_by field
+                    resources_lifetime[resource].created_by = i;
+                    resources_lifetime[resource].last_used_by = UINT32_MAX;
+                }
             }
 
             for (auto &read : pass.reads) {
-                auto found = resources_lifetime.find(read);
+                auto found = resources_lifetime.find(read.resource);
                 assert(found != resources_lifetime.end());
-                resources_lifetime[read].last_used_by = i;
+                resources_lifetime[read.resource].last_used_by = i;
             }
         }
 
@@ -122,12 +135,14 @@ namespace mirai {
         // Allocate actual resources
         for (auto &resource : resources) {
             std::variant<FrameGraphBuffer, FrameGraphTexture> &raw_resource = resource.resource;
-            if (resource.resource_type == FrameGraphResourceType::Buffer) {
+            if (resource.resource_type == ResourceType::Buffer) {
                 FrameGraphBuffer &buffer = resource.get<FrameGraphBuffer>();
-                buffer.buffer = device->create_buffer(&buffer.desc, resource.name);
-            } else if (resource.resource_type == FrameGraphResourceType::Texture) {
+                ASSERT(!buffer.id.is_valid());
+                buffer.id = device->create_buffer(&buffer.desc, resource.name);
+            } else if (resource.resource_type == ResourceType::Texture) {
                 FrameGraphTexture &texture = resource.get<FrameGraphTexture>();
-                texture.texture = device->create_texture(&texture.desc, resource.name);
+                ASSERT(!texture.id.is_valid());
+                texture.id = device->create_texture(&texture.desc, resource.name);
             }
         }
     }
@@ -143,14 +158,31 @@ namespace mirai {
 
     FrameGraphResourceHandle FrameGraph::create_texture(const std::string_view name, const TextureDescription &desc) {
         uint32_t resource_id = static_cast<uint32_t>(resources.size());
-        resources.emplace_back(name, FrameGraphTexture{.texture = TextureID{K_INVALID_ID}, .desc = desc}, FrameGraphResourceType::Texture);
+        resources.emplace_back(name, FrameGraphTexture{.id = TextureID{K_INVALID_ID}, .desc = desc}, ResourceType::Texture);
         return resource_id;
     }
 
     FrameGraphResourceHandle FrameGraph::create_buffer(const std::string_view name, const BufferDescription &desc) {
         uint32_t resource_id = static_cast<uint32_t>(resources.size());
-        resources.emplace_back(name, FrameGraphBuffer{.buffer = BufferID{K_INVALID_ID}, .desc = desc}, FrameGraphResourceType::Buffer);
+        resources.emplace_back(name, FrameGraphBuffer{.id = BufferID{K_INVALID_ID}, .desc = desc}, ResourceType::Buffer);
         return resource_id;
+    }
+
+    FrameGraph::~FrameGraph() {
+        std::vector<BufferID> buffers;
+        std::vector<TextureID> textures;
+        for (auto &resource : resources) {
+            ID id = std::visit([](const auto &d) { return d.id; }, resource.resource);
+            if (resource.resource_type == ResourceType::Buffer) {
+                buffers.push_back(id);
+            } else {
+                textures.push_back(id);
+            }
+        }
+
+        RenderingDevice *device = RenderingDevice::get();
+        device->destroy_buffers(buffers.data(), cast_u32(buffers.size()));
+        device->destroy_textures(textures.data(), cast_u32(textures.size()));
     }
 
     FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_texture(const std::string_view name, const TextureDescription &desc) {
@@ -161,7 +193,7 @@ namespace mirai {
         return frame_graph->create_buffer(name, desc);
     }
 
-    void FrameGraph::FrameGraphBuilder::read(FrameGraphResourceHandle resource) {
+    void FrameGraph::FrameGraphBuilder::read(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
         assert(resource < frame_graph->resources.size());
         ResourceNode *resource_node = &frame_graph->resources[resource];
 
@@ -170,19 +202,48 @@ namespace mirai {
         }
 
         auto &pass = frame_graph->passes[pass_index];
-        pass._read(resource);
+        pass._read(resource, access);
     }
 
-    void FrameGraph::FrameGraphBuilder::write(FrameGraphResourceHandle resource) {
+    void FrameGraph::FrameGraphBuilder::write(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
         assert(resource < frame_graph->resources.size());
         ResourceNode *resource_node = &frame_graph->resources[resource];
 
         assert(resource_node->producer == UINT32_MAX && "Resource already written by other");
         auto &pass = frame_graph->passes[pass_index];
-        pass._write(resource);
+        pass._write(resource, access);
     }
 
     void FrameGraph::FrameGraphBuilder::set_side_effect() {
         frame_graph->passes[pass_index].has_side_effect = true;
     }
+    void FrameGraph::FrameGraphBuilder::set_compute_pass() {
+        frame_graph->passes[pass_index].is_compute_pass = true;
+    }
+
+    void FrameGraph::FrameGraphBuilder::present(FrameGraphResourceHandle resource) {
+        ASSERT_MSG(frame_graph->present_texture == UINT32_MAX, "Present texture is already assigned");
+        frame_graph->present_texture = resource;
+    }
+
+    std::vector<ResourceAccessDeclaration> FrameGraphPassResource::get_resource_access_states() const {
+        std::vector<ResourceAccessDeclaration> result(pass_node.writes.size());
+        for (uint32_t i = 0; i < pass_node.writes.size(); ++i) {
+            const FrameGraphAccessDeclaration &write = pass_node.writes[i];
+            const ResourceNode *resource = &frame_graph.resources[write.resource];
+            result[i].resource = std::visit([](const auto &d) { return d.id; }, resource->resource);
+            result[i].resource_type = resource->resource_type;
+            result[i].declaration = &write.access;
+        }
+
+        for (uint32_t i = 0; i < pass_node.reads.size(); ++i) {
+            const FrameGraphAccessDeclaration &read = pass_node.reads[i];
+            const ResourceNode *resource = &frame_graph.resources[read.resource];
+            result[i].resource = std::visit([](const auto &d) { return d.id; }, resource->resource);
+            result[i].resource_type = resource->resource_type;
+            result[i].declaration = &read.access;
+        }
+        return result;
+    }
+
 } // namespace mirai

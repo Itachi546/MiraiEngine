@@ -1,29 +1,29 @@
-#pragma once
+// #pragma once
 
-#include "Scene/FrameGraph.hpp"
+// #include "Scene/FrameGraph.hpp"
 
-namespace mirai {
-    struct FrameGraphNode;
-    class FrameGraph;
-    struct Shader;
+// namespace mirai {
+//     struct FrameGraphNode;
+//     class FrameGraph;
+//     struct Shader;
 
-    class SwapchainCopyPass : public FrameGraphRenderer {
-      public:
-        SwapchainCopyPass();
+//     class SwapchainCopyPass : public FrameGraphRenderer {
+//       public:
+//         SwapchainCopyPass();
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
+//         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
+//         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
-        ~SwapchainCopyPass();
+//         ~SwapchainCopyPass();
 
-        bool enable_aa;
-        bool enable_gamma_correction;
+//         bool enable_aa;
+//         bool enable_gamma_correction;
 
-      private:
-        UniformSetID uniform_set;
+//       private:
+//         UniformSetID uniform_set;
 
-        Shader *shader;
-        SamplerID default_sampler;
-    };
-} // namespace mirai
+//         Shader *shader;
+//         SamplerID default_sampler;
+//     };
+// } // namespace mirai

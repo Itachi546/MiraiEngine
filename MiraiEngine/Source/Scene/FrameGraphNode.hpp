@@ -14,19 +14,19 @@ namespace mirai {
     using FrameGraphResourceHandle = uint32_t;
     struct FrameGraphPassResource;
 
-    enum class FrameGraphResourceType {
-        Texture = 0,
-        Buffer = 1
-    };
-
     struct FrameGraphBuffer {
-        BufferID buffer;
+        ID id;
         BufferDescription desc;
     };
 
     struct FrameGraphTexture {
-        TextureID texture;
+        ID id;
         TextureDescription desc;
+    };
+
+    struct FrameGraphAccessDeclaration {
+        FrameGraphResourceHandle resource;
+        AccessDeclaration access;
     };
 
     struct GraphNode {
@@ -41,9 +41,10 @@ namespace mirai {
         // List of pass that read this resource
         std::vector<uint32_t> read_by;
         std::variant<FrameGraphBuffer, FrameGraphTexture> resource;
-        FrameGraphResourceType resource_type;
+        ResourceType resource_type;
+        uint64_t access_flag;
 
-        ResourceNode(const std::string_view name, std::variant<FrameGraphBuffer, FrameGraphTexture> resource, FrameGraphResourceType resource_type) : GraphNode(name), resource(resource), resource_type(resource_type) {
+        ResourceNode(const std::string_view name, std::variant<FrameGraphBuffer, FrameGraphTexture> resource, ResourceType resource_type) : GraphNode(name), resource(resource), resource_type(resource_type), access_flag(0) {
         }
 
         template <typename T>
@@ -59,10 +60,6 @@ namespace mirai {
         bool is_read_by_pass(uint32_t pass_id) {
             auto found = std::find(read_by.begin(), read_by.end(), pass_id);
             return found != read_by.end();
-        }
-
-        bool operator==(const ResourceNode &other) const {
-            return resource_type == other.resource_type && resource == other.resource;
         }
     };
 
@@ -93,25 +90,25 @@ namespace mirai {
     struct PassNode : public GraphNode {
         uint32_t pass_id;
         std::unique_ptr<FrameGraphPassBase> pass;
-        std::vector<FrameGraphResourceHandle> reads;
-        std::vector<FrameGraphResourceHandle> writes;
+        std::vector<FrameGraphAccessDeclaration> reads;
+        std::vector<FrameGraphAccessDeclaration> writes;
+
         bool has_side_effect;
+        bool is_compute_pass;
 
-        PassNode(const std::string_view name, uint32_t pass_id, std::unique_ptr<FrameGraphPassBase> pass) : GraphNode(name), pass_id(pass_id), pass(std::move(pass)), has_side_effect(false) {
+        PassNode(const std::string_view name, uint32_t pass_id, std::unique_ptr<FrameGraphPassBase> pass) : GraphNode(name), pass_id(pass_id), pass(std::move(pass)), has_side_effect(false), is_compute_pass(false) {
         }
 
-        void _read(FrameGraphResourceHandle resource) {
+        void _read(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
             assert(!writes_resource(resource));
-            auto found = std::find(reads.begin(), reads.end(), resource);
-            if (found == reads.end())
-                reads.push_back(resource);
+            if (!reads_resource(resource))
+                reads.push_back(FrameGraphAccessDeclaration{.resource = resource, .access = access});
         }
 
-        void _write(FrameGraphResourceHandle resource) {
+        void _write(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
             assert(!reads_resource(resource));
-            auto found = std::find(writes.begin(), writes.end(), resource);
-            if (found == writes.end())
-                writes.push_back(resource);
+            if (!writes_resource(resource))
+                writes.push_back({.resource = resource, .access = access});
         }
 
         bool can_execute() const {
@@ -119,12 +116,16 @@ namespace mirai {
         }
 
         bool reads_resource(FrameGraphResourceHandle resource) const {
-            auto found = std::find(reads.begin(), reads.end(), resource);
+            auto found = std::find_if(reads.begin(), reads.end(), [=](const FrameGraphAccessDeclaration &resource_state) {
+                return resource_state.resource == resource;
+            });
             return found != reads.end();
         }
 
         bool writes_resource(FrameGraphResourceHandle resource) const {
-            auto found = std::find(writes.begin(), writes.end(), resource);
+            auto found = std::find_if(writes.begin(), writes.end(), [=](const FrameGraphAccessDeclaration &resource_state) {
+                return resource_state.resource == resource;
+            });
             return found != writes.end();
         }
     };

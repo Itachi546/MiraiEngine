@@ -2,7 +2,6 @@
 #include "VulkanRenderingDevice.hpp"
 #include "VulkanSwapchain.hpp"
 #include "VulkanUtils.hpp"
-#include "Scene/FrameGraph.hpp"
 
 namespace mirai {
 
@@ -17,108 +16,124 @@ namespace mirai {
         }
     }
 
-    void CommandBuffer::begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph, Viewport *override_viewport) {
-        prepare_pass_resources(frame_graph, node);
-
-        std::vector<VkRenderingAttachmentInfo> color_attachments;
-        std::optional<VkRenderingAttachmentInfo> depth_attachment;
-        bool has_stencil_attachment = false;
-
-        const FrameGraphRenderpassInfo &renderpass = node->renderpass_info;
-        uint32_t width = node->width;
-        uint32_t height = node->height;
+    void CommandBuffer::begin_render_pass(const std::vector<AttachmentInfo> &color_attachments, const std::optional<AttachmentInfo> &depth_attachment, uint32_t render_area_width, uint32_t render_area_height) {
         uint32_t layer_count = 1;
-
-        for (uint32_t i = 0; i < renderpass.attachment_info.size(); ++i) {
-            const FrameGraphAttachmentInfo *attachment = &renderpass.attachment_info[i];
-            TextureID texture_id = attachment->texture;
-
-            VkImageView image_view = VK_NULL_HANDLE;
-            ASSERT(texture_id.is_valid());
-            if (texture_id == K_SWAPCHAIN_TEXTURE_HANDLE) {
-                VulkanSwapchain *swapchain = device->get_swapchain();
-                image_view = swapchain->get_current_image_view();
-                width = swapchain->width;
-                height = swapchain->height;
-            } else {
-                VulkanTexture *texture = device->access_texture(texture_id);
-                image_view = texture->image_views[0];
-                layer_count = texture->array_layers;
-            }
-
-            VkRenderingAttachmentInfo attachment_info = {VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-            attachment_info.loadOp = VkAttachmentLoadOp(attachment->load_op);
-            attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            if (i == renderpass.depth_attachment_index) {
-                attachment_info.clearValue.depthStencil = {attachment->clear_color.r, 0};
-                attachment_info.imageLayout = renderpass.has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                attachment_info.imageView = image_view;
-                depth_attachment = std::move(attachment_info);
-            } else {
-                attachment_info.imageView = image_view;
-                attachment_info.clearValue = {
-                    attachment->clear_color.r,
-                    attachment->clear_color.g,
-                    attachment->clear_color.b,
-                    attachment->clear_color.a,
-                };
-                attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                color_attachments.push_back(std::move(attachment_info));
-            }
-        }
 
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea = {0, 0, width, height},
-            .layerCount = layer_count,
-            .colorAttachmentCount = static_cast<uint32_t>(color_attachments.size()),
-            .pColorAttachments = color_attachments.data(),
-            .pDepthAttachment = depth_attachment.has_value() ? &depth_attachment.value() : nullptr,
-            .pStencilAttachment = has_stencil_attachment ? &depth_attachment.value() : nullptr,
+            .renderArea = {0, 0, render_area_width, render_area_height},
         };
 
-        vkCmdBeginRendering(command_buffer, &rendering_info);
-
-        VkViewport viewport;
-        VkRect2D scissor;
-        if (override_viewport != nullptr) {
-            viewport = {
-                .x = cast_float(override_viewport->x),
-                .y = cast_float(override_viewport->y) + cast_float(override_viewport->width),
-                .width = cast_float(override_viewport->width),
-                .height = -cast_float(override_viewport->height),
-                .minDepth = override_viewport->min_depth,
-                .maxDepth = override_viewport->max_depth,
-            };
-            scissor = {
-                {cast_int(override_viewport->x), cast_int(override_viewport->y)},
-                {override_viewport->width, override_viewport->height},
-            };
-        } else {
-            viewport = {
-                .x = 0.0f,
-                .y = cast_float(height),
-                .width = cast_float(width),
-                .height = -cast_float(height),
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f,
-            };
-            scissor = {
-                {0, 0},
-                {width, height},
-            };
+        std::vector<VkRenderingAttachmentInfo> vk_color_attachments;
+        for (uint32_t i = 0; i < color_attachments.size(); ++i) {
+            const AttachmentInfo &attachment = color_attachments[i];
+            VulkanTexture *texture = device->access_texture(attachment.texture);
+            vk_color_attachments.emplace_back(VkRenderingAttachmentInfo{
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .pNext = nullptr,
+                .imageView = texture->image_views[0],
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .loadOp = VkAttachmentLoadOp(attachment.load_op),
+                .storeOp = VkAttachmentStoreOp(attachment.store_op),
+                .clearValue = {
+                    attachment.clear_color.r,
+                    attachment.clear_color.g,
+                    attachment.clear_color.b,
+                    attachment.clear_color.a,
+                },
+            });
+            layer_count = std::max(texture->array_layers, layer_count);
+            ASSERT(render_area_width == texture->width && render_area_height == texture->height);
         }
-        vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+
+        rendering_info.layerCount = layer_count;
+        rendering_info.colorAttachmentCount = cast_u32(vk_color_attachments.size());
+        rendering_info.pColorAttachments = vk_color_attachments.data();
+
+        std::optional<VkRenderingAttachmentInfo> vk_depth_attachment;
+        if (depth_attachment.has_value()) {
+            VulkanTexture *texture = device->access_texture(depth_attachment->texture);
+            bool has_stencil_attachment = is_stencil_format(texture->format);
+            vk_depth_attachment = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .pNext = nullptr,
+                .imageView = texture->image_views[0],
+                .imageLayout = has_stencil_attachment ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                .loadOp = VkAttachmentLoadOp(depth_attachment->load_op),
+                .storeOp = VkAttachmentStoreOp(depth_attachment->store_op),
+                .clearValue = {
+                    depth_attachment->clear_color.r,
+                    0,
+                },
+            };
+
+            VkRenderingAttachmentInfo *p_depth_attachment = &vk_depth_attachment.value();
+            rendering_info.pDepthAttachment = p_depth_attachment;
+            rendering_info.pStencilAttachment = has_stencil_attachment ? p_depth_attachment : nullptr;
+        }
+        vkCmdBeginRendering(command_buffer, &rendering_info);
+    }
+
+    void CommandBuffer::set_viewport(const Viewport &viewport) {
+        VkViewport vk_viewport;
+        std::memcpy(&vk_viewport, &viewport, sizeof(Viewport));
+        vkCmdSetViewport(command_buffer, 0, 1, &vk_viewport);
+    }
+
+    void CommandBuffer::set_scissor(int x, int y, uint32_t width, uint32_t height) {
+        VkRect2D scissor = {
+            .offset = {x, y},
+            .extent = {width, height},
+        };
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
+    void CommandBuffer::prepare_resources(const std::vector<ResourceAccessDeclaration> &resource_states) {
+        if (resource_states.size() == 0)
+            return;
+        std::vector<VkImageMemoryBarrier2> image_barriers;
+        std::vector<VkBufferMemoryBarrier2> memory_barriers;
+
+        for (auto &state : resource_states) {
+            switch (state.resource_type) {
+            case ResourceType::Buffer: {
+                ASSERT("Not implemented yet");
+                break;
+            };
+            case ResourceType::Texture: {
+                VulkanTexture *texture = device->access_texture(state.resource);
+                VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
+                VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
+                VkImageLayout dst_layout = VkImageLayout(state.declaration->layout);
+                image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
+                                                                   texture->stage_mask,
+                                                                   texture->access_flags,
+                                                                   dst_stage,
+                                                                   dst_access_flag,
+                                                                   texture->current_layout,
+                                                                   dst_layout,
+                                                                   texture->image_aspect));
+                texture->current_layout = dst_layout;
+                texture->access_flags = dst_access_flag;
+                texture->stage_mask = dst_stage;
+                break;
+            };
+            default: {
+                ASSERT_MSG(0, "Unknown resource type");
+            }
+            }
+        }
+        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), memory_barriers.data(), cast_u32(memory_barriers.size()));
+    }
+
+    /*
     // @TODO only call this for the passes that are defined in the framegraph file
     // Not intended for internal compute pass like in case of blurring the mip levels of bloom or ssao output texture
     void CommandBuffer::begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
 
         prepare_pass_resources(frame_graph, node);
     }
-
+    */
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id) {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
@@ -293,6 +308,61 @@ namespace mirai {
         vkCmdCopyImage(command_buffer, vk_src->image, vk_src->current_layout, vk_dst->image, vk_dst->current_layout, 1, &region);
     }
 
+    void CommandBuffer::copy_to_swapchain(TextureID texture) {
+        VulkanSwapchain *swapchain = device->get_swapchain();
+        std::vector<VkImageMemoryBarrier2> image_barriers{2};
+        image_barriers[0] = CreateImageMemoryBarrier2(swapchain->get_current_image(),
+                                                      0,
+                                                      0,
+                                                      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                      VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                                                      swapchain->get_current_image_layout(),
+                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                      VK_IMAGE_ASPECT_COLOR_BIT);
+
+        VulkanTexture *src_texture = device->access_texture(texture);
+        image_barriers[1] = CreateImageMemoryBarrier2(src_texture->image,
+                                                      src_texture->stage_mask,
+                                                      src_texture->access_flags,
+                                                      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                      VK_ACCESS_2_TRANSFER_READ_BIT,
+                                                      src_texture->current_layout,
+                                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                      src_texture->image_aspect);
+
+        src_texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        src_texture->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        src_texture->access_flags = VK_ACCESS_2_TRANSFER_READ_BIT;
+        swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
+
+        VkImageCopy region = {
+            .srcSubresource = {
+                .aspectMask = src_texture->image_aspect,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .srcOffset = {0, 0, 0},
+            .dstSubresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+
+            },
+            .dstOffset = {0, 0, 0},
+            .extent = {
+                swapchain->width,
+                swapchain->height,
+                1,
+            },
+        };
+
+        vkCmdCopyImage(command_buffer, src_texture->image, src_texture->current_layout, swapchain->get_current_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    }
+
     void CommandBuffer::prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count) {
         std::vector<VkImageMemoryBarrier2> image_barriers(barrier_count);
 
@@ -393,7 +463,7 @@ namespace mirai {
         VK_CHECK(vkWaitForFences(device->device, 1, &fence, VK_TRUE, UINT64_MAX));
         vkResetFences(device->device, 1, &fence);
     }
-
+    /*
     void CommandBuffer::prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
         const std::vector<FrameGraphResourceState> &resources_state = node->resources_state;
         std::vector<VkImageMemoryBarrier2> image_barriers;
@@ -443,7 +513,7 @@ namespace mirai {
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         }
     }
-
+    */
     void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count) {
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,

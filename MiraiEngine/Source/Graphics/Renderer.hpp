@@ -13,7 +13,12 @@ namespace mirai {
     class ShaderHashMap;
     class TextureCache;
     class FrameGraph;
-    class FrameGraphBuilder;
+    class FrameGraphBlackBoard;
+    class Renderer;
+    struct RenderContext {
+        Renderer *renderer;
+        CommandBuffer *command_buffer;
+    };
 
     struct GpuBufferSubAllocation {
         BufferID buffer;
@@ -59,6 +64,7 @@ namespace mirai {
         }
 
         FrameGraph *get_frame_graph() { return frame_graph.get(); }
+        FrameGraphBlackBoard *get_frame_graph_blackboard() { return frame_graph_blackboard.get(); }
 
         // Used to preload shaders
         void set_pipeline_description_file(const std::string &pipeline_description_file) {
@@ -104,7 +110,7 @@ namespace mirai {
         std::unique_ptr<RenderingDevice> device;
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
-        std::unique_ptr<FrameGraphBuilder> frame_graph_builder;
+        std::unique_ptr<FrameGraphBlackBoard> frame_graph_blackboard;
         std::unique_ptr<ShaderHashMap> shader_hashmap;
         std::string pipeline_description_file;
 

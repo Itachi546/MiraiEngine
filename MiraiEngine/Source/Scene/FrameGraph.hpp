@@ -19,6 +19,8 @@ namespace mirai {
         template <typename T>
         const T &get(FrameGraphResourceHandle handle) const;
 
+        std::vector<ResourceAccessDeclaration> get_resource_access_states() const;
+
       private:
         const FrameGraph &frame_graph;
         const PassNode &pass_node;
@@ -54,18 +56,31 @@ namespace mirai {
 
             FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
             FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
-            void read(FrameGraphResourceHandle resource);
-            void write(FrameGraphResourceHandle resource);
+            void read(FrameGraphResourceHandle resource, const AccessDeclaration &access);
+            void write(FrameGraphResourceHandle resource, const AccessDeclaration &access);
             void set_side_effect();
+            void set_compute_pass();
+
+            void present(FrameGraphResourceHandle resource);
 
             FrameGraph *frame_graph;
             uint32_t pass_index;
         };
 
+        TextureID get_present_texture() const {
+            const ResourceNode &resource = resources[present_texture];
+            return resource.get<FrameGraphTexture>().id;
+        }
+
+        ~FrameGraph();
+
       private:
+        friend struct FrameGraphPassResource;
+        friend class CommandBuffer;
         bool disable_resource_aliasing = false;
         std::vector<ResourceNode> resources;
         std::vector<PassNode> passes;
+        FrameGraphResourceHandle present_texture = UINT32_MAX;
     };
 
     template <typename Data, typename Setup, typename Execute>
@@ -87,7 +102,7 @@ namespace mirai {
     template <typename T>
     inline const T &FrameGraphPassResource::get(FrameGraphResourceHandle handle) const {
         assert(pass_node.reads_resource(handle) || pass_node.writes_resource(handle));
-        const ResourceNode *resource = frame_graph.resources[handle];
-        resource->get<T>();
+        const ResourceNode *resource = &frame_graph.resources[handle];
+        return resource->get<T>();
     }
 } // namespace mirai

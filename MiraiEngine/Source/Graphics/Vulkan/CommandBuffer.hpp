@@ -5,10 +5,6 @@
 
 namespace mirai {
     class VulkanRenderingDevice;
-    struct FrameGraphNode;
-    class FrameGraph;
-    struct FrameGraphResource;
-    struct FrameGraphResourceState;
 
     struct TextureBarrierInfo {
         TextureID texture_id;
@@ -31,9 +27,15 @@ namespace mirai {
       public:
         CommandBuffer();
 
-        void begin_render_pass(const FrameGraphNode *node, FrameGraph *frame_graph, Viewport *override_viewport = nullptr);
+        void begin_render_pass(const std::vector<AttachmentInfo> &color_attachments, const std::optional<AttachmentInfo> &depth_attachment, uint32_t render_area_width, uint32_t render_area_height);
 
-        void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
+        void set_viewport(const Viewport &viewport);
+
+        void set_scissor(int x, int y, uint32_t width, uint32_t height);
+
+        void prepare_resources(const std::vector<ResourceAccessDeclaration> &resource_states);
+
+        // void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
 
         void bind_pipeline(PipelineID pipeline);
 
@@ -63,6 +65,8 @@ namespace mirai {
 
         void copy_texture(TextureID dst, TextureID src, uint32_t dst_width, uint32_t dst_height);
 
+        void copy_to_swapchain(TextureID texture);
+
         // Uses VkImageMemoryBarrier2
         void prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count);
 
@@ -86,8 +90,8 @@ namespace mirai {
         void wait();
 
       private:
-        void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
-        void prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
+        // void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
+        // void prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count);
 
         friend class VulkanRenderingDevice;

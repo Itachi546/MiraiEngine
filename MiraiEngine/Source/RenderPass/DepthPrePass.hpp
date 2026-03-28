@@ -1,21 +1,21 @@
-#pragma once
+// #pragma once
 
-#include "Scene/FrameGraph.hpp"
+// #include "Scene/FrameGraph.hpp"
 
-namespace mirai {
-    struct Shader;
-    class DepthPrePass : public FrameGraphRenderer {
-      public:
-        DepthPrePass();
+// namespace mirai {
+//     struct Shader;
+//     class DepthPrePass : public FrameGraphRenderer {
+//       public:
+//         DepthPrePass();
 
-        void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
+//         void initialize(FrameGraph *frame_graph, const FrameGraphNode *node, Renderer *renderer) override;
 
-        void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
+//         void render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) override;
 
-        ~DepthPrePass();
+//         ~DepthPrePass();
 
-      private:
-        Shader *shader;
-        UniformSetID transform_set;
-    };
-} // namespace mirai
+//       private:
+//         Shader *shader;
+//         UniformSetID transform_set;
+//     };
+// } // namespace mirai
