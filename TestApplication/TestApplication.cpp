@@ -4,17 +4,15 @@
 #include "Device/Window.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/TextureCache.hpp"
-#include "Scene/FrameGraph.hpp"
 #include "Graphics/Renderer.hpp"
-#include "RenderPass/RenderPass.hpp"
 #include "Utils/FirstPersonController.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
+#include "FrameGraphInitialization.hpp"
 
 #include "ImGuiService.hpp"
-#include "ImGuiRenderPass.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -31,126 +29,6 @@ class TestApplication : public App {
         scene = nullptr;
     }
 
-    /*
-    void initialize_frame_graph(FrameGraph *frame_graph) {
-        FrameGraphNodeDescription depth_prepass = {
-            .name = "depth_prepass",
-            .enabled = true,
-            .is_compute_pass = false,
-            .outputs = {
-                FrameGraphResourceOutput{
-                    .name = "texture_depth",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .width = 1920,
-                    .height = 1080,
-                    .array_layers = 1,
-                    .format = FORMAT_D32_SFLOAT,
-                    .load_op = LOAD_OP_CLEAR,
-                    .clear_color = Color{1.0f, 0.0f, 0.0f, 1.0f},
-                },
-
-            },
-            .renderer = std::make_shared<DepthPrePass>(),
-        };
-        frame_graph->add_node(depth_prepass);
-
-        FrameGraphNodeDescription forward_pass = {
-            .name = "forward_pass",
-            .enabled = true,
-            .is_compute_pass = false,
-            .inputs = {
-                FrameGraphResourceInput{
-                    .name = "texture_depth",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .load_op = LOAD_OP_LOAD,
-                },
-            },
-            .outputs = {
-                FrameGraphResourceOutput{
-                    .name = "texture_color",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .width = 1920,
-                    .height = 1080,
-                    .array_layers = 1,
-                    .format = FORMAT_B8G8R8A8_UNORM,
-                    .load_op = LOAD_OP_CLEAR,
-                    .clear_color = 0x333333ff,
-                },
-            },
-            .renderer = std::make_shared<ForwardPass>(),
-        };
-        frame_graph->add_node(forward_pass);
-
-        FrameGraphNodeDescription overlay_pass = {
-            .name = "overlay3D",
-            .enabled = true,
-            .is_compute_pass = false,
-            .inputs = {
-                FrameGraphResourceInput{
-                    .name = "texture_depth",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .load_op = LOAD_OP_LOAD,
-                },
-                FrameGraphResourceInput{
-                    .name = "texture_color",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .load_op = LOAD_OP_LOAD,
-                },
-            },
-            .outputs = {
-                FrameGraphResourceOutput{
-                    .name = "texture_color",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
-                },
-            },
-            .renderer = std::make_shared<Overlay3DPass>(),
-        };
-        frame_graph->add_node(overlay_pass);
-
-        FrameGraphNodeDescription swapchain_copy_pass = {
-            .name = "swapchain_copy",
-            .enabled = true,
-            .is_compute_pass = false,
-            .inputs = {
-                FrameGraphResourceInput{
-                    .name = "texture_color",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
-                },
-            },
-            .outputs = {
-                FrameGraphResourceOutput{
-                    .name = "swapchain",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                    .load_op = LOAD_OP_CLEAR,
-                },
-            },
-            .renderer = std::make_shared<SwapchainCopyPass>(),
-        };
-        frame_graph->add_node(swapchain_copy_pass);
-
-        FrameGraphNodeDescription imgui_pass = {
-            .name = "imgui_pass",
-            .enabled = true,
-            .is_compute_pass = false,
-            .inputs = {
-                FrameGraphResourceInput{
-                    .name = "swapchain",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                },
-            },
-            .outputs = {
-                FrameGraphResourceOutput{
-                    .name = "swapchain",
-                    .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
-                    .load_op = LOAD_OP_CLEAR,
-                },
-            },
-            .renderer = std::make_shared<ImGuiRenderPass>(),
-        };
-        frame_graph->add_node(imgui_pass);
-    }
-
-    */
     void start() override {
         ImGuiService::Initialize();
 
@@ -158,22 +36,23 @@ class TestApplication : public App {
         uint32_t height = 1080;
 
         Renderer *renderer = Renderer::get();
+        renderer->set_pipeline_description_file("Assets/forward-pipelines.json");
+
         scene = renderer->get_scene();
 
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/the_sky_is_on_fire_2k.hdr");
-
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
         camera->position = glm::vec3(-18.264, 2.394f, 13.56f);
         camera->rotation = glm::vec3(29.0f, 66.0f, 0.0f);
         camera->set_far_plane(1000.0f);
+
         // Create RenderPass
         FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
         FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
 
-        FinalCompositePass final_composite_pass{frame_graph, board};
-        ImGuiRenderPass imgui_pass{frame_graph, board};
+        initialize_forward_pass(frame_graph, board);
 
         if (global_scene_scale != 1.0f) {
             TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);

@@ -78,7 +78,6 @@ namespace mirai {
 
         TextureID hdri_texture = device->create_texture(&texture_desc, "hdri_texture");
         rendering_utils::copy_texture_immediate(hdri_texture, data.get(), width * height * sizeof(float) * 4);
-        
 
         data.reset();
         data = nullptr;
@@ -102,11 +101,9 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
-        device->begin_debug_utils_label(command_buffer, "HDRI Conversion Pass", nullptr);
-
+        command_buffer->begin_gpu_debug_label("HDRIConversion");
         generate_cubemap(command_buffer, cubemap_shader);
-
-        device->end_debug_utils_label(command_buffer);
+        command_buffer->end_gpu_debug_label();
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
@@ -127,11 +124,9 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
-        device->begin_debug_utils_label(command_buffer, "Procedural Sky Pass", nullptr);
-
+        command_buffer->begin_gpu_debug_label("ProceduralSky");
         generate_cubemap(command_buffer, generate_cubemap_shader);
-
-        device->end_debug_utils_label(command_buffer);
+        command_buffer->end_gpu_debug_label();
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
@@ -149,13 +144,13 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
-        device->begin_debug_utils_label(command_buffer, "Environment Map Pass", nullptr);
+        command_buffer->begin_gpu_debug_label("GenEnvMap");
 
         convolute_diffuse_cubemap(command_buffer, convolute_shader);
         convolute_specular_cubemap(command_buffer, prefilter_shader);
         integrate_brdf_texture(command_buffer, integrate_brdf_shader);
 
-        device->end_debug_utils_label(command_buffer);
+        command_buffer->end_gpu_debug_label();
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 

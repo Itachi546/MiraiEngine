@@ -132,7 +132,7 @@ namespace mirai {
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
-        device->begin_debug_utils_label(command_buffer, "Copy global buffer", nullptr);
+        command_buffer->begin_gpu_debug_label("CopyGlobalBuffer", nullptr);
 
         // Update global transform buffer
         auto transform_components_ptr = component_manager->get_component_array<TransformComponent>();
@@ -179,7 +179,8 @@ namespace mirai {
             command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, &copy_region, 1);
         }
 
-        device->end_debug_utils_label(command_buffer);
+        command_buffer->end_gpu_debug_label();
+
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
 
@@ -315,10 +316,10 @@ namespace mirai {
     }
 
     void Renderer::update() {
+        Camera *camera = scene->get_camera();
         /*
         // Update camera jitter
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
-        Camera *camera = scene->get_camera();
         if (node) {
             ASSERT(node != nullptr);
 
@@ -337,6 +338,7 @@ namespace mirai {
             else
                 camera->set_jitter_factor(glm::vec2(0.0f));
         }
+        */
         scene->update();
 
         main_render_batches.clear();
@@ -347,7 +349,7 @@ namespace mirai {
         std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
             batch.sort();
         });
-
+        /*
         frame_graph->update(this);
 
         FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");

@@ -75,8 +75,14 @@ namespace mirai {
     }
 
     void CommandBuffer::set_viewport(const Viewport &viewport) {
-        VkViewport vk_viewport;
-        std::memcpy(&vk_viewport, &viewport, sizeof(Viewport));
+        VkViewport vk_viewport = {
+            .x = viewport.x,
+            .y = viewport.y + viewport.height,
+            .width = viewport.width,
+            .height = -viewport.height,
+            .minDepth = viewport.min_depth,
+            .maxDepth = viewport.max_depth,
+        };
         vkCmdSetViewport(command_buffer, 0, 1, &vk_viewport);
     }
 
@@ -105,8 +111,16 @@ namespace mirai {
                 VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
                 VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
                 VkImageLayout dst_layout = VkImageLayout(state.declaration->layout);
+
+                bool is_depth_texture = is_depth_format(texture->format);
+                VkPipelineStageFlags2 src_stage_mask = texture->stage_mask;
+
+                // Special case for depth texture
+                if (is_depth_texture && src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+                    src_stage_mask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
                 image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
-                                                                   texture->stage_mask,
+                                                                   src_stage_mask,
                                                                    texture->access_flags,
                                                                    dst_stage,
                                                                    dst_access_flag,
@@ -126,14 +140,6 @@ namespace mirai {
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), memory_barriers.data(), cast_u32(memory_barriers.size()));
     }
 
-    /*
-    // @TODO only call this for the passes that are defined in the framegraph file
-    // Not intended for internal compute pass like in case of blurring the mip levels of bloom or ssao output texture
-    void CommandBuffer::begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph) {
-
-        prepare_pass_resources(frame_graph, node);
-    }
-    */
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id) {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
@@ -143,7 +149,7 @@ namespace mirai {
             vkCmdBindDescriptorSets(command_buffer, pipeline->bind_point, pipeline->pipeline_layout, K_BINDLESS_TEXTURE_SET, 1, &device->bindless_descriptor_set, 0, nullptr);
     }
 
-    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count) {
+    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count) {
         if (uniform_set_count == 0)
             return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
@@ -157,12 +163,12 @@ namespace mirai {
         }
     }
 
-    void CommandBuffer::set_push_constants(PipelineID pipeline_id, PushConstant *push_constants, uint32_t push_constant_count) {
+    void CommandBuffer::set_push_constants(PipelineID pipeline_id, const PushConstant *push_constants, uint32_t push_constant_count) {
         if (push_constant_count == 0)
             return;
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         for (uint32_t i = 0; i < push_constant_count; ++i) {
-            PushConstant *push_constant = &push_constants[i];
+            const PushConstant *push_constant = &push_constants[i];
             vkCmdPushConstants(command_buffer, pipeline->pipeline_layout,
                                VkShaderStageFlags(push_constant->shader_stage),
                                push_constant->offset, push_constant->size, push_constant->data);
@@ -321,6 +327,9 @@ namespace mirai {
                                                       VK_IMAGE_ASPECT_COLOR_BIT);
 
         VulkanTexture *src_texture = device->access_texture(texture);
+        ASSERT_MSG(!is_depth_format(src_texture->format), "Copying depth to swapchain is forbidden");
+
+        // Special case for depth texture
         image_barriers[1] = CreateImageMemoryBarrier2(src_texture->image,
                                                       src_texture->stage_mask,
                                                       src_texture->access_flags,
@@ -462,6 +471,33 @@ namespace mirai {
     void CommandBuffer::wait() {
         VK_CHECK(vkWaitForFences(device->device, 1, &fence, VK_TRUE, UINT64_MAX));
         vkResetFences(device->device, 1, &fence);
+    }
+
+    void CommandBuffer::begin_gpu_debug_label(const char *name, float *colors) {
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
+        VkDebugUtilsLabelEXT label_info = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+            .pLabelName = name,
+        };
+
+        if (colors == nullptr) {
+            label_info.color[0] = 0.0f;
+            label_info.color[1] = 1.0f;
+            label_info.color[2] = 0.0f;
+        } else {
+            label_info.color[0] = colors[0];
+            label_info.color[1] = colors[1];
+            label_info.color[2] = colors[2];
+        }
+        label_info.color[3] = 1.0f;
+        vkCmdBeginDebugUtilsLabelEXT(command_buffer, &label_info);
+#endif
+    }
+
+    void CommandBuffer::end_gpu_debug_label() {
+#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
+        vkCmdEndDebugUtilsLabelEXT(command_buffer);
+#endif
     }
     /*
     void CommandBuffer::prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {

@@ -111,5 +111,12 @@ namespace mirai {
         static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags);
     };
 
-    void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id = 4);
+    struct BatchDrawInfo {
+        RenderBatchType batch_type;
+        Shader *shader;
+        const std::vector<UniformSetID> &bindings;
+        const std::vector<PushConstant> &push_constants;
+    };
+
+    void DrawBatch(CommandBuffer *command_buffer, const std::vector<RenderBatch> &render_batches, const BatchDrawInfo &batch_info);
 } // namespace mirai

@@ -158,40 +158,61 @@ namespace mirai {
         }
     }
 
-    static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
-
-    void DrawBatchIndirect(CommandBuffer *command_buffer, MeshBatch *batch, PipelineID pipeline_id, uint32_t draw_data_set_id) {
-        if (batch->mesh_draw_infos.size() == 0)
-            return;
-
-        RenderingDevice *device = RenderingDevice::get();
-
-        UniformSetID draw_data_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, draw_data_set_id);
-        UniformBinding draw_data_binding = {
-            .resource_id = batch->draw_data_buffer_view.buffer,
-            .buffer_info{
-                .offset = batch->draw_data_buffer_view.offset,
-                .range = batch->draw_data_buffer_view.size,
-            },
-        };
-        device->update_uniform_set(draw_data_set, &draw_data_binding, 1);
-
-        UniformSetID uniform_sets[] = {batch->vertex_binding_set, draw_data_set};
-        command_buffer->set_uniform_sets(pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
+    void DrawBatchIndirect(CommandBuffer *command_buffer, const MeshBatch *batch) {
         command_buffer->set_index_buffer(batch->index_buffer.buffer);
-
         uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
         command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
     }
 
-    void DrawBatch(CommandBuffer *command_buffer, MeshBatch *batch, Shader *shader, uint32_t draw_data_set_id) {
-        switch (shader->get_draw_mode()) {
+    void _DrawBatch(CommandBuffer *command_buffer, const MeshBatch *batch, DrawMode draw_mode) {
+        switch (draw_mode) {
         case DRAWMODE_INDEXED_INDIRECT:
-            DrawBatchIndirect(command_buffer, batch, shader->pipeline_id, draw_data_set_id);
+            DrawBatchIndirect(command_buffer, batch);
             return;
 
         default:
             Log::Fatal(0, "Undefined shader draw mode");
+        }
+    }
+
+    static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
+    const uint32_t DRAW_DATA_SET_ID = 3;
+
+    void DrawBatch(CommandBuffer *command_buffer, const std::vector<RenderBatch> &render_batches, const BatchDrawInfo &batch_info) {
+        for (auto &batch : render_batches) {
+            if (batch.batch_type != batch_info.batch_type)
+                continue;
+
+            ASSERT(batch_info.shader != nullptr);
+            Shader *shader = batch_info.shader;
+            auto &bindings = batch_info.bindings;
+            auto &push_constants = batch_info.push_constants;
+
+            command_buffer->bind_pipeline(shader->pipeline_id);
+            command_buffer->set_uniform_sets(shader->pipeline_id, bindings.data(), cast_u32(bindings.size()));
+            command_buffer->set_push_constants(shader->pipeline_id, push_constants.data(), cast_u32(push_constants.size()));
+
+            for (const auto &mesh_batch : batch.meshes) {
+                UniformSetID draw_data_binding_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, DRAW_DATA_SET_ID);
+                UniformBinding draw_data_binding = {
+                    .resource_id = mesh_batch.draw_data_buffer_view.buffer,
+                    .buffer_info = {
+                        .offset = mesh_batch.draw_data_buffer_view.offset,
+                        .range = mesh_batch.draw_data_buffer_view.size,
+                    },
+                };
+                RenderingDevice::get()->update_uniform_set(draw_data_binding_set, &draw_data_binding, 1);
+
+                UniformSetID mesh_data_sets[] = {
+                    mesh_batch.vertex_binding_set,
+                    draw_data_binding_set,
+                };
+                command_buffer->set_uniform_sets(shader->pipeline_id, mesh_data_sets, cast_u32(std::size(mesh_data_sets)));
+
+                if (mesh_batch.mesh_draw_infos.size() == 0)
+                    continue;
+                _DrawBatch(command_buffer, &mesh_batch, shader->get_draw_mode());
+            }
         }
     }
 } // namespace mirai

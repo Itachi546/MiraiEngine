@@ -36,7 +36,6 @@ namespace mirai {
             },
 
             [](const FinalCompositePassData &data, FrameGraphPassResource &pass_resource, void *context) {
-                RenderingDevice *device = RenderingDevice::get();
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
@@ -44,7 +43,7 @@ namespace mirai {
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
 
                 const FrameGraphTexture &texture = pass_resource.get<FrameGraphTexture>(data.output);
-                device->begin_debug_utils_label(command_buffer, "FinalCompositePass", nullptr);
+                command_buffer->begin_gpu_debug_label("FinalCompositePass");
 
                 const auto &resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -71,7 +70,8 @@ namespace mirai {
 
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");
                 command_buffer->end_render_pass();
-                device->end_debug_utils_label(command_buffer);
+
+                command_buffer->end_gpu_debug_label();
             });
     }
 } // namespace mirai

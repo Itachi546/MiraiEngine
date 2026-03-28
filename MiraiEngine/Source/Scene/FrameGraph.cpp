@@ -227,8 +227,12 @@ namespace mirai {
     }
 
     std::vector<ResourceAccessDeclaration> FrameGraphPassResource::get_resource_access_states() const {
-        std::vector<ResourceAccessDeclaration> result(pass_node.writes.size());
-        for (uint32_t i = 0; i < pass_node.writes.size(); ++i) {
+        uint32_t total_writes = cast_u32(pass_node.writes.size());
+        uint32_t total_reads = cast_u32(pass_node.reads.size());
+
+        std::vector<ResourceAccessDeclaration> result(total_reads + total_writes);
+
+        for (uint32_t i = 0; i < total_writes; ++i) {
             const FrameGraphAccessDeclaration &write = pass_node.writes[i];
             const ResourceNode *resource = &frame_graph.resources[write.resource];
             result[i].resource = std::visit([](const auto &d) { return d.id; }, resource->resource);
@@ -236,12 +240,13 @@ namespace mirai {
             result[i].declaration = &write.access;
         }
 
-        for (uint32_t i = 0; i < pass_node.reads.size(); ++i) {
+        for (uint32_t i = 0; i < total_reads; ++i) {
             const FrameGraphAccessDeclaration &read = pass_node.reads[i];
             const ResourceNode *resource = &frame_graph.resources[read.resource];
-            result[i].resource = std::visit([](const auto &d) { return d.id; }, resource->resource);
-            result[i].resource_type = resource->resource_type;
-            result[i].declaration = &read.access;
+
+            result[total_writes + i].resource = std::visit([](const auto &d) { return d.id; }, resource->resource);
+            result[total_writes + i].resource_type = resource->resource_type;
+            result[total_writes + i].declaration = &read.access;
         }
         return result;
     }

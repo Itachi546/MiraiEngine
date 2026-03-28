@@ -14,7 +14,7 @@ vec3 clip_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
 }
 
 float linearize_depth(float d, float near, float far) {
-    return (near * far) / (far + d * (near - far));
+    return (near * far) / (far - d * (far - near));
 }
 
 vec2 octwarp(vec2 v) {

@@ -1317,31 +1317,6 @@ namespace mirai {
         }
     }
 
-    void VulkanRenderingDevice::begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors) {
-#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
-        VkDebugUtilsLabelEXT label_info = {
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-            .pLabelName = name,
-        };
-
-        if (colors == nullptr) {
-            utils::string_hash_to_colors(name, label_info.color);
-        } else {
-            label_info.color[0] = colors[0];
-            label_info.color[1] = colors[1];
-            label_info.color[2] = colors[2];
-        }
-        label_info.color[3] = 1.0f;
-        vkCmdBeginDebugUtilsLabelEXT(command_buffer->command_buffer, &label_info);
-#endif
-    }
-
-    void VulkanRenderingDevice::end_debug_utils_label(CommandBuffer *command_buffer) {
-#if ENABLE_VALIDATION && ENABLE_DEBUG_LABELS
-        vkCmdEndDebugUtilsLabelEXT(command_buffer->command_buffer);
-#endif
-    }
-
     void VulkanRenderingDevice::add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) {
         std::vector<VkWriteDescriptorSet> write_set(texture_count);
         std::vector<VkDescriptorImageInfo> image_infos(texture_count);
@@ -1642,7 +1617,7 @@ namespace mirai {
 
         CommandBuffer *cb = get_command_buffer(0);
         cb->begin();
-        begin_debug_utils_label(cb, "Create Acceleration Structure", nullptr);
+        cb->begin_gpu_debug_label("CreateBLAS", nullptr);
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
@@ -1661,8 +1636,8 @@ namespace mirai {
             };
             vkCmdCopyAccelerationStructureKHR(cb->command_buffer, &copy_info);
         }
-
-        end_debug_utils_label(cb);
+        cb->end_gpu_debug_label();
+        
         submit_command_buffer_immediate(cb);
         cb->wait();
 

@@ -90,9 +90,6 @@ namespace mirai {
 
         void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) override;
 
-        void begin_debug_utils_label(CommandBuffer *command_buffer, const char *name, float *colors);
-        void end_debug_utils_label(CommandBuffer *command_buffer);
-
         VulkanPipeline *access_pipeline(PipelineID pipeline) {
             return resource_pool_pipelines.access(pipeline);
         }

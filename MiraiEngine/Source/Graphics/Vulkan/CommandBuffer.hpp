@@ -29,19 +29,18 @@ namespace mirai {
 
         void begin_render_pass(const std::vector<AttachmentInfo> &color_attachments, const std::optional<AttachmentInfo> &depth_attachment, uint32_t render_area_width, uint32_t render_area_height);
 
+        // Viewport is automatically corrected to be Y-up when rendering, be careful
         void set_viewport(const Viewport &viewport);
 
         void set_scissor(int x, int y, uint32_t width, uint32_t height);
 
         void prepare_resources(const std::vector<ResourceAccessDeclaration> &resource_states);
 
-        // void begin_compute_pass(const FrameGraphNode *node, FrameGraph *frame_graph);
-
         void bind_pipeline(PipelineID pipeline);
 
-        void set_uniform_sets(PipelineID pipeline_id, UniformSetID *uniform_sets, uint32_t uniform_set_count);
+        void set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count);
 
-        void set_push_constants(PipelineID pipeline, PushConstant *push_constants, uint32_t push_constant_count);
+        void set_push_constants(PipelineID pipeline, const PushConstant *push_constants, uint32_t push_constant_count);
 
         void draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
 
@@ -88,6 +87,10 @@ namespace mirai {
         void begin();
 
         void wait();
+
+        void begin_gpu_debug_label(const char *name, float *colors = nullptr);
+
+        void end_gpu_debug_label();
 
       private:
         // void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
