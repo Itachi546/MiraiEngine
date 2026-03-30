@@ -96,7 +96,7 @@ namespace mirai {
         };
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
 
-        Shader *cubemap_shader = Shader::create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
+        Shader *cubemap_shader = Shader::create_from_file({"SPIRV_HLSL/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
         cubemap_shader->set_custom_bindings(&uniform_set, 1);
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);

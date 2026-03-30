@@ -15,9 +15,9 @@ set(PROJECT_SOURCE_FILES
 
 set(PROJECT_INCLUDE_FILES
     ImGuiService.hpp
-    ImGuiRenderPass.hpp
     Inspector.hpp
     AnimationDebug.hpp
+    FrameGraphInitialization.hpp
 )
 
 add_executable(TestApplication ${PROJECT_SOURCE_FILES} ${PROJECT_INCLUDE_FILES})
@@ -38,4 +38,11 @@ set_property(TARGET TestApplication PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMA
    COMMAND ${CMAKE_COMMAND} -E copy_directory
    ${CMAKE_CURRENT_SOURCE_DIR}/Assets
    ${CMAKE_BINARY_DIR}/Assets
+ )
+
+
+ add_custom_target(run 
+  COMMAND TestApplication
+  DEPENDS TestApplication
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
  )

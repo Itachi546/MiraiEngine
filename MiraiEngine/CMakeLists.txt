@@ -92,7 +92,7 @@ target_compile_options(${TARGET_NAME} PRIVATE
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
 
-add_subdirectory(Shaders/)
+add_subdirectory(ShadersHLSL/)
 add_dependencies(${TARGET_NAME} Shaders)
 
 add_custom_command(TARGET ${TARGET_NAME} 

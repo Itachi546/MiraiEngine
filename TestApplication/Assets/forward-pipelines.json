@@ -17,7 +17,7 @@
     {
         "name": "depth-prepass-shader",
         "shaders": [
-            "SPIRV/depth-prepass.vert.spv"
+            "SPIRV_HLSL/depth-prepass.vert.spv"
         ],
         "state": {
             "pass": "SHADER_PASS_DEPTH_PREPASS",
