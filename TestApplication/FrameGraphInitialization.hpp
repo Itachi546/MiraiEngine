@@ -6,6 +6,7 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Scene/Shader.hpp"
 #include "ImGuiService.hpp"
+#include "Graphics/GPUResource.hpp"
 
 using namespace mirai;
 
@@ -58,33 +59,12 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
         [](const LinearizeDepthPassData &data, FrameGraphPassResource &pass_resource, void *context) {
             RenderContext *ctx = static_cast<RenderContext *>(context);
             CommandBuffer *command_buffer = ctx->command_buffer;
+            Renderer *renderer = ctx->renderer;
 
             std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
             command_buffer->prepare_resources(resource_states);
-
-            UniformLayout layouts[] = {
-                {
-                    .binding = 0,
-                    .binding_type = BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                    .shader_stage = SHADER_STAGE_COMPUTE,
-                },
-                {
-                    .binding = 1,
-                    .binding_type = BINDING_TYPE_STORAGE_IMAGE,
-                    .shader_stage = SHADER_STAGE_COMPUTE,
-                },
-            };
-
-            SamplerDescription sampler_desc = SamplerDescription::create();
-            sampler_desc.min_filter = sampler_desc.mag_filter = FILTER_NEAREST;
-            SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
-
-            UniformSetID uniform_set = command_buffer->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0);
-            UniformBinding bindings[] = {
-                {.resource_id = pass_resource.get<FrameGraphTexture>(data.depth_texture).id, .texture_info = {.sampler = sampler}},
-                {.resource_id = pass_resource.get<FrameGraphTexture>(data.output).id},
-            };
-            RenderingDevice::get()->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
+            command_buffer->bind_resource_heap(renderer->resource_heap.buffer);
+            command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
 
             struct PushConstantData {
                 uint32_t width;
@@ -99,16 +79,18 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             push_constant_data.znear = camera->get_near_plane();
             push_constant_data.zfar = camera->get_far_plane();
 
-            PushConstant push_constant = {
-                .data = &push_constant_data,
-                .offset = 0,
-                .size = sizeof(PushConstantData),
-                .shader_stage = SHADER_STAGE_COMPUTE,
+            DescriptorInfo descriptor_infos[] = {
+                {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
+                {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
             };
+            uint32_t descriptor_index = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
 
             command_buffer->bind_pipeline(data.shader->pipeline_id);
-            command_buffer->set_uniform_sets(data.shader->pipeline_id, &uniform_set, 1);
-            command_buffer->set_push_constants(data.shader->pipeline_id, &push_constant, 1);
+            command_buffer->set_push_data(0, &push_constant_data, sizeof(PushConstantData));
+            command_buffer->set_push_data(sizeof(PushConstantData), &descriptor_index, sizeof(descriptor_index));
+
+            // command_buffer->set_uniform_sets(data.shader->pipeline_id, &uniform_set, 1);
+            // command_buffer->set_push_constants(data.shader->pipeline_id, &push_constant, 1);
 
             uint32_t work_group_x = rendering_utils::get_workgroup_size(push_constant_data.width, 32);
             uint32_t work_group_y = rendering_utils::get_workgroup_size(push_constant_data.height, 32);
@@ -119,7 +101,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
     };
-
+    
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {

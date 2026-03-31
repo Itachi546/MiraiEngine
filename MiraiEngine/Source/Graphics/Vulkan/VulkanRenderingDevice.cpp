@@ -13,7 +13,7 @@
 #define VMA_IMPLEMENTATION
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vma/vk_mem_alloc.h>
-
+#include <variant>
 #include <algorithm>
 
 namespace mirai {
@@ -158,10 +158,12 @@ namespace mirai {
         physical_device = physical_device_infos[max_score_index].physical_device;
 
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-        physical_device_descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
+        descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
 
-        physical_device_properties.pNext = &physical_device_descriptor_heap_properties;
+        physical_device_properties.pNext = &descriptor_heap_properties;
         vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
+
+        resource_descriptor_size = cast_u32(std::max(descriptor_heap_properties.bufferDescriptorSize, descriptor_heap_properties.imageDescriptorSize));
 
         GetDeviceQueueFamilies(physical_device, queue_family_indices);
 
@@ -588,10 +590,11 @@ namespace mirai {
 
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
+        pipeline->pipeline_layout = VK_NULL_HANDLE;
 
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
         pipeline->support_bindless_texture = false;
-
+        /*
         std::vector<VkDescriptorSetLayout> set_layouts(shader.descriptor_sets_info.size());
         for (const auto &descriptor_set : shader.descriptor_sets_info) {
             uint32_t set = descriptor_set.set;
@@ -634,16 +637,64 @@ namespace mirai {
         };
 
         VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_create_info, nullptr, &pipeline->pipeline_layout));
+        */
+        std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
+        mappings.reserve(16);
+
+        // Compute shader should be limited to single push constant block
+        ASSERT(shader.push_constants_info.size() == 1);
+        uint32_t push_constants_size = 0;
+
+        for (auto &entry : shader.push_constants_info) {
+            push_constants_size = std::max(push_constants_size, entry.second.offset + entry.second.size);
+        }
+
+        uint32_t descriptorOffset = 0;
+        for (const auto &set : shader.descriptor_sets_info) {
+            for (const auto &binding : set.bindings) {
+                VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
+                mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+                mapping.pNext = nullptr;
+                mapping.descriptorSet = set.set;
+                mapping.firstBinding = binding.binding;
+                mapping.bindingCount = 1;
+                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+                mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
+
+                mapping.sourceData.pushIndex.heapOffset = descriptorOffset * resource_descriptor_size;
+                mapping.sourceData.pushIndex.pushOffset = push_constants_size;
+                mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
+                mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
+                mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
+
+                descriptorOffset++;
+            }
+        }
+
+        VkShaderDescriptorSetAndBindingMappingInfoEXT binding_mapping_info = {
+            .sType = VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT,
+            .pNext = nullptr,
+            .mappingCount = cast_u32(mappings.size()),
+            .pMappings = mappings.data(),
+        };
+
+        VkPipelineCreateFlags2CreateInfo pipeline_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+        };
 
         VkComputePipelineCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            .pNext = &pipeline_create_info,
             .stage = {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = &binding_mapping_info,
                 .stage = shader.shader_stage,
                 .module = shader.shader,
                 .pName = "main",
             },
-            .layout = pipeline->pipeline_layout,
+            .layout = VK_NULL_HANDLE,
         };
 
         VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
@@ -653,19 +704,78 @@ namespace mirai {
         return PipelineID{pipeline_id};
     }
 
-    uint32_t VulkanRenderingDevice::calculate_resource_descriptors_size(uint32_t descriptor_count) {
-        size_t max_resource_descriptor_size = std::max(physical_device_descriptor_heap_properties.bufferDescriptorSize,
-                                                       physical_device_descriptor_heap_properties.imageDescriptorSize);
-        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * max_resource_descriptor_size + physical_device_descriptor_heap_properties.minResourceHeapReservedRange,
-                                                      physical_device_descriptor_heap_properties.resourceHeapAlignment));
-        ASSERT(aligned_size <= physical_device_descriptor_heap_properties.maxResourceHeapSize);
+    void VulkanRenderingDevice::write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) {
+
+        VkImageViewCreateInfo image_view_create_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        std::variant<VkImageDescriptorInfoEXT, VkDeviceAddressRangeEXT> data;
+        VkResourceDescriptorInfoEXT descriptor_resource_info = {
+            .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+            .pNext = nullptr,
+        };
+
+        switch (descriptor_info.type) {
+        case DescriptorType::StorageImage:
+        case DescriptorType::SampledImage: {
+            VulkanTexture *texture = resource_pool_textures.access(descriptor_info.resource);
+            image_view_create_info.image = texture->image;
+            image_view_create_info.viewType = texture->image_view_type;
+            image_view_create_info.format = texture->format;
+            image_view_create_info.components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A};
+            image_view_create_info.subresourceRange = {
+                .aspectMask = texture->image_aspect,
+                .levelCount = texture->mip_levels,
+                .layerCount = texture->array_layers,
+            };
+
+            VkImageDescriptorInfoEXT &image_info = std::get<VkImageDescriptorInfoEXT>(data);
+            image_info.sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT;
+            image_info.pNext = nullptr;
+            image_info.pView = &image_view_create_info;
+            image_info.layout = descriptor_info.type == SampledImage ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
+            descriptor_resource_info.type = descriptor_info.type == SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            descriptor_resource_info.data.pImage = &image_info;
+            break;
+        }
+
+        case DescriptorType::UniformBuffer:
+        case DescriptorType::StorageBuffer: {
+            /*
+            descriptor_type = descriptor_type == DescriptorType::StorageBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            VkDeviceAddressRangeEXT &buffer_info = std::get<VkDeviceAddressRangeEXT>(data);
+            buffer_info.address = address;
+            buffer_info.size = size;
+            */
+            ASSERT_MSG(0, "Not implemented");
+            break;
+        }
+        default:
+            ASSERT_MSG(0, "Unknown descriptor type");
+        }
+
+        VkHostAddressRangeEXT descriptor_range = {descriptor, descriptor_size};
+        VK_CHECK(vkWriteResourceDescriptorsEXT(device, 1, &descriptor_resource_info, &descriptor_range));
+    }
+
+    uint32_t VulkanRenderingDevice::get_resource_descriptor_size() const {
+        return resource_descriptor_size;
+    }
+
+    uint32_t VulkanRenderingDevice::get_sampler_descriptor_size() const {
+        return cast_u32(descriptor_heap_properties.samplerDescriptorSize);
+    }
+
+    uint32_t VulkanRenderingDevice::calculate_resource_descriptors_size(uint32_t descriptor_count) const {
+        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * resource_descriptor_size + descriptor_heap_properties.minResourceHeapReservedRange,
+                                                      descriptor_heap_properties.resourceHeapAlignment));
+        ASSERT(aligned_size <= descriptor_heap_properties.maxResourceHeapSize);
         return aligned_size;
     }
 
-    uint32_t VulkanRenderingDevice::calculate_sampler_descriptors_size(uint32_t descriptor_count) {
-        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * physical_device_descriptor_heap_properties.samplerDescriptorSize + physical_device_descriptor_heap_properties.minSamplerHeapReservedRange,
-                                                      physical_device_descriptor_heap_properties.samplerHeapAlignment));
-        assert(aligned_size <= physical_device_descriptor_heap_properties.maxSamplerHeapSize);
+    uint32_t VulkanRenderingDevice::calculate_sampler_descriptors_size(uint32_t descriptor_count) const {
+        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * descriptor_heap_properties.samplerDescriptorSize + descriptor_heap_properties.minSamplerHeapReservedRange,
+                                                      descriptor_heap_properties.samplerHeapAlignment));
+        assert(aligned_size <= descriptor_heap_properties.maxSamplerHeapSize);
         return aligned_size;
     }
 
@@ -800,7 +910,7 @@ namespace mirai {
             writeSet.dstSet = vk_set->descriptor_set;
 
         vkUpdateDescriptorSets(device, binding_count, write_sets.data(), 0, nullptr);
-    }
+    } // namespace mirai
 
     VkBuffer VulkanRenderingDevice::create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name) {
         ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
@@ -939,7 +1049,7 @@ namespace mirai {
         vkCmdResetQueryPool(command_buffer->command_buffer, vk_query->query_pool, start, count);
     }
 
-    float VulkanRenderingDevice::get_timestamp_period() {
+    float VulkanRenderingDevice::get_timestamp_period() const {
         return physical_device_properties.properties.limits.timestampPeriod;
     }
     /*
@@ -1282,7 +1392,8 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
-            vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
+            if (pipeline->pipeline_layout != VK_NULL_HANDLE)
+                vkDestroyPipelineLayout(device, pipeline->pipeline_layout, nullptr);
             vkDestroyPipeline(device, pipeline->pipeline, nullptr);
             resource_pool_pipelines.release(pipeline_ids[i]);
         }
@@ -1690,7 +1801,7 @@ namespace mirai {
         create_tlas(acceleration_structure.tlas_instance_buffer, mesh_count, acceleration_structure.tlas, acceleration_structure.tlas_buffer);
     }
 
-    uint32_t VulkanRenderingDevice::get_swapchain_image_count() {
+    uint32_t VulkanRenderingDevice::get_swapchain_image_count() const {
         return cast_u32(swapchain->images.size());
     }
 

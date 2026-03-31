@@ -124,6 +124,7 @@ namespace mirai {
         device_features12.descriptorBindingVariableDescriptorCount = true;
         device_features12.runtimeDescriptorArray = true;
         device_features12.shaderSampledImageArrayNonUniformIndexing = true;
+        device_features12.uniformAndStorageBuffer8BitAccess = true;
 
         VkPhysicalDeviceVulkan13Features device_features13 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
         device_features13.dynamicRendering = true;

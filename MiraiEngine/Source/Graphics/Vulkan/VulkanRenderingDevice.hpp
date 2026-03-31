@@ -39,8 +39,13 @@ namespace mirai {
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(const ShaderProgram &shader_file, const std::string &debug_name = "") override;
 
-        uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count);
-        uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count);
+        void write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) override;
+
+        uint32_t get_resource_descriptor_size() const;
+        uint32_t get_sampler_descriptor_size() const;
+
+        uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const;
+        uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const;
 
         UniformSetID create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name);
         UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") override;
@@ -56,7 +61,7 @@ namespace mirai {
         void resolve_query(QueryID query, uint64_t *resolve_output, uint32_t start, uint32_t count) override;
         void reset_query(CommandBuffer *command_buffer, QueryID query, uint32_t start, uint32_t count) override;
 
-        float get_timestamp_period() override;
+        float get_timestamp_period() const override;
 
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
         SamplerID create_sampler(SamplerDescription *desc);
@@ -116,15 +121,15 @@ namespace mirai {
 
         // Raytracing utilities
         void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count);
-        bool supports_raytracing() override {
+        bool supports_raytracing() const override {
             return has_rt_support;
         }
 
-        uint32_t get_current_frame() override {
+        uint32_t get_current_frame() const override {
             return current_frame;
         }
 
-        uint32_t get_swapchain_image_count() override;
+        uint32_t get_swapchain_image_count() const override;
 
         ~VulkanRenderingDevice();
 
@@ -173,7 +178,10 @@ namespace mirai {
         bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
-        VkPhysicalDeviceDescriptorHeapPropertiesEXT physical_device_descriptor_heap_properties;
+
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties;
+        uint32_t resource_descriptor_size = 0;
+
         VmaAllocator vma_allocator;
 
         // Bindless descriptor set

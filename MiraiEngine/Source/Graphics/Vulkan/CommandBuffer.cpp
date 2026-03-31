@@ -149,6 +149,37 @@ namespace mirai {
             vkCmdBindDescriptorSets(command_buffer, pipeline->bind_point, pipeline->pipeline_layout, K_BINDLESS_TEXTURE_SET, 1, &device->bindless_descriptor_set, 0, nullptr);
     }
 
+    void CommandBuffer::bind_resource_heap(BufferID buffer) {
+        VulkanBuffer *vk_buffer = device->access_buffer(buffer);
+        VkBindHeapInfoEXT bind_info = {
+            .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+            .pNext = nullptr,
+            .heapRange = {
+                .address = vk_buffer->device_address,
+                .size = vk_buffer->size,
+            },
+            .reservedRangeOffset = vk_buffer->size - device->descriptor_heap_properties.minResourceHeapReservedRange,
+            .reservedRangeSize = device->descriptor_heap_properties.minResourceHeapReservedRange,
+        };
+
+        vkCmdBindResourceHeapEXT(command_buffer, &bind_info);
+    }
+
+    void CommandBuffer::bind_sampler_heap(BufferID buffer) {
+        VulkanBuffer *vk_buffer = device->access_buffer(buffer);
+        VkBindHeapInfoEXT bind_info = {
+            .sType = VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT,
+            .pNext = nullptr,
+            .heapRange = {
+                .address = vk_buffer->device_address,
+                .size = vk_buffer->size,
+            },
+            .reservedRangeOffset = vk_buffer->size - device->descriptor_heap_properties.minSamplerHeapReservedRange,
+            .reservedRangeSize = device->descriptor_heap_properties.minSamplerHeapReservedRange,
+        };
+        vkCmdBindSamplerHeapEXT(command_buffer, &bind_info);
+    }
+
     void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count) {
         if (uniform_set_count == 0)
             return;
@@ -173,6 +204,19 @@ namespace mirai {
                                VkShaderStageFlags(push_constant->shader_stage),
                                push_constant->offset, push_constant->size, push_constant->data);
         }
+    }
+
+    void CommandBuffer::set_push_data(uint32_t offset, void *push_data, uint32_t push_data_size) {
+        VkPushDataInfoEXT push_data_info = {
+            .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
+            .pNext = nullptr,
+            .offset = offset,
+            .data = {
+                .address = push_data,
+                .size = push_data_size,
+            },
+        };
+        vkCmdPushDataEXT(command_buffer, &push_data_info);
     }
 
     void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {

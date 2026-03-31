@@ -79,12 +79,22 @@ namespace mirai {
         buffer_desc.usage_flags = BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_CPU;
 
+        // Allocate resource heap
         uint32_t resource_descriptor_count = AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT + AppSettings::K_MAX_FRAME_IN_FLIGHTS * AppSettings::K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT;
         buffer_desc.size = device->calculate_resource_descriptors_size(resource_descriptor_count);
-        global_resource_descriptor_heap = device->create_buffer(&buffer_desc, "global_resource_heap");
+        resource_heap.buffer = device->create_buffer(&buffer_desc, "global_resource_heap");
+        resource_heap.ptr = device->map_buffer(resource_heap.buffer);
+        resource_heap.descriptor_size = device->get_resource_descriptor_size();
+        resource_heap.size = buffer_desc.size;
+        resource_heap.offset = 0;
+        resource_heap.new_frame(device->get_current_frame());
 
+        // Allocate sampler heap
         buffer_desc.size = device->calculate_sampler_descriptors_size(AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT);
-        global_sampler_descriptor_heap = device->create_buffer(&buffer_desc, "global_sampler_heap");
+        sampler_heap.buffer = device->create_buffer(&buffer_desc, "global_sampler_heap");
+        sampler_heap.ptr = device->map_buffer(sampler_heap.buffer);
+        sampler_heap.descriptor_size = device->get_sampler_descriptor_size();
+        sampler_heap.size = buffer_desc.size;
 
         prev_frame_VP = scene->get_camera()->get_view_projection_transform();
         prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
@@ -330,6 +340,9 @@ namespace mirai {
     }
 
     void Renderer::update() {
+        uint32_t current_frame_index = device->get_current_frame();
+        resource_heap.new_frame(device->get_current_frame());
+
         Camera *camera = scene->get_camera();
         /*
         // Update camera jitter
@@ -524,6 +537,7 @@ namespace mirai {
 
             device->queue_command_buffer(cb);
         }
+
         miProfiler::EndFrame();
 
         device->present();
@@ -536,8 +550,8 @@ namespace mirai {
             index_buffer_allocator.buffer,
             global_material_buffer,
             global_transform_buffer,
-            global_resource_descriptor_heap,
-            global_sampler_descriptor_heap,
+            resource_heap.buffer,
+            sampler_heap.buffer,
         };
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         shader_hashmap->destroy();

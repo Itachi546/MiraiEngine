@@ -513,6 +513,18 @@ namespace mirai {
         };
     };
 
+    enum DescriptorType {
+        SampledImage,
+        StorageImage,
+        UniformBuffer,
+        StorageBuffer
+    };
+
+    struct DescriptorInfo {
+        DescriptorType type;
+        ID resource;
+    };
+
     struct BufferCopyRegion {
         uint64_t src_offset;
         uint64_t dst_offset;
@@ -572,8 +584,13 @@ namespace mirai {
 
         virtual PipelineID create_compute_pipeline(const ShaderProgram &shader, const std::string &debug_name) = 0;
 
-        virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) = 0;
-        virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) = 0;
+        virtual void write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) = 0;
+
+        virtual uint32_t get_resource_descriptor_size() const = 0;
+        virtual uint32_t get_sampler_descriptor_size() const = 0;
+
+        virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const = 0;
+        virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const = 0;
 
         virtual UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") = 0;
         virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;
@@ -588,7 +605,7 @@ namespace mirai {
         virtual void resolve_query(QueryID query, uint64_t *resolve_output, uint32_t start, uint32_t count) = 0;
         virtual void reset_query(CommandBuffer *command_buffer, QueryID query, uint32_t start, uint32_t count) = 0;
 
-        virtual float get_timestamp_period() = 0;
+        virtual float get_timestamp_period() const = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
         virtual SamplerID create_sampler(SamplerDescription *sampler_desc) = 0;
@@ -609,19 +626,19 @@ namespace mirai {
         virtual void destroy_textures(TextureID *textures, uint32_t count) = 0;
         virtual void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) = 0;
 
-        uint64_t get_memory_usage() {
+        uint64_t get_memory_usage() const {
             return total_memory_usage;
         }
 
-        virtual bool supports_raytracing() {
+        virtual bool supports_raytracing() const {
             return false;
         }
 
         // Raytracing stuff
         virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
 
-        virtual uint32_t get_current_frame() = 0;
-        virtual uint32_t get_swapchain_image_count() = 0;
+        virtual uint32_t get_current_frame() const = 0;
+        virtual uint32_t get_swapchain_image_count() const = 0;
 
         virtual ~RenderingDevice() = default;
 

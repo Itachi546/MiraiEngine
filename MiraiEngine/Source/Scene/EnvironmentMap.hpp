@@ -62,7 +62,7 @@ namespace mirai {
         uint32_t brdf_texture_size = 512;
         uint32_t prefilter_num_mip_levels = 7;
 
-        void generate_cubemap(CommandBuffer *command_buffer, Shader *cubemap_shader);
+        void generate_cubemap(CommandBuffer *command_buffer, Shader *cubemap_shader, uint32_t descriptor_index);
         void convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader);
         void convolute_specular_cubemap(CommandBuffer *command_buffer, Shader *prefilter_shader);
         void integrate_brdf_texture(CommandBuffer *command_buffer, Shader *integrate_brdf_shader);

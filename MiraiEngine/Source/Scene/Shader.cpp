@@ -11,8 +11,8 @@ namespace mirai {
     }
     void Shader::bind(CommandBuffer *command_buffer) {
         command_buffer->bind_pipeline(pipeline_id);
-        if (bindings.size() > 0)
-            command_buffer->set_uniform_sets(pipeline_id, bindings.data(), cast_u32(bindings.size()));
+        // if (bindings.size() > 0)
+        // command_buffer->set_uniform_sets(pipeline_id, bindings.data(), cast_u32(bindings.size()));
     }
     /*
     void MaterialShader::create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files) {
