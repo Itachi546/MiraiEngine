@@ -36,6 +36,7 @@ namespace mirai {
         VmaAllocation allocation;
         uint32_t size;
         void *buffer_ptr;
+        VkDeviceSize device_address;
     };
 
     struct VulkanShader {

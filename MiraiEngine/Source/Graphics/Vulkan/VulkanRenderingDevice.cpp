@@ -846,6 +846,14 @@ namespace mirai {
         buffer->size = buffer_description->size;
         buffer->buffer_ptr = nullptr;
 
+        if (HAS_FLAG(buffer_description->usage_flags, BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+            VkBufferDeviceAddressInfo buffer_address_info = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                .pNext = nullptr,
+                .buffer = vk_buffer,
+            };
+            buffer->device_address = vkGetBufferDeviceAddress(device, &buffer_address_info);
+        }
         return BufferID{buffer_id};
     }
 
@@ -1370,8 +1378,6 @@ namespace mirai {
         VulkanBuffer *ib = resource_pool_buffers.access(index_buffer.buffer);
 
         uint32_t num_vertices = vertex_buffer.count;
-        VkDeviceAddress vertex_address = GetBufferDeviceAddress(device, vb->buffer) + vertex_buffer.offset;
-        VkDeviceAddress index_address = GetBufferDeviceAddress(device, ib->buffer) + index_buffer.offset;
 
         geometry = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -1380,11 +1386,11 @@ namespace mirai {
                 .triangles = {
                     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
                     .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-                    .vertexData = {.deviceAddress = vertex_address},
+                    .vertexData = {.deviceAddress = vb->device_address},
                     .vertexStride = vertex_buffer.stride,
                     .maxVertex = num_vertices - 1,
                     .indexType = VK_INDEX_TYPE_UINT32,
-                    .indexData = {.deviceAddress = index_address},
+                    .indexData = {.deviceAddress = ib->device_address},
                     .transformData = {},
                 },
             },
@@ -1449,14 +1455,12 @@ namespace mirai {
         };
         BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
         VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
-        VkDeviceAddress scratch_buffer_address = GetBufferDeviceAddress(device, scratch_buffer->buffer);
 
         buffer_desc.size = cast_u32(blas_buffer_size);
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         out_blas_buffer_id = create_buffer(&buffer_desc, "build_blas_buffer");
 
         VulkanBuffer *blas_buffer = resource_pool_buffers.access(out_blas_buffer_id);
-        VkDeviceAddress blas_buffer_address = GetBufferDeviceAddress(device, blas_buffer->buffer);
 
         // Create acceleration structures
         for (uint32_t i = 0; i < mesh_count; ++i) {
@@ -1499,7 +1503,7 @@ namespace mirai {
             size_t scratch_offset = 0;
             size_t i = start;
             while (i < mesh_count && scratch_offset + scratch_sizes[i] <= scratch_buffer_size) {
-                build_infos[i].scratchData.deviceAddress = scratch_buffer_address + scratch_offset;
+                build_infos[i].scratchData.deviceAddress = scratch_buffer->device_address + scratch_offset;
                 build_infos[i].dstAccelerationStructure = out_blas[i];
 
                 build_range_ptrs[i] = &build_ranges[i];
@@ -1537,12 +1541,11 @@ namespace mirai {
     void VulkanRenderingDevice::create_tlas(BufferID instance_buffer_id, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id) {
         // @TODO implement
         VulkanBuffer *instance_buffer = resource_pool_buffers.access(instance_buffer_id);
-        VkDeviceAddress instance_buffer_device_ptr = GetBufferDeviceAddress(device, instance_buffer->buffer);
 
         VkAccelerationStructureGeometryKHR geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
         geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
         geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-        geometry.geometry.instances.data.deviceAddress = instance_buffer_device_ptr;
+        geometry.geometry.instances.data.deviceAddress = instance_buffer->device_address;
 
         VkAccelerationStructureBuildGeometryInfoKHR build_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR};
         build_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
@@ -1565,7 +1568,6 @@ namespace mirai {
 
         BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
         VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
-        VkDeviceAddress scratch_buffer_address = GetBufferDeviceAddress(device, scratch_buffer->buffer);
 
         buffer_desc.size = cast_u32(size_info.accelerationStructureSize);
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -1585,7 +1587,7 @@ namespace mirai {
 
         build_info.dstAccelerationStructure = tlas;
         build_info.srcAccelerationStructure = tlas;
-        build_info.scratchData.deviceAddress = scratch_buffer_address;
+        build_info.scratchData.deviceAddress = scratch_buffer->device_address;
 
         VkAccelerationStructureBuildRangeInfoKHR build_range = {};
         build_range.primitiveCount = primitive_count;
@@ -1676,9 +1678,6 @@ namespace mirai {
         acceleration_structure.tlas_instance_buffer = create_buffer(&buffer_desc, "tlas_instance_buffer");
         void *instance_buffer_ptr = map_buffer(acceleration_structure.tlas_instance_buffer);
 
-        // Populate TLAS Instance Buffer
-        VulkanBuffer *buffer = resource_pool_buffers.access(acceleration_structure.blas_buffer);
-        VkDeviceAddress blas_device_address = GetBufferDeviceAddress(device, buffer->buffer);
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureInstanceKHR instance_info{};
             std::memcpy(&instance_info.transform.matrix[0][0], &meshes[i].transform[0][0], sizeof(float) * 12);
@@ -1686,7 +1685,7 @@ namespace mirai {
             instance_info.mask = 0xFF;
             instance_info.instanceShaderBindingTableRecordOffset = 0;
             instance_info.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-            instance_info.accelerationStructureReference = blas_device_address + blas_compacted_offsets[i];
+            instance_info.accelerationStructureReference = blas_buffer->device_address + blas_compacted_offsets[i];
             std::memcpy(reinterpret_cast<VkAccelerationStructureInstanceKHR *>(instance_buffer_ptr) + i, &instance_info, sizeof(VkAccelerationStructureInstanceKHR));
         }
 
