@@ -36,10 +36,8 @@ namespace mirai {
         VkQueue get_device_queue(QueueType queue_type) { return device_queues[queue_type]; }
         uint32_t get_queue_family_indices(QueueType queue_type) { return queue_family_indices[queue_type]; }
 
-        ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name = "") override;
-
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
-        PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name = "") override;
+        PipelineID create_compute_pipeline(const ShaderProgram &shader_file, const std::string &debug_name = "") override;
 
         uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count);
         uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count);
@@ -80,8 +78,6 @@ namespace mirai {
         void wait() override;
 
         void present() override;
-
-        void destroy_shaders(ShaderID *shaders, uint32_t count) override;
 
         void destroy_pipelines(PipelineID *pipelines, uint32_t count) override;
 
@@ -163,7 +159,6 @@ namespace mirai {
         std::vector<const char *> requested_validation_layers;
         std::vector<const char *> requested_device_extensions;
 
-        ResourcePool<VulkanShader> resource_pool_shaders;
         ResourcePool<VulkanPipeline> resource_pool_pipelines;
         ResourcePool<VulkanTexture> resource_pool_textures;
         ResourcePool<VulkanBuffer> resource_pool_buffers;

@@ -42,8 +42,8 @@ namespace mirai {
     struct VulkanShader {
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
-        std::vector<ShaderReflectionDescriptorSetInfo> descriptor_sets;
-        HashMap<uint32_t, ShaderReflectionPushConstant> push_constants;
+        std::vector<ShaderReflectionDescriptorSetInfo> descriptor_sets_info;
+        HashMap<uint32_t, ShaderReflectionPushConstant> push_constants_info;
         bool support_bindless_texture;
     };
 

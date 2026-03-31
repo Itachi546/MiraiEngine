@@ -30,7 +30,7 @@ namespace mirai {
                 vk_binding.shader_stage = ShaderStage(reflection.shader_stage);
             }
             if (vk_set.bindings.size() > 0)
-                shader->descriptor_sets.push_back(std::move(vk_set));
+                shader->descriptor_sets_info.push_back(std::move(vk_set));
         }
 
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {
@@ -53,12 +53,13 @@ namespace mirai {
                 .field_info = field_info,
             };
             uint32_t hash = utils::djb2_hash_string(push_constant.type_description->type_name);
-            shader->push_constants.insert(std::make_pair(hash, std::move(vk_push_constant)));
+            shader->push_constants_info.insert(std::make_pair(hash, std::move(vk_push_constant)));
         }
         shader->shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
     }
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size_in_bytes) {
+        shader->support_bindless_texture = false;
         parse_shader_reflection(shader, code, code_size_in_bytes);
 
         VkShaderModuleCreateInfo create_info = {
@@ -128,8 +129,8 @@ namespace mirai {
     void DestroyShader(VulkanShader *shader, VkDevice device) {
         vkDestroyShaderModule(device, shader->shader, nullptr);
         shader->shader_stage = VkShaderStageFlagBits(0);
-        shader->descriptor_sets.clear();
-        shader->push_constants.clear();
+        shader->descriptor_sets_info.clear();
+        shader->push_constants_info.clear();
         shader->shader = VK_NULL_HANDLE;
     }
 } // namespace mirai

@@ -39,7 +39,6 @@ namespace mirai {
     };
 
     DEFINE_ID(Pipeline)
-    DEFINE_ID(Shader)
     DEFINE_ID(Texture)
     DEFINE_ID(Buffer)
     DEFINE_ID(UniformSet)
@@ -248,20 +247,23 @@ namespace mirai {
         uint32_t attribute_count;
     };
 
+    struct ShaderProgram {
+        std::vector<uint8_t> byte_code;
+    };
+
     struct PipelineDescription {
-        ShaderID *shaders;
-        uint32_t shader_count;
+        const std::vector<ShaderProgram> &shader_programs;
 
         Topology topology = TOPOLOGY_TRIANGLE_LIST;
         RasterizationState *rasterization_state;
         DepthState *depth_state;
 
-        VertexBindingDescription *vertex_description = nullptr;
+        VertexBindingDescription *vertex_description;
 
         uint32_t color_attachment_count;
         BlendState *blend_state;
         Format *color_attachment_formats;
-        Format depth_attachment_format = FORMAT_UNDEFINED;
+        Format depth_attachment_format;
     };
 
     enum TextureType {
@@ -566,11 +568,9 @@ namespace mirai {
 
         virtual void present() = 0;
 
-        virtual ShaderID create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name = "") = 0;
-
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
-        virtual PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name) = 0;
+        virtual PipelineID create_compute_pipeline(const ShaderProgram &shader, const std::string &debug_name) = 0;
 
         virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) = 0;
         virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) = 0;
@@ -603,7 +603,6 @@ namespace mirai {
 
         virtual void wait() = 0;
 
-        virtual void destroy_shaders(ShaderID *shaders, uint32_t count) = 0;
         virtual void destroy_pipelines(PipelineID *pipelines, uint32_t count) = 0;
         virtual void destroy_buffers(BufferID *buffers, uint32_t count) = 0;
         virtual void destroy_queries(QueryID *queries, uint32_t count) = 0;
@@ -632,7 +631,6 @@ namespace mirai {
     };
 
     namespace rendering_utils {
-        ShaderID create_shader_module_from_file(const std::string &filename);
         void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
         inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;

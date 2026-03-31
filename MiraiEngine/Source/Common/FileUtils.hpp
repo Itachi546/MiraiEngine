@@ -3,11 +3,13 @@
 #include <string>
 #include <optional>
 #include <memory>
+#include <vector>
 
 namespace mirai {
 namespace utils {
-    std::optional<std::string> read_file(const std::string &filename);
-    std::optional<std::string> read_file_binary(const std::string &filename);
+    std::string read_file(const std::string &filename);
+    std::vector<std::uint8_t> read_file_binary(const std::string &filename);
+
     std::string get_file_extension(const std::string &filename);
     std::string get_filename(const std::string &filename);
     std::string trim_file_extension(const std::string &filename);

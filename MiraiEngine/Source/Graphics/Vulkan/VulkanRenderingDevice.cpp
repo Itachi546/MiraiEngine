@@ -76,7 +76,6 @@ namespace mirai {
     }
 
     VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
-                                                     resource_pool_shaders(32, "Shader"),
                                                      resource_pool_textures(1024, "Texture"),
                                                      resource_pool_buffers(256, "Buffer"),
                                                      resource_pool_uniform_sets(256, "UniformSet"),
@@ -340,29 +339,28 @@ namespace mirai {
         return SamplerID{hash};
     }
 
-    ShaderID VulkanRenderingDevice::create_shader(uint32_t *code, uint32_t code_size_in_bytes, const std::string &debug_name) {
-        uint32_t shader_id = resource_pool_shaders.obtain();
-        VulkanShader *shader = resource_pool_shaders.access(shader_id);
-        shader->support_bindless_texture = false;
-        CreateShader(shader, device, code, code_size_in_bytes);
-        set_debug_marker_object_name(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)shader->shader, debug_name.c_str());
-        return ShaderID{shader_id};
-    }
-
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
-        std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(pipeline_description->shader_count);
+        uint32_t shader_count = cast_u32(pipeline_description->shader_programs.size());
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(shader_count);
         HashMap<uint32_t, std::vector<ShaderReflectionDescriptorBinding>> descriptor_sets_map;
         HashMap<uint32_t, ShaderReflectionPushConstant> push_constants_map;
+        std::vector<VulkanShader> shader_modules;
+
         bool support_bindless_texture = false;
-        for (uint32_t i = 0; i < pipeline_description->shader_count; ++i) {
-            VulkanShader *shader = resource_pool_shaders.access(pipeline_description->shaders[i]);
+        for (uint32_t i = 0; i < shader_count; ++i) {
+            const ShaderProgram &shader_program = pipeline_description->shader_programs[i];
+            const uint32_t *spirv = reinterpret_cast<const uint32_t *>(shader_program.byte_code.data());
+
+            VulkanShader &shader = shader_modules.emplace_back();
+            CreateShader(&shader, device, spirv, cast_u32(shader_program.byte_code.size()));
+
             shader_stage_create_infos[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shader_stage_create_infos[i].module = shader->shader;
-            shader_stage_create_infos[i].stage = shader->shader_stage;
+            shader_stage_create_infos[i].module = shader.shader;
+            shader_stage_create_infos[i].stage = shader.shader_stage;
             shader_stage_create_infos[i].pName = "main";
 
-            if (shader->descriptor_sets.size() > 0) {
-                for (auto &set : shader->descriptor_sets) {
+            if (shader.descriptor_sets_info.size() > 0) {
+                for (auto &set : shader.descriptor_sets_info) {
                     auto found = descriptor_sets_map.find(set.set);
                     if (found != descriptor_sets_map.end()) {
                         // Merge the bindings if the binding index is same
@@ -371,10 +369,10 @@ namespace mirai {
                         descriptor_sets_map.insert(std::make_pair(set.set, set.bindings));
                 }
             }
-            MergePushConstants(push_constants_map, shader->push_constants);
+            MergePushConstants(push_constants_map, shader.push_constants_info);
 
-            if (shader->support_bindless_texture) {
-                ASSERT(shader->shader_stage == VK_SHADER_STAGE_FRAGMENT_BIT);
+            if (shader.support_bindless_texture) {
+                ASSERT(shader.shader_stage == VK_SHADER_STAGE_FRAGMENT_BIT);
                 support_bindless_texture = true;
             }
         }
@@ -560,7 +558,7 @@ namespace mirai {
         VkGraphicsPipelineCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .pNext = &rendering_info,
-            .stageCount = pipeline_description->shader_count,
+            .stageCount = shader_count,
             .pStages = shader_stage_create_infos.data(),
             .pVertexInputState = &vertex_input_state,
             .pInputAssemblyState = &input_assembly_state,
@@ -577,20 +575,25 @@ namespace mirai {
         VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
         set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
 
+        for (auto &shader : shader_modules)
+            DestroyShader(&shader, device);
+
         return PipelineID{pipeline_id};
     }
 
-    PipelineID VulkanRenderingDevice::create_compute_pipeline(ShaderID shader_id, const std::string &debug_name) {
-        VulkanShader *shader = resource_pool_shaders.access(shader_id);
-        ASSERT(shader->shader_stage = VK_SHADER_STAGE_COMPUTE_BIT);
+    PipelineID VulkanRenderingDevice::create_compute_pipeline(const ShaderProgram &shader_program, const std::string &debug_name) {
+        VulkanShader shader;
+        CreateShader(&shader, device, reinterpret_cast<const uint32_t *>(shader_program.byte_code.data()), cast_u32(shader_program.byte_code.size()));
+        ASSERT(shader.shader_stage = VK_SHADER_STAGE_COMPUTE_BIT);
+
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
 
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
         pipeline->support_bindless_texture = false;
 
-        std::vector<VkDescriptorSetLayout> set_layouts(shader->descriptor_sets.size());
-        for (const auto &descriptor_set : shader->descriptor_sets) {
+        std::vector<VkDescriptorSetLayout> set_layouts(shader.descriptor_sets_info.size());
+        for (const auto &descriptor_set : shader.descriptor_sets_info) {
             uint32_t set = descriptor_set.set;
             uint64_t hash = GetDescriptorSetLayoutHash(descriptor_set.bindings, set);
             auto found = descriptor_set_layouts_cache.find(hash);
@@ -614,7 +617,7 @@ namespace mirai {
         }
 
         std::vector<VkPushConstantRange> push_constants;
-        for (auto &entry : shader->push_constants) {
+        for (auto &entry : shader.push_constants_info) {
             push_constants.push_back(VkPushConstantRange{
                 .stageFlags = VkShaderStageFlags(entry.second.shader_stage),
                 .offset = entry.second.offset,
@@ -636,14 +639,17 @@ namespace mirai {
             .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .stage = {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = shader->shader_stage,
-                .module = shader->shader,
+                .stage = shader.shader_stage,
+                .module = shader.shader,
                 .pName = "main",
             },
             .layout = pipeline->pipeline_layout,
         };
 
         VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
+
+        DestroyShader(&shader, device);
+
         return PipelineID{pipeline_id};
     }
 
@@ -1273,14 +1279,6 @@ namespace mirai {
         current_frame = (current_frame + 1) % cast_u32(swapchain->images.size());
     }
 
-    void VulkanRenderingDevice::destroy_shaders(ShaderID *shader_ids, uint32_t count) {
-        for (uint32_t i = 0; i < count; ++i) {
-            VulkanShader *shader = resource_pool_shaders.access(shader_ids[i]);
-            DestroyShader(shader, device);
-            resource_pool_shaders.release(shader_ids[i]);
-        }
-    }
-
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
@@ -1749,7 +1747,6 @@ namespace mirai {
 
         ASSERT_MSG(resource_pool_textures.used_indices == 0, "Texture Pool is not empty!!!");
         ASSERT_MSG(resource_pool_pipelines.used_indices == 0, "Pipeline Pool is not empty!!!");
-        ASSERT_MSG(resource_pool_shaders.used_indices == 0, "Shader Pool is not empty!!!");
         ASSERT_MSG(resource_pool_buffers.used_indices == 0, "Buffer Pool is not empty!!!");
 
         vmaDestroyAllocator(vma_allocator);

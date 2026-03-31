@@ -7,7 +7,7 @@
 
 namespace mirai {
 namespace utils {
-    std::optional<std::string> read_file_internal(const std::string &filename, std::ios::openmode mode) {
+    std::string read_file_internal(const std::string &filename, std::ios::openmode mode) {
         std::ifstream inFile(filename, mode);
         if (!inFile)
             return {};
@@ -16,12 +16,22 @@ namespace utils {
             std::istreambuf_iterator<char>()};
     }
 
-    std::optional<std::string> read_file(const std::string &filename) {
+    std::string read_file(const std::string &filename) {
         return read_file_internal(filename, std::ios::in);
     }
 
-    std::optional<std::string> read_file_binary(const std::string &filename) {
-        return read_file_internal(filename, std::ios::binary);
+    std::vector<std::uint8_t> read_file_binary(const std::string &filename) {
+        std::ifstream file(filename, std::ios::binary | std::ios::ate);
+        if (!file) {
+            return {};
+        }
+
+        std::streampos file_size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        std::vector<std::uint8_t> file_data(file_size);
+        file.read(reinterpret_cast<char *>(file_data.data()), file_size);
+        return file_data;
     }
 
     std::string get_file_extension(const std::string &filename) {

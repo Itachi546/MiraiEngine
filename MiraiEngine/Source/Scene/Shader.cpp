@@ -1,8 +1,14 @@
 #include "Shader.hpp"
 #include "ShaderHashMap.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-
+#include "Common/FileUtils.hpp"
 namespace mirai {
+    std::vector<uint8_t> load_shader_binary(const std::string &filename) {
+        std::vector<uint8_t> result = utils::read_file_binary(filename);
+        if (result.size() == 0)
+            Log::Error("Error loading file: ", filename);
+        return result;
+    }
     void Shader::bind(CommandBuffer *command_buffer) {
         command_buffer->bind_pipeline(pipeline_id);
         if (bindings.size() > 0)
@@ -37,20 +43,21 @@ namespace mirai {
         BlendState bs = BlendState::create();
         if (render_state.fields.blend_mode > 0)
             bs.enable = true;
-        PipelineDescription pipeline_description;
 
         ASSERT(shader_files.size() > 0);
-        std::vector<ShaderID> shader_modules;
+        std::vector<ShaderProgram> shader_programs;
         for (uint32_t i = 0; i < shader_files.size(); ++i) {
-            ShaderID shader = rendering_utils::create_shader_module_from_file(shader_files[i]);
-            shader_modules.push_back(shader);
+            shader_programs.emplace_back(ShaderProgram{load_shader_binary(shader_files[i])});
         }
 
-        pipeline_description.topology = Topology(render_state.fields.topology);
-        pipeline_description.shader_count = static_cast<uint32_t>(shader_modules.size());
-        pipeline_description.shaders = shader_modules.data();
-        pipeline_description.rasterization_state = &rs;
-        pipeline_description.blend_state = &bs;
+        PipelineDescription pipeline_description = {
+            .shader_programs = shader_programs,
+            .topology = Topology(render_state.fields.topology),
+            .rasterization_state = &rs,
+            .vertex_description = nullptr,
+            .blend_state = &bs,
+            .depth_attachment_format = FORMAT_UNDEFINED,
+        };
 
         DepthState ds = DepthState::create();
         std::vector<Format> color_attachment_formats;
@@ -67,14 +74,11 @@ namespace mirai {
             ds.compare_op = CompareOp(render_state.fields.depth_op);
             pipeline_description.depth_attachment_format = attachment_info.depth_attachment_format;
         }
-
         pipeline_description.depth_state = &ds;
         pipeline_description.color_attachment_count = static_cast<uint32_t>(color_attachment_formats.size());
         pipeline_description.color_attachment_formats = color_attachment_formats.data();
 
         PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
-
-        RenderingDevice::get()->destroy_shaders(shader_modules.data(), cast_u32(shader_modules.size()));
 
         std::shared_ptr<Shader> shader = std::make_shared<Shader>(name);
         shader->draw_mode = DrawMode(pipeline_state.render_state.fields.draw_mode);
@@ -92,9 +96,11 @@ namespace mirai {
         if (result != nullptr)
             return result;
 
-        ShaderID cs = rendering_utils::create_shader_module_from_file(shader_file);
-        PipelineID pipeline = RenderingDevice::get()->create_compute_pipeline(cs, name);
-        RenderingDevice::get()->destroy_shaders(&cs, 1);
+        ShaderProgram compute_program = {
+            .byte_code = load_shader_binary(shader_file),
+        };
+
+        PipelineID pipeline = RenderingDevice::get()->create_compute_pipeline(compute_program, name);
 
         std::shared_ptr<Shader> shader = std::make_shared<Shader>(name);
         shader->pipeline_id = pipeline;
