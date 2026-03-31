@@ -146,11 +146,19 @@ namespace mirai {
             .rayQuery = true,
         };
 
+        VkPhysicalDeviceDescriptorHeapFeaturesEXT descriptor_heap_feature = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,
+            .pNext = nullptr,
+            .descriptorHeap = true,
+            .descriptorHeapCaptureReplay = false,
+        };
+        device_features13.pNext = &descriptor_heap_feature;
+
         if (support_raytracing) {
             // Required by raytracing
             device_features12.descriptorIndexing = true;
             device_features12.bufferDeviceAddress = true;
-            device_features13.pNext = &ray_query_feature;
+            descriptor_heap_feature.pNext = &ray_query_feature;
         }
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;

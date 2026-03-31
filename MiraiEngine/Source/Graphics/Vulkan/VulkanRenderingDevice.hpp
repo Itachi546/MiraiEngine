@@ -41,6 +41,9 @@ namespace mirai {
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name = "") override;
 
+        uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count);
+        uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count);
+
         UniformSetID create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name);
         UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") override;
         void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) override;
@@ -169,15 +172,13 @@ namespace mirai {
         HashMap<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
         HashMap<uint64_t, VkSampler> sampler_caches;
 
-        static const uint32_t K_NUM_THREAD = 2;
-        static const uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
-        static const uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
         uint32_t current_frame = 0;
 
         bool vsync = true;
         bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
+        VkPhysicalDeviceDescriptorHeapPropertiesEXT physical_device_descriptor_heap_properties;
         VmaAllocator vma_allocator;
 
         // Bindless descriptor set

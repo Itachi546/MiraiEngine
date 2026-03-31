@@ -1,5 +1,6 @@
 #include "VulkanRenderingDevice.hpp"
 
+#include "Engine/AppSettings.hpp"
 #include "VulkanInstance.hpp"
 #include "VulkanDevice.hpp"
 #include "VulkanSwapchain.hpp"
@@ -111,6 +112,9 @@ namespace mirai {
         // Compulsary extension required to run the engine
         requested_device_extensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            // Descriptor heap extensions
+            VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME,
+            VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
         };
 
         const std::vector<const char *> raytracing_extensions = {
@@ -155,6 +159,9 @@ namespace mirai {
         physical_device = physical_device_infos[max_score_index].physical_device;
 
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        physical_device_descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
+
+        physical_device_properties.pNext = &physical_device_descriptor_heap_properties;
         vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
 
         GetDeviceQueueFamilies(physical_device, queue_family_indices);
@@ -182,7 +189,7 @@ namespace mirai {
 
         swapchain = std::make_unique<VulkanSwapchain>();
         swapchain->swapchain = VK_NULL_HANDLE;
-        CreateSwapchain(swapchain.get(), physical_device, device, surface, K_MAX_FRAME_IN_FLIGHTS, vsync);
+        CreateSwapchain(swapchain.get(), physical_device, device, surface, AppSettings::K_MAX_FRAME_IN_FLIGHTS, vsync);
         for (uint32_t i = 0; i < swapchain->images.size(); ++i) {
             std::string image_name = "swapchain_image_" + std::to_string(i);
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)swapchain->images[i], image_name.c_str());
@@ -196,7 +203,7 @@ namespace mirai {
 
         // Initialize CommandPool and CommandBuffer
         uint32_t swapchain_image_count = cast_u32(swapchain->images.size());
-        uint32_t pool_counts = swapchain_image_count * K_NUM_THREAD;
+        uint32_t pool_counts = swapchain_image_count * AppSettings::K_NUM_THREAD;
 
         VkCommandPoolCreateInfo command_pool_create_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -208,7 +215,7 @@ namespace mirai {
         for (uint32_t i = 0; i < pool_counts; ++i)
             VK_CHECK(vkCreateCommandPool(device, &command_pool_create_info, nullptr, &command_pools[i]));
 
-        uint32_t buffer_counts = pool_counts * K_NUM_COMMAND_BUFFER_PER_THREAD;
+        uint32_t buffer_counts = pool_counts * AppSettings::K_NUM_COMMAND_BUFFER_PER_THREAD;
 
         VkCommandBufferAllocateInfo command_buffer_allocate_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -217,7 +224,7 @@ namespace mirai {
         };
 
         for (uint32_t i = 0; i < buffer_counts; ++i) {
-            uint32_t command_pool_index = i / K_NUM_COMMAND_BUFFER_PER_THREAD;
+            uint32_t command_pool_index = i / AppSettings::K_NUM_COMMAND_BUFFER_PER_THREAD;
             VkCommandPool command_pool = command_pools[command_pool_index];
 
             command_buffer_allocate_info.commandPool = command_pool;
@@ -640,6 +647,22 @@ namespace mirai {
         return PipelineID{pipeline_id};
     }
 
+    uint32_t VulkanRenderingDevice::calculate_resource_descriptors_size(uint32_t descriptor_count) {
+        size_t max_resource_descriptor_size = std::max(physical_device_descriptor_heap_properties.bufferDescriptorSize,
+                                                       physical_device_descriptor_heap_properties.imageDescriptorSize);
+        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * max_resource_descriptor_size + physical_device_descriptor_heap_properties.minResourceHeapReservedRange,
+                                                      physical_device_descriptor_heap_properties.resourceHeapAlignment));
+        ASSERT(aligned_size <= physical_device_descriptor_heap_properties.maxResourceHeapSize);
+        return aligned_size;
+    }
+
+    uint32_t VulkanRenderingDevice::calculate_sampler_descriptors_size(uint32_t descriptor_count) {
+        uint32_t aligned_size = cast_u32(align_memory(descriptor_count * physical_device_descriptor_heap_properties.samplerDescriptorSize + physical_device_descriptor_heap_properties.minSamplerHeapReservedRange,
+                                                      physical_device_descriptor_heap_properties.samplerHeapAlignment));
+        assert(aligned_size <= physical_device_descriptor_heap_properties.maxSamplerHeapSize);
+        return aligned_size;
+    }
+
     UniformSetID VulkanRenderingDevice::create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name) {
         uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
         auto found = descriptor_set_layouts_cache.find(hash);
@@ -813,7 +836,6 @@ namespace mirai {
     }
 
     BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name) {
-
         VmaAllocation allocation = nullptr;
         VkBuffer vk_buffer = create_vk_buffer(buffer_description, allocation, debug_name);
 
@@ -1145,18 +1167,18 @@ namespace mirai {
         if (resized) {
             swapchain->width = surface_caps.currentExtent.width;
             swapchain->height = surface_caps.currentExtent.height;
-            ResizeSwapchain(swapchain.get(), physical_device, device, surface, surface_caps, K_MAX_FRAME_IN_FLIGHTS, vsync);
+            ResizeSwapchain(swapchain.get(), physical_device, device, surface, surface_caps, AppSettings::K_MAX_FRAME_IN_FLIGHTS, vsync);
         }
         VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &swapchain->current_image_index));
         // Reset command pool
-        uint32_t command_pool_begin = current_frame * K_NUM_THREAD;
-        for (uint32_t i = command_pool_begin; i < K_NUM_THREAD; ++i)
+        uint32_t command_pool_begin = current_frame * AppSettings::K_NUM_THREAD;
+        for (uint32_t i = command_pool_begin; i < AppSettings::K_NUM_THREAD; ++i)
             vkResetCommandPool(device, command_pools[i], 0);
     }
 
     CommandBuffer *VulkanRenderingDevice::get_command_buffer(uint32_t thread_id) {
-        ASSERT_MSG(thread_id < K_NUM_THREAD, "ThreadID exceed the number of threads");
-        uint32_t index = current_frame * K_NUM_THREAD * K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
+        ASSERT_MSG(thread_id < AppSettings::K_NUM_THREAD, "ThreadID exceed the number of threads");
+        uint32_t index = current_frame * AppSettings::K_NUM_THREAD * AppSettings::K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
         return command_buffers[index].get();
     }
 
@@ -1637,7 +1659,7 @@ namespace mirai {
             vkCmdCopyAccelerationStructureKHR(cb->command_buffer, &copy_info);
         }
         cb->end_gpu_debug_label();
-        
+
         submit_command_buffer_immediate(cb);
         cb->wait();
 

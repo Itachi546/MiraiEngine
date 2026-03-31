@@ -51,9 +51,11 @@ namespace mirai {
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
         Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size / total_frames), " mb");
 
+        // Allocate per-frame-staging buffer
         per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
         per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
 
+        // Allocate global geometry buffer
         buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
         buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
 
@@ -65,12 +67,24 @@ namespace mirai {
         BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
         index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
 
+        // Allocate global transform/material buffer
         buffer_desc.size = K_MAX_ENTITIES * sizeof(glm::mat4);
         buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
         global_transform_buffer = device->create_buffer(&buffer_desc, "global_transform_buffer");
 
         buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         global_material_buffer = device->create_buffer(&buffer_desc, "global_material_buffer");
+
+        // Allocate descriptor heap buffer
+        buffer_desc.usage_flags = BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_CPU;
+
+        uint32_t resource_descriptor_count = AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT + AppSettings::K_MAX_FRAME_IN_FLIGHTS * AppSettings::K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT;
+        buffer_desc.size = device->calculate_resource_descriptors_size(resource_descriptor_count);
+        global_resource_descriptor_heap = device->create_buffer(&buffer_desc, "global_resource_heap");
+
+        buffer_desc.size = device->calculate_sampler_descriptors_size(AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT);
+        global_sampler_descriptor_heap = device->create_buffer(&buffer_desc, "global_sampler_heap");
 
         prev_frame_VP = scene->get_camera()->get_view_projection_transform();
         prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
@@ -516,7 +530,15 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
-        BufferID buffers[] = {per_frame_staging_buffer, vertex_buffer_allocator.buffer, index_buffer_allocator.buffer, global_material_buffer, global_transform_buffer};
+        BufferID buffers[] = {
+            per_frame_staging_buffer,
+            vertex_buffer_allocator.buffer,
+            index_buffer_allocator.buffer,
+            global_material_buffer,
+            global_transform_buffer,
+            global_resource_descriptor_heap,
+            global_sampler_descriptor_heap,
+        };
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         shader_hashmap->destroy();
         miProfiler::Destroy();

@@ -410,6 +410,7 @@ namespace mirai {
         BUFFER_USAGE_VERTEX_BUFFER_BIT = (1 << 7),
         BUFFER_USAGE_INDIRECT_BUFFER_BIT = (1 << 8),
         BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT = 0x00020000,
+        BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT = 0x10000000,
         BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT = 0x00080000,
     };
 
@@ -570,6 +571,9 @@ namespace mirai {
         virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
         virtual PipelineID create_compute_pipeline(ShaderID shader, const std::string &debug_name) = 0;
+
+        virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) = 0;
+        virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count)  = 0;
 
         virtual UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") = 0;
         virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;

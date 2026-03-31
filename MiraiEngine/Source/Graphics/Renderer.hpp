@@ -84,6 +84,9 @@ namespace mirai {
         BufferID global_transform_buffer;
         BufferID global_material_buffer;
 
+        BufferID global_resource_descriptor_heap;
+        BufferID global_sampler_descriptor_heap;
+
         BufferID per_frame_staging_buffer;
         uint8_t *per_frame_staging_buffer_ptr;
 
