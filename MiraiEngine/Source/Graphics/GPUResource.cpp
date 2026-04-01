@@ -17,10 +17,8 @@ namespace mirai {
         ASSERT(per_frame_current_offset + descriptor_info_count <= per_frame_current_offset_end);
 
         for (uint32_t i = 0; i < descriptor_info_count; ++i) {
-            uint8_t descriptor_buffer[128];
-            device->write_resource_descriptor(descriptor_infos[i], descriptor_buffer, 128);
-
-            std::memcpy(static_cast<uint8_t *>(ptr) + per_frame_current_offset * descriptor_size, descriptor_buffer, descriptor_size);
+            uint8_t *descriptor_buffer_ptr = static_cast<uint8_t *>(ptr) + per_frame_current_offset * descriptor_size;
+            device->write_resource_descriptor(descriptor_infos[i], descriptor_buffer_ptr, descriptor_size);
             per_frame_current_offset++;
         }
 
