@@ -43,7 +43,7 @@ namespace mirai {
             .resource_id = buffer,
         };
         device->update_uniform_set(uniform_set, &binding, 1);
-        shader->set_custom_bindings(&uniform_set, 1);
+        // shader->set_custom_bindings(&uniform_set, 1);
     }
 
     void LineRenderer::NewFrame() {

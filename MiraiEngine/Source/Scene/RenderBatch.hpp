@@ -114,8 +114,8 @@ namespace mirai {
     struct BatchDrawInfo {
         RenderBatchType batch_type;
         Shader *shader;
-        const std::vector<UniformSetID> &bindings;
-        const std::vector<PushConstant> &push_constants;
+        std::vector<DescriptorInfo> descriptor_infos;
+        PushConstant *push_constants;
     };
 
     void DrawBatch(CommandBuffer *command_buffer, const std::vector<RenderBatch> &render_batches, const BatchDrawInfo &batch_info);

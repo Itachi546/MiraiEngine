@@ -12,17 +12,6 @@ namespace mirai {
     DepthPrePass::DepthPrePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         RenderingDevice *device = RenderingDevice::get();
 
-        UniformLayout transform_material_layouts[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-        };
-
-        UniformSetID transform_set = device->create_uniform_set(transform_material_layouts, cast_u32(std::size(transform_material_layouts)), 1);
-        Renderer *renderer = Renderer::get();
-        UniformBinding bindings[] = {
-            {.resource_id = renderer->global_transform_buffer},
-        };
-        device->update_uniform_set(transform_set, bindings, cast_u32(std::size(bindings)));
-
         frame_graph->add_callback_pass<DepthPrePassData>(
             "DepthPrePass",
             [=](FrameGraph::FrameGraphBuilder &builder, DepthPrePassData &data) {
@@ -44,7 +33,6 @@ namespace mirai {
                                                .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
-                data.transform_set = transform_set;
                 board->add<DepthPrePassData>(data);
             },
             [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -62,11 +50,6 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("DepthPrePass");
 
                 std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
-
-                std::vector<UniformSetID> uniform_sets{
-                    renderer->vt_per_frame_uniform_set,
-                    data.transform_set,
-                };
 
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
@@ -99,11 +82,25 @@ namespace mirai {
                     Log::Fatal("Failed to load pipeline for depth-prepass");
                 }
 
+                std::vector<DescriptorInfo> descriptor_infos = {
+                    {
+                        DescriptorType::UniformBuffer,
+                        renderer->per_frame_uniform_buffer.buffer,
+                        renderer->per_frame_uniform_buffer.offset,
+                        renderer->per_frame_uniform_buffer.size,
+                    },
+                    {
+                        DescriptorType::StorageBuffer,
+                        renderer->global_transform_buffer,
+                        0,
+                        UINT64_MAX,
+                    },
+                };
                 DrawBatch(command_buffer, render_batches, {
                                                               .batch_type = RENDERBATCH_TYPE_OPAQUE,
                                                               .shader = shader,
-                                                              .bindings = uniform_sets,
-                                                              .push_constants = {},
+                                                              .descriptor_infos = descriptor_infos,
+                                                              .push_constants = nullptr,
                                                           });
 
                 command_buffer->end_render_pass();

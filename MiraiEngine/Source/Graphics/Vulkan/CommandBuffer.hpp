@@ -42,9 +42,9 @@ namespace mirai {
 
         void bind_sampler_heap(BufferID buffer);
 
-        void set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count);
+        // void set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count);
 
-        void set_push_constants(PipelineID pipeline, const PushConstant *push_constants, uint32_t push_constant_count);
+        // void set_push_constants(PipelineID pipeline, const PushConstant *push_constants, uint32_t push_constant_count);
 
         // Push data offset is the offset that should be added to base offset, rather than offset inside push data
         void set_push_data(uint32_t offset, void *push_data, uint32_t push_data_size);

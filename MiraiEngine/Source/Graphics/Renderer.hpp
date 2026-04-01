@@ -96,8 +96,6 @@ namespace mirai {
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        UniformSetID per_frame_uniform_set, vt_per_frame_uniform_set;
-        UniformSetID transform_set, transform_material_set;
         std::vector<RenderBatch> main_render_batches;
 
         // TAA Options
@@ -119,7 +117,6 @@ namespace mirai {
         std::string pipeline_description_file;
 
         void copy_buffers();
-        void update_uniform_set(CommandBuffer *cb);
 
         void initialize();
 

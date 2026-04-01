@@ -144,9 +144,6 @@ namespace mirai {
         ASSERT(pipeline_id.is_valid());
         VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
         vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
-
-        if (pipeline->support_bindless_texture)
-            vkCmdBindDescriptorSets(command_buffer, pipeline->bind_point, pipeline->pipeline_layout, K_BINDLESS_TEXTURE_SET, 1, &device->bindless_descriptor_set, 0, nullptr);
     }
 
     void CommandBuffer::bind_resource_heap(BufferID buffer) {
@@ -179,7 +176,7 @@ namespace mirai {
         };
         vkCmdBindSamplerHeapEXT(command_buffer, &bind_info);
     }
-
+    /*
     void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count) {
         if (uniform_set_count == 0)
             return;
@@ -205,7 +202,7 @@ namespace mirai {
                                push_constant->offset, push_constant->size, push_constant->data);
         }
     }
-
+    */
     void CommandBuffer::set_push_data(uint32_t offset, void *push_data, uint32_t push_data_size) {
         VkPushDataInfoEXT push_data_info = {
             .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,

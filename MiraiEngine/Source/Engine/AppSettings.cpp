@@ -7,6 +7,8 @@ namespace AppSettings {
     uint32_t default_window_width = 1920;
     uint32_t default_window_height = 1080;
 
+    bool enable_vsync = true;
+
     // Resolution Scale
     float resolution_scale = 1.0f;
 

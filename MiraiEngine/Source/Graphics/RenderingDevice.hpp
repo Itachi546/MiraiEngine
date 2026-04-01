@@ -523,6 +523,12 @@ namespace mirai {
     struct DescriptorInfo {
         DescriptorType type;
         ID resource;
+
+        // Only used for buffer
+        size_t offset;
+        // If the size specified is greater than the actual size of buffer, the sized is clamped to buffer size
+        // We can specify the whole region of buffer by using large value like UINT64_MAX
+        size_t size;
     };
 
     struct BufferCopyRegion {

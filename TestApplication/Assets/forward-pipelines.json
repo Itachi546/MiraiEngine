@@ -1,23 +1,8 @@
 [
     {
-        "name": "overlay-skybox-shader",
-        "shaders": [
-            "SPIRV/fullscreen.vert.spv",
-            "SPIRV/skybox.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_SKYBOX",
-            "depth-test": true,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT"
-        }
-    },
-    {
         "name": "depth-prepass-shader",
         "shaders": [
-            "SPIRV_HLSL/depth-prepass.vert.spv"
+            "SPIRV/depth-prepass.vert.spv"
         ],
         "state": {
             "pass": "SHADER_PASS_DEPTH_PREPASS",
@@ -26,108 +11,6 @@
             "color-attachments-format": [],
             "depth-attachment-format": "D32_SFLOAT",
             "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
-        }
-    },
-    {
-        "name": "pbr-forward-shader",
-        "shaders": [
-            "SPIRV/forward-pass.vert.spv",
-            "SPIRV/forward-pass.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_PBR_FORWARD",
-            "depth-test": true,
-            "depth-write": false,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT",
-            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
-        }
-    },
-    {
-        "name": "pbr-forward-transparent-shader",
-        "shaders": [
-            "SPIRV/forward-pass.vert.spv",
-            "SPIRV/transparent.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_PBR_FORWARD_TRANSPARENT",
-            "cull-mode": "CULL_MODE_NONE",
-            "depth-test": true,
-            "depth-write": true,
-            "blend-mode": true,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT",
-            "draw-mode": "DRAWMODE_INDEXED_INDIRECT"
-        }
-    },
-    {
-        "name": "unlit-forward-shader",
-        "shaders": [
-            "SPIRV/unlit.vert.spv",
-            "SPIRV/unlit.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_FORWARD_UNLIT",
-            "depth-test": true,
-            "depth-write": false,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT"
-        }
-    },
-    {
-        "name": "unlit-transparent-shader",
-        "shaders": [
-            "SPIRV/unlit.vert.spv",
-            "SPIRV/unlit-transparent.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_FORWARD_UNLIT_TRANSPARENT",
-            "cull-mode": "CULL_MODE_NONE",
-            "depth-test": true,
-            "depth-write": true,
-            "blend-mode": true,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT"
-        }
-    },
-    {
-        "name": "2D-text-shader",
-        "shaders": [
-            "SPIRV/font.vert.spv",
-            "SPIRV/font.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_TEXT2D",
-            "blend-mode": true,
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ]
-        }
-    },
-    {
-        "name": "debug-draw-shader",
-        "shaders": [
-            "SPIRV/line.vert.spv",
-            "SPIRV/line.frag.spv"
-        ],
-        "state": {
-            "pass": "SHADER_PASS_DEBUG_DRAW",
-            "depth-test": true,
-            "depth-write": true,
-            "blend-mode": true,
-            "topology": "TOPOLOGY_LINE_LIST",
-            "color-attachments-format": [
-                "B8G8R8A8_UNORM"
-            ],
-            "depth-attachment-format": "D32_SFLOAT"
         }
     }
 ]

@@ -83,8 +83,6 @@ namespace mirai {
     struct VulkanPipeline {
         VkPipeline pipeline;
         VkPipelineBindPoint bind_point;
-        VkPipelineLayout pipeline_layout;
-        ShaderReflection shader_reflection;
         bool support_bindless_texture;
     };
 

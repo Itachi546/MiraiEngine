@@ -98,7 +98,7 @@ namespace mirai {
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
         */
         Shader *cubemap_shader = Shader::create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
-
+        /*
         DescriptorInfo descriptor_infos[] = {
             {.type = DescriptorType::SampledImage, .resource = hdri_texture},
             {.type = DescriptorType::StorageImage, .resource = cubemap_texture},
@@ -120,7 +120,7 @@ namespace mirai {
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
-
+        */
         device->destroy_textures(&hdri_texture, 1);
 
         // create_pbr_env_map();
@@ -134,7 +134,7 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
 
         Shader *generate_cubemap_shader = Shader::create_from_file({"SPIRV/procedural_sky.comp.spv"}, "generate-cubemap");
-
+        /*
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         command_buffer->begin_gpu_debug_label("ProceduralSky");
@@ -142,10 +142,10 @@ namespace mirai {
         command_buffer->end_gpu_debug_label();
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
-
+        */
         // create_pbr_env_map();
     }
-
+    /*
     void EnvironmentMap::create_pbr_env_map() {
         RenderingDevice *device = RenderingDevice::get();
 
@@ -386,7 +386,7 @@ namespace mirai {
         barrier_infos[0].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         command_buffer->prepare_image(barrier_infos, 1);
     }
-
+    */
     EnvironmentMap::~EnvironmentMap() {
         RenderingDevice *device = RenderingDevice::get();
         TextureID textures[] = {cubemap_texture, irradiance_texture, prefilter_texture, brdf_texture};

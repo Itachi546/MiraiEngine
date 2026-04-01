@@ -90,14 +90,6 @@ namespace mirai {
 
         void bind(CommandBuffer *command_buffer);
 
-        void set_custom_bindings(UniformSetID *uniform_sets, uint32_t count) {
-            bindings.insert(bindings.end(), uniform_sets, uniform_sets + count);
-        }
-
-        void reset_bindings() {
-            bindings.clear();
-        }
-
         DrawMode get_draw_mode() {
             return draw_mode;
         }
@@ -111,7 +103,6 @@ namespace mirai {
         }
 
       private:
-        std::vector<UniformSetID> bindings;
         DrawMode draw_mode;
     };
 

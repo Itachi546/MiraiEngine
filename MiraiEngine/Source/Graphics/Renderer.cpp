@@ -45,7 +45,7 @@ namespace mirai {
         uint32_t total_frames = device->get_swapchain_image_count();
         BufferDescription buffer_desc = {
             .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
-            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
@@ -59,17 +59,17 @@ namespace mirai {
         buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
         buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
 
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         BufferID geometry_buffer = device->create_buffer(&buffer_desc, "global_vertex_buffer");
         vertex_buffer_allocator.init(geometry_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE, 0);
 
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT + BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT;
+        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
         index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
 
         // Allocate global transform/material buffer
         buffer_desc.size = K_MAX_ENTITIES * sizeof(glm::mat4);
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT;
+        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         global_transform_buffer = device->create_buffer(&buffer_desc, "global_transform_buffer");
 
         buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
@@ -285,44 +285,6 @@ namespace mirai {
         }
     }
 
-    void Renderer::update_uniform_set(CommandBuffer *command_buffer) {
-        // Initialize PerFrame uniform set
-        UniformLayout layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_UNIFORM_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT,
-        };
-        per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
-
-        UniformBinding binding = {
-            .resource_id = per_frame_uniform_buffer.buffer,
-            .buffer_info = {
-                .offset = per_frame_uniform_buffer.offset,
-                .range = per_frame_uniform_buffer.size,
-            },
-        };
-        device->update_uniform_set(per_frame_uniform_set, &binding, 1);
-
-        layout.shader_stage = SHADER_STAGE_VERTEX;
-        vt_per_frame_uniform_set = command_buffer->create_uniform_set(&layout, 1, 0);
-        device->update_uniform_set(vt_per_frame_uniform_set, &binding, 1);
-
-        UniformLayout transform_material_layouts[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-            {.binding = 1, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_FRAGMENT},
-        };
-        transform_material_set = command_buffer->create_uniform_set(transform_material_layouts, cast_u32(std::size(transform_material_layouts)), 3);
-
-        UniformBinding bindings[] = {
-            {.resource_id = global_transform_buffer},
-            {.resource_id = global_material_buffer},
-        };
-        device->update_uniform_set(transform_material_set, bindings, cast_u32(std::size(bindings)));
-
-        transform_set = command_buffer->create_uniform_set(transform_material_layouts, 1, 3);
-        device->update_uniform_set(transform_set, bindings, 1);
-    }
-
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t alignment) {
         uint32_t per_frame_offset = current_frame * k_staging_buffer_size_per_frame;
         uint32_t next_ptr = per_frame_offset + per_frame_staging_buffer_offset;
@@ -517,6 +479,9 @@ namespace mirai {
         CommandBuffer *cb = device->get_command_buffer();
         cb->begin();
 
+        cb->bind_resource_heap(resource_heap.buffer);
+        cb->bind_sampler_heap(sampler_heap.buffer);
+
         miProfiler::BeginFrame(cb);
         {
             ScopedCpuProfiling("CPU Render Time");
@@ -526,8 +491,6 @@ namespace mirai {
 
             // Patch transform and Materials if it has changed
             patch_global_data(cb);
-
-            update_uniform_set(cb);
 
             RenderContext context{this, cb};
 

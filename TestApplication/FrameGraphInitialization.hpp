@@ -63,8 +63,6 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
 
             std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
             command_buffer->prepare_resources(resource_states);
-            command_buffer->bind_resource_heap(renderer->resource_heap.buffer);
-            command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
 
             struct PushConstantData {
                 uint32_t width;
@@ -101,7 +99,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
     };
-    
+
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {

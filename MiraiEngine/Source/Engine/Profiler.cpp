@@ -143,7 +143,7 @@ namespace mirai::miProfiler {
             } else {
                 // GPU is always one frame behind
                 float delta = (float(query_results[val.query_index_end] - query_results[val.query_index_begin]) * gpu_timestamp_period) / 1000000.0f;
-                val.time += delta;
+                val.time = delta;
                 gpu_profiler_output.emplace_back(val.name, delta, val.sort_index);
             }
             val.updated_last_frame = false;

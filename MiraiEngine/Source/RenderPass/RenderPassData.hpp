@@ -13,7 +13,6 @@ namespace mirai {
     };
 
     struct DepthPrePassData {
-        UniformSetID transform_set;
         FrameGraphResourceHandle output;
     };
 } // namespace mirai

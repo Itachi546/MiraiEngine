@@ -175,9 +175,6 @@ namespace mirai {
         }
     }
 
-    static UniformLayout DRAW_DATA_LAYOUT = {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX};
-    const uint32_t DRAW_DATA_SET_ID = 3;
-
     void DrawBatch(CommandBuffer *command_buffer, const std::vector<RenderBatch> &render_batches, const BatchDrawInfo &batch_info) {
         for (auto &batch : render_batches) {
             if (batch.batch_type != batch_info.batch_type)
@@ -185,29 +182,36 @@ namespace mirai {
 
             ASSERT(batch_info.shader != nullptr);
             Shader *shader = batch_info.shader;
-            auto &bindings = batch_info.bindings;
-            auto &push_constants = batch_info.push_constants;
 
             command_buffer->bind_pipeline(shader->pipeline_id);
-            command_buffer->set_uniform_sets(shader->pipeline_id, bindings.data(), cast_u32(bindings.size()));
-            command_buffer->set_push_constants(shader->pipeline_id, push_constants.data(), cast_u32(push_constants.size()));
 
+            uint32_t descriptor_push_index_offset = 0;
+            // We have only one push constant, so we can ignore the offset which should be always zero
+            if (batch_info.push_constants != nullptr) {
+                command_buffer->set_push_data(batch_info.push_constants->offset, batch_info.push_constants->data, batch_info.push_constants->size);
+                descriptor_push_index_offset = batch_info.push_constants->size;
+            }
+
+            Renderer *renderer = Renderer::get();
             for (const auto &mesh_batch : batch.meshes) {
-                UniformSetID draw_data_binding_set = command_buffer->create_uniform_set(&DRAW_DATA_LAYOUT, 1, DRAW_DATA_SET_ID);
-                UniformBinding draw_data_binding = {
-                    .resource_id = mesh_batch.draw_data_buffer_view.buffer,
-                    .buffer_info = {
-                        .offset = mesh_batch.draw_data_buffer_view.offset,
-                        .range = mesh_batch.draw_data_buffer_view.size,
-                    },
-                };
-                RenderingDevice::get()->update_uniform_set(draw_data_binding_set, &draw_data_binding, 1);
+                // We are copying data, yes
+                std::vector<DescriptorInfo> descriptors = batch_info.descriptor_infos;
+                descriptors.push_back({
+                    .type = DescriptorType::StorageBuffer,
+                    .resource = mesh_batch.vertex_buffer.buffer,
+                    .offset = 0,
+                    .size = UINT64_MAX,
+                });
 
-                UniformSetID mesh_data_sets[] = {
-                    mesh_batch.vertex_binding_set,
-                    draw_data_binding_set,
-                };
-                command_buffer->set_uniform_sets(shader->pipeline_id, mesh_data_sets, cast_u32(std::size(mesh_data_sets)));
+                descriptors.push_back({
+                    .type = DescriptorType::StorageBuffer,
+                    .resource = mesh_batch.draw_data_buffer_view.buffer,
+                    .offset = mesh_batch.draw_data_buffer_view.offset,
+                    .size = mesh_batch.draw_data_buffer_view.size,
+                });
+
+                uint32_t descriptor_offset = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptors.data(), cast_u32(descriptors.size()));
+                command_buffer->set_push_data(descriptor_push_index_offset, &descriptor_offset, sizeof(descriptor_offset));
 
                 if (mesh_batch.mesh_draw_infos.size() == 0)
                     continue;
