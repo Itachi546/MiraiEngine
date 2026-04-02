@@ -19,6 +19,10 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
         Shader *shader;
     };
 
+    struct LinearizeDepthPassBindings {
+        uint32_t descriptors[2];
+    };
+
     // Linearize Depth Pass
     frame_graph->add_callback_pass<LinearizeDepthPassData>(
         "LinearizeDepthPass",
@@ -77,16 +81,25 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             push_constant_data.znear = camera->get_near_plane();
             push_constant_data.zfar = camera->get_far_plane();
 
-            DescriptorInfo descriptor_infos[] = {
-                {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
-                {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
-            };
-            DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-            uint32_t descriptors[] = {base_descriptor_offset, base_descriptor_offset + 1};
+            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+            LinearizeDepthPassBindings *bindings = nullptr;
+            if (!board->has<LinearizeDepthPassBindings>()) {
+                DescriptorInfo descriptor_infos[] = {
+                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
+                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
+                };
+                DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptor(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+                bindings = &board->add<LinearizeDepthPassBindings>(LinearizeDepthPassBindings{
+                    .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
+                });
+            } else {
+                bindings = &board->get<LinearizeDepthPassBindings>();
+            }
+            ASSERT(bindings != nullptr);
 
             command_buffer->bind_pipeline(data.shader->pipeline_id);
             command_buffer->set_push_data(0, &push_constant_data, sizeof(PushConstantData));
-            command_buffer->set_push_data(sizeof(PushConstantData), descriptors, cast_u32(sizeof(descriptors)));
+            command_buffer->set_push_data(sizeof(PushConstantData), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
 
             uint32_t work_group_x = rendering_utils::get_workgroup_size(push_constant_data.width, 32);
             uint32_t work_group_y = rendering_utils::get_workgroup_size(push_constant_data.height, 32);
@@ -152,124 +165,3 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->end_gpu_debug_label();
         });
 }
-
-/*
-  void initialize_frame_graph(FrameGraph *frame_graph) {
-      FrameGraphNodeDescription depth_prepass = {
-          .name = "depth_prepass",
-          .enabled = true,
-          .is_compute_pass = false,
-          .outputs = {
-              FrameGraphResourceOutput{
-                  .name = "texture_depth",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .width = 1920,
-                  .height = 1080,
-                  .array_layers = 1,
-                  .format = FORMAT_D32_SFLOAT,
-                  .load_op = LOAD_OP_CLEAR,
-                  .clear_color = Color{1.0f, 0.0f, 0.0f, 1.0f},
-              },
-
-          },
-          .renderer = std::make_shared<DepthPrePass>(),
-      };
-      frame_graph->add_node(depth_prepass);
-
-      FrameGraphNodeDescription forward_pass = {
-          .name = "forward_pass",
-          .enabled = true,
-          .is_compute_pass = false,
-          .inputs = {
-              FrameGraphResourceInput{
-                  .name = "texture_depth",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .load_op = LOAD_OP_LOAD,
-              },
-          },
-          .outputs = {
-              FrameGraphResourceOutput{
-                  .name = "texture_color",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .width = 1920,
-                  .height = 1080,
-                  .array_layers = 1,
-                  .format = FORMAT_B8G8R8A8_UNORM,
-                  .load_op = LOAD_OP_CLEAR,
-                  .clear_color = 0x333333ff,
-              },
-          },
-          .renderer = std::make_shared<ForwardPass>(),
-      };
-      frame_graph->add_node(forward_pass);
-
-      FrameGraphNodeDescription overlay_pass = {
-          .name = "overlay3D",
-          .enabled = true,
-          .is_compute_pass = false,
-          .inputs = {
-              FrameGraphResourceInput{
-                  .name = "texture_depth",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .load_op = LOAD_OP_LOAD,
-              },
-              FrameGraphResourceInput{
-                  .name = "texture_color",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .load_op = LOAD_OP_LOAD,
-              },
-          },
-          .outputs = {
-              FrameGraphResourceOutput{
-                  .name = "texture_color",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
-              },
-          },
-          .renderer = std::make_shared<Overlay3DPass>(),
-      };
-      frame_graph->add_node(overlay_pass);
-
-      FrameGraphNodeDescription swapchain_copy_pass = {
-          .name = "swapchain_copy",
-          .enabled = true,
-          .is_compute_pass = false,
-          .inputs = {
-              FrameGraphResourceInput{
-                  .name = "texture_color",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_TEXTURE,
-              },
-          },
-          .outputs = {
-              FrameGraphResourceOutput{
-                  .name = "swapchain",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-                  .load_op = LOAD_OP_CLEAR,
-              },
-          },
-          .renderer = std::make_shared<SwapchainCopyPass>(),
-      };
-      frame_graph->add_node(swapchain_copy_pass);
-
-      FrameGraphNodeDescription imgui_pass = {
-          .name = "imgui_pass",
-          .enabled = true,
-          .is_compute_pass = false,
-          .inputs = {
-              FrameGraphResourceInput{
-                  .name = "swapchain",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_ATTACHMENT,
-              },
-          },
-          .outputs = {
-              FrameGraphResourceOutput{
-                  .name = "swapchain",
-                  .resource_type = FRAMEGRAPH_RESOURCE_TYPE_REFERENCE,
-                  .load_op = LOAD_OP_CLEAR,
-              },
-          },
-          .renderer = std::make_shared<ImGuiRenderPass>(),
-      };
-      frame_graph->add_node(imgui_pass);
-  }
-
-  */

@@ -203,7 +203,7 @@ namespace mirai {
         }
     }
     */
-    void CommandBuffer::set_push_data(uint32_t offset, void *push_data, uint32_t push_data_size) {
+    void CommandBuffer::set_push_data(uint32_t offset, const void *push_data, uint32_t push_data_size) {
         VkPushDataInfoEXT push_data_info = {
             .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
             .pNext = nullptr,

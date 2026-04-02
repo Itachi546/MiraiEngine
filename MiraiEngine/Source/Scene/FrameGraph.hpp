@@ -92,7 +92,8 @@ namespace mirai {
     template <typename Data, typename Setup, typename Execute>
     inline const Data &FrameGraph::add_callback_pass(const std::string_view name, Setup &&setup, Execute &&exec) {
         static_assert(std::is_invocable_v<Setup, FrameGraphBuilder &, Data &>, "Invalid Callback setup");
-        static_assert(std::is_invocable_v<Execute, const Data &, FrameGraphPassResource &, void *>);
+        static_assert(std::is_invocable_v<Execute, const Data &, FrameGraphPassResource &, void *>, "Invalid execute callback");
+        static_assert(sizeof(Execute) < 2024, "Execute capture too much data");
 
         auto &pass_node = create_pass_node(name, std::make_unique<FrameGraphPass<Data, Execute>>(std::forward<Execute>(exec)));
 
