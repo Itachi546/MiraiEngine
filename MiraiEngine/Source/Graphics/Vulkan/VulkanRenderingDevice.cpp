@@ -638,58 +638,101 @@ namespace mirai {
         return PipelineID{pipeline_id};
     }
 
-    void VulkanRenderingDevice::write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) {
+    void VulkanRenderingDevice::write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) {
+        std::vector<VkImageViewCreateInfo> image_view_create_infos;
+        image_view_create_infos.reserve(descriptor_count);
 
-        VkImageViewCreateInfo image_view_create_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-        std::variant<VkImageDescriptorInfoEXT, VkDeviceAddressRangeEXT> data;
-        VkResourceDescriptorInfoEXT descriptor_resource_info = {
-            .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
-            .pNext = nullptr,
-        };
+        std::vector<std::variant<VkImageDescriptorInfoEXT, VkDeviceAddressRangeEXT>> datas;
+        datas.reserve(descriptor_count);
 
-        switch (descriptor_info.type) {
-        case DescriptorType::StorageImage:
-        case DescriptorType::SampledImage: {
-            VulkanTexture *texture = resource_pool_textures.access(descriptor_info.resource);
-            image_view_create_info.image = texture->image;
-            image_view_create_info.viewType = texture->image_view_type;
-            image_view_create_info.format = texture->format;
-            image_view_create_info.components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A};
-            image_view_create_info.subresourceRange = {
-                .aspectMask = texture->image_aspect,
-                .levelCount = texture->mip_levels,
-                .layerCount = texture->array_layers,
+        std::vector<VkResourceDescriptorInfoEXT> descriptor_resource_infos(descriptor_count);
+        std::vector<VkHostAddressRangeEXT> host_address_ranges(descriptor_count);
+
+        for (uint32_t i = 0; i < descriptor_count; ++i) {
+            const DescriptorInfo *descriptor_info = &descriptor_infos[i];
+
+            descriptor_resource_infos[i] = {
+                .sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT,
+                .pNext = nullptr,
             };
 
-            VkImageDescriptorInfoEXT &image_info = std::get<VkImageDescriptorInfoEXT>(data);
-            image_info.sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT;
-            image_info.pNext = nullptr;
-            image_info.pView = &image_view_create_info;
-            image_info.layout = descriptor_info.type == SampledImage ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+            switch (descriptor_info->type) {
+            case DescriptorType::StorageImage:
+            case DescriptorType::SampledImage: {
+                VulkanTexture *texture = resource_pool_textures.access(descriptor_info->resource);
+                VkImageViewCreateInfo &image_view_create_info = image_view_create_infos.emplace_back(VkImageViewCreateInfo{
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = 0,
+                    .image = texture->image,
+                    .viewType = texture->image_view_type,
+                    .format = texture->format,
+                    .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+                    .subresourceRange = {
+                        .aspectMask = texture->image_aspect,
+                        .levelCount = texture->mip_levels,
+                        .layerCount = texture->array_layers,
+                    },
+                });
 
-            descriptor_resource_info.type = descriptor_info.type == SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptor_resource_info.data.pImage = &image_info;
-            break;
+                VkImageDescriptorInfoEXT &image_info = std::get<VkImageDescriptorInfoEXT>(datas.emplace_back());
+                image_info.sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT;
+                image_info.pNext = nullptr;
+                image_info.pView = &image_view_create_info;
+                image_info.layout = descriptor_info->type == SampledImage ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
+                descriptor_resource_infos[i].type = descriptor_info->type == SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                descriptor_resource_infos[i].data.pImage = &image_info;
+                break;
+            }
+
+            case DescriptorType::UniformBuffer:
+            case DescriptorType::StorageBuffer: {
+                VulkanBuffer *buffer = resource_pool_buffers.access(descriptor_info->resource);
+                VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
+                address_range.address = buffer->device_address + descriptor_info->offset;
+                address_range.size = std::min(descriptor_info->size, size_t(buffer->size));
+
+                descriptor_resource_infos[i].type = descriptor_info->type == DescriptorType::StorageBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptor_resource_infos[i].data.pAddressRange = &address_range;
+                break;
+            }
+            default:
+                ASSERT_MSG(0, "Unknown descriptor type");
+            }
+
+            host_address_ranges[i].address = static_cast<uint8_t *>(start_address) + i * descriptor_size;
+            host_address_ranges[i].size = descriptor_size;
         }
 
-        case DescriptorType::UniformBuffer:
-        case DescriptorType::StorageBuffer: {
-            VulkanBuffer *buffer = resource_pool_buffers.access(descriptor_info.resource);
-            data = VkDeviceAddressRangeEXT{};
-            VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(data);
-            address_range.address = buffer->device_address + descriptor_info.offset;
-            address_range.size = std::min(descriptor_info.size, size_t(buffer->size));
+        VK_CHECK(vkWriteResourceDescriptorsEXT(device, descriptor_count, descriptor_resource_infos.data(), host_address_ranges.data()));
+    }
 
-            descriptor_resource_info.type = descriptor_info.type == DescriptorType::StorageBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptor_resource_info.data.pAddressRange = &address_range;
-            break;
-        }
-        default:
-            ASSERT_MSG(0, "Unknown descriptor type");
-        }
+    void VulkanRenderingDevice::write_sampler_descriptors(const SamplerDescription *samplers, uint32_t sampler_count, void *address) {
+        std::vector<VkSamplerCreateInfo> sampler_create_infos(sampler_count);
+        std::vector<VkHostAddressRangeEXT> addresses(sampler_count);
+        for (uint32_t i = 0; i < sampler_count; ++i) {
+            const SamplerDescription *desc = &samplers[i];
+            sampler_create_infos[i] = {
+                .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                .pNext = nullptr,
+                .magFilter = VkFilter(desc->mag_filter),
+                .minFilter = VkFilter(desc->min_filter),
+                .mipmapMode = VkSamplerMipmapMode(desc->mipmap_mode),
+                .addressModeU = VkSamplerAddressMode(desc->address_mode_u),
+                .addressModeV = VkSamplerAddressMode(desc->address_mode_v),
+                .addressModeW = VkSamplerAddressMode(desc->address_mode_v),
+                .mipLodBias = desc->lod_bias,
+                .anisotropyEnable = desc->enable_anisotropy,
+                .maxAnisotropy = desc->max_anisotropy,
+                .minLod = desc->min_lod,
+                .maxLod = desc->max_lod,
+            };
 
-        VkHostAddressRangeEXT descriptor_range = {descriptor, descriptor_size};
-        VK_CHECK(vkWriteResourceDescriptorsEXT(device, 1, &descriptor_resource_info, &descriptor_range));
+            addresses[i].address = static_cast<uint8_t *>(address) + i * descriptor_heap_properties.samplerDescriptorSize;
+            addresses[i].size = descriptor_heap_properties.samplerDescriptorSize;
+        }
+        VK_CHECK(vkWriteSamplerDescriptorsEXT(device, sampler_count, sampler_create_infos.data(), addresses.data()));
     }
 
     uint32_t VulkanRenderingDevice::get_resource_descriptor_size() const {

@@ -207,17 +207,24 @@ namespace mirai {
         command_buffer->wait();
 
         // Update transform descriptor
-        DescriptorInfo descriptor_info = {
-            .type = DescriptorType::StorageBuffer,
-            .resource = global_transform_buffer,
-            .offset = 0,
-            .size = UINT64_MAX,
-        };
-        transform_descriptor = resource_heap.push_descriptor(device.get(), &descriptor_info, 1);
+        DescriptorInfo descriptor_infos[] = {
+            {
+                .type = DescriptorType::StorageBuffer,
+                .resource = global_transform_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
 
-        // Update geometry descriptor
-        descriptor_info.resource = vertex_buffer_allocator.buffer;
-        global_geometry_descriptor = resource_heap.push_descriptor(device.get(), &descriptor_info, 1);
+            },
+            {
+                .type = DescriptorType::StorageBuffer,
+                .resource = vertex_buffer_allocator.buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
+
+            },
+        };
+        transform_descriptor = resource_heap.push_descriptors(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+        global_geometry_descriptor = transform_descriptor + 1;
 
         frame_graph->compile();
     }
@@ -239,7 +246,7 @@ namespace mirai {
             .offset = per_frame_uniform_buffer.offset,
             .size = per_frame_uniform_buffer.size,
         };
-        per_frame_data_descriptor = resource_heap.push_descriptor_per_frame(device.get(), &per_frame_data_descriptor_info, 1);
+        per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &per_frame_data_descriptor_info, 1);
 
         uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_uniform_buffer.offset;
         std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));

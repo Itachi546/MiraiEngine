@@ -39,7 +39,8 @@ namespace mirai {
         PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(const ShaderProgram &shader_file, const std::string &debug_name = "") override;
 
-        void write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) override;
+        void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) override;
+        void write_sampler_descriptors(const SamplerDescription *samplers, uint32_t sampler_count, void *start_address) override;
 
         uint32_t get_resource_descriptor_size() const;
         uint32_t get_sampler_descriptor_size() const;

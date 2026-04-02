@@ -203,7 +203,7 @@ namespace mirai {
                 mesh_data_descriptor_info.size = mesh_batch.draw_data_buffer_view.size;
 
                 std::vector<DescriptorOffset> descriptors = batch_info.descriptor_infos;
-                descriptors.push_back(renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), &mesh_data_descriptor_info, 1));
+                descriptors.push_back(renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &mesh_data_descriptor_info, 1));
                 command_buffer->set_push_data(descriptor_push_index_offset, descriptors.data(), cast_u32(descriptors.size() * sizeof(uint32_t)));
 
                 _DrawBatch(command_buffer, &mesh_batch, shader->get_draw_mode());

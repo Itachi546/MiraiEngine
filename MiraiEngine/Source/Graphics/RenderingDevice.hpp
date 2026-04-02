@@ -592,7 +592,8 @@ namespace mirai {
 
         virtual PipelineID create_compute_pipeline(const ShaderProgram &shader, const std::string &debug_name) = 0;
 
-        virtual void write_resource_descriptor(const DescriptorInfo &descriptor_info, void *descriptor, uint32_t descriptor_size) = 0;
+        virtual void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) = 0;
+        virtual void write_sampler_descriptors(const SamplerDescription *samplers, uint32_t sampler_count, void *start_address) = 0;
 
         virtual uint32_t get_resource_descriptor_size() const = 0;
         virtual uint32_t get_sampler_descriptor_size() const = 0;

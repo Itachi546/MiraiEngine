@@ -6,23 +6,28 @@ namespace mirai {
 
     struct GPUSamplerDescriptorHeap {
         BufferID buffer;
-        void *ptr;
         uint32_t size;
         uint32_t descriptor_size;
+        void *ptr;
+
+        DescriptorOffset push_descriptors(RenderingDevice *device, const SamplerDescription *samplers, uint32_t sampler_count);
+
+      private:
+        uint32_t offset = 0;
     };
 
     struct GPUResourceDescriptorHeap {
       public:
         BufferID buffer;
-        void *ptr;
         uint32_t size;
         uint32_t descriptor_size;
+        void *ptr;
 
         void new_frame(uint32_t frame_index);
 
-        DescriptorOffset push_descriptor(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
+        DescriptorOffset push_descriptors(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
 
-        DescriptorOffset push_descriptor_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
+        DescriptorOffset push_descriptors_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
 
       private:
         uint32_t offset = 0;

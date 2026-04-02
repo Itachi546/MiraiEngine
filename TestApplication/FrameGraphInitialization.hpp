@@ -88,7 +88,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                     {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
                     {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
                 };
-                DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptor(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+                DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
                 bindings = &board->add<LinearizeDepthPassBindings>(LinearizeDepthPassBindings{
                     .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
                 });
