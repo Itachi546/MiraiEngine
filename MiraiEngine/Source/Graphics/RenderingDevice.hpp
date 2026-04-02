@@ -531,6 +531,8 @@ namespace mirai {
         size_t size;
     };
 
+    using DescriptorOffset = uint32_t;
+
     struct BufferCopyRegion {
         uint64_t src_offset;
         uint64_t dst_offset;

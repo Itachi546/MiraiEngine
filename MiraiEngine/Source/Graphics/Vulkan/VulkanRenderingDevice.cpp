@@ -376,7 +376,7 @@ namespace mirai {
         }
 
         std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
-        uint32_t descriptorOffset = 0;
+        uint32_t descriptorCount = 0;
         for (auto &shader : shader_modules) {
             for (const auto &set : shader.descriptor_sets_info) {
                 for (const auto &binding : set.bindings) {
@@ -397,13 +397,13 @@ namespace mirai {
                     mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
                     mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
 
-                    mapping.sourceData.pushIndex.heapOffset = descriptorOffset * resource_descriptor_size;
-                    mapping.sourceData.pushIndex.pushOffset = push_constants_size;
+                    mapping.sourceData.pushIndex.heapOffset = 0;
+                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
                     mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
                     mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
                     mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
 
-                    descriptorOffset++;
+                    descriptorCount++;
                 }
             }
         }
@@ -583,7 +583,7 @@ namespace mirai {
             push_constants_size = std::max(push_constants_size, entry.second.offset + entry.second.size);
         }
 
-        uint32_t descriptorOffset = 0;
+        uint32_t descriptorCount = 0;
         for (const auto &set : shader.descriptor_sets_info) {
             for (const auto &binding : set.bindings) {
                 VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
@@ -595,13 +595,13 @@ namespace mirai {
                 mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
                 mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
 
-                mapping.sourceData.pushIndex.heapOffset = descriptorOffset * resource_descriptor_size;
-                mapping.sourceData.pushIndex.pushOffset = push_constants_size;
+                mapping.sourceData.pushIndex.heapOffset = 0;
+                mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
                 mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
                 mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
                 mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
 
-                descriptorOffset++;
+                descriptorCount++;
             }
         }
 

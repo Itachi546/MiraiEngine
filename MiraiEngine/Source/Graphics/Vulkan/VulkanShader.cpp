@@ -29,8 +29,18 @@ namespace mirai {
                 vk_binding.binding_type = BindingType(binding->descriptor_type);
                 vk_binding.shader_stage = ShaderStage(reflection.shader_stage);
             }
-            if (vk_set.bindings.size() > 0)
+            if (vk_set.bindings.size() > 0) {
+                std::sort(vk_set.bindings.begin(), vk_set.bindings.end(), [](const ShaderReflectionDescriptorBinding &lhs, const ShaderReflectionDescriptorBinding &rhs) {
+                    return lhs.binding < rhs.binding;
+                });
                 shader->descriptor_sets_info.push_back(std::move(vk_set));
+            }
+        }
+
+        if (shader->descriptor_sets_info.size() > 0) {
+            std::sort(shader->descriptor_sets_info.begin(), shader->descriptor_sets_info.end(), [](const ShaderReflectionDescriptorSetInfo &lhs, const ShaderReflectionDescriptorSetInfo &rhs) {
+                return lhs.set < rhs.set;
+            });
         }
 
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {

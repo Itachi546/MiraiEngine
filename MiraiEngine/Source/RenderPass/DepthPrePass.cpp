@@ -82,20 +82,7 @@ namespace mirai {
                     Log::Fatal("Failed to load pipeline for depth-prepass");
                 }
 
-                std::vector<DescriptorInfo> descriptor_infos = {
-                    {
-                        DescriptorType::UniformBuffer,
-                        renderer->per_frame_uniform_buffer.buffer,
-                        renderer->per_frame_uniform_buffer.offset,
-                        renderer->per_frame_uniform_buffer.size,
-                    },
-                    {
-                        DescriptorType::StorageBuffer,
-                        renderer->global_transform_buffer,
-                        0,
-                        UINT64_MAX,
-                    },
-                };
+                std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor};
                 DrawBatch(command_buffer, render_batches, {
                                                               .batch_type = RENDERBATCH_TYPE_OPAQUE,
                                                               .shader = shader,

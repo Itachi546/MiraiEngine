@@ -8,11 +8,19 @@ namespace mirai {
         per_frame_current_offset_end = per_frame_current_offset + AppSettings::K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT;
     }
 
-    uint32_t GPUResourceDescriptorHeap::push_descriptor(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
-        return 0;
+    DescriptorOffset GPUResourceDescriptorHeap::push_descriptor(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
+        uint32_t current_offset = offset;
+        ASSERT(current_offset <= AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT);
+
+        for (uint32_t i = 0; i < descriptor_info_count; ++i) {
+            uint8_t *descriptor_buffer_ptr = static_cast<uint8_t *>(ptr) + offset * descriptor_size;
+            device->write_resource_descriptor(descriptor_infos[i], descriptor_buffer_ptr, descriptor_size);
+            offset++;
+        }
+        return current_offset;
     }
 
-    uint32_t GPUResourceDescriptorHeap::push_descriptor_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
+    DescriptorOffset GPUResourceDescriptorHeap::push_descriptor_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
         uint32_t current_offset = per_frame_current_offset;
         ASSERT(per_frame_current_offset + descriptor_info_count <= per_frame_current_offset_end);
 

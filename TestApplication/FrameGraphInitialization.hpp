@@ -81,14 +81,12 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                 {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
                 {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
             };
-            uint32_t descriptor_index = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+            DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+            uint32_t descriptors[] = {base_descriptor_offset, base_descriptor_offset + 1};
 
             command_buffer->bind_pipeline(data.shader->pipeline_id);
             command_buffer->set_push_data(0, &push_constant_data, sizeof(PushConstantData));
-            command_buffer->set_push_data(sizeof(PushConstantData), &descriptor_index, sizeof(descriptor_index));
-
-            // command_buffer->set_uniform_sets(data.shader->pipeline_id, &uniform_set, 1);
-            // command_buffer->set_push_constants(data.shader->pipeline_id, &push_constant, 1);
+            command_buffer->set_push_data(sizeof(PushConstantData), descriptors, cast_u32(sizeof(descriptors)));
 
             uint32_t work_group_x = rendering_utils::get_workgroup_size(push_constant_data.width, 32);
             uint32_t work_group_y = rendering_utils::get_workgroup_size(push_constant_data.height, 32);

@@ -86,7 +86,6 @@ namespace mirai {
         resource_heap.ptr = device->map_buffer(resource_heap.buffer);
         resource_heap.descriptor_size = device->get_resource_descriptor_size();
         resource_heap.size = buffer_desc.size;
-        resource_heap.offset = 0;
         resource_heap.new_frame(device->get_current_frame());
 
         // Allocate sampler heap
@@ -204,9 +203,21 @@ namespace mirai {
         }
 
         command_buffer->end_gpu_debug_label();
-
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
+
+        // Update transform descriptor
+        DescriptorInfo descriptor_info = {
+            .type = DescriptorType::StorageBuffer,
+            .resource = global_transform_buffer,
+            .offset = 0,
+            .size = UINT64_MAX,
+        };
+        transform_descriptor = resource_heap.push_descriptor(device.get(), &descriptor_info, 1);
+
+        // Update geometry descriptor
+        descriptor_info.resource = vertex_buffer_allocator.buffer;
+        global_geometry_descriptor = resource_heap.push_descriptor(device.get(), &descriptor_info, 1);
 
         frame_graph->compile();
     }
@@ -220,6 +231,15 @@ namespace mirai {
         per_frame_uniform_buffer.offset = allocate_staging_buffer(sizeof(scene->per_frame_data), current_frame);
         per_frame_uniform_buffer.size = sizeof(Scene::FrameData);
         per_frame_uniform_buffer.buffer = per_frame_staging_buffer;
+
+        // Update per frame data descriptor
+        DescriptorInfo per_frame_data_descriptor_info = {
+            .type = DescriptorType::UniformBuffer,
+            .resource = per_frame_uniform_buffer.buffer,
+            .offset = per_frame_uniform_buffer.offset,
+            .size = per_frame_uniform_buffer.size,
+        };
+        per_frame_data_descriptor = resource_heap.push_descriptor_per_frame(device.get(), &per_frame_data_descriptor_info, 1);
 
         uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_uniform_buffer.offset;
         std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));

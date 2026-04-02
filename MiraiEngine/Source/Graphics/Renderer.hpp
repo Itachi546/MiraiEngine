@@ -21,35 +21,6 @@ namespace mirai {
         CommandBuffer *command_buffer;
     };
 
-    struct GpuBufferSubAllocation {
-        BufferID buffer;
-        uint32_t offset;
-        uint32_t size;
-
-        void init(BufferID buffer, uint32_t size, uint32_t offset = 0) {
-            this->buffer = buffer;
-            this->size = size;
-            this->offset = offset;
-        }
-
-        bool can_allocate(uint32_t required_size) {
-            if (required_size >= (size - offset))
-                return false;
-            return true;
-        }
-
-        std::optional<BufferView> allocate(uint32_t required_size) {
-            if (!can_allocate(required_size))
-                return {};
-            BufferView buffer_view;
-            buffer_view.buffer = buffer;
-            buffer_view.offset = offset;
-            buffer_view.size = required_size;
-            offset += required_size;
-            return buffer_view;
-        }
-    };
-
     class Renderer {
       public:
         Renderer();
@@ -87,6 +58,10 @@ namespace mirai {
 
         GPUResourceDescriptorHeap resource_heap;
         GPUSamplerDescriptorHeap sampler_heap;
+
+        DescriptorOffset per_frame_data_descriptor;
+        DescriptorOffset transform_descriptor;
+        DescriptorOffset global_geometry_descriptor;
 
         BufferID per_frame_staging_buffer;
         uint8_t *per_frame_staging_buffer_ptr;

@@ -193,28 +193,19 @@ namespace mirai {
             }
 
             Renderer *renderer = Renderer::get();
+            DescriptorInfo mesh_data_descriptor_info = {.type = DescriptorType::StorageBuffer};
             for (const auto &mesh_batch : batch.meshes) {
-                // We are copying data, yes
-                std::vector<DescriptorInfo> descriptors = batch_info.descriptor_infos;
-                descriptors.push_back({
-                    .type = DescriptorType::StorageBuffer,
-                    .resource = mesh_batch.vertex_buffer.buffer,
-                    .offset = 0,
-                    .size = UINT64_MAX,
-                });
-
-                descriptors.push_back({
-                    .type = DescriptorType::StorageBuffer,
-                    .resource = mesh_batch.draw_data_buffer_view.buffer,
-                    .offset = mesh_batch.draw_data_buffer_view.offset,
-                    .size = mesh_batch.draw_data_buffer_view.size,
-                });
-
-                uint32_t descriptor_offset = renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), descriptors.data(), cast_u32(descriptors.size()));
-                command_buffer->set_push_data(descriptor_push_index_offset, &descriptor_offset, sizeof(descriptor_offset));
-
                 if (mesh_batch.mesh_draw_infos.size() == 0)
                     continue;
+                // We are copying data, yes
+                mesh_data_descriptor_info.resource = mesh_batch.draw_data_buffer_view.buffer;
+                mesh_data_descriptor_info.offset = mesh_batch.draw_data_buffer_view.offset;
+                mesh_data_descriptor_info.size = mesh_batch.draw_data_buffer_view.size;
+
+                std::vector<DescriptorOffset> descriptors = batch_info.descriptor_infos;
+                descriptors.push_back(renderer->resource_heap.push_descriptor_per_frame(RenderingDevice::get(), &mesh_data_descriptor_info, 1));
+                command_buffer->set_push_data(descriptor_push_index_offset, descriptors.data(), cast_u32(descriptors.size() * sizeof(uint32_t)));
+
                 _DrawBatch(command_buffer, &mesh_batch, shader->get_draw_mode());
             }
         }
