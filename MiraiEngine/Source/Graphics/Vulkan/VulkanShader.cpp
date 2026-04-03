@@ -87,42 +87,6 @@ namespace mirai {
         }
     }
 
-    uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set) {
-        uint64_t hash = 0;
-        for (uint32_t i = 0; i < count; ++i) {
-            UniformLayout &uniform = uniforms[i];
-            utils::hash_combine(hash, uniform.binding, uniform.binding_type, set, uniform.shader_stage);
-        }
-        return hash;
-    }
-
-    uint64_t GetDescriptorSetLayoutHash(const std::vector<ShaderReflectionDescriptorBinding> &bindings, uint32_t set) {
-        uint64_t hash = 0;
-        for (uint32_t i = 0; i < bindings.size(); ++i) {
-            const ShaderReflectionDescriptorBinding &binding = bindings[i];
-            uint64_t input = uint64_t(binding.binding) << 60 |
-                             uint64_t(binding.binding_type) << 40 |
-                             uint64_t(set) << 36 |
-                             uint64_t(binding.shader_stage);
-            utils::hash_combine(hash, input);
-        }
-        return hash;
-    }
-
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void *p_next) {
-        VkDescriptorSetLayoutCreateInfo create_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = p_next,
-            .flags = flags,
-            .bindingCount = binding_count,
-            .pBindings = bindings,
-        };
-
-        VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateDescriptorSetLayout(device, &create_info, nullptr, &set_layout));
-        return set_layout;
-    }
-
     void DestroyShader(VulkanShader *shader, VkDevice device) {
         vkDestroyShaderModule(device, shader->shader, nullptr);
         shader->shader_stage = VkShaderStageFlagBits(0);

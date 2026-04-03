@@ -41,7 +41,6 @@ namespace mirai {
     DEFINE_ID(Pipeline)
     DEFINE_ID(Texture)
     DEFINE_ID(Buffer)
-    DEFINE_ID(UniformSet)
     DEFINE_ID(Query)
     DEFINE_ID(AccelerationStructure)
 
@@ -479,36 +478,6 @@ namespace mirai {
         SHADER_STAGE_ALL = 0x7FFFFFFF,
     };
 
-    enum BindingType {
-        BINDING_TYPE_SAMPLER = 0,
-        BINDING_TYPE_COMBINED_IMAGE_SAMPLER = 1,
-        BINDING_TYPE_SAMPLED_IMAGE = 2,
-        BINDING_TYPE_STORAGE_IMAGE = 3,
-        BINDING_TYPE_UNIFORM_BUFFER = 6,
-        BINDING_TYPE_STORAGE_BUFFER = 7,
-        BINDING_TYPE_ACCELERATION_STRUCTURE = 1000150000,
-    };
-
-    struct UniformLayout {
-        uint32_t binding;
-        BindingType binding_type;
-        uint32_t shader_stage;
-    };
-
-    struct UniformBinding {
-        ID resource_id;
-
-        union {
-            struct {
-                uint64_t offset = 0;
-                uint64_t range = UINT64_MAX;
-            } buffer_info;
-            struct {
-                uint64_t mip_levels = 0;
-            } texture_info;
-        };
-    };
-
     enum DescriptorType {
         SampledImage,
         StorageImage,
@@ -597,8 +566,6 @@ namespace mirai {
         virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const = 0;
         virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const = 0;
 
-        virtual UniformSetID create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name = "") = 0;
-        virtual void update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) = 0;
 
         virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
         virtual void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;
@@ -628,7 +595,6 @@ namespace mirai {
         virtual void destroy_buffers(BufferID *buffers, uint32_t count) = 0;
         virtual void destroy_queries(QueryID *queries, uint32_t count) = 0;
         virtual void destroy_textures(TextureID *textures, uint32_t count) = 0;
-        virtual void destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) = 0;
 
         uint64_t get_memory_usage() const {
             return total_memory_usage;

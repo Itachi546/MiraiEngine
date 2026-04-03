@@ -36,7 +36,6 @@ namespace mirai {
 
         void PushChar(uint32_t char_index, glm::vec2 &position, uint32_t color, float font_size);
 
-        UniformSetID uniform_set;
     };
 
     struct TextRenderManager {

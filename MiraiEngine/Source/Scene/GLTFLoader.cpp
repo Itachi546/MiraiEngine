@@ -658,27 +658,11 @@ namespace mirai {
             }
         }
 
-        UniformLayout vertex_data_layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_STORAGE_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-
-        RenderingDevice *device = RenderingDevice::get();
-        UniformSetID vertex_binding_set = device->create_uniform_set(&vertex_data_layout, 1, 2, "mesh_data_set");
-
-        UniformBinding vertex_binding = {
-            .resource_id = vertex_buffer.buffer,
-        };
-
-        device->update_uniform_set(vertex_binding_set, &vertex_binding, 1);
-
         gpu_mesh.vertex_buffer = vertex_buffer;
         gpu_mesh.vertex_buffer_size = vertex_buffer_size;
 
         gpu_mesh.index_buffer = index_buffer;
         gpu_mesh.index_buffer_size = index_buffer_size;
-        gpu_mesh.vertex_binding_set = vertex_binding_set;
     }
 
     InterpolationMode get_interpolation_mode(const std::string &mode) {

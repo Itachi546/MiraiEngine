@@ -22,7 +22,6 @@ namespace mirai {
         ~LineRenderer();
 
         BufferID buffer;
-        UniformSetID uniform_set;
         Shader *shader;
         uint32_t line_count = 0;
 

@@ -52,13 +52,6 @@ namespace mirai {
         ID resource_id;
     };
 
-    struct VulkanUniformSet {
-        std::vector<UniformLayout> uniform_layout;
-        uint32_t set_id;
-        VkDescriptorSet descriptor_set;
-        VkDescriptorPool descriptor_pool;
-    };
-
     /*
     struct VulkanDescriptorSet
     {
@@ -88,23 +81,10 @@ namespace mirai {
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size);
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutBinding *bindings, uint32_t binding_count, VkDescriptorSetLayoutCreateFlags flags, void *p_next);
-
-    uint64_t GetDescriptorSetLayoutHash(const std::vector<ShaderReflectionDescriptorBinding> &bindings, uint32_t set);
-    uint64_t GetDescriptorSetLayoutHash(UniformLayout *uniforms, uint32_t count, uint32_t set);
-
     void MergePushConstants(HashMap<uint32_t, ShaderReflectionPushConstant> &dst, const HashMap<uint32_t, ShaderReflectionPushConstant> &src);
 
     void MergeShaderBindings(std::vector<ShaderReflectionDescriptorBinding> &dst, const std::vector<ShaderReflectionDescriptorBinding> &src);
 
     void DestroyShader(VulkanShader *shader, VkDevice device);
-
-    /*
-    void CreatePipelineBindings(const HashMap<uint32_t, std::vector<VkReflectionDescriptorBinding>> &descriptor_sets,
-                                VkDevice device, VulkanPipeline *pipeline,
-                                VkDescriptorPool descriptor_pool,
-                                uint32_t total_sets,
-                                VulkanBindings *out_bindings);
-    */
 
 } // namespace mirai

@@ -48,7 +48,6 @@ namespace mirai {
 
         AABB local_aabb;
         AABB transformed_aabb;
-        UniformSetID vertex_binding_set;
     };
 
     struct GpuMesh {
@@ -60,16 +59,11 @@ namespace mirai {
 
         std::vector<uint8_t> vertices;
         std::vector<uint32_t> indices;
-
-        UniformSetID vertex_binding_set;
     };
 
     class Scene {
       public:
         Scene(const std::string &name);
-
-        // Called after everything is initialized
-        void on_initialize();
 
         Camera *get_camera() {
             return camera.get();

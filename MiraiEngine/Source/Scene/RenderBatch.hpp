@@ -60,8 +60,6 @@ namespace mirai {
         BufferView draw_indirect_buffer_view;
         BufferView draw_data_buffer_view;
 
-        UniformSetID vertex_binding_set;
-
         std::vector<MeshDrawInfo> mesh_draw_infos;
 
         void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera, uint32_t vertex_stride) {
@@ -73,7 +71,6 @@ namespace mirai {
         BufferView vertex_buffer;
         BufferView index_buffer;
 
-        UniformSetID vertex_binding_set;
         std::vector<MeshDrawInfo> mesh_draw_infos;
 
         void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, uint32_t vertex_stride) {

@@ -83,8 +83,6 @@ namespace mirai {
 
         void set_depth_bias(float depth_bias_constant_factor, float depth_bias_clamp, float depth_bias_slope_factor);
 
-        UniformSetID create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set_id);
-
         VkCommandBuffer get_command_buffer() {
             return command_buffer;
         }
@@ -109,9 +107,5 @@ namespace mirai {
         VkCommandBuffer command_buffer;
         uint32_t queue_family_indices;
         VkFence fence;
-
-        std::vector<UniformSetID> uniform_sets;
-
-        std::vector<VkDescriptorPool> descriptor_pools;
     };
 } // namespace mirai

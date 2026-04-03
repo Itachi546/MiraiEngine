@@ -32,18 +32,6 @@ namespace mirai {
         pipeline_state.render_state.fields.blend_mode = true;
         pipeline_state.render_state.fields.topology = TOPOLOGY_LINE_LIST;
         shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
-
-        UniformLayout vertex_layout = {
-            .binding = 0,
-            .binding_type = BINDING_TYPE_STORAGE_BUFFER,
-            .shader_stage = SHADER_STAGE_VERTEX,
-        };
-        uniform_set = device->create_uniform_set(&vertex_layout, 1, 0, "line_uniform_set");
-        UniformBinding binding = {
-            .resource_id = buffer,
-        };
-        device->update_uniform_set(uniform_set, &binding, 1);
-        // shader->set_custom_bindings(&uniform_set, 1);
     }
 
     void LineRenderer::NewFrame() {

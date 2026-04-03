@@ -7,13 +7,6 @@ namespace mirai {
 
     CommandBuffer::CommandBuffer() {
         device = static_cast<VulkanRenderingDevice *>(RenderingDevice::get());
-        descriptor_pools.resize(device->get_swapchain_image_count());
-
-        for (auto &descriptor_pool : descriptor_pools) {
-            descriptor_pool = device->create_descriptor_pool(0);
-            // Add this to global list so that it is cleaned up automatically
-            device->descriptor_pools.push_back(descriptor_pool);
-        }
     }
 
     void CommandBuffer::begin_render_pass(const std::vector<AttachmentInfo> &color_attachments, const std::optional<AttachmentInfo> &depth_attachment, uint32_t render_area_width, uint32_t render_area_height) {
@@ -483,24 +476,12 @@ namespace mirai {
         vkCmdSetDepthBias(command_buffer, depth_bias_constant_factor, depth_bias_clamp, depth_bias_slope_factor);
     }
 
-    UniformSetID CommandBuffer::create_uniform_set(UniformLayout *layouts, uint32_t layout_count, uint32_t set) {
-        uint32_t frame_id = device->get_current_frame();
-        UniformSetID uniform_set = device->create_uniform_set_from_descriptor_pool(layouts, layout_count, set, descriptor_pools[frame_id], "temp_uniform_set");
-        uniform_sets.push_back(uniform_set);
-        return uniform_set;
-    }
-
     void CommandBuffer::end_render_pass() {
         vkCmdEndRendering(command_buffer);
     }
 
     void CommandBuffer::begin() {
         // Reset descriptor pool
-        device->destroy_uniform_sets(uniform_sets.data(), cast_u32(uniform_sets.size()));
-        uniform_sets.clear();
-
-        uint32_t frame_id = device->get_current_frame();
-        vkResetDescriptorPool(device->device, descriptor_pools[frame_id], 0);
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,

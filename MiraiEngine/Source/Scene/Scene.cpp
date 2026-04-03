@@ -298,7 +298,6 @@ namespace mirai {
                     .vertex_stride = subset.vertex_stride,
                     .local_aabb = std::move(aabb),
                     .transformed_aabb = std::move(aabb),
-                    .vertex_binding_set = gpu_mesh.vertex_binding_set,
                 };
                 render_object_list.push_back(std::move(render_data));
             }

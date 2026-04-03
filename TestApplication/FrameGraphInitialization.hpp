@@ -58,6 +58,8 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             data.depth_texture = depth_prepass_data.output;
             data.shader = Shader::create_from_file("SPIRV/linearize-depth.comp.spv", "LinearizeDepthShader");
             board->add<LinearizeDepthPassData>(data);
+
+            builder.present(data.output);
         },
 
         [](const LinearizeDepthPassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -106,11 +108,11 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
 
+    /*
     // ImGui Pass
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
     };
-
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
@@ -164,4 +166,5 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->end_render_pass();
             command_buffer->end_gpu_debug_label();
         });
+        */
 }

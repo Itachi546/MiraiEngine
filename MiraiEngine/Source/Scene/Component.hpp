@@ -60,7 +60,6 @@ namespace mirai {
             uint32_t index_count;
             uint32_t vertex_stride;
             uint32_t material_index;
-            UniformSetID vertex_binding_set;
         };
 
         uint32_t gpu_mesh_index;

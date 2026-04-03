@@ -21,16 +21,6 @@ namespace mirai {
         vertex_count = 0;
         vertex_buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "font_renderer_buffer");
         vertex_array = (glm::vec4 *)RenderingDevice::get()->map_buffer(vertex_buffer);
-
-        UniformLayout mesh_data_layout[] = {
-            {.binding = 0, .binding_type = BINDING_TYPE_STORAGE_BUFFER, .shader_stage = SHADER_STAGE_VERTEX},
-        };
-        uniform_set = RenderingDevice::get()->create_uniform_set(mesh_data_layout, 1, 0, "font_uniform_set");
-
-        UniformBinding binding[] = {
-            {.resource_id = vertex_buffer},
-        };
-        RenderingDevice::get()->update_uniform_set(uniform_set, binding, 1);
     }
 
     void TextRenderer::AddText(const std::string &str, const glm::vec2 &position, float font_size, const uint32_t color) {

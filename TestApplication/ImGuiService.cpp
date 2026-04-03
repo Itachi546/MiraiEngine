@@ -14,7 +14,6 @@
 
 using namespace mirai;
 namespace ImGuiService {
-
     static void check_vk_result(VkResult err) {
         if (err == 0)
             return;
@@ -24,7 +23,6 @@ namespace ImGuiService {
     }
 
     ImGuiID dockspace_id = 0;
-    VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 
     void Initialize() {
         IMGUI_CHECKVERSION();
@@ -43,15 +41,13 @@ namespace ImGuiService {
         GLFWwindow *window = (GLFWwindow *)Window::get()->get_window_ptr();
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
-        descriptor_pool = device->create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
-
         ImGui_ImplVulkan_InitInfo init_info = {};
         init_info.Instance = device->instance;
         init_info.PhysicalDevice = device->physical_device;
         init_info.Device = device->device;
         init_info.QueueFamily = device->queue_family_indices[QUEUE_TYPE_GRAPHICS];
         init_info.Queue = device->device_queues[QUEUE_TYPE_GRAPHICS];
-        init_info.DescriptorPool = descriptor_pool;
+        init_info.DescriptorPool = VK_NULL_HANDLE;
         init_info.MinImageCount = 2;
         init_info.ImageCount = static_cast<uint32_t>(device->swapchain->images.size());
         init_info.UseDynamicRendering = true;
@@ -121,7 +117,5 @@ namespace ImGuiService {
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         VulkanRenderingDevice *device = (VulkanRenderingDevice *)RenderingDevice::get();
-        vkDestroyDescriptorPool(device->device, descriptor_pool, nullptr);
     }
-
 } // namespace ImGuiService

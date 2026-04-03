@@ -31,6 +31,7 @@ namespace mirai {
 #endif
     }
 
+    /*
     void VulkanRenderingDevice::initialize_bindless_descriptor() {
         // Create Bindless descriptor set
         VkDescriptorPoolSize pools[] = {
@@ -74,11 +75,10 @@ namespace mirai {
 
         VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
     }
-
+    */
     VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
                                                      resource_pool_textures(1024, "Texture"),
                                                      resource_pool_buffers(256, "Buffer"),
-                                                     resource_pool_uniform_sets(256, "UniformSet"),
                                                      resource_pool_queries(32, "Query") {
         requested_instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
@@ -200,9 +200,6 @@ namespace mirai {
             set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)swapchain->image_views[i], image_view_name.c_str());
         }
 
-        descriptor_pools.push_back(create_descriptor_pool(0));
-        initialize_bindless_descriptor();
-
         // Initialize CommandPool and CommandBuffer
         uint32_t swapchain_image_count = cast_u32(swapchain->images.size());
         uint32_t pool_counts = swapchain_image_count * AppSettings::K_NUM_THREAD;
@@ -248,29 +245,6 @@ namespace mirai {
             render_finished_semaphore[i] = create_semaphore("render_finished_semaphore" + index);
             in_flight_fences[i] = create_fence("in_flight_fence" + index, true);
         }
-    }
-
-    VkDescriptorPool VulkanRenderingDevice::create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools, uint32_t pool_count, uint32_t max_sets) {
-        VkDescriptorPoolSize default_pools[] = {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 128},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 128},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128},
-            {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 128},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 128}};
-
-        uint32_t maxSets = pool_count > 0 ? max_sets : 768;
-        VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .flags = create_flags,
-            .maxSets = maxSets,
-            .poolSizeCount = pool_count == 0 ? (uint32_t)std::size(default_pools) : pool_count,
-            .pPoolSizes = pool_count == 0 ? default_pools : pools,
-        };
-
-        VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateDescriptorPool(device, &descriptor_pool_create_info, nullptr, &descriptor_pool));
-        return descriptor_pool;
     }
 
     VkSemaphore VulkanRenderingDevice::create_semaphore(const std::string &name) {
@@ -737,135 +711,6 @@ namespace mirai {
         assert(aligned_size <= descriptor_heap_properties.maxSamplerHeapSize);
         return aligned_size;
     }
-
-    UniformSetID VulkanRenderingDevice::create_uniform_set_from_descriptor_pool(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, VkDescriptorPool descriptor_pool, const std::string &debug_name) {
-        uint64_t hash = GetDescriptorSetLayoutHash(uniforms, uniform_count, set);
-        auto found = descriptor_set_layouts_cache.find(hash);
-
-        VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
-        if (found == descriptor_set_layouts_cache.end()) {
-            std::vector<VkDescriptorSetLayoutBinding> bindings(uniform_count);
-            for (uint32_t i = 0; i < uniform_count; ++i) {
-                bindings[i].binding = uniforms[i].binding;
-                bindings[i].descriptorType = VkDescriptorType(uniforms[i].binding_type);
-                bindings[i].descriptorCount = 1;
-                bindings[i].stageFlags = VkShaderStageFlags(uniforms[i].shader_stage);
-            }
-            // Create DescriptorSetLayout
-            set_layout = CreateDescriptorSetLayout(device, bindings.data(), uniform_count, 0, nullptr);
-            descriptor_set_layouts_cache.insert(std::make_pair(hash, set_layout));
-        } else
-            set_layout = found->second;
-
-        VkDescriptorSetAllocateInfo allocate_info{
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &set_layout,
-        };
-
-        VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-        VK_CHECK(vkAllocateDescriptorSets(device, &allocate_info, &descriptor_set));
-
-        if (debug_name.size() > 0)
-            set_debug_marker_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET, (uint64_t)descriptor_set, debug_name.c_str());
-
-        uint32_t id = resource_pool_uniform_sets.obtain();
-        VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(id);
-        uniform_set->descriptor_pool = descriptor_pool;
-        uniform_set->descriptor_set = descriptor_set;
-        uniform_set->set_id = set;
-        uniform_set->uniform_layout.insert(uniform_set->uniform_layout.end(), uniforms, uniforms + uniform_count);
-        return UniformSetID{id};
-    }
-
-    UniformSetID VulkanRenderingDevice::create_uniform_set(UniformLayout *uniforms, uint32_t uniform_count, uint32_t set, const std::string &debug_name) {
-        return create_uniform_set_from_descriptor_pool(uniforms, uniform_count, set, descriptor_pools[0], debug_name);
-    }
-
-    void VulkanRenderingDevice::update_uniform_set(UniformSetID uniform_set, UniformBinding *bindings, uint32_t binding_count) {
-        std::vector<VkWriteDescriptorSet> write_sets(binding_count);
-        VkWriteDescriptorSetAccelerationStructureKHR acceleration_structure_write_info = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
-
-        // @TODO replace with custom allocator
-        std::vector<VkDescriptorImageInfo> image_infos;
-        std::vector<VkDescriptorBufferInfo> buffer_infos;
-        image_infos.reserve(16), buffer_infos.reserve(16);
-
-        VulkanUniformSet *vk_set = resource_pool_uniform_sets.access(uniform_set);
-        for (uint32_t i = 0; i < binding_count; ++i) {
-            UniformLayout &layout = vk_set->uniform_layout[i];
-            UniformBinding &binding = bindings[i];
-            write_sets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write_sets[i].dstBinding = layout.binding;
-            write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-            write_sets[i].descriptorCount = 1;
-
-            switch (layout.binding_type) {
-            case BINDING_TYPE_STORAGE_IMAGE: {
-                VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
-                VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
-                image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-                uint64_t mip_level = binding.texture_info.mip_levels;
-                ASSERT(mip_level <= texture->image_views.size());
-                image_info.imageView = texture->image_views[mip_level];
-
-                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                write_sets[i].pImageInfo = &image_info;
-            } break;
-            case BINDING_TYPE_UNIFORM_BUFFER: {
-                VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
-                VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
-                buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.buffer_info.offset;
-                buffer_info.range = binding.buffer_info.range;
-                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                write_sets[i].pBufferInfo = &buffer_info;
-            } break;
-            case BINDING_TYPE_STORAGE_BUFFER: {
-                VulkanBuffer *buffer = resource_pool_buffers.access(binding.resource_id);
-                VkDescriptorBufferInfo &buffer_info = buffer_infos.emplace_back(VkDescriptorBufferInfo{});
-                buffer_info.buffer = buffer->buffer;
-                buffer_info.offset = binding.buffer_info.offset;
-                buffer_info.range = binding.buffer_info.range;
-                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                write_sets[i].pBufferInfo = &buffer_info;
-            } break;
-            case BINDING_TYPE_COMBINED_IMAGE_SAMPLER: {
-                VulkanTexture *texture = resource_pool_textures.access(binding.resource_id);
-                VkDescriptorImageInfo &image_info = image_infos.emplace_back(VkDescriptorImageInfo{});
-                image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                uint64_t mip_level = binding.texture_info.mip_levels;
-                ASSERT(mip_level <= texture->image_views.size());
-                image_info.imageView = texture->image_views[mip_level];
-
-                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                write_sets[i].pImageInfo = &image_info;
-            } break;
-            case BINDING_TYPE_ACCELERATION_STRUCTURE: {
-                if (!has_rt_support) {
-                    ASSERT("Raytracing is not supported");
-                    continue;
-                }
-                acceleration_structure_write_info.accelerationStructureCount = 1;
-                acceleration_structure_write_info.pAccelerationStructures = &acceleration_structure.tlas;
-                write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-                write_sets[i].pNext = &acceleration_structure_write_info;
-                break;
-            }
-            default:
-                ASSERT(0 && "Undefined Binding Type");
-                break;
-            }
-        }
-
-        for (auto &writeSet : write_sets)
-            writeSet.dstSet = vk_set->descriptor_set;
-
-        vkUpdateDescriptorSets(device, binding_count, write_sets.data(), 0, nullptr);
-    } // namespace mirai
 
     VkBuffer VulkanRenderingDevice::create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name) {
         ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
@@ -1399,18 +1244,8 @@ namespace mirai {
         }
     }
 
-    void VulkanRenderingDevice::destroy_uniform_sets(UniformSetID *uniform_sets, uint32_t count) {
-        for (uint32_t i = 0; i < count; ++i) {
-            VulkanUniformSet *uniform_set = resource_pool_uniform_sets.access(uniform_sets[i]);
-            uniform_set->descriptor_pool = VK_NULL_HANDLE;
-            uniform_set->descriptor_set = VK_NULL_HANDLE;
-            uniform_set->set_id = 0;
-            uniform_set->uniform_layout.clear();
-            resource_pool_uniform_sets.release(uniform_sets[i]);
-        }
-    }
-
     void VulkanRenderingDevice::add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) {
+        /*
         std::vector<VkWriteDescriptorSet> write_set(texture_count);
         std::vector<VkDescriptorImageInfo> image_infos(texture_count);
         for (uint32_t i = 0; i < texture_count; ++i) {
@@ -1429,6 +1264,7 @@ namespace mirai {
         }
 
         vkUpdateDescriptorSets(device, texture_count, write_set.data(), 0, nullptr);
+        */
     }
 
     void VulkanRenderingDevice::create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry) {
@@ -1789,15 +1625,6 @@ namespace mirai {
 
         for (auto &image_view : swapchain->image_views)
             vkDestroyImageView(device, image_view, nullptr);
-
-        for (auto &descriptor_pool : descriptor_pools)
-            vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-
-        for (auto &[key, val] : descriptor_set_layouts_cache)
-            vkDestroyDescriptorSetLayout(device, val, nullptr);
-
-        vkDestroyDescriptorSetLayout(device, bindless_descriptor_layout, nullptr);
-        vkDestroyDescriptorPool(device, bindless_descriptor_pool, nullptr);
 
         swapchain = nullptr;
         vkDestroySurfaceKHR(instance, surface, nullptr);

@@ -21,7 +21,7 @@ namespace mirai {
         return cast_u32(render_batches.size() - 1);
     }
 
-    uint32_t FindOrCreateMeshBatch(BufferView vertex_buffer, BufferView index_buffer, UniformSetID vertex_binding_set, std::vector<MeshBatch> &mesh_batches) {
+    uint32_t FindOrCreateMeshBatch(BufferView vertex_buffer, BufferView index_buffer, std::vector<MeshBatch> &mesh_batches) {
         for (uint32_t i = 0; i < mesh_batches.size(); ++i) {
             // No need to check index buffer for now
             if (mesh_batches[i].vertex_buffer.buffer == vertex_buffer.buffer && mesh_batches[i].index_buffer.buffer == index_buffer.buffer)
@@ -30,12 +30,11 @@ namespace mirai {
         mesh_batches.push_back(MeshBatch{
             .vertex_buffer = vertex_buffer,
             .index_buffer = index_buffer,
-            .vertex_binding_set = vertex_binding_set,
         });
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    uint32_t FindOrCreateShadowMeshBatch(BufferView vertex_buffer, BufferView index_buffer, UniformSetID vertex_binding_set, std::vector<ShadowMeshBatch> &mesh_batches, RenderBatchType render_batch_type) {
+    uint32_t FindOrCreateShadowMeshBatch(BufferView vertex_buffer, BufferView index_buffer, std::vector<ShadowMeshBatch> &mesh_batches, RenderBatchType render_batch_type) {
         for (uint32_t i = 0; i < mesh_batches.size(); ++i) {
             // No need to check index buffer for now
             if (mesh_batches[i].vertex_buffer.buffer == vertex_buffer.buffer && mesh_batches[i].index_buffer.buffer == index_buffer.buffer && mesh_batches[i].render_batch_type == render_batch_type)
@@ -44,7 +43,6 @@ namespace mirai {
         mesh_batches.push_back(ShadowMeshBatch{
             .vertex_buffer = vertex_buffer,
             .index_buffer = index_buffer,
-            .vertex_binding_set = vertex_binding_set,
             .render_batch_type = render_batch_type,
         });
         return cast_u32(mesh_batches.size() - 1);
@@ -105,7 +103,7 @@ namespace mirai {
 
             // Check Mesh Batch
             if (cached_batch_info.vertex_buffer != object.vertex_buffer) {
-                mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, render_batches[shader_batch].meshes);
+                mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, render_batches[shader_batch].meshes);
                 cached_batch_info.vertex_buffer = object.vertex_buffer;
             }
 
@@ -148,7 +146,7 @@ namespace mirai {
 
             // Check Mesh Batch
             if (cached_vertex_buffer != object.vertex_buffer || last_render_batch_type != render_batch_type) {
-                mesh_batch = FindOrCreateShadowMeshBatch(object.vertex_buffer, object.index_buffer, object.vertex_binding_set, mesh_batches, render_batch_type);
+                mesh_batch = FindOrCreateShadowMeshBatch(object.vertex_buffer, object.index_buffer, mesh_batches, render_batch_type);
                 cached_vertex_buffer = object.vertex_buffer;
                 last_render_batch_type = render_batch_type;
             }
