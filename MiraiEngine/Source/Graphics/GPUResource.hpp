@@ -9,11 +9,6 @@ namespace mirai {
         uint32_t size;
         uint32_t descriptor_size;
         void *ptr;
-
-        DescriptorOffset push_descriptors(RenderingDevice *device, const SamplerDescription *samplers, uint32_t sampler_count);
-
-      private:
-        uint32_t offset = 0;
     };
 
     struct GPUResourceDescriptorHeap {

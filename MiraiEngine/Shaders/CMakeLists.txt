@@ -24,7 +24,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
         COMMAND ${CMAKE_COMMAND} -E make_directory "${SPIRV_OUTPUT_DIR}" "${DEP_OUTPUT_DIR}"
         COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.4 ${GLSL} 
                 -o ${SPIRV} 
-                -gVS 
+                -g0 
                 --depfile ${DEP_FILE}
         DEPENDS ${GLSL}
         DEPFILE ${DEP_FILE}

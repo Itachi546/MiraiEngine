@@ -657,6 +657,7 @@ namespace mirai {
     };
 
     namespace rendering_utils {
+        void upload_default_samplers(RenderingDevice* device, void *ptr);
         void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
         inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;

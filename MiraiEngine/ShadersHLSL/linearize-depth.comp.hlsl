@@ -6,6 +6,9 @@ Texture2D<float> u_depth_texture;
 [[vk::binding(1, 0)]]
 RWTexture2D<float4> u_output_texture;
 
+[[vk::binding(0, 1)]]
+SamplerState u_samplers[];
+
 struct PushConstantData {
     uint width;
     uint height;
@@ -18,11 +21,12 @@ PushConstantData pc;
 
 [numthreads(32, 32, 1)]
 void main(uint3 dispatch_thread_id : SV_DispatchThreadID) {
-    int2 uv = int2(dispatch_thread_id.xy);
-    if(uv.x > (int)pc.width - 1 || uv.y > (int)pc.height - 1)
+    int2 iuv = int2(dispatch_thread_id.xy);
+    if(iuv.x >= (int)pc.width || iuv.y >= (int)pc.height)
         return;
     
-    float depth = u_depth_texture.Load(int3(uv, 0));
-    float linear_depth = linearize_depth(depth, pc.znear, pc.zfar) * 0.05;
-    u_output_texture[uv] = float4(linear_depth, linear_depth, linear_depth, 1.0);
+    //float2 uv = float2(iuv.x, iuv.y) / float2(pc.width, pc.height);
+    //float depth = u_depth_texture.SampleLevel(u_samplers[0], iuv, 0);
+    float linear_depth = 1.0;//linearize_depth(depth, pc.znear, pc.zfar) * 0.05;
+    u_output_texture[iuv] = float4(linear_depth, 0, linear_depth, 1.0);
 }

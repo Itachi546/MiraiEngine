@@ -366,8 +366,8 @@ namespace mirai {
             shader_stage_create_infos[i].pName = "main";
             shader_stage_create_infos[i].pNext = &binding_mapping_info;
 
-            for (auto &[key, val] : shader.push_constants_info)
-                push_constants_size = std::max(push_constants_size, val.offset + val.size);
+            for (const auto &pc : shader.push_constants_info)
+                push_constants_size = std::max(push_constants_size, pc.offset + pc.size);
 
             if (shader.support_bindless_texture) {
                 ASSERT(shader.shader_stage == VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -576,32 +576,39 @@ namespace mirai {
         mappings.reserve(16);
 
         // Compute shader should be limited to single push constant block
-        ASSERT(shader.push_constants_info.size() == 1);
+        ASSERT(shader.push_constants_info.size() <= 1);
         uint32_t push_constants_size = 0;
 
-        for (auto &entry : shader.push_constants_info) {
-            push_constants_size = std::max(push_constants_size, entry.second.offset + entry.second.size);
+        for (const auto &entry : shader.push_constants_info) {
+            push_constants_size = std::max(push_constants_size, entry.offset + entry.size);
         }
 
         uint32_t descriptorCount = 0;
         for (const auto &set : shader.descriptor_sets_info) {
             for (const auto &binding : set.bindings) {
+                bool is_sampler_resource = set.set == K_BINDLESS_SAMPLER_SET && binding.binding_type == BINDING_TYPE_SAMPLER;
                 VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
                 mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
                 mapping.pNext = nullptr;
                 mapping.descriptorSet = set.set;
                 mapping.firstBinding = binding.binding;
-                mapping.bindingCount = 1;
-                mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
-                mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
-
-                mapping.sourceData.pushIndex.heapOffset = 0;
-                mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
-                mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
-                mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
-                mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
-
-                descriptorCount++;
+                if (is_sampler_resource) {
+                    mapping.bindingCount = AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT;
+                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
+                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
+                    mapping.sourceData.constantOffset.samplerHeapOffset = 0;
+                    mapping.sourceData.constantOffset.samplerHeapArrayStride = cast_u32(descriptor_heap_properties.samplerDescriptorSize);
+                } else {
+                    mapping.bindingCount = 1;
+                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
+                    mapping.sourceData.pushIndex.heapOffset = 0;
+                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
+                    mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
+                    mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
+                    mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
+                    descriptorCount++;
+                }
             }
         }
 

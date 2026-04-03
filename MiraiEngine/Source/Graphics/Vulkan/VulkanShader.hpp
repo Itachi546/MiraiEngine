@@ -43,7 +43,7 @@ namespace mirai {
         VkShaderModule shader;
         VkShaderStageFlagBits shader_stage;
         std::vector<ShaderReflectionDescriptorSetInfo> descriptor_sets_info;
-        HashMap<uint32_t, ShaderReflectionPushConstant> push_constants_info;
+        std::vector<ShaderReflectionPushConstant> push_constants_info;
         bool support_bindless_texture;
     };
 

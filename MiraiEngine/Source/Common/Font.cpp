@@ -35,14 +35,10 @@ namespace mirai {
             .usage_flags = TEXTURE_USAGE_TRANSFER_DST_BIT | TEXTURE_USAGE_SAMPLED_BIT,
         };
 
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.enable_anisotropy = false;
-        SamplerID sampler = RenderingDevice::get()->create_sampler(&sampler_desc);
-
         TextureID texture = RenderingDevice::get()->create_texture(&tex_desc, "font_texture_" + name);
         rendering_utils::copy_texture_immediate(texture, data.get(), width * height);
 
-        BindlessTextureEntry entry = {.texture = texture, .sampler = sampler};
+        BindlessTextureEntry entry = {.texture = texture};
         RenderingDevice::get()->add_bindless_texture(&entry, 1);
 
         data.reset();

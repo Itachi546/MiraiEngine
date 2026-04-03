@@ -95,6 +95,9 @@ namespace mirai {
         sampler_heap.descriptor_size = device->get_sampler_descriptor_size();
         sampler_heap.size = buffer_desc.size;
 
+        // Upload default sampler
+        rendering_utils::upload_default_samplers(device.get(), sampler_heap.ptr);
+
         prev_frame_VP = scene->get_camera()->get_view_projection_transform();
         prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
     }

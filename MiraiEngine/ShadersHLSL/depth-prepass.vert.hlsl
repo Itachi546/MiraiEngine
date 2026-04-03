@@ -4,13 +4,13 @@
 [[vk::binding(0, 0)]]
 ConstantBuffer<PerFrameData> cb_per_frame_data;
 
-[[vk::binding(0, 1)]]
+[[vk::binding(1, 0)]]
 StructuredBuffer<float4x4> sb_transforms;
 
-[[vk::binding(0, 2)]]
+[[vk::binding(2, 0)]]
 StructuredBuffer<uint> sb_vertices;
 
-[[vk::binding(0, 3)]]
+[[vk::binding(3, 0)]]
 StructuredBuffer<DrawData> sb_draw_datas;
 
 float4 main(uint vertex_id : SV_VERTEXID, [[vk::builtin("DrawIndex")]] uint draw_index : TEXCOORD): SV_Position {

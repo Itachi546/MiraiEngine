@@ -7,6 +7,12 @@
 namespace mirai {
     RenderingDevice *RenderingDevice::Instance = nullptr;
 
+    void rendering_utils::upload_default_samplers(RenderingDevice *device, void *ptr) {
+        SamplerDescription sampler_info = SamplerDescription::create();
+        sampler_info.address_mode_u = sampler_info.address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT;
+        device->write_sampler_descriptors(&sampler_info, 1, ptr);
+    }
+
     void rendering_utils::copy_texture_immediate(TextureID dst, void *data, uint32_t size) {
         BufferDescription buffer_desc = {
             .size = size,

@@ -20,11 +20,8 @@ namespace mirai {
         };
 
         RenderingDevice *device = RenderingDevice::get();
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        default_sampler = device->create_sampler(&sampler_desc);
 
         cubemap_texture = device->create_texture(&texture_desc, "cubemap");
-
         texture_desc.width = irradiance_map_size;
         texture_desc.height = irradiance_map_size;
         texture_desc.mip_levels = 1;
@@ -37,8 +34,6 @@ namespace mirai {
         texture_desc.width = prefilter_map_size;
         texture_desc.height = prefilter_map_size;
         prefilter_texture = device->create_texture(&texture_desc, "prefilter_envmap");
-        sampler_desc.mipmap_mode = SAMPLER_MIPMAP_LINEAR;
-        SamplerID prefilter_sampler = device->create_sampler(&sampler_desc);
 
         // Create 2D BRDF Texture
         texture_desc.create_flags = 0;
@@ -59,11 +54,6 @@ namespace mirai {
         }
 
         RenderingDevice *device = RenderingDevice::get();
-
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        // @NOTE this is done to prevent the brdf texture wrap around when dot(N, V) = 1
-        sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        SamplerID hdri_sampler = device->create_sampler(&sampler_desc);
 
         TextureDescription texture_desc = {
             .create_flags = 0,
@@ -97,7 +87,7 @@ namespace mirai {
         };
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
         */
-        Shader *cubemap_shader = Shader::create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
+        // Shader *cubemap_shader = Shader::create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
         /*
         DescriptorInfo descriptor_infos[] = {
             {.type = DescriptorType::SampledImage, .resource = hdri_texture},

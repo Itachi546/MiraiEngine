@@ -43,27 +43,14 @@ namespace mirai {
             });
         }
 
+        shader->push_constants_info.resize(reflection.push_constant_block_count);
         for (uint32_t p = 0; p < reflection.push_constant_block_count; ++p) {
             SpvReflectBlockVariable &push_constant = reflection.push_constant_blocks[p];
-
-            HashMap<std::string, ShaderReflectionPushConstantMember> field_info;
-            for (uint32_t m = 0; m < push_constant.member_count; ++m) {
-                field_info.insert(std::make_pair(push_constant.members[m].name, ShaderReflectionPushConstantMember{
-                                                                                    .offset = push_constant.members[m].offset,
-                                                                                    .size = push_constant.members[m].size,
-                                                                                    .padded_size = push_constant.members[m].padded_size,
-                                                                                }));
-            }
-
-            ShaderReflectionPushConstant vk_push_constant = {
-                .name = push_constant.type_description->type_name,
+            shader->push_constants_info[p] = {
                 .shader_stage = cast_u32(ShaderStage(reflection.shader_stage)),
                 .offset = push_constant.offset,
                 .size = push_constant.size,
-                .field_info = field_info,
             };
-            uint32_t hash = utils::djb2_hash_string(push_constant.type_description->type_name);
-            shader->push_constants_info.insert(std::make_pair(hash, std::move(vk_push_constant)));
         }
         shader->shader_stage = VkShaderStageFlagBits(reflection.shader_stage);
     }

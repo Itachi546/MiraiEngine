@@ -29,11 +29,4 @@ namespace mirai {
         // We need index into descriptor rather than actual address
         return current_offset;
     }
-
-    DescriptorOffset GPUSamplerDescriptorHeap::push_descriptors(RenderingDevice *device, const SamplerDescription *samplers, uint32_t sampler_count) {
-        uint32_t current_offset = offset;
-        device->write_sampler_descriptors(samplers, sampler_count, static_cast<uint8_t *>(ptr) + offset * descriptor_size);
-        offset += sampler_count;
-        return current_offset;
-    }
 } // namespace mirai

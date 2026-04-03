@@ -3,11 +3,11 @@
 [[vk::binding(0, 0)]]
 Texture2D<float4> u_hdri;
 
-[[vk::binding(0, 0)]]
-SamplerState u_sampler;
-
 [[vk::binding(1, 0)]]
 RWTexture2DArray<float4> u_cubemap;
+
+[[vk::binding(0, 1)]]
+SamplerState u_sampler;
 
 struct PushConstantData {
     float2 cubemap_size;

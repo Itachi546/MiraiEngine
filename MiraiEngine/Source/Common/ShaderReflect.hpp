@@ -7,7 +7,6 @@
 namespace mirai {
 
     struct ShaderReflectionDescriptorBinding {
-        std::string name;
         uint32_t binding;
         uint32_t shader_stage;
         BindingType binding_type;
@@ -18,18 +17,10 @@ namespace mirai {
         std::vector<ShaderReflectionDescriptorBinding> bindings;
     };
 
-    struct ShaderReflectionPushConstantMember {
-        uint32_t offset;
-        uint32_t size;
-        uint32_t padded_size;
-    };
-
     struct ShaderReflectionPushConstant {
-        std::string name;
         uint32_t shader_stage;
         uint32_t offset;
         uint32_t size;
-        HashMap<std::string, ShaderReflectionPushConstantMember> field_info;
     };
 
     struct ShaderReflection {
