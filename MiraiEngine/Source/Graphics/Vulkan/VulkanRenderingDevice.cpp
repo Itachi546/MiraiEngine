@@ -315,33 +315,6 @@ namespace mirai {
         return fence;
     }
 
-    SamplerID VulkanRenderingDevice::create_sampler(SamplerDescription *desc) {
-        uint64_t hash = CalculateSamplerHash(desc);
-        if (sampler_caches.find(hash) != sampler_caches.end())
-            return hash;
-
-        VkSamplerCreateInfo createInfo = {
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .pNext = nullptr,
-            .magFilter = VkFilter(desc->mag_filter),
-            .minFilter = VkFilter(desc->min_filter),
-            .mipmapMode = VkSamplerMipmapMode(desc->mipmap_mode),
-            .addressModeU = VkSamplerAddressMode(desc->address_mode_u),
-            .addressModeV = VkSamplerAddressMode(desc->address_mode_v),
-            .addressModeW = VkSamplerAddressMode(desc->address_mode_v),
-            .mipLodBias = desc->lod_bias,
-            .anisotropyEnable = desc->enable_anisotropy,
-            .maxAnisotropy = desc->max_anisotropy,
-            .minLod = desc->min_lod,
-            .maxLod = desc->max_lod,
-        };
-
-        VkSampler sampler = VK_NULL_HANDLE;
-        VK_CHECK(vkCreateSampler(device, &createInfo, nullptr, &sampler));
-        sampler_caches.insert(std::make_pair(hash, sampler));
-        return SamplerID{hash};
-    }
-
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
         uint32_t shader_count = cast_u32(pipeline_description->shader_programs.size());
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(shader_count);
@@ -734,6 +707,7 @@ namespace mirai {
                 .maxAnisotropy = desc->max_anisotropy,
                 .minLod = desc->min_lod,
                 .maxLod = desc->max_lod,
+                .unnormalizedCoordinates = false,
             };
 
             addresses[i].address = static_cast<uint8_t *>(address) + i * descriptor_heap_properties.samplerDescriptorSize;
@@ -866,10 +840,6 @@ namespace mirai {
                 uint64_t mip_level = binding.texture_info.mip_levels;
                 ASSERT(mip_level <= texture->image_views.size());
                 image_info.imageView = texture->image_views[mip_level];
-
-                auto found = sampler_caches.find(binding.texture_info.sampler);
-                if (found != sampler_caches.end())
-                    image_info.sampler = found->second;
 
                 write_sets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 write_sets[i].pImageInfo = &image_info;
@@ -1454,11 +1424,6 @@ namespace mirai {
 
             VulkanTexture *texture = resource_pool_textures.access(textures[i].texture.id);
             image_infos[i].imageLayout = texture->current_layout;
-
-            auto found = sampler_caches.find(textures[i].sampler);
-            ASSERT(found != sampler_caches.end());
-            image_infos[i].sampler = found->second;
-
             image_infos[i].imageView = texture->image_views[0];
             write_set[i].pImageInfo = &image_infos[i];
         }
@@ -1830,9 +1795,6 @@ namespace mirai {
 
         for (auto &[key, val] : descriptor_set_layouts_cache)
             vkDestroyDescriptorSetLayout(device, val, nullptr);
-
-        for (auto &[key, val] : sampler_caches)
-            vkDestroySampler(device, val, nullptr);
 
         vkDestroyDescriptorSetLayout(device, bindless_descriptor_layout, nullptr);
         vkDestroyDescriptorPool(device, bindless_descriptor_pool, nullptr);

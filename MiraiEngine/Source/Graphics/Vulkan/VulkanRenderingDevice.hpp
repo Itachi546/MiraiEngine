@@ -65,7 +65,6 @@ namespace mirai {
         float get_timestamp_period() const override;
 
         TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
-        SamplerID create_sampler(SamplerDescription *desc);
 
         void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) override;
 
@@ -109,13 +108,6 @@ namespace mirai {
 
         VulkanUniformSet *access_uniform_set(UniformSetID uniform_set) {
             return resource_pool_uniform_sets.access(uniform_set);
-        }
-
-        VkSampler access_sampler(SamplerID sampler) {
-            auto found = sampler_caches.find(sampler);
-            if (found != sampler_caches.end())
-                return found->second;
-            return VK_NULL_HANDLE;
         }
 
         VkDescriptorPool create_descriptor_pool(VkDescriptorPoolCreateFlags create_flags, VkDescriptorPoolSize *pools = nullptr, uint32_t pool_count = 0, uint32_t max_sets = 512);
@@ -171,7 +163,6 @@ namespace mirai {
         ResourcePool<VulkanUniformSet> resource_pool_uniform_sets;
         ResourcePool<VulkanQuery> resource_pool_queries;
         HashMap<uint64_t, VkDescriptorSetLayout> descriptor_set_layouts_cache;
-        HashMap<uint64_t, VkSampler> sampler_caches;
 
         uint32_t current_frame = 0;
 

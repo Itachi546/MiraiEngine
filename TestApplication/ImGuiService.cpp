@@ -25,7 +25,6 @@ namespace ImGuiService {
 
     ImGuiID dockspace_id = 0;
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-    SamplerID sampler_id = {K_INVALID_ID};
 
     void Initialize() {
         IMGUI_CHECKVERSION();
@@ -67,7 +66,6 @@ namespace ImGuiService {
 
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.enable_anisotropy = false;
-        sampler_id = RenderingDevice::get()->create_sampler(&sampler_desc);
     }
 
     HashMap<uint32_t, VkDescriptorSet> ImTextureIDMap;
@@ -80,8 +78,7 @@ namespace ImGuiService {
             VulkanTexture *vkTexture = device->access_texture(TextureID{texture});
             if (vkTexture->image_type != VK_IMAGE_TYPE_2D)
                 return false;
-            VkSampler sampler = device->access_sampler(sampler_id);
-            VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(sampler, vkTexture->image_views[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(VK_NULL_HANDLE, vkTexture->image_views[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             ImTextureIDMap[texture] = descriptorSet;
             textureId = (ImTextureID)descriptorSet;
         } else

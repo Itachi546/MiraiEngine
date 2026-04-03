@@ -45,8 +45,6 @@ namespace mirai {
     DEFINE_ID(Query)
     DEFINE_ID(AccelerationStructure)
 
-    using SamplerID = uint64_t;
-
     enum class RenderMode {
         RENDERMODE_FORWARD,
         RENDERMODE_DEFERRED,
@@ -450,7 +448,6 @@ namespace mirai {
 
     struct BindlessTextureEntry {
         TextureID texture;
-        SamplerID sampler;
     };
 
     enum AttachmentLoadOp {
@@ -508,7 +505,6 @@ namespace mirai {
             } buffer_info;
             struct {
                 uint64_t mip_levels = 0;
-                uint64_t sampler = UINT64_MAX;
             } texture_info;
         };
     };
@@ -617,7 +613,6 @@ namespace mirai {
         virtual float get_timestamp_period() const = 0;
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
-        virtual SamplerID create_sampler(SamplerDescription *sampler_desc) = 0;
         virtual void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) = 0;
         virtual void add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) = 0;
 
@@ -657,7 +652,7 @@ namespace mirai {
     };
 
     namespace rendering_utils {
-        void upload_default_samplers(RenderingDevice* device, void *ptr);
+        void upload_default_samplers(RenderingDevice *device, void *ptr);
         void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
         inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;

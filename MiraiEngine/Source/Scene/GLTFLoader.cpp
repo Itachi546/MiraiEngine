@@ -149,7 +149,7 @@ namespace mirai {
             return FORMAT_UNDEFINED;
         }
     }
-
+    /*
     SamplerID CreateSampler(const tinygltf::Sampler *sampler) {
         SamplerDescription sampler_desc = SamplerDescription::create();
         sampler_desc.address_mode_u = sampler_desc.address_mode_v = sampler_desc.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
@@ -163,7 +163,7 @@ namespace mirai {
 
         return RenderingDevice::get()->create_sampler(&sampler_desc);
     }
-
+    */
     std::string FormatTextureURI(const std::string &uri) {
         std::string result;
         if (uri.empty()) {
@@ -200,8 +200,8 @@ namespace mirai {
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
         TextureCache::get()->add_texture(filename, texture);
 
-        SamplerID sampler_id = CreateSampler(sampler);
-        p_user_data->textures.emplace_back(texture, sampler_id);
+        // SamplerID sampler_id = CreateSampler(sampler);
+        p_user_data->textures.emplace_back(texture);
 
         TextureLoadEmbeddedTask load_task = {
             .filename = filename,
@@ -303,9 +303,9 @@ namespace mirai {
             if (nchannel == 3)
                 force_rgba = true;
         }
-        SamplerID sampler_id = CreateSampler(sampler);
+        // SamplerID sampler_id = CreateSampler(sampler);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
-        p_user_data->textures.emplace_back(texture, sampler_id);
+        p_user_data->textures.emplace_back(texture);
 
         TextureCache::get()->add_texture(image->uri, texture);
         p_user_data->async_loader->push({.task_type = TaskType::LoadTextureExternal,
