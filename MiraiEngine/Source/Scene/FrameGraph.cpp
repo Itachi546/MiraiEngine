@@ -1,7 +1,8 @@
 #include "FrameGraph.hpp"
+#include "Common/HashMap.hpp"
+
 #include <cassert>
 #include <stack>
-#include <unordered_map>
 
 #include <iostream>
 
@@ -67,7 +68,7 @@ namespace mirai {
             uint32_t last_used_by;
         };
 
-        std::unordered_map<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
+        HashMap<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
         for (uint32_t i = 0; i < passes.size(); ++i) {
             PassNode &pass = passes[i];
 

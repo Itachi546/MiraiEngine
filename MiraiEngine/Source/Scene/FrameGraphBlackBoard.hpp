@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Common/HashMap.hpp"
 #include <any>
-#include <unordered_map>
 #include <typeindex>
 
 namespace mirai {
@@ -26,7 +26,7 @@ namespace mirai {
         bool has();
 
       private:
-        std::unordered_map<std::type_index, std::any> storage;
+        HashMap<std::type_index, std::any> storage;
     };
 
     template <typename T, typename... Args>
