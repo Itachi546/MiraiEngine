@@ -114,10 +114,10 @@ namespace mirai {
 
     void Scene::update_materials() {
         for (uint32_t i = 0; i < materials.size(); ++i) {
-            if (!materials[i]->dirty)
+            if (!materials[i]->is_dirty())
                 continue;
             updated_materials.push_back(i);
-            materials[i]->dirty = false;
+            materials[i]->set_dirty(false);
         }
     }
 

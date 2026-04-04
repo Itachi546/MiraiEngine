@@ -115,41 +115,4 @@ namespace mirai {
         ASSERT(0);
         return DRAWMODE_INDEXED;
     }
-
-    ShaderPass get_pass_mode(const std::string &pass_mode) {
-        if (pass_mode == "SHADER_PASS_DEPTH_PREPASS")
-            return SHADER_PASS_DEPTH_PREPASS;
-        else if (pass_mode == "SHADER_PASS_PBR_FORWARD")
-            return SHADER_PASS_PBR_FORWARD;
-        else if (pass_mode == "SHADER_PASS_PBR_FORWARD_TRANSPARENT")
-            return SHADER_PASS_PBR_FORWARD_TRANSPARENT;
-        else if (pass_mode == "SHADER_PASS_FORWARD_UNLIT")
-            return SHADER_PASS_FORWARD_UNLIT;
-        else if (pass_mode == "SHADER_PASS_FORWARD_UNLIT_TRANSPARENT")
-            return SHADER_PASS_FORWARD_UNLIT_TRANSPARENT;
-        else if (pass_mode == "SHADER_PASS_SKYBOX")
-            return SHADER_PASS_SKYBOX;
-        else if (pass_mode == "SHADER_PASS_PBR_DEFERRED")
-            return SHADER_PASS_PBR_DEFERRED;
-        else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_SKINNED")
-            return SHADER_PASS_PBR_DEFERRED_SKINNED;
-        else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_ALPHA")
-            return SHADER_PASS_PBR_DEFERRED_ALPHA;
-        else if (pass_mode == "SHADER_PASS_PBR_DEFERRED_TRANSPARENT")
-            return SHADER_PASS_PBR_DEFERRED_TRANSPARENT;
-        else if (pass_mode == "SHADER_PASS_DEFERRED_UNLIT")
-            return SHADER_PASS_DEFERRED_UNLIT;
-        else if (pass_mode == "SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT")
-            return SHADER_PASS_DEFERRED_UNLIT_TRANSPARENT;
-        else if (pass_mode == "SHADER_PASS_CASCADED_ SHADOW")
-            return SHADER_PASS_CASCADED_SHADOW;
-        else if (pass_mode == "SHADER_PASS_TEXT2D")
-            return SHADER_PASS_TEXT2D;
-        else if (pass_mode == "SHADER_PASS_DEBUG_DRAW")
-            return SHADER_PASS_DEBUG_DRAW;
-
-        ASSERT(0);
-        return SHADER_PASS_COUNT;
-    }
-
 } // namespace mirai

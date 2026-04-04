@@ -2,7 +2,7 @@
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Graphics/Renderer.hpp"
-#include "Scene/ShaderHashMap.hpp"
+#include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
 #include "Engine/AppSettings.hpp"
 #include "Engine/Profiler.hpp"
@@ -33,18 +33,13 @@ namespace mirai {
                                                .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
+                data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DEPTH_PREPASS);
                 board->add<DepthPrePassData>(data);
             },
             [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Renderer *renderer = ctx->renderer;
-
-                PipelineState pipeline_state;
-                pipeline_state.render_state.fields.depth_test = true;
-                pipeline_state.render_state.fields.depth_write = true;
-                pipeline_state.render_state.fields.pass_mode = SHADER_PASS_DEPTH_PREPASS;
-                pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
 
                 ScopedGpuProfiling(command_buffer, "DepthPrePass");
                 command_buffer->begin_gpu_debug_label("DepthPrePass");
@@ -77,11 +72,11 @@ namespace mirai {
                 command_buffer->set_scissor(0, 0, width, height);
 
                 // Draw Opaque meshes
-                Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
-                if (shader == nullptr) {
-                    Log::Fatal("Failed to load pipeline for depth-prepass");
-                }
+                // @TODO Fix me
+                auto found = data.registry->table.find(0);
+                ASSERT(found != data.registry->table.end());
 
+                Shader *shader = found->second.get();
                 std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor};
                 DrawBatch(command_buffer, render_batches, {
                                                               .batch_type = RENDERBATCH_TYPE_OPAQUE,

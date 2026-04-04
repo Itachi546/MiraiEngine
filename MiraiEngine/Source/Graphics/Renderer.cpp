@@ -2,7 +2,7 @@
 #include "RenderingDevice.hpp"
 #include "Vulkan/VulkanRenderingDevice.hpp"
 #include "Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderHashMap.hpp"
+#include "Scene/ShaderRegistry.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
@@ -31,7 +31,7 @@ namespace mirai {
         miProfiler::Initialize();
 
         // Preload shaders
-        shader_hashmap = std::make_unique<ShaderHashMap>();
+        shader_registry_map = std::make_unique<ShaderRegistryMap>();
         frame_graph = std::make_unique<FrameGraph>();
         frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
 
@@ -103,8 +103,7 @@ namespace mirai {
     }
 
     void Renderer::on_load_resources() {
-        if (pipeline_description_file.size() > 0)
-            preload_shaders(shader_hashmap.get(), pipeline_description_file);
+        preload_shaders(shader_registry_map.get());
 
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
@@ -186,14 +185,8 @@ namespace mirai {
             uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
             uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
-            uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
             for (auto &mat : scene->materials) {
-                std::memset(temp_buffer, 0, 64);
-                uint32_t instance_data_size = mat->get_instance_data_size();
-                ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
-                std::memcpy(temp_buffer, mat->get_instance_data(), mat->get_instance_data_size());
-
-                std::memcpy(material_array, temp_buffer, 64);
+                std::memcpy(material_array, &mat->properties, K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
                 material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
             }
 
@@ -477,13 +470,8 @@ namespace mirai {
             uint32_t material_buffer_offset = allocate_staging_buffer(material_size, current_frame);
             uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
-            uint8_t temp_buffer[K_MAX_MATERIAL_INSTANCE_DATA_SIZE];
             for (uint32_t index : updated_materials) {
-                std::memset(temp_buffer, 0, 64);
-                uint32_t instance_data_size = materials[index]->get_instance_data_size();
-                ASSERT(instance_data_size <= K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
-                std::memcpy(temp_buffer, materials[index]->get_instance_data(), instance_data_size);
-                std::memcpy(material_array, temp_buffer, 64);
+                std::memcpy(material_array, &materials[index]->properties, K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
                 material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
             }
 
@@ -547,7 +535,7 @@ namespace mirai {
             sampler_heap.buffer,
         };
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
-        shader_hashmap->destroy();
+        shader_registry_map->destroy();
         miProfiler::Destroy();
         scene.reset();
     }

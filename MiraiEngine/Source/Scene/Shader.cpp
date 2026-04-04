@@ -1,5 +1,4 @@
 #include "Shader.hpp"
-#include "ShaderHashMap.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Common/FileUtils.hpp"
 namespace mirai {
@@ -11,40 +10,21 @@ namespace mirai {
     }
     void Shader::bind(CommandBuffer *command_buffer) {
         command_buffer->bind_pipeline(pipeline_id);
-        // if (bindings.size() > 0)
-        // command_buffer->set_uniform_sets(pipeline_id, bindings.data(), cast_u32(bindings.size()));
     }
-    /*
-    void MaterialShader::create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files) {
-        pipeline_id = PipelineHashMap::get()->add_or_get_graphics_pipeline(pipeline_state, attachment_info, shader_files, name);
-    }
-    void ComputeShader::create_from_file(const std::string &file) {
-        pipeline_id = PipelineHashMap::get()->add_or_get_compute_pipeline(file, name);
-    }
-    */
-    Shader *Shader::create_from_file(const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info, const std::vector<std::string> &shader_files, const std::string &name) {
-        ShaderHashMap *shader_map = ShaderHashMap::get();
-        uint64_t shader_key = pipeline_state.get_hash();
-        Shader *result = shader_map->get(shader_key);
-        if (result != nullptr) {
-            Log::Fatal("Loading already loaded shader");
-            return result;
-        }
 
+    std::shared_ptr<Shader> Shader::create_from_file(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info) {
         RasterizationState rs = RasterizationState::create();
-
-        PipelineState::PipelineRenderState render_state = pipeline_state.render_state;
-        rs.cull_mode = CullMode(render_state.fields.cull_mode);
-        rs.front_face = FrontFace(render_state.fields.front_face);
-        rs.enable_depth_clamp = static_cast<bool>(render_state.fields.depth_clamp);
-        rs.polygon_mode = PolygonMode(render_state.fields.polygon_mode);
-        rs.enable_depth_bias = render_state.fields.depth_bias;
+        rs.cull_mode = pipeline_state.cull_mode;
+        rs.front_face = pipeline_state.front_face;
+        rs.enable_depth_clamp = pipeline_state.cull_mode;
+        rs.polygon_mode = pipeline_state.polygon_mode;
+        rs.enable_depth_bias = pipeline_state.depth_bias;
+        rs.enable_depth_clamp = pipeline_state.depth_clamp;
 
         BlendState bs = BlendState::create();
-        if (render_state.fields.blend_mode > 0)
-            bs.enable = true;
-
+        bs.enable = pipeline_state.alpha_mode == ALPHA_MODE_BLEND;
         ASSERT(shader_files.size() > 0);
+
         std::vector<ShaderProgram> shader_programs;
         for (uint32_t i = 0; i < shader_files.size(); ++i) {
             shader_programs.emplace_back(ShaderProgram{load_shader_binary(shader_files[i])});
@@ -52,7 +32,7 @@ namespace mirai {
 
         PipelineDescription pipeline_description = {
             .shader_programs = shader_programs,
-            .topology = Topology(render_state.fields.topology),
+            .topology = Topology(pipeline_state.topology),
             .rasterization_state = &rs,
             .vertex_description = nullptr,
             .blend_state = &bs,
@@ -69,9 +49,9 @@ namespace mirai {
         }
 
         if (attachment_info.has_depth_attachment) {
-            ds.enable_depth_write = render_state.fields.depth_write;
-            ds.enable_depth_test = render_state.fields.depth_test;
-            ds.compare_op = CompareOp(render_state.fields.depth_op);
+            ds.enable_depth_write = pipeline_state.depth_write;
+            ds.enable_depth_test = pipeline_state.depth_test;
+            ds.compare_op = CompareOp(pipeline_state.depth_op);
             pipeline_description.depth_attachment_format = attachment_info.depth_attachment_format;
         }
         pipeline_description.depth_state = &ds;
@@ -80,37 +60,25 @@ namespace mirai {
 
         PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
 
-        std::shared_ptr<Shader> shader = std::make_shared<Shader>(name);
-        shader->draw_mode = DrawMode(pipeline_state.render_state.fields.draw_mode);
+        std::shared_ptr<Shader> shader(new Shader{name});
+        shader->shader_files = shader_files;
+        shader->attachment_info = attachment_info;
+        shader->draw_mode = DrawMode(pipeline_state.draw_mode);
         shader->pipeline_id = pipeline;
-        if (shader_map->get(shader_key) != nullptr)
-            Log::Fatal("Graphics Shader key already exists ", shader_key);
-        shader_map->add(shader_key, shader);
-        return shader.get();
+        return shader;
     }
 
-    Shader *Shader::create_from_file(const std::string &shader_file, const std::string &name) {
-        ShaderHashMap *shader_map = ShaderHashMap::get();
-        uint64_t key = utils::djb2_hash_string(name);
-        Shader *result = shader_map->get(key);
-        if (result != nullptr)
-            return result;
-
+    std::shared_ptr<Shader> Shader::create_from_file(const std::string &name, const std::string &shader_file) {
         ShaderProgram compute_program = {
             .byte_code = load_shader_binary(shader_file),
         };
 
         PipelineID pipeline = RenderingDevice::get()->create_compute_pipeline(compute_program, name);
 
-        std::shared_ptr<Shader> shader = std::make_shared<Shader>(name);
+        std::shared_ptr<Shader> shader(new Shader{name});
         shader->pipeline_id = pipeline;
-
-        if (shader_map->get(key) != nullptr) {
-            Log::Fatal("Compute Shader key already exists ", key);
-        }
-
-        shader_map->add(key, shader);
-
-        return shader.get();
+        shader->shader_files.push_back(shader_file);
+        shader->is_graphics_shader = false;
+        return shader;
     }
 } // namespace mirai

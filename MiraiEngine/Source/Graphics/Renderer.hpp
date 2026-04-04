@@ -11,7 +11,7 @@
 
 namespace mirai {
     class CommandBuffer;
-    class ShaderHashMap;
+    class ShaderRegistryMap;
     class TextureCache;
     class FrameGraph;
     class FrameGraphBlackBoard;
@@ -37,11 +37,6 @@ namespace mirai {
 
         FrameGraph *get_frame_graph() { return frame_graph.get(); }
         FrameGraphBlackBoard *get_frame_graph_blackboard() { return frame_graph_blackboard.get(); }
-
-        // Used to preload shaders
-        void set_pipeline_description_file(const std::string &pipeline_description_file) {
-            this->pipeline_description_file = pipeline_description_file;
-        }
 
         // Offset aligment align the offset address to the multiple of given value
         // E.g. minUniformBufferOffesetAlignment for uniform buffer
@@ -88,8 +83,7 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBlackBoard> frame_graph_blackboard;
-        std::unique_ptr<ShaderHashMap> shader_hashmap;
-        std::string pipeline_description_file;
+        std::unique_ptr<ShaderRegistryMap> shader_registry_map;
 
         void copy_buffers();
 
@@ -111,7 +105,7 @@ namespace mirai {
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
-        const uint32_t k_material_buffer_size = K_MAX_ENTITIES * sizeof(StandardPBRMaterial::PBRProperties);
+        const uint32_t k_material_buffer_size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         uint32_t per_frame_staging_buffer_offset = 0;
 
         friend class Engine;

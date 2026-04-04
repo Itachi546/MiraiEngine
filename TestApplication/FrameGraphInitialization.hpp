@@ -16,7 +16,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
-        Shader *shader;
+        std::shared_ptr<Shader> shader;
     };
 
     struct LinearizeDepthPassBindings {
@@ -56,7 +56,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                          });
 
             data.depth_texture = depth_prepass_data.output;
-            data.shader = Shader::create_from_file("SPIRV/linearize-depth.comp.spv", "LinearizeDepthShader");
+            data.shader = Shader::create_from_file("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
             board->add<LinearizeDepthPassData>(data);
 
             builder.present(data.output);

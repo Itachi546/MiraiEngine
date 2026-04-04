@@ -123,7 +123,7 @@ namespace mirai {
 
         RenderingDevice *device = RenderingDevice::get();
 
-        Shader *generate_cubemap_shader = Shader::create_from_file({"SPIRV/procedural_sky.comp.spv"}, "generate-cubemap");
+        // Shader *generate_cubemap_shader = Shader::create_from_file({"SPIRV/procedural_sky.comp.spv"}, "generate-cubemap");
         /*
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();

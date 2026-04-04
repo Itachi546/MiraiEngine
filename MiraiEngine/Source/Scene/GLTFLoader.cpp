@@ -354,78 +354,78 @@ namespace mirai {
 
         for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
-            std::unique_ptr<StandardPBRMaterial> material = std::make_unique<StandardPBRMaterial>(gltf_material->name);
+            std::unique_ptr<Material3D> material = std::make_unique<Material3D>(gltf_material->name);
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
 
-            StandardPBRMaterial::PBRProperties &instance_data = material->instance_data;
+            Material3D::Properties &properties = material->properties;
 
-            // instance_data.transmission = static_cast<float>(pbr.baseColorFactor[3]);
-            instance_data.flags = 0;
+            // properties.transmission = static_cast<float>(pbr.baseColorFactor[3]);
+            properties.flags = 0;
 
             const std::string &alpha_mode = gltf_material->alphaMode;
             if (alpha_mode == "OPAQUE")
-                instance_data.flags |= MaterialFlags::FLAG_OPAQUE;
+                properties.flags |= MaterialFlags::FLAG_OPAQUE;
             else if (alpha_mode == "BLEND")
-                instance_data.flags |= MaterialFlags::FLAG_ALPHA_BLEND;
+                properties.flags |= MaterialFlags::FLAG_ALPHA_BLEND;
             else if (alpha_mode == "MASK")
-                instance_data.flags |= MaterialFlags::FLAG_ALPHA_MASK;
+                properties.flags |= MaterialFlags::FLAG_ALPHA_MASK;
             else
                 ASSERT_MSG(0, "Unknown alpha mask");
             if (gltf_material->doubleSided) {
-                instance_data.flags |= MaterialFlags::FLAG_DOUBLE_SIDED;
+                properties.flags |= MaterialFlags::FLAG_DOUBLE_SIDED;
             }
 
-            instance_data.alpha_cutoff = cast_float(gltf_material->alphaCutoff);
+            properties.alpha_cutoff = cast_float(gltf_material->alphaCutoff);
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
-                instance_data.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
+                properties.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
                 if (ext->second.Has("diffuseTexture"))
-                    instance_data.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
+                    properties.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
                 else
-                    instance_data.albedo_texture = K_INVALID_ID;
+                    properties.albedo_texture = K_INVALID_ID;
 
                 if (ext->second.Has("specularGlossinessTexture"))
-                    instance_data.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
+                    properties.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
                 else
-                    instance_data.metallic_roughness_texture = K_INVALID_ID;
+                    properties.metallic_roughness_texture = K_INVALID_ID;
 
                 if (ext->second.Has("glossinessFactor")) {
-                    instance_data.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
+                    properties.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
                 } else {
-                    instance_data.roughness_factor = 0.5f;
+                    properties.roughness_factor = 0.5f;
                 }
 
                 if (ext->second.Has("specularFactor")) {
-                    instance_data.metallic_factor = cast_float(ext->second.Get("specularFactor").Get<double>());
+                    properties.metallic_factor = cast_float(ext->second.Get("specularFactor").Get<double>());
                 } else {
-                    instance_data.metallic_factor = 0.01f;
+                    properties.metallic_factor = 0.01f;
                 }
 
                 if (ext->second.Has("diffuseFactor")) {
                     auto factor = ext->second.Get("diffuseFactor");
                     for (uint32_t d = 0; d < factor.ArrayLen(); ++d) {
                         auto val = factor.Get(d);
-                        instance_data.albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();
+                        properties.albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();
                     }
                 }
             } else {
                 // Process Textures
-                instance_data.albedo_texture = LoadTexture(pbr.baseColorTexture.index, true);
-                instance_data.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index, false);
-                instance_data.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
-                instance_data.metallic_factor = static_cast<float>(pbr.metallicFactor);
-                instance_data.roughness_factor = static_cast<float>(pbr.roughnessFactor);
+                properties.albedo_texture = LoadTexture(pbr.baseColorTexture.index, true);
+                properties.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index, false);
+                properties.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
+                properties.metallic_factor = static_cast<float>(pbr.metallicFactor);
+                properties.roughness_factor = static_cast<float>(pbr.roughnessFactor);
             }
 
-            instance_data.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
-            instance_data.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index, true);
+            properties.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
+            properties.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index, true);
 
             const tinygltf::NormalTextureInfo &normal_texture = gltf_material->normalTexture;
-            instance_data.normal_texture = LoadTexture(normal_texture.index, false);
+            properties.normal_texture = LoadTexture(normal_texture.index, false);
 
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
-            instance_data.occlusion_texture = LoadTexture(occlusion_texture.index, false);
+            properties.occlusion_texture = LoadTexture(occlusion_texture.index, false);
             load_state->scene->materials.push_back(std::move(material));
         }
     }

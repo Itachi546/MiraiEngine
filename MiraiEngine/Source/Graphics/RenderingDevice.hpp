@@ -219,6 +219,15 @@ namespace mirai {
         }
     };
 
+    enum BlendMode {
+        BLEND_MODE_MIX = 0,
+        BLEND_MODE_ADD,
+        BLEND_MODE_SUB,
+        BLEND_MODE_MUL,
+        BLEND_MODE_PREMULT_ALPHA,
+        BLEND_MODE_COUNT
+    };
+
     struct BlendState {
         bool enable;
 
@@ -565,7 +574,6 @@ namespace mirai {
 
         virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const = 0;
         virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const = 0;
-
 
         virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
         virtual void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;

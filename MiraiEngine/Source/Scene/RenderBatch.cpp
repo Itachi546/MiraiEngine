@@ -8,16 +8,16 @@ namespace mirai {
 
     struct CachedBatchInfo {
         RenderBatchType batch_type;
-        ShaderPassKey shader_key;
+        uint64_t material_hash;
         BufferView vertex_buffer;
     };
 
-    uint32_t FindOrCreateShaderBatch(ShaderPassKey shader_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
+    uint32_t FindOrCreateShaderBatch(uint64_t material_hash, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
         for (uint32_t i = 0; i < render_batches.size(); ++i) {
-            if (shader_key == render_batches[i].shader_key && render_batches[i].batch_type == render_batch_type)
+            if (material_hash == render_batches[i].material_hash && render_batches[i].batch_type == render_batch_type)
                 return i;
         }
-        render_batches.emplace_back(shader_key, render_batch_type);
+        render_batches.emplace_back(material_hash, render_batch_type);
         return cast_u32(render_batches.size() - 1);
     }
 
@@ -54,7 +54,7 @@ namespace mirai {
             .batch_type = RENDERBATCH_TYPE_OPAQUE,
             .vertex_buffer = BufferID{K_INVALID_ID},
         };
-        cached_batch_info.shader_key.key = UINT64_MAX;
+        cached_batch_info.material_hash = UINT64_MAX;
 
         uint32_t shader_batch = UINT32_MAX;
         uint32_t mesh_batch = UINT32_MAX;
@@ -62,14 +62,14 @@ namespace mirai {
         bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
-            const Material *material = scene->materials[object.material_index].get();
+            const Material3D *material = scene->materials[object.material_index].get();
 
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
             uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
             if (material->is_transparent()) {
                 render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
                 filter_flag = BATCH_FILTER_FLAG_TRANSPARENT;
-            } else if (material->has_alpha_mask()) {
+            } else if (material->is_alpha_mask()) {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
                 filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
@@ -91,11 +91,11 @@ namespace mirai {
             }
 
             // Check Shader Batch
-            ShaderPassKey shader_key = material->get_shader_key(AppSettings::render_mode);
-            if (shader_key != cached_batch_info.shader_key || cached_batch_info.batch_type != render_batch_type) {
+            uint64_t material_hash = material->get_hash();
+            if (material_hash != cached_batch_info.material_hash || cached_batch_info.batch_type != render_batch_type) {
                 // We have a different batch
-                shader_batch = FindOrCreateShaderBatch(shader_key, render_batch_type, render_batches);
-                cached_batch_info.shader_key = shader_key;
+                shader_batch = FindOrCreateShaderBatch(material_hash, render_batch_type, render_batches);
+                cached_batch_info.material_hash = material_hash;
                 cached_batch_info.batch_type = render_batch_type;
                 // Reset buffer info
                 cached_batch_info.vertex_buffer.buffer = BufferID{K_INVALID_ID};
@@ -123,13 +123,13 @@ namespace mirai {
 
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
-            const Material *material = scene->materials[object.material_index].get();
+            const Material3D *material = scene->materials[object.material_index].get();
             uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
             if (material->is_transparent()) {
                 filter_flag |= BATCH_FILTER_FLAG_TRANSPARENT;
                 render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
-            } else if (material->has_alpha_mask()) {
+            } else if (material->is_alpha_mask()) {
                 filter_flag |= BATCH_FILTER_FLAG_ALPHA_MASK;
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
             }

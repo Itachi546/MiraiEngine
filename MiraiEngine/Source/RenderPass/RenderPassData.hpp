@@ -4,6 +4,7 @@
 #include "Scene/Shader.hpp"
 
 namespace mirai {
+    struct ShaderRegistry;
     struct CascadedShadowPassData {
         FrameGraphResourceHandle output;
     };
@@ -14,5 +15,6 @@ namespace mirai {
 
     struct DepthPrePassData {
         FrameGraphResourceHandle output;
+        ShaderRegistry *registry;
     };
 } // namespace mirai

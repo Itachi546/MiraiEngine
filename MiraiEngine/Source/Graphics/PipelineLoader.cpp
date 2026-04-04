@@ -1,53 +1,23 @@
 #include "PipelineLoader.hpp"
-#include "Scene/ShaderHashMap.hpp"
+#include "Scene/ShaderRegistry.hpp"
 #include "Engine/Log.hpp"
-#include "Graphics/StringEnumLookup.hpp"
-#include <json.hpp>
-#include <fstream>
+#include "Scene/Material.hpp"
 
 namespace mirai {
-    void preload_shaders(ShaderHashMap *pipeline_hashmap, const std::string &filename) {
-        using json = nlohmann::json;
-        std::ifstream json_file(filename);
-        if (!json_file) {
-            Log::Fatal("Failed to compile pipeline");
-        }
-        json data = json::parse(json_file);
+    // GraphicsMaterial
+    /*
+    std::shared_ptr<Material> create_shader_material(const std::string &name, uint32_t shader_id, const std::vector<std::string> &shaders, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info) {
+        std::shared_ptr<Shader> shader = Shader::create_from_file(name, shaders, pipeline_state, attachment_info);
 
-        for (std::size_t i = 0; i < data.size(); ++i) {
-            json pipeline_info = data[i];
-            const std::string &name = pipeline_info.value("name", "");
-            std::vector<std::string> shaders_path = pipeline_info["shaders"].get<std::vector<std::string>>();
-            json render_state = pipeline_info["state"];
+        std::shared_ptr<Material> material = std::make_shared<Material>(name, shader_id);
+        material->update_from_pipeline_state(pipeline_state);
 
-            PipelineState pipeline_state = {};
-            pipeline_state.render_state.fields.cull_mode = get_cull_mode(render_state.value("cull-mode", "CULL_MODE_BACK"));
-            pipeline_state.render_state.fields.front_face = get_front_face(render_state.value("front-face", "FRONT_FACE_COUNTER_CLOCKWISE"));
-            pipeline_state.render_state.fields.depth_test = render_state.value("depth-test", false);
-            pipeline_state.render_state.fields.depth_write = render_state.value("depth-write", false);
-            pipeline_state.render_state.fields.depth_clamp = render_state.value("depth-clamp", false);
-            pipeline_state.render_state.fields.blend_mode = render_state.value("blend-mode", false);
-            pipeline_state.render_state.fields.depth_op = get_compare_op(render_state.value("depth-op", "COMPARE_OP_LESS_OR_EQUAL"));
-            pipeline_state.render_state.fields.topology = get_topology(render_state.value("topology", "TOPOLOGY_TRIANGLE_LIST"));
-            pipeline_state.render_state.fields.polygon_mode = get_polygon_mode(render_state.value("polygon-mode", "POLYGON_MODE_FILL"));
-            pipeline_state.render_state.fields.pass_mode = get_pass_mode(render_state.value("pass", ""));
-            pipeline_state.render_state.fields.draw_mode = get_draw_mode(render_state.value("draw-mode", "DRAWMODE_INDEXED"));
-
-            PipelineAttachmentInfo attachment_info{};
-            if (render_state["color-attachments-format"] != nullptr) {
-                std::vector<std::string> color_attachments_format = render_state["color-attachments-format"].get<std::vector<std::string>>();
-                attachment_info.color_attachments_format.resize(color_attachments_format.size());
-                for (uint32_t f = 0; f < color_attachments_format.size(); ++f)
-                    attachment_info.color_attachments_format[f] = get_texture_format(color_attachments_format[f]);
-            }
-            if (render_state["depth-attachment-format"] != nullptr) {
-                attachment_info.has_depth_attachment = true;
-                attachment_info.depth_attachment_format = get_texture_format(render_state["depth-attachment-format"]);
-            }
-
-            Shader::create_from_file(pipeline_state, attachment_info, shaders_path, name);
-            Log::Debug("Compiled ", name, " Hash: ", pipeline_state.get_hash(), " RenderState: ", pipeline_state.render_state.hash);
-        }
+        MaterialShaderLookup::get()->add_material_shader(material->get_hash(), shader);
+        return material;
+    }
+    */
+    void preload_shaders(ShaderRegistryMap *shader_registry_map) {
+        // std::shared_ptr<Material> depth_prepass = create_shader_material("depth_prepass", SHADER_ID_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
     }
 
 } // namespace mirai

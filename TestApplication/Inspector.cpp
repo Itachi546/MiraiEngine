@@ -63,27 +63,27 @@ uint32_t add_image_selection_popup(uint32_t current_texture) {
 
 uint32_t *selected_texture_ptr = nullptr;
 
-void add_pbr_standard_material_ui(StandardPBRMaterial *material) {
+void add_pbr_standard_material_ui(Material3D *material) {
     ImGui::Text("%s: %s", "material_type", material->is_transparent() ? "Transparent" : "Opaque");
-    material->dirty |= ImGui::ColorEdit4("albedo", &material->instance_data.albedo[0]);
-    material->dirty |= ImGui::DragFloat("roughness", &material->instance_data.roughness_factor, 0.01f, 0.0f, 1.0f);
-    material->dirty |= ImGui::DragFloat("metallic", &material->instance_data.metallic_factor, 0.01f, 0.0f, 1.0f);
-    material->dirty |= ImGui::ColorEdit3("emissive", &material->instance_data.emissive_factor[0]);
+    material->dirty |= ImGui::ColorEdit4("albedo", &material->properties.albedo[0]);
+    material->dirty |= ImGui::DragFloat("roughness", &material->properties.roughness_factor, 0.01f, 0.0f, 1.0f);
+    material->dirty |= ImGui::DragFloat("metallic", &material->properties.metallic_factor, 0.01f, 0.0f, 1.0f);
+    material->dirty |= ImGui::ColorEdit3("emissive", &material->properties.emissive_factor[0]);
 
-    ImGui::Text("%s(%u)", "albedo_texture", material->instance_data.albedo_texture);
-    add_selectable_image_button("albedo_texture", material->instance_data.albedo_texture, selected_texture_ptr);
+    ImGui::Text("%s(%u)", "albedo_texture", material->properties.albedo_texture);
+    add_selectable_image_button("albedo_texture", material->properties.albedo_texture, selected_texture_ptr);
 
-    ImGui::Text("%s(%u)", "metallic_roughness_texture", material->instance_data.metallic_roughness_texture);
-    add_selectable_image_button("metallic_roughness_texture", material->instance_data.metallic_roughness_texture, selected_texture_ptr);
+    ImGui::Text("%s(%u)", "metallic_roughness_texture", material->properties.metallic_roughness_texture);
+    add_selectable_image_button("metallic_roughness_texture", material->properties.metallic_roughness_texture, selected_texture_ptr);
 
-    ImGui::Text("%s(%u)", "occlusion_texture", material->instance_data.occlusion_texture);
-    add_selectable_image_button("occlusion_texture", material->instance_data.occlusion_texture, selected_texture_ptr);
+    ImGui::Text("%s(%u)", "occlusion_texture", material->properties.occlusion_texture);
+    add_selectable_image_button("occlusion_texture", material->properties.occlusion_texture, selected_texture_ptr);
 
-    ImGui::Text("%s(%u)", "normal_texture", material->instance_data.normal_texture);
-    add_selectable_image_button("normal_texture", material->instance_data.normal_texture, selected_texture_ptr);
+    ImGui::Text("%s(%u)", "normal_texture", material->properties.normal_texture);
+    add_selectable_image_button("normal_texture", material->properties.normal_texture, selected_texture_ptr);
 
-    ImGui::Text("%s(%u)", "emissive_texture", material->instance_data.emissive_texture);
-    add_selectable_image_button("emissive_texture", material->instance_data.emissive_texture, selected_texture_ptr);
+    ImGui::Text("%s(%u)", "emissive_texture", material->properties.emissive_texture);
+    add_selectable_image_button("emissive_texture", material->properties.emissive_texture, selected_texture_ptr);
 
     if (selected_texture_ptr == nullptr)
         return;
@@ -117,12 +117,7 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
             ImGui::PushID(entity * K_MAX_ENTITIES + material_index);
             std::string mat_name = material->name.size() > 0 ? material->name : "unnamed" + std::to_string(material_index);
             if (ImGui::TreeNodeEx(mat_name.c_str())) {
-                std::string material_type_name = material->get_material_type_name();
-                if (material_type_name == "StandardPBRMaterial")
-                    add_pbr_standard_material_ui(reinterpret_cast<StandardPBRMaterial *>(material.get()));
-                else {
-                    ImGui::Text("Unknown material type name");
-                }
+                add_pbr_standard_material_ui(material.get());
                 ImGui::Separator();
                 ImGui::TreePop();
             }

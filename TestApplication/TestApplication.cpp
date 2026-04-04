@@ -36,7 +36,6 @@ class TestApplication : public App {
         uint32_t height = 1080;
 
         Renderer *renderer = Renderer::get();
-        renderer->set_pipeline_description_file("Assets/forward-pipelines.json");
 
         scene = renderer->get_scene();
 

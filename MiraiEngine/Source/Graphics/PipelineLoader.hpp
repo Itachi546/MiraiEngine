@@ -3,6 +3,6 @@
 #include <string>
 
 namespace mirai {
-    class ShaderHashMap;
-    void preload_shaders(ShaderHashMap *pipeline_hashmap, const std::string& filename);
+    class ShaderRegistryMap;
+    void preload_shaders(ShaderRegistryMap *lookup);
 } // namespace mirai
