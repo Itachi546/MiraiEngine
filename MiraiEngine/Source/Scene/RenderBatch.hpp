@@ -109,10 +109,10 @@ namespace mirai {
     };
 
     struct BatchDrawInfo {
-        RenderBatchType batch_type;
         Shader *shader;
         std::vector<DescriptorOffset> descriptor_infos;
         PushConstant *push_constants;
+        uint32_t draw_data_descriptor_index;
     };
 
     void DrawBatch(CommandBuffer *command_buffer, const RenderBatch &render_batch, const BatchDrawInfo &batch_info);

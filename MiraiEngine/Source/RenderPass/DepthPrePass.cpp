@@ -69,20 +69,32 @@ namespace mirai {
                 });
                 command_buffer->set_scissor(0, 0, width, height);
 
-                std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
-                for (const auto &batch : render_batches) {
-                    if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
-                        continue;
-
+                // Draw Opaque object
+                std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor, 0};
+                const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
+                for (const auto &batch : opaque_batches) {
                     Shader *shader = data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
 
-                    std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor};
                     DrawBatch(command_buffer, batch, {
-                                                         .batch_type = RENDERBATCH_TYPE_OPAQUE,
                                                          .shader = shader,
                                                          .descriptor_infos = descriptor_infos,
                                                          .push_constants = nullptr,
+                                                         // Used to override descriptor info at given index
+                                                         .draw_data_descriptor_index = 3,
+                                                     });
+                }
+
+                const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
+                descriptor_infos.push_back(renderer->material_descriptor);
+                for (const auto &batch : alpha_mask_batches) {
+                    Shader *shader = data.registry->find(batch.sort_key);
+                    ASSERT(shader != nullptr);
+                    DrawBatch(command_buffer, batch, {
+                                                         .shader = shader,
+                                                         .descriptor_infos = descriptor_infos,
+                                                         .push_constants = nullptr,
+                                                         .draw_data_descriptor_index = 3,
                                                      });
                 }
 

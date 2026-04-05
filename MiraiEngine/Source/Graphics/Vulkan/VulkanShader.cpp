@@ -19,11 +19,6 @@ namespace mirai {
             for (uint32_t b = 0; b < descriptor_set.binding_count; ++b) {
                 SpvReflectDescriptorBinding *binding = descriptor_set.bindings[b];
 
-                if (descriptor_set.set == K_BINDLESS_TEXTURE_SET && binding->binding == K_BINDLESS_TEXTURE_BINDING) {
-                    shader->support_bindless_texture = true;
-                    continue;
-                }
-
                 ShaderReflectionDescriptorBinding &vk_binding = vk_set.bindings.emplace_back(ShaderReflectionDescriptorBinding{});
                 vk_binding.binding = binding->binding;
                 vk_binding.binding_type = BindingType(binding->descriptor_type);
@@ -56,7 +51,6 @@ namespace mirai {
     }
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size_in_bytes) {
-        shader->support_bindless_texture = false;
         parse_shader_reflection(shader, code, code_size_in_bytes);
 
         VkShaderModuleCreateInfo create_info = {

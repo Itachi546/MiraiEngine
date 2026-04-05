@@ -454,10 +454,6 @@ namespace mirai {
         uint64_t usage_flags;
     };
 
-    struct BindlessTextureEntry {
-        TextureID texture;
-    };
-
     enum AttachmentLoadOp {
         LOAD_OP_LOAD = 0,
         LOAD_OP_CLEAR = 1,
@@ -589,7 +585,6 @@ namespace mirai {
 
         virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
         virtual void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) = 0;
-        virtual void add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;
 

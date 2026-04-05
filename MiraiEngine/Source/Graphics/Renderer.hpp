@@ -36,7 +36,11 @@ namespace mirai {
         }
 
         FrameGraph *get_frame_graph() { return frame_graph.get(); }
-        FrameGraphBlackBoard *get_frame_graph_blackboard() { return frame_graph_blackboard.get(); }
+        FrameGraphBlackBoard *get_frame_graph_blackboard() {
+            return frame_graph_blackboard.get();
+        }
+
+        void add_bindless_texture(TextureID texture);
 
         // Offset aligment align the offset address to the multiple of given value
         // E.g. minUniformBufferOffesetAlignment for uniform buffer
@@ -56,6 +60,7 @@ namespace mirai {
 
         DescriptorOffset per_frame_data_descriptor;
         DescriptorOffset transform_descriptor;
+        DescriptorOffset material_descriptor;
         DescriptorOffset global_geometry_descriptor;
 
         BufferID per_frame_staging_buffer;
@@ -66,7 +71,10 @@ namespace mirai {
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        std::vector<RenderBatch> main_render_batches;
+        std::vector<RenderBatch> main_opaque_batches;
+        std::vector<RenderBatch> main_transparent_batches;
+        std::vector<RenderBatch> main_alpha_mask_batches;
+        std::vector<RenderBatch> main_skinned_batches;
 
         // TAA Options
         glm::mat4 prev_frame_VP;
@@ -75,6 +83,8 @@ namespace mirai {
 
         int jitter_index = 0;
         int jitter_period = 4;
+
+        uint32_t total_visible_entities = 0;
 
       private:
         static Renderer *Instance;
@@ -103,10 +113,14 @@ namespace mirai {
 
         void patch_global_data(CommandBuffer *command_buffer);
 
+        void create_batches();
+        void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
+
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
         const uint32_t k_material_buffer_size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         uint32_t per_frame_staging_buffer_offset = 0;
+        uint32_t bindless_texture_count = 0;
 
         friend class Engine;
     };

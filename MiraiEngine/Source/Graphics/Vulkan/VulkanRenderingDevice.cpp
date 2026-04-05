@@ -31,51 +31,6 @@ namespace mirai {
 #endif
     }
 
-    /*
-    void VulkanRenderingDevice::initialize_bindless_descriptor() {
-        // Create Bindless descriptor set
-        VkDescriptorPoolSize pools[] = {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, K_MAX_BINDLESS_RESOURCE},
-        };
-
-        bindless_descriptor_pool = create_descriptor_pool(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT, pools, 1, 1);
-
-        VkDescriptorSetLayoutBinding bindless_binding = {
-            .binding = K_BINDLESS_TEXTURE_BINDING,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = K_MAX_BINDLESS_RESOURCE,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-        };
-
-        VkDescriptorBindingFlags bindless_flag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-                                                 VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
-                                                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-
-        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flag = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindingFlags = &bindless_flag,
-        };
-        bindless_descriptor_layout = CreateDescriptorSetLayout(device, &bindless_binding, 1, VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, &binding_flag);
-
-        uint32_t max_binding = K_MAX_BINDLESS_RESOURCE - 1;
-        VkDescriptorSetVariableDescriptorCountAllocateInfo count_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-            .descriptorSetCount = 1,
-            .pDescriptorCounts = &max_binding,
-        };
-
-        VkDescriptorSetAllocateInfo bindless_set_allocate_info = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext = &count_info,
-            .descriptorPool = bindless_descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &bindless_descriptor_layout,
-        };
-
-        VK_CHECK(vkAllocateDescriptorSets(device, &bindless_set_allocate_info, &bindless_descriptor_set));
-    }
-    */
     VulkanRenderingDevice::VulkanRenderingDevice() : resource_pool_pipelines(128, "Pipeline"),
                                                      resource_pool_textures(1024, "Texture"),
                                                      resource_pool_buffers(256, "Buffer"),
@@ -289,6 +244,51 @@ namespace mirai {
         return fence;
     }
 
+    void VulkanRenderingDevice::create_set_and_binding_mappings(const VulkanShader &shader, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings) {
+        uint32_t descriptorCount = cast_u32(mappings.size());
+        for (const auto &set : shader.descriptor_sets_info) {
+            for (const auto &binding : set.bindings) {
+                // Check for duplicate mapping
+                auto found = std::find_if(mappings.begin(), mappings.end(), [set, binding](const VkDescriptorSetAndBindingMappingEXT &mapping) {
+                    return mapping.descriptorSet == set.set && mapping.firstBinding == binding.binding;
+                });
+                if (found != mappings.end())
+                    continue;
+
+                bool is_sampler_resource = (set.set == K_BINDLESS_SAMPLER_SET && binding.binding_type == BINDING_TYPE_SAMPLER);
+                bool is_bindless_texture_resource = (set.set == K_BINDLESS_TEXTURE_SET && binding.binding == K_BINDLESS_TEXTURE_BINDING);
+
+                VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
+                mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+                mapping.pNext = nullptr;
+                mapping.descriptorSet = set.set;
+                mapping.firstBinding = binding.binding;
+                if (is_sampler_resource) {
+                    mapping.bindingCount = AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT;
+                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
+                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
+                    mapping.sourceData.constantOffset.samplerHeapOffset = 0;
+                    mapping.sourceData.constantOffset.samplerHeapArrayStride = cast_u32(descriptor_heap_properties.samplerDescriptorSize);
+                } else if (is_bindless_texture_resource) {
+                    mapping.bindingCount = AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT;
+                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+                    mapping.sourceData.constantOffset.heapOffset = 0;
+                    mapping.sourceData.constantOffset.heapArrayStride = resource_descriptor_size;
+                } else {
+                    mapping.bindingCount = 1;
+                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
+                    mapping.sourceData.pushIndex.heapOffset = 0;
+                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
+                    mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
+                    mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
+                    mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
+                    descriptorCount++;
+                }
+            }
+        }
+    }
+
     PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
         uint32_t shader_count = cast_u32(pipeline_description->shader_programs.size());
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(shader_count);
@@ -315,44 +315,11 @@ namespace mirai {
 
             for (const auto &pc : shader.push_constants_info)
                 push_constants_size = std::max(push_constants_size, pc.offset + pc.size);
-
-            if (shader.support_bindless_texture) {
-                ASSERT(shader.shader_stage == VK_SHADER_STAGE_FRAGMENT_BIT);
-                support_bindless_texture = true;
-            }
         }
 
         std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
-        uint32_t descriptorCount = 0;
         for (auto &shader : shader_modules) {
-            for (const auto &set : shader.descriptor_sets_info) {
-                for (const auto &binding : set.bindings) {
-
-                    auto found = std::find_if(mappings.begin(), mappings.end(), [set, binding](const VkDescriptorSetAndBindingMappingEXT &mapping) {
-                        return mapping.descriptorSet == set.set && mapping.firstBinding == binding.binding;
-                    });
-
-                    if (found != mappings.end())
-                        continue;
-
-                    VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
-                    mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
-                    mapping.pNext = nullptr;
-                    mapping.descriptorSet = set.set;
-                    mapping.firstBinding = binding.binding;
-                    mapping.bindingCount = 1;
-                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
-                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
-
-                    mapping.sourceData.pushIndex.heapOffset = 0;
-                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
-                    mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
-                    mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
-                    mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
-
-                    descriptorCount++;
-                }
-            }
+            create_set_and_binding_mappings(shader, push_constants_size, mappings);
         }
 
         binding_mapping_info.pMappings = mappings.data();
@@ -519,9 +486,6 @@ namespace mirai {
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
         pipeline->support_bindless_texture = false;
 
-        std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
-        mappings.reserve(16);
-
         // Compute shader should be limited to single push constant block
         ASSERT(shader.push_constants_info.size() <= 1);
         uint32_t push_constants_size = 0;
@@ -530,34 +494,9 @@ namespace mirai {
             push_constants_size = std::max(push_constants_size, entry.offset + entry.size);
         }
 
-        uint32_t descriptorCount = 0;
-        for (const auto &set : shader.descriptor_sets_info) {
-            for (const auto &binding : set.bindings) {
-                bool is_sampler_resource = set.set == K_BINDLESS_SAMPLER_SET && binding.binding_type == BINDING_TYPE_SAMPLER;
-                VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
-                mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
-                mapping.pNext = nullptr;
-                mapping.descriptorSet = set.set;
-                mapping.firstBinding = binding.binding;
-                if (is_sampler_resource) {
-                    mapping.bindingCount = AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT;
-                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
-                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
-                    mapping.sourceData.constantOffset.samplerHeapOffset = 0;
-                    mapping.sourceData.constantOffset.samplerHeapArrayStride = cast_u32(descriptor_heap_properties.samplerDescriptorSize);
-                } else {
-                    mapping.bindingCount = 1;
-                    mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
-                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
-                    mapping.sourceData.pushIndex.heapOffset = 0;
-                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
-                    mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
-                    mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
-                    mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
-                    descriptorCount++;
-                }
-            }
-        }
+        std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
+        mappings.reserve(16);
+        create_set_and_binding_mappings(shader, push_constants_size, mappings);
 
         VkShaderDescriptorSetAndBindingMappingInfoEXT binding_mapping_info = {
             .sType = VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT,
@@ -1242,29 +1181,6 @@ namespace mirai {
             texture->access_flags = 0;
             resource_pool_textures.release(textures[i]);
         }
-    }
-
-    void VulkanRenderingDevice::add_bindless_texture(BindlessTextureEntry *textures, uint32_t texture_count) {
-        /*
-        std::vector<VkWriteDescriptorSet> write_set(texture_count);
-        std::vector<VkDescriptorImageInfo> image_infos(texture_count);
-        for (uint32_t i = 0; i < texture_count; ++i) {
-            ASSERT(textures[i].texture.is_valid());
-            write_set[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write_set[i].dstSet = bindless_descriptor_set;
-            write_set[i].dstBinding = K_BINDLESS_TEXTURE_BINDING;
-            write_set[i].descriptorCount = 1;
-            write_set[i].dstArrayElement = textures[i].texture.id;
-            write_set[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-
-            VulkanTexture *texture = resource_pool_textures.access(textures[i].texture.id);
-            image_infos[i].imageLayout = texture->current_layout;
-            image_infos[i].imageView = texture->image_views[0];
-            write_set[i].pImageInfo = &image_infos[i];
-        }
-
-        vkUpdateDescriptorSets(device, texture_count, write_set.data(), 0, nullptr);
-        */
     }
 
     void VulkanRenderingDevice::create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry) {

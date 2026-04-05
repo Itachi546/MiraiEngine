@@ -63,7 +63,6 @@ namespace mirai {
     struct UserData {
         std::string base_path;
         AsyncLoader *async_loader;
-        std::vector<BindlessTextureEntry> textures;
     };
 
     static Format get_image_format(dds::DXGI_FORMAT format) {
@@ -199,9 +198,8 @@ namespace mirai {
         };
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
         TextureCache::get()->add_texture(filename, texture);
-
         // SamplerID sampler_id = CreateSampler(sampler);
-        p_user_data->textures.emplace_back(texture);
+        Renderer::get()->add_bindless_texture(texture);
 
         TextureLoadEmbeddedTask load_task = {
             .filename = filename,
@@ -305,7 +303,7 @@ namespace mirai {
         }
         // SamplerID sampler_id = CreateSampler(sampler);
         TextureID texture = RenderingDevice::get()->create_texture(&texture_desc, image->uri);
-        p_user_data->textures.emplace_back(texture);
+        Renderer::get()->add_bindless_texture(texture);
 
         TextureCache::get()->add_texture(image->uri, texture);
         p_user_data->async_loader->push({.task_type = TaskType::LoadTextureExternal,
@@ -1067,8 +1065,6 @@ namespace mirai {
 
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("meshes: ", load_state.mesh_components.size());
-
-        RenderingDevice::get()->add_bindless_texture(user_data.textures.data(), static_cast<uint32_t>(user_data.textures.size()));
 
         return root_entity;
     } // namespace mirai

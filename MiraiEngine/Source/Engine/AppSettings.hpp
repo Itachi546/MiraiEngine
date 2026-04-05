@@ -25,5 +25,7 @@ namespace AppSettings {
     constexpr uint32_t K_NUM_THREAD = 2;
     constexpr uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
     constexpr uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
+
+    constexpr uint32_t K_MAX_BINDLESS_TEXTURE_COUNT = 4096;
 };
 } // namespace mirai::AppSettings

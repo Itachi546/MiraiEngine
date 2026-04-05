@@ -1,5 +1,6 @@
 #include "Font.hpp"
 #include "FileUtils.hpp"
+#include "Graphics/Renderer.hpp"
 #include <json.hpp>
 #include <fstream>
 
@@ -36,10 +37,9 @@ namespace mirai {
         };
 
         TextureID texture = RenderingDevice::get()->create_texture(&tex_desc, "font_texture_" + name);
-        rendering_utils::copy_texture_immediate(texture, data.get(), width * height);
+        Renderer::get()->add_bindless_texture(texture);
 
-        BindlessTextureEntry entry = {.texture = texture};
-        RenderingDevice::get()->add_bindless_texture(&entry, 1);
+        rendering_utils::copy_texture_immediate(texture, data.get(), width * height);
 
         data.reset();
         data = nullptr;

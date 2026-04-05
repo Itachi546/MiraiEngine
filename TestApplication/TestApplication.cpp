@@ -136,13 +136,7 @@ class TestApplication : public App {
                 transform->dirty = true;
             }
 
-            uint32_t total_entities = 0;
-            for (auto &batch : Renderer::get()->main_render_batches) {
-                for (auto &mesh_batch : batch.meshes) {
-                    total_entities += cast_u32(mesh_batch.mesh_draw_infos.size());
-                }
-            }
-            ImGui::Text("Total Visible Entities: %u", total_entities);
+            ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
 
             uint32_t total_materials = cast_u32(scene->materials.size());
             ImGui::Text("Total Materials: %u", total_materials);

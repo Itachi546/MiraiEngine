@@ -1,9 +1,8 @@
 #version 460
-
 #extension GL_GOOGLE_include_directive : enable
 
-#include "utils/bindless.glsl"
-#include "utils/material.glsl"
+#include "../utils/bindless.glsl"
+#include "../utils/material.glsl"
 
 layout(location = 0) in FS_IN {
     vec2 uv;
@@ -11,7 +10,8 @@ layout(location = 0) in FS_IN {
 }
 fs_in;
 
-layout(set = 3, binding = 1) readonly buffer Materials {
+layout(set = 1, binding = 0) uniform sampler u_samplers[];
+layout(set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
 };
 
@@ -20,7 +20,7 @@ void main() {
 
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)
-        albedo *= sample_texture(material.albedo_texture, fs_in.uv);
+        albedo *= sample_texture(material.albedo_texture, u_samplers[0], fs_in.uv);
 
     if (albedo.a <= material.alpha_cutoff)
         discard;

@@ -89,6 +89,9 @@ namespace mirai {
         resource_heap.descriptor_size = device->get_resource_descriptor_size();
         resource_heap.size = buffer_desc.size;
         resource_heap.new_frame(device->get_current_frame());
+        // We allocate first n location for bindless texture, so that
+        // we don't have to deal with conversion of textureID to descriptorIndex
+        resource_heap.allocate(AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT);
 
         // Allocate sampler heap
         buffer_desc.size = device->calculate_sampler_descriptors_size(AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT);
@@ -209,6 +212,12 @@ namespace mirai {
                 .resource = global_transform_buffer,
                 .offset = 0,
                 .size = UINT64_MAX,
+            },
+            {
+                .type = DescriptorType::StorageBuffer,
+                .resource = global_material_buffer,
+                .offset = 0,
+                .size = UINT64_MAX,
 
             },
             {
@@ -220,9 +229,119 @@ namespace mirai {
             },
         };
         transform_descriptor = resource_heap.push_descriptors(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-        global_geometry_descriptor = transform_descriptor + 1;
+        material_descriptor = transform_descriptor + 1;
+        global_geometry_descriptor = transform_descriptor + 2;
 
         frame_graph->compile();
+    }
+
+    void Renderer::create_batches() {
+        ScopedCpuProfiling("Create Batch");
+        main_opaque_batches.clear();
+        main_transparent_batches.clear();
+        main_alpha_mask_batches.clear();
+        main_skinned_batches.clear();
+
+        Camera *camera = scene->get_camera();
+        Frustum &frustum = camera->get_frustum();
+        std::vector<RenderBatch> batches;
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
+
+        for (auto &batch : batches) {
+            switch (batch.batch_type) {
+            case RENDERBATCH_TYPE_OPAQUE: {
+                main_opaque_batches.push_back(batch);
+                break;
+            }
+            case RENDERBATCH_TYPE_TRANSPARENT: {
+                main_transparent_batches.push_back(batch);
+                break;
+            }
+            case RENDERBATCH_TYPE_ALPHA_MASK: {
+                main_alpha_mask_batches.push_back(batch);
+                break;
+            }
+            case RENDERBATCH_TYPE_SKINNED: {
+                main_skinned_batches.push_back(batch);
+                break;
+            }
+            }
+        }
+
+        std::for_each(std::execution::par_unseq, main_opaque_batches.begin(), main_opaque_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
+        std::for_each(std::execution::par_unseq, main_alpha_mask_batches.begin(), main_alpha_mask_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
+        std::for_each(std::execution::par_unseq, main_transparent_batches.begin(), main_transparent_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
+        std::for_each(std::execution::par_unseq, main_skinned_batches.begin(), main_skinned_batches.end(), [](RenderBatch &batch) {
+            batch.sort();
+        });
+    }
+
+    void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
+        if (batches.size() == 0)
+            return;
+        // Calculate total memory required in staging buffer
+        uint32_t total_entities = 0;
+        uint32_t draw_indirect_size_bytes = 0;
+
+        for (auto &batch : batches) {
+            for (auto &mesh_batch : batch.meshes) {
+                uint32_t num_entity = cast_u32(mesh_batch.mesh_draw_infos.size());
+                total_entities += num_entity;
+                draw_indirect_size_bytes += sizeof(DrawIndexedIndirectCommand) * num_entity;
+            }
+        }
+
+        if (total_entities == 0)
+            return;
+
+        uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
+        uint32_t draw_data_size_bytes = total_entities * draw_data_instance_size;
+        uint32_t draw_data_buffer_offset = allocate_staging_buffer(draw_data_size_bytes, current_frame);
+        uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_data_buffer_offset);
+
+        uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
+        uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
+
+        auto &component_manager = scene->ecs->component_manager;
+        for (auto &render_batch : batches) {
+            for (auto &batch : render_batch.meshes) {
+                uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
+
+                batch.draw_data_buffer_view.buffer = per_frame_staging_buffer;
+                batch.draw_data_buffer_view.offset = draw_data_buffer_offset;
+                batch.draw_data_buffer_view.size = num_entity * draw_data_instance_size;
+
+                batch.draw_indirect_buffer_view.buffer = per_frame_staging_buffer;
+                batch.draw_indirect_buffer_view.offset = draw_indirect_buffer_offset;
+                batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
+
+                for (uint32_t e = 0; e < num_entity; ++e) {
+                    MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
+                    uint32_t draw_data[] = {
+                        draw_info.transform_index,
+                        draw_info.material_index,
+                        draw_info.draw_info.vertex_offset_bytes / 4,
+                        draw_info.vertex_stride / 4, // Convert stride to uint32 offset
+                    };
+                    std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
+                    draw_data_array += draw_data_instance_size;
+
+                    draw_info.draw_info.vertex_offset_bytes = 0;
+                    std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
+                    draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
+                }
+                draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
+                draw_data_buffer_offset += draw_data_instance_size * num_entity;
+            }
+        }
+
+        total_visible_entities += total_entities;
     }
 
     void Renderer::copy_buffers() {
@@ -255,57 +374,26 @@ namespace mirai {
 
         // Copy cascade info
         std::memcpy(staging_buffer_ptr, &cascade_info, sizeof(cascade_info));
-        // Calculate total memory required in staging buffer
-        uint32_t total_entities = 0;
-        uint32_t draw_indirect_size_bytes = 0;
-        for (auto &batch : main_render_batches) {
-            for (auto &mesh_batch : batch.meshes) {
-                uint32_t num_entity = cast_u32(mesh_batch.mesh_draw_infos.size());
-                total_entities += num_entity;
-                draw_indirect_size_bytes += sizeof(DrawIndexedIndirectCommand) * num_entity;
-            }
-        }
 
-        uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
-        uint32_t draw_data_size_bytes = total_entities * draw_data_instance_size;
-        uint32_t draw_data_buffer_offset = allocate_staging_buffer(draw_data_size_bytes, current_frame);
-        uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_data_buffer_offset);
+        // Populate per-frame batch data
+        total_visible_entities = 0;
+        upload_batch_data(main_opaque_batches, current_frame);
+        upload_batch_data(main_alpha_mask_batches, current_frame);
+        upload_batch_data(main_skinned_batches, current_frame);
+        upload_batch_data(main_transparent_batches, current_frame);
+    }
 
-        uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
-        uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
+    void Renderer::add_bindless_texture(TextureID texture) {
+        ASSERT(texture.is_valid() && texture.id < AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT);
+        ASSERT(bindless_texture_count < AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT);
 
-        auto &component_manager = scene->ecs->component_manager;
-        for (auto &render_batch : main_render_batches) {
-            for (auto &batch : render_batch.meshes) {
-                uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
+        DescriptorInfo descriptor_info = {
+            .type = DescriptorType::SampledImage,
+            .resource = texture,
+        };
 
-                batch.draw_data_buffer_view.buffer = per_frame_staging_buffer;
-                batch.draw_data_buffer_view.offset = draw_data_buffer_offset;
-                batch.draw_data_buffer_view.size = num_entity * draw_data_instance_size;
-
-                batch.draw_indirect_buffer_view.buffer = per_frame_staging_buffer;
-                batch.draw_indirect_buffer_view.offset = draw_indirect_buffer_offset;
-                batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
-
-                for (uint32_t e = 0; e < num_entity; ++e) {
-                    MeshDrawInfo &draw_info = batch.mesh_draw_infos[e];
-                    uint32_t draw_data[] = {
-                        draw_info.transform_index,
-                        draw_info.material_index,
-                        draw_info.draw_info.vertex_offset_bytes / 4,
-                        draw_info.vertex_stride / 4, // Convert stride to uint32 offset
-                    };
-                    std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
-                    draw_data_array += draw_data_instance_size;
-
-                    draw_info.draw_info.vertex_offset_bytes = 0;
-                    std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
-                    draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
-                }
-                draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
-                draw_data_buffer_offset += draw_data_instance_size * num_entity;
-            }
-        }
+        resource_heap.push_descriptor_at_index(device.get(), &descriptor_info, 1, texture.id);
+        bindless_texture_count++;
     }
 
     uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t alignment) {
@@ -328,7 +416,6 @@ namespace mirai {
         uint32_t current_frame_index = device->get_current_frame();
         resource_heap.new_frame(device->get_current_frame());
 
-        Camera *camera = scene->get_camera();
         /*
         // Update camera jitter
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
@@ -353,14 +440,7 @@ namespace mirai {
         */
         scene->update();
 
-        main_render_batches.clear();
-
-        Frustum &frustum = camera->get_frustum();
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, main_render_batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
-
-        std::for_each(std::execution::par_unseq, main_render_batches.begin(), main_render_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
+        create_batches();
         /*
         frame_graph->update(this);
 

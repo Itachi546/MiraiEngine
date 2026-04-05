@@ -17,7 +17,8 @@ namespace mirai {
     }
     void preload_shaders(ShaderRegistryMap *shader_registry_map) {
         create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
-        create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+        create_shader_material("depth_prepass_double_sided", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+        create_shader_material("depth_prepass_alpha_mask", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass-alpha.vert.spv", "SPIRV/depth-prepass-alpha.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .draw_mode = DRAWMODE_INDEXED_INDIRECT, .alpha_mode = ALPHA_MODE_MASK, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
     }
 
 } // namespace mirai
