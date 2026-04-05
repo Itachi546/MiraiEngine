@@ -52,11 +52,11 @@ namespace mirai {
     };
 
     struct MeshBatch {
-        BufferView vertex_buffer;
-        BufferView index_buffer;
+        BufferID vertex_buffer;
+        BufferID index_buffer;
 
         // These are currently populated by renderer all at once for all batches
-        // We can also move it inside this call
+        // We can also move it inside this call or just store it once and forget about it
         BufferView draw_indirect_buffer_view;
         BufferView draw_data_buffer_view;
 
@@ -66,7 +66,7 @@ namespace mirai {
             mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera, vertex_stride);
         }
     };
-
+    /*
     struct ShadowMeshBatch {
         BufferView vertex_buffer;
         BufferView index_buffer;
@@ -78,23 +78,23 @@ namespace mirai {
         }
         RenderBatchType render_batch_type;
     };
-
+    */
     struct RenderBatch {
-        uint64_t material_hash;
+        uint32_t sort_key;
         RenderBatchType batch_type;
         std::vector<MeshBatch> meshes;
 
         void sort() {
-            if (batch_type == RENDERBATCH_TYPE_OPAQUE) {
+            if (batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
                 for (auto &mesh_batch : meshes) {
                     std::sort(mesh_batch.mesh_draw_infos.begin(), mesh_batch.mesh_draw_infos.end(), [](const MeshDrawInfo &left, const MeshDrawInfo &right) {
-                        return left.distance_to_camera < right.distance_to_camera;
+                        return left.distance_to_camera > right.distance_to_camera;
                     });
                 }
             } else {
                 for (auto &mesh_batch : meshes) {
                     std::sort(mesh_batch.mesh_draw_infos.begin(), mesh_batch.mesh_draw_infos.end(), [](const MeshDrawInfo &left, const MeshDrawInfo &right) {
-                        return left.distance_to_camera > right.distance_to_camera;
+                        return left.distance_to_camera < right.distance_to_camera;
                     });
                 }
             }
@@ -105,7 +105,7 @@ namespace mirai {
         static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &mesh_batches, uint32_t batch_filter_flags);
 
         // Used for Shadow/Cascaded shadow rendering where scene needs to be culled again
-        static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags);
+        // static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags);
     };
 
     struct BatchDrawInfo {
@@ -115,5 +115,5 @@ namespace mirai {
         PushConstant *push_constants;
     };
 
-    void DrawBatch(CommandBuffer *command_buffer, const std::vector<RenderBatch> &render_batches, const BatchDrawInfo &batch_info);
+    void DrawBatch(CommandBuffer *command_buffer, const RenderBatch &render_batch, const BatchDrawInfo &batch_info);
 } // namespace mirai

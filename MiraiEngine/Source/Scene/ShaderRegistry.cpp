@@ -10,7 +10,7 @@ namespace mirai {
         Instance = this;
     }
 
-    ShaderRegistry *ShaderRegistryMap::add_registry(PassMode pass_mode, std::shared_ptr<ShaderRegistry> shader) {
+    ShaderRegistry *ShaderRegistryMap::add_registry(uint32_t pass_mode, std::shared_ptr<ShaderRegistry> shader) {
         auto found = shader_registry_map.find(pass_mode);
         if (found != shader_registry_map.end()) {
             ASSERT_MSG(0, "Material variant already created");
@@ -21,7 +21,7 @@ namespace mirai {
         return shader.get();
     }
 
-    ShaderRegistry *ShaderRegistryMap::get_registry(PassMode pass_mode) {
+    ShaderRegistry *ShaderRegistryMap::get_registry(uint32_t pass_mode) {
         auto found = shader_registry_map.find(pass_mode);
         if (found != shader_registry_map.end())
             return found->second.get();
@@ -30,7 +30,7 @@ namespace mirai {
 
     void ShaderRegistryMap::destroy() {
         std::vector<PipelineID> pipelines;
-        pipelines.reserve(shader_registry_map.size());
+        pipelines.reserve(256);
         for (auto &[pass, registry] : shader_registry_map) {
             for (auto &[key, val] : registry->table) {
                 pipelines.push_back(val->pipeline_id);

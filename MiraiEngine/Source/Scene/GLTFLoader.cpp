@@ -355,31 +355,33 @@ namespace mirai {
         for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
             std::unique_ptr<Material3D> material = std::make_unique<Material3D>(gltf_material->name);
+            material->set_depth_test_state(true);
+            material->set_depth_write_state(true);
+
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
 
             Material3D::Properties &properties = material->properties;
 
-            // properties.transmission = static_cast<float>(pbr.baseColorFactor[3]);
-            properties.flags = 0;
-
             const std::string &alpha_mode = gltf_material->alphaMode;
             if (alpha_mode == "OPAQUE")
-                properties.flags |= MaterialFlags::FLAG_OPAQUE;
-            else if (alpha_mode == "BLEND")
-                properties.flags |= MaterialFlags::FLAG_ALPHA_BLEND;
-            else if (alpha_mode == "MASK")
-                properties.flags |= MaterialFlags::FLAG_ALPHA_MASK;
+                material->set_alpha_mode(ALPHA_MODE_OPAQUE);
+            else if (alpha_mode == "BLEND") {
+                material->set_alpha_mode(ALPHA_MODE_BLEND);
+                material->set_depth_write_state(false);
+            } else if (alpha_mode == "MASK")
+                material->set_alpha_mode(ALPHA_MODE_MASK);
             else
                 ASSERT_MSG(0, "Unknown alpha mask");
+
             if (gltf_material->doubleSided) {
-                properties.flags |= MaterialFlags::FLAG_DOUBLE_SIDED;
+                material->set_cull_mode(CULL_MODE_NONE);
             }
 
             properties.alpha_cutoff = cast_float(gltf_material->alphaCutoff);
 
             if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
                 auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
-                properties.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
+                // properties.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
                 if (ext->second.Has("diffuseTexture"))
                     properties.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
                 else
@@ -426,6 +428,8 @@ namespace mirai {
 
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
             properties.occlusion_texture = LoadTexture(occlusion_texture.index, false);
+
+            material->on_change_material();
             load_state->scene->materials.push_back(std::move(material));
         }
     }
@@ -510,7 +514,7 @@ namespace mirai {
                 std::vector<uint32_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
                     has_animation_data = true;
-                    mesh_component._flags |= (MeshComponent::DYNAMIC | MeshComponent::SKINNED);
+                    mesh_component.mesh_type = MESH_TYPE_SKINNED;
 
                     const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
                     ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
@@ -880,7 +884,7 @@ namespace mirai {
         }
     }
 
-    void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state) {
+    void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state, MeshType mesh_type) {
         if (load_state->global_joint_list.find(node_index) != load_state->global_joint_list.end())
             return;
 
@@ -916,7 +920,10 @@ namespace mirai {
             int mesh_id = node->mesh;
             if (mesh_id >= 0) {
                 ASSERT(mesh_id < load_state->mesh_components.size());
-                comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+                MeshComponent &mesh_comp = comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
+                if (mesh_comp.mesh_type != MESH_TYPE_SKINNED)
+                    mesh_comp.mesh_type = mesh_type;
+
                 name = model->meshes[mesh_id].name;
             }
         }
@@ -982,16 +989,18 @@ namespace mirai {
             }
         }
 
-        if (has_node_animation)
+        if (has_node_animation) {
             comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{
                                                                            .current_animation_clip = default_animation_clip,
                                                                        });
+            mesh_type = MESH_TYPE_DYNAMIC;
+        }
 
         comp_manager->add_component<NameComponent>(entity, name);
         // Check if node has animation
 
         for (const auto &child : node->children)
-            ParseNodes(model, child, entity, load_state);
+            ParseNodes(model, child, entity, load_state, mesh_type);
     }
 
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene) {
@@ -1052,7 +1061,7 @@ namespace mirai {
 
         for (const auto &scene : gltf_model.scenes) {
             for (const auto &node : scene.nodes)
-                ParseNodes(&gltf_model, node, root_entity, &load_state);
+                ParseNodes(&gltf_model, node, root_entity, &load_state, MESH_TYPE_STATIC);
         }
         async_loader.wait();
 

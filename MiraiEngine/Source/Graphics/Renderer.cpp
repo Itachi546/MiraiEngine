@@ -32,6 +32,8 @@ namespace mirai {
 
         // Preload shaders
         shader_registry_map = std::make_unique<ShaderRegistryMap>();
+        preload_shaders(shader_registry_map.get());
+
         frame_graph = std::make_unique<FrameGraph>();
         frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
 
@@ -103,8 +105,6 @@ namespace mirai {
     }
 
     void Renderer::on_load_resources() {
-        preload_shaders(shader_registry_map.get());
-
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
         scene->update();
@@ -124,13 +124,13 @@ namespace mirai {
 
             mesh_infos.push_back(AccelerationStructureMeshInfo{
                 .vertex_buffer = {
-                    .buffer = object.vertex_buffer.buffer,
+                    .buffer = object.vertex_buffer,
                     .offset = object.vertex_offset_bytes,
                     .count = object.index_count,
                     .stride = object.vertex_stride,
                 },
                 .index_buffer = {
-                    .buffer = object.index_buffer.buffer,
+                    .buffer = object.index_buffer,
                     .offset = object.first_index * sizeof(uint32_t),
                     .count = object.index_count,
                     .stride = sizeof(uint32_t),

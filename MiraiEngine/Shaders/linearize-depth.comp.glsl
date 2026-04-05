@@ -30,7 +30,7 @@ void main() {
 
     vec2 uv = vec2(iuv + 0.5) / vec2(width, height);
     #if ENABLE_SAMPLER 
-    float depth = texture(sampler2D(u_depth_texture, u_samplers[0]), uv * 4.).r;
+    float depth = texture(sampler2D(u_depth_texture, u_samplers[0]), uv).r;
     #else 
     float depth = texelFetch(u_depth_texture, iuv, 0).r; 
     #endif

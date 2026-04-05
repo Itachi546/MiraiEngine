@@ -289,9 +289,9 @@ namespace mirai {
                 RenderableObjectData render_data = {
                     .entity = entity,
                     .material_index = subset.material_index,
-                    .render_flags = mesh_component._flags,
-                    .vertex_buffer = vertex_buffer,
-                    .index_buffer = index_buffer,
+                    .mesh_type = mesh_component.mesh_type,
+                    .vertex_buffer = vertex_buffer.buffer,
+                    .index_buffer = index_buffer.buffer,
                     .vertex_offset_bytes = subset.vertex_offset_bytes, // Manually calculating in shader
                     .first_index = subset.index_offset_bytes / sizeof(uint32_t),
                     .index_count = subset.index_count,
@@ -304,7 +304,7 @@ namespace mirai {
 
             // Sort by the buffer
             std::sort(render_object_list.begin(), render_object_list.end(), [](const RenderableObjectData &lhs, const RenderableObjectData &rhs) {
-                return lhs.vertex_buffer.buffer.id < rhs.vertex_buffer.buffer.id;
+                return lhs.vertex_buffer < rhs.vertex_buffer;
             });
         }
 

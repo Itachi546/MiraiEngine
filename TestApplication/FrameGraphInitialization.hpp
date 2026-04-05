@@ -4,7 +4,7 @@
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "RenderPass/RenderPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Scene/Shader.hpp"
+#include "Scene/ShaderRegistry.hpp"
 #include "ImGuiService.hpp"
 #include "Graphics/GPUResource.hpp"
 
@@ -56,9 +56,13 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                          });
 
             data.depth_texture = depth_prepass_data.output;
-            data.shader = Shader::create_from_file("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
-            board->add<LinearizeDepthPassData>(data);
 
+            auto shader_registry = std::make_shared<ShaderRegistry>("LinearizeDepthPass");
+            data.shader = Shader::create_from_file("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
+            shader_registry->add(0, data.shader);
+            ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+
+            board->add<LinearizeDepthPassData>(data);
             builder.present(data.output);
         },
 

@@ -38,13 +38,11 @@ namespace mirai {
             },
             [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
-                CommandBuffer *command_buffer = ctx->command_buffer;
                 Renderer *renderer = ctx->renderer;
+                CommandBuffer *command_buffer = ctx->command_buffer;
 
                 ScopedGpuProfiling(command_buffer, "DepthPrePass");
                 command_buffer->begin_gpu_debug_label("DepthPrePass");
-
-                std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
 
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
@@ -71,19 +69,22 @@ namespace mirai {
                 });
                 command_buffer->set_scissor(0, 0, width, height);
 
-                // Draw Opaque meshes
-                // @TODO Fix me
-                auto found = data.registry->table.find(0);
-                ASSERT(found != data.registry->table.end());
+                std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
+                for (const auto &batch : render_batches) {
+                    if (batch.batch_type == RENDERBATCH_TYPE_TRANSPARENT)
+                        continue;
 
-                Shader *shader = found->second.get();
-                std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor};
-                DrawBatch(command_buffer, render_batches, {
-                                                              .batch_type = RENDERBATCH_TYPE_OPAQUE,
-                                                              .shader = shader,
-                                                              .descriptor_infos = descriptor_infos,
-                                                              .push_constants = nullptr,
-                                                          });
+                    Shader *shader = data.registry->find(batch.sort_key);
+                    ASSERT(shader != nullptr);
+
+                    std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor};
+                    DrawBatch(command_buffer, batch, {
+                                                         .batch_type = RENDERBATCH_TYPE_OPAQUE,
+                                                         .shader = shader,
+                                                         .descriptor_infos = descriptor_infos,
+                                                         .push_constants = nullptr,
+                                                     });
+                }
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

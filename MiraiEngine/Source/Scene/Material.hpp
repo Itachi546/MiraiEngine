@@ -10,15 +10,6 @@
 namespace mirai {
 
     constexpr const uint32_t K_MAX_MATERIAL_INSTANCE_DATA_SIZE = 64;
-    enum MaterialFlags {
-        FLAG_EMPTY = 0,
-        FLAG_OPAQUE = 1 << 0,
-        FLAG_ALPHA_BLEND = 1 << 1,
-        FLAG_ALPHA_MASK = 1 << 2,
-        FLAG_DOUBLE_SIDED = 1 << 3,
-        FLAG_SPECULAR_GLOSSINESS_WORKFLOW = 1 << 4,
-    };
-
     struct Material {
       public:
         Material(const std::string_view name);
@@ -127,8 +118,8 @@ namespace mirai {
 
         void update_from_pipeline_state(const PipelineState &pipeline_state);
 
-        uint64_t get_hash() const {
-            return current_key.hash;
+        uint32_t get_hash() const {
+            return current_key;
         }
 
         void set_dirty(bool state) {
@@ -143,20 +134,22 @@ namespace mirai {
         bool dirty = false;
 
       protected:
-        MaterialKey current_key;
+        uint32_t current_key;
         PipelineState pipeline_state;
     };
 
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
+            pipeline_state.depth_test = true;
+            pipeline_state.draw_mode = DRAWMODE_INDEXED_INDIRECT;
         }
 
         bool is_transparent() const {
-            return HAS_FLAG(properties.flags, FLAG_ALPHA_BLEND);
+            return pipeline_state.alpha_mode == ALPHA_MODE_BLEND;
         }
 
         bool is_alpha_mask() const {
-            return HAS_FLAG(properties.flags, FLAG_ALPHA_MASK);
+            return pipeline_state.alpha_mode == ALPHA_MODE_MASK;
         }
 
         struct Properties {
@@ -167,7 +160,7 @@ namespace mirai {
 
             float roughness_factor;
             float alpha_cutoff;
-            uint32_t flags = 0;
+            uint32_t reserved = 0;
             uint32_t emissive_texture;
 
             uint32_t albedo_texture;

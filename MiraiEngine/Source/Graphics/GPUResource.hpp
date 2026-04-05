@@ -20,8 +20,16 @@ namespace mirai {
 
         void new_frame(uint32_t frame_index);
 
+        // Allocate certain space, currently used for bindless texture
+        DescriptorOffset allocate(uint32_t descriptor_count);
+
+        // Push descriptor at particular index, used after allocation
+        DescriptorOffset push_descriptor_at_index(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count, uint32_t index);
+
+        // Push static descriptor
         DescriptorOffset push_descriptors(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
 
+        // Push per frame descriptor
         DescriptorOffset push_descriptors_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count);
 
       private:

@@ -37,20 +37,14 @@ namespace mirai {
         }
     };
 
-    struct MeshComponent {
-        enum FLAGS {
-            EMPTY = 0,
-            RENDERABLE = 1 << 0,
-            DYNAMIC = 1 << 2,
-            CAST_SHADOW = 1 << 2,
-            RECEIVE_SHADOW = 1 << 3,
-            DEPTH_TEST = 1 << 4,
-            DEPTH_WRITE = 1 << 5,
-            DISABLE_FRUSTUM_CULLING = 1 << 6,
-            SKINNED = 1 << 7,
-        };
+    enum MeshType {
+        MESH_TYPE_STATIC = 0,
+        MESH_TYPE_DYNAMIC = 1,
+        MESH_TYPE_SKINNED = 2,
+    };
 
-        uint32_t _flags = RENDERABLE | DEPTH_TEST | DEPTH_WRITE | CAST_SHADOW | RECEIVE_SHADOW;
+    struct MeshComponent {
+        MeshType mesh_type;
         BufferView vertex_buffer;
         BufferView index_buffer;
 

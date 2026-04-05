@@ -35,7 +35,7 @@ namespace mirai {
             uint32_t padding : 8;
         };
         struct {
-            uint64_t hash;
+            uint32_t hash;
         };
 
         bool operator==(const MaterialKey &other) const {
@@ -62,7 +62,7 @@ namespace mirai {
         bool depth_clamp = false;
         bool stencil_test = false;
 
-        inline MaterialKey calculate_material_key() {
+        inline uint32_t get_hash() const {
             MaterialKey key;
             key.cull_mode = cull_mode;
             key.front_face = front_face;
@@ -78,7 +78,7 @@ namespace mirai {
             key.depth_clamp = depth_clamp;
             key.stencil_test = stencil_test;
             key.padding = 0;
-            return key;
+            return key.hash;
         }
     };
 
