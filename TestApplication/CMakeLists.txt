@@ -17,7 +17,7 @@ set(PROJECT_INCLUDE_FILES
     ImGuiService.hpp
     Inspector.hpp
     AnimationDebug.hpp
-    FrameGraphInitialization.hpp
+    FrameGraphForwardPass.hpp
 )
 
 add_executable(TestApplication ${PROJECT_SOURCE_FILES} ${PROJECT_INCLUDE_FILES})

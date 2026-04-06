@@ -10,7 +10,7 @@
 #include "Scene/EnvironmentMap.hpp"
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
-#include "FrameGraphInitialization.hpp"
+#include "FrameGraphForwardPass.hpp"
 
 // #include "ImGuiService.hpp"
 

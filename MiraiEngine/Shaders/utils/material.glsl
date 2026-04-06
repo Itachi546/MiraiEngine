@@ -1,7 +1,6 @@
 #ifndef MATERIAL_GLSL
 #define MATERIAL_GLSL
 
-#include "bindless.glsl"
 #include "color.glsl"
 #define FLAG_EMPTY 0
 #define FLAG_OPAQUE 1 << 0

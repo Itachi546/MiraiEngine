@@ -90,7 +90,7 @@ namespace mirai {
             .size = size,
         };
     }
-
+    /*
     uint64_t CalculateSamplerHash(const SamplerDescription *desc) {
         uint64_t hash = 0;
         utils::hash_combine(hash, cast_u32(desc->address_mode_u),
@@ -106,4 +106,5 @@ namespace mirai {
                             cast_u32(desc->enable_anisotropy));
         return hash;
     }
+    */
 } // namespace mirai

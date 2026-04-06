@@ -10,11 +10,11 @@
 
 namespace mirai {
     DepthPrePass::DepthPrePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
-        RenderingDevice *device = RenderingDevice::get();
 
         frame_graph->add_callback_pass<DepthPrePassData>(
             "DepthPrePass",
-            [=](FrameGraph::FrameGraphBuilder &builder, DepthPrePassData &data) {
+            [board](FrameGraph::FrameGraphBuilder &builder, DepthPrePassData &data) {
+                RenderingDevice *device = RenderingDevice::get();
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
                 data.output = builder.create_texture("DepthTexture", {

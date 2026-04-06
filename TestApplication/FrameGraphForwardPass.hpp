@@ -12,7 +12,99 @@ using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     DepthPrePass depth_prepass{frame_graph, board};
+    SSAOPass ssao_pass{frame_graph, board};
 
+    struct CopyTexturePassData {
+        FrameGraphResourceHandle ssao_texture;
+        FrameGraphResourceHandle output;
+        std::shared_ptr<Shader> shader;
+    };
+
+    struct CopyTexturePassBindings {
+        uint32_t descriptors[2];
+    };
+
+    // Copy Texture Pass
+    frame_graph->add_callback_pass<CopyTexturePassData>(
+        "CopyTexturePass",
+        [=](FrameGraph::FrameGraphBuilder &builder, CopyTexturePassData &data) {
+            uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
+            uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+
+            data.output = builder.create_texture("OutputTexture", {
+                                                                      .create_flags = 0,
+                                                                      .width = width,
+                                                                      .height = height,
+                                                                      .depth = 1,
+                                                                      .mip_levels = 1,
+                                                                      .array_layers = 1,
+                                                                      .texture_type = TEXTURE_TYPE_2D,
+                                                                      .format = FORMAT_B8G8R8A8_UNORM,
+                                                                      .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+                                                                  });
+            builder.write(data.output,
+                          {
+                              .access_flags = ACCESS_FLAG_SHADER_READ,
+                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                              .layout = IMAGE_LAYOUT_GENERAL,
+                          });
+
+            const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+            builder.read(ssao_pass_data.output,
+                         {
+                             .access_flags = ACCESS_FLAG_SHADER_READ,
+                             .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                             .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         });
+            data.ssao_texture = ssao_pass_data.output;
+
+            auto shader_registry = std::make_shared<ShaderRegistry>("CopyTextureShader");
+            data.shader = Shader::create_from_file("CopyTextureShader", "SPIRV/copy-r16-texture.comp.spv");
+            shader_registry->add(0, data.shader);
+            ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+
+            board->add<CopyTexturePassData>(data);
+            builder.present(data.output);
+        },
+
+        [](const CopyTexturePassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            RenderContext *ctx = static_cast<RenderContext *>(context);
+            CommandBuffer *command_buffer = ctx->command_buffer;
+            Renderer *renderer = ctx->renderer;
+
+            std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
+            command_buffer->prepare_resources(resource_states);
+
+            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+            CopyTexturePassBindings *bindings = nullptr;
+            if (!board->has<CopyTexturePassBindings>()) {
+                DescriptorInfo descriptor_infos[] = {
+                    {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.ssao_texture).id},
+                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
+                };
+                DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+                bindings = &board->add<CopyTexturePassBindings>(CopyTexturePassBindings{
+                    .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
+                });
+            } else {
+                bindings = &board->get<CopyTexturePassBindings>();
+            }
+
+            ASSERT(bindings != nullptr);
+            uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
+            uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+
+            uint32_t push_constants[] = {width, height, 0, 0};
+
+            command_buffer->bind_pipeline(data.shader->pipeline_id);
+            command_buffer->set_push_data(0, push_constants, cast_u32(sizeof(push_constants)));
+            command_buffer->set_push_data(sizeof(push_constants), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
+            uint32_t work_group_x = rendering_utils::get_workgroup_size(width + 1, 32);
+            uint32_t work_group_y = rendering_utils::get_workgroup_size(height + 1, 32);
+            command_buffer->dispatch(work_group_x, work_group_y, 1);
+        });
+
+    /*
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;

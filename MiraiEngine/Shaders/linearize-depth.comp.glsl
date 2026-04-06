@@ -13,7 +13,7 @@ layout(set = 0, binding = 0) uniform texture2D u_depth_texture;
 layout(set = 0, binding = 1) writeonly uniform image2D u_output_texture;
 
 #if ENABLE_SAMPLER
-layout(set = 1, binding = 0) uniform sampler u_samplers[];
+#include "utils/bindless-sampler.glsl"
 #endif
 
 layout(push_constant) uniform ShaderPushConstants {

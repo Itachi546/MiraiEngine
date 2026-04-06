@@ -3,18 +3,21 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
 #include "Common/HashMap.hpp"
+
 #include <vector>
+#include <atomic>
 
 namespace mirai {
     struct Shader;
 
     enum PassMode {
         PASS_MODE_DEPTH_PREPASS = 0,
+        PASS_MODE_FORWARD,
         PASS_MODE_COUNT
     };
 
-    static uint32_t GetCustomPassID() {
-        static uint32_t pass_id = PASS_MODE_COUNT;
+    inline uint32_t GetCustomPassID() {
+        static std::atomic<uint32_t> pass_id = PASS_MODE_COUNT;
         return pass_id++;
     }
 

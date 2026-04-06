@@ -119,8 +119,6 @@ namespace mirai {
     EnvironmentMap::EnvironmentMap() {
         initialize_textures();
 
-        SamplerDescription sampler_desc = SamplerDescription::create();
-
         RenderingDevice *device = RenderingDevice::get();
 
         // Shader *generate_cubemap_shader = Shader::create_from_file({"SPIRV/procedural_sky.comp.spv"}, "generate-cubemap");

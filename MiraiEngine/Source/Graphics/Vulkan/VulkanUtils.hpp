@@ -4,7 +4,6 @@
 #include <vector>
 
 namespace mirai {
-    struct SamplerDescription;
     VkImageMemoryBarrier CreateImageMemoryBarrier(VkImage image,
                                                   VkImageAspectFlags aspect,
                                                   VkAccessFlags src_access_mask,
@@ -40,8 +39,6 @@ namespace mirai {
                                                       VkAccessFlags2 dst_access,
                                                       uint64_t offset = 0,
                                                       uint64_t size = VK_WHOLE_SIZE);
-
-    uint64_t CalculateSamplerHash(const SamplerDescription *desc);
 
     inline bool is_stencil_format(VkFormat format) {
         switch (format) {

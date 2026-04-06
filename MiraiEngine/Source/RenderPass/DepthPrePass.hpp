@@ -1,7 +1,6 @@
 #pragma once
 
 namespace mirai {
-    struct Shader;
     class FrameGraph;
     class FrameGraphBlackBoard;
     class DepthPrePass {

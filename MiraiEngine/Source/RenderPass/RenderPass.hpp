@@ -2,4 +2,5 @@
 
 #include "DepthPrePass.hpp"
 #include "RenderPassData.hpp"
+#include "SSAOPass.hpp"
 #include "FinalCompositePass.hpp"

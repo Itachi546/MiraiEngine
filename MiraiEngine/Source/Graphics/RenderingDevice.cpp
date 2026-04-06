@@ -5,12 +5,50 @@
 #include <cstring>
 
 namespace mirai {
+    enum SamplerTypeID {
+        SAMPLER_LINEAR_REPEAT = 0,
+        SAMPLER_LINEAR_CLAMP,
+        SAMPLER_LINEAR_REPEAT_ANISO16,
+
+        SAMPLER_POINT_REPEAT,
+        SAMPLER_POINT_CLAMP,
+        SAMPLER_POINT_REPEAT_ANISO16,
+    };
+
     RenderingDevice *RenderingDevice::Instance = nullptr;
 
     void rendering_utils::upload_default_samplers(RenderingDevice *device, void *ptr) {
-        SamplerDescription sampler_info = SamplerDescription::create();
-        sampler_info.address_mode_u = sampler_info.address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT;
-        device->write_sampler_descriptors(&sampler_info, 1, ptr);
+        // Linear Sampler
+        {
+            SamplerDescription sampler_info = SamplerDescription::create();
+            sampler_info.address_mode_u = sampler_info.address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT;
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_REPEAT);
+
+            sampler_info.enable_anisotropy = true;
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_REPEAT_ANISO16);
+        }
+        {
+            SamplerDescription sampler_info = SamplerDescription::create();
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_CLAMP);
+        }
+
+        // Point Sampler
+        {
+            SamplerDescription sampler_info = SamplerDescription::create();
+            sampler_info.address_mode_u = sampler_info.address_mode_v = SAMPLER_ADDRESS_MODE_REPEAT;
+            sampler_info.min_filter = sampler_info.mag_filter = FILTER_NEAREST;
+            sampler_info.mipmap_mode = SAMPLER_MIPMAP_NEAREST;
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_REPEAT);
+
+            sampler_info.enable_anisotropy = true;
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_REPEAT_ANISO16);
+        }
+        {
+            SamplerDescription sampler_info = SamplerDescription::create();
+            sampler_info.min_filter = sampler_info.mag_filter = FILTER_NEAREST;
+            sampler_info.mipmap_mode = SAMPLER_MIPMAP_NEAREST;
+            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_CLAMP);
+        }
     }
 
     void rendering_utils::copy_texture_immediate(TextureID dst, void *data, uint32_t size) {
@@ -41,7 +79,7 @@ namespace mirai {
         ASSERT(data != nullptr);
         if (data == nullptr)
             return TextureID{K_INVALID_ID};
-        SamplerDescription sampler_desc = SamplerDescription::create();
+
         TextureDescription texture_desc = {
             .create_flags = 0,
             .width = (uint32_t)width,

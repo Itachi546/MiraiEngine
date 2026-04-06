@@ -2,11 +2,14 @@
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #extension GL_GOOGLE_include_directive : enable
-#include "utils/transform.glsl"
+#extension GL_EXT_samplerless_texture_functions : enable
+
+#include "../utils/transform.glsl"
+#include "../utils/bindless-texture.glsl"
+#include "../utils/bindless-sampler.glsl"
 
 layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
-layout(set = 0, binding = 1) uniform sampler2D u_depth_texture;
-layout(set = 0, binding = 2) uniform sampler2D u_noise_texture;
+layout(set = 0, binding = 1) uniform texture2D u_depth_texture;
 
 /*
  * We do everything in integer coordinate instead of normalized uv coordinate
@@ -15,18 +18,22 @@ layout(set = 0, binding = 2) uniform sampler2D u_noise_texture;
  */
 layout(push_constant) uniform HBAOPushConstants {
     mat4 inv_projection_matrix;
+
     vec2 ssao_texture_res;
     vec2 depth_texture_res;
+
     vec2 inv_depth_texture_res;
     vec2 inv_noise_texture_res;
 
     float radius_to_screen;
     float neg_inv_r2;
-
     float num_step;
     float direction_step;
+
     float intensity;
     float tangent_bias;
+    uint noise_texture_index;
+    uint _padding;
 }
 hbao;
 
@@ -42,8 +49,9 @@ ivec2 uv_to_iuv(vec2 uv) {
 }
 
 vec3 get_view_pos_from_uv(ivec2 iuv) {
-    float depth = texelFetch(u_depth_texture, iuv, 0).r;
     vec2 uv = uv_from_iuv(iuv);
+    float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
+    //float depth = texelFetch(u_depth_texture, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
 }
@@ -88,7 +96,7 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
     float radius_pixels = -hbao.radius_to_screen / V.z;
     const float step_size = radius_pixels / NUM_STEPS;
 
-    vec3 rand = texture(u_noise_texture, noise_uv).rgb;
+    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], noise_uv).rgb;
     float angle = rand.x * PI * 2.0;
     mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
@@ -121,5 +129,5 @@ void main() {
     vec2 noise_uv = vec2(id + 0.5) * hbao.inv_noise_texture_res;
     float ao = calculate_ao(iuv, noise_uv, V, N);
 
-    imageStore(u_ssao_texture, id.xy, vec4(ao, ao, ao, 1.0f));
+    imageStore(u_ssao_texture, id.xy, vec4(vec3(ao), 1.0f));
 }

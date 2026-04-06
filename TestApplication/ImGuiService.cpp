@@ -59,9 +59,6 @@ namespace ImGuiService {
         init_info.CheckVkResultFn = check_vk_result;
         ImGui_ImplVulkan_Init(&init_info);
         // ImGui_ImplVulkan_CreateFontsTexture();
-
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.enable_anisotropy = false;
     }
 
     HashMap<uint32_t, VkDescriptorSet> ImTextureIDMap;

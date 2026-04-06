@@ -1,3 +1,156 @@
+#include "SSAOPass.hpp"
+#include "RenderPassData.hpp"
+#include "Graphics/Renderer.hpp"
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Scene/FrameGraph.hpp"
+#include "Scene/FrameGraphBlackBoard.hpp"
+#include "Scene/ShaderRegistry.hpp"
+#include "Scene/Camera.hpp"
+#include "Engine/Profiler.hpp"
+#include "Engine/AppSettings.hpp"
+#include "Scene/TextureCache.hpp"
+namespace mirai {
+
+    struct HBAOConstants {
+        glm::mat4 inv_projection_matrix;
+
+        glm::vec2 ssao_texture_resolution;
+        glm::vec2 depth_texture_resolution;
+
+        glm::vec2 inv_depth_texture_resolution;
+        glm::vec2 inv_noise_texture_resolution;
+
+        float radius_to_screen;
+        float neg_inv_r2;
+        float num_step;
+        float direction_step;
+
+        float intensity;
+        float tangent_bias;
+        uint32_t noise_texture_index;
+        uint32_t padding;
+    };
+    static_assert(sizeof(HBAOConstants) % 4 == 0);
+
+    struct HBAOBindings {
+        uint32_t descriptors[2];
+    };
+
+    SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+        frame_graph->add_callback_pass<SSAOPassData>(
+            "SSAOPass",
+            [board](FrameGraph::FrameGraphBuilder &builder, SSAOPassData &data) {
+                RenderingDevice *device = RenderingDevice::get();
+                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale * 0.5);
+                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale * 0.5);
+                data.output = builder.create_texture("SSAOTexture", {
+                                                                        .create_flags = 0,
+                                                                        .width = width,
+                                                                        .height = height,
+                                                                        .depth = 1,
+                                                                        .mip_levels = 1,
+                                                                        .array_layers = 1,
+                                                                        .texture_type = TEXTURE_TYPE_2D,
+                                                                        .format = FORMAT_R16_SFLOAT,
+                                                                        .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+                                                                    });
+                builder.write(data.output, {
+                                               .access_flags = ACCESS_FLAG_SHADER_WRITE,
+                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                               .layout = IMAGE_LAYOUT_GENERAL,
+                                           });
+
+                DepthPrePassData depth_prepass_data = board->get<DepthPrePassData>();
+                builder.read(depth_prepass_data.output, {
+                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                            .layout = IMAGE_LAYOUT_GENERAL,
+                                                        });
+                data.depth_texture = depth_prepass_data.output;
+
+                // Create Shader
+                auto shader_registry = std::make_shared<ShaderRegistry>("SSAOPass");
+                data.shader = Shader::create_from_file("SSAOPass", "SPIRV/hbao.comp.spv");
+                shader_registry->add(0, data.shader);
+                ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+
+                // Load Noise texture
+                data.noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
+                // Pass the lifetime management to texture cache
+                TextureCache::get()->add_texture("noise-texture-128", data.noise_texture);
+                Renderer::get()->add_bindless_texture(data.noise_texture);
+
+                // SSAO Params
+                data.noise_texture_inv_dim = 1.0f / 128.0f;
+                data.radius = 2.0f;
+                data.intensity = 1.0f;
+                data.num_directional_step = 4;
+                data.num_step = 8;
+                data.tangent_bias = 0.1f;
+                board->add<SSAOPassData>(data);
+            },
+            [](const SSAOPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
+                RenderContext *ctx = static_cast<RenderContext *>(context);
+                Renderer *renderer = ctx->renderer;
+                CommandBuffer *command_buffer = ctx->command_buffer;
+                Camera *camera = renderer->get_scene()->get_camera();
+
+                float width = AppSettings::default_window_width * AppSettings::resolution_scale;
+                float height = AppSettings::default_window_height * AppSettings::resolution_scale;
+                float ssao_width = width * 0.5f;
+                float ssao_height = height * 0.5f;
+                float projection_scale = float(height) / (tanf(camera->get_fov() * 0.5f) * 2.0f);
+
+                HBAOConstants push_constants = {
+                    .inv_projection_matrix = camera->get_inv_projection_transform(),
+                    .ssao_texture_resolution = {ssao_width, ssao_height},
+                    .depth_texture_resolution = {width, height},
+                    .inv_depth_texture_resolution = {1.0f / width, 1.0f / height},
+                    .inv_noise_texture_resolution = glm::vec2{data.noise_texture_inv_dim},
+                    .radius_to_screen = data.radius * projection_scale,
+                    .neg_inv_r2 = -1.0f / (data.radius * data.radius),
+                    .num_step = cast_float(data.num_step),
+                    .direction_step = cast_float(data.num_directional_step),
+                    .intensity = data.intensity,
+                    .tangent_bias = data.tangent_bias,
+                    .noise_texture_index = data.noise_texture,
+                    .padding = 0,
+                };
+
+                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                HBAOBindings *bindings = nullptr;
+                if (!board->has<HBAOBindings>()) {
+                    DescriptorInfo descriptor_infos[] = {
+                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
+                    };
+                    DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+                    bindings = &board->add<HBAOBindings>(HBAOBindings{
+                        .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
+                    });
+                } else {
+                    bindings = &board->get<HBAOBindings>();
+                }
+                ASSERT(bindings != nullptr);
+
+                ScopedGpuProfiling(command_buffer, "SSAOPass");
+
+                std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
+                command_buffer->prepare_resources(resource_states);
+
+                command_buffer->begin_gpu_debug_label("SSAOPass");
+                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                command_buffer->set_push_data(0, &push_constants, sizeof(HBAOConstants));
+                command_buffer->set_push_data(sizeof(HBAOConstants), &bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
+
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(ssao_width + 1), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(ssao_height + 1), 32);
+                command_buffer->dispatch(work_size_x, work_size_y, 1);
+                command_buffer->end_gpu_debug_label();
+            });
+    }
+} // namespace mirai
+
 // #include "SSAOPass.hpp"
 // #include "Graphics/Vulkan/CommandBuffer.hpp"
 // #include "Engine/Profiler.hpp"

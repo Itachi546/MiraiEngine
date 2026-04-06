@@ -235,6 +235,7 @@ namespace mirai {
         frame_graph->compile();
     }
 
+    // @TODO this must be handled somewhere else
     void Renderer::create_batches() {
         ScopedCpuProfiling("Create Batch");
         main_opaque_batches.clear();

@@ -1,7 +1,8 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
 
-#include "../utils/bindless.glsl"
+#include "../utils/bindless-texture.glsl"
+#include "../utils/bindless-sampler.glsl"
 #include "../utils/material.glsl"
 
 layout(location = 0) in FS_IN {
@@ -10,7 +11,6 @@ layout(location = 0) in FS_IN {
 }
 fs_in;
 
-layout(set = 1, binding = 0) uniform sampler u_samplers[];
 layout(set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
 };
