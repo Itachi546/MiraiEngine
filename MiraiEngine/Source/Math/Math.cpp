@@ -1,10 +1,10 @@
 #include "Math.hpp"
 
 const glm::vec3 frustum_corner_ndc[8] = {
-    glm::vec3(-1.0f, 1.0f, -1.0f),  // NTL
-    glm::vec3(1.0f, 1.0f, -1.0f),   // NTR
-    glm::vec3(1.0f, -1.0f, -1.0f),  // NBR
-    glm::vec3(-1.0f, -1.0f, -1.0f), // NBL
+    glm::vec3(-1.0f, 1.0f, 0.0f),  // NTL
+    glm::vec3(1.0f, 1.0f, 0.0f),   // NTR
+    glm::vec3(1.0f, -1.0f, 0.0f),  // NBR
+    glm::vec3(-1.0f, -1.0f, 0.0f), // NBL
     glm::vec3(-1.0f, 1.0f, 1.0f),   // FTL
     glm::vec3(1.0f, 1.0f, 1.0f),    // FTR
     glm::vec3(1.0f, -1.0f, 1.0f),   // FBR
