@@ -30,7 +30,7 @@ class TestApplication : public App {
     }
 
     void start() override {
-        // ImGuiService::Initialize();
+        ImGuiService::Initialize();
 
         uint32_t width = 1920;
         uint32_t height = 1080;
@@ -70,13 +70,13 @@ class TestApplication : public App {
     }
 
     void update() override {
-        // ImGuiService::NewFrame();
+        ImGuiService::NewFrame();
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
 
         float dt = Engine::get()->get_dt_seconds();
 
-        // controller->set_disable_input(ImGuiService::IsAcceptingEvent());
+        controller->set_disable_input(ImGuiService::IsAcceptingEvent());
         controller->update(dt);
 
         if (Input::get()->was_down(KB_F)) {
@@ -88,7 +88,7 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
-        // add_debug_ui();
+        add_debug_ui();
     }
 
     void add_profiler_ui() {
@@ -333,7 +333,7 @@ class TestApplication : public App {
     }
 
     ~TestApplication() {
-        // ImGuiService::Shutdown();
+        ImGuiService::Shutdown();
         Log::Info("Destroying Test Application...");
     }
 

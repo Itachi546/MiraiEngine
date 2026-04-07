@@ -40,7 +40,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                                                                       .array_layers = 1,
                                                                       .texture_type = TEXTURE_TYPE_2D,
                                                                       .format = FORMAT_B8G8R8A8_UNORM,
-                                                                      .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+                                                                      .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT | TEXTURE_USAGE_COLOR_ATTACHMENT_BIT,
                                                                   });
             builder.write(data.output,
                           {
@@ -64,7 +64,6 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
 
             board->add<CopyTexturePassData>(data);
-            builder.present(data.output);
         },
 
         [](const CopyTexturePassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -204,7 +203,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
 
-    /*
+    */
     // ImGui Pass
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
@@ -212,8 +211,8 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
-            const LinearizeDepthPassData &linearize_depth_pass_data = board->get<LinearizeDepthPassData>();
-            data.output = linearize_depth_pass_data.output;
+            const CopyTexturePassData &copy_texture_pass = board->get<CopyTexturePassData>();
+            data.output = copy_texture_pass.output;
 
             builder.write(data.output, {
                                            .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE | ACCESS_FLAG_COLOR_ATTACHMENT_READ,
@@ -262,5 +261,4 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->end_render_pass();
             command_buffer->end_gpu_debug_label();
         });
-        */
 }

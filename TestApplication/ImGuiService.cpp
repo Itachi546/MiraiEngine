@@ -48,6 +48,7 @@ namespace ImGuiService {
         init_info.QueueFamily = device->queue_family_indices[QUEUE_TYPE_GRAPHICS];
         init_info.Queue = device->device_queues[QUEUE_TYPE_GRAPHICS];
         init_info.DescriptorPool = VK_NULL_HANDLE;
+        init_info.DescriptorPoolSize = 1024;
         init_info.MinImageCount = 2;
         init_info.ImageCount = static_cast<uint32_t>(device->swapchain->images.size());
         init_info.UseDynamicRendering = true;

@@ -171,6 +171,7 @@ namespace mirai {
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });
+        return;
         // SSAO Horizontal Blur Pass
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
