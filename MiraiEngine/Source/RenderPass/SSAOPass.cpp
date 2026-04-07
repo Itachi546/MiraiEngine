@@ -57,8 +57,8 @@ namespace mirai {
         std::shared_ptr<Shader> shader;
     };
 
-    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale;
-    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale;
+    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale * 0.5f;
+    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale * 0.5f;
 
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // SSAO Pass
@@ -90,6 +90,7 @@ namespace mirai {
                                                             .layout = IMAGE_LAYOUT_GENERAL,
                                                         });
                 data.depth_texture = depth_prepass_data.output;
+                board->add<SSAOPassData>(data);
 
                 // Create Shader
                 auto shader_registry = std::make_shared<ShaderRegistry>("SSAOPass");
@@ -98,21 +99,24 @@ namespace mirai {
                 ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
 
                 // Load Noise texture
-                data.noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
+                TextureID noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
                 // Pass the lifetime management to texture cache
-                TextureCache::get()->add_texture("noise-texture-128", data.noise_texture);
-                Renderer::get()->add_bindless_texture(data.noise_texture);
+                TextureCache::get()->add_texture("noise-texture-128", noise_texture);
+                Renderer::get()->add_bindless_texture(noise_texture);
 
                 // SSAO Params
-                data.noise_texture_inv_dim = 1.0f / 128.0f;
-                data.radius = 2.0f;
-                data.intensity = 1.0f;
-                data.num_directional_step = 4;
-                data.num_step = 8;
-                data.tangent_bias = 0.1f;
-                data.blur_radius = 10;
-                data.sharpness = 40;
-                board->add<SSAOPassData>(data);
+                HBAOParams params = {
+                    .noise_texture = noise_texture,
+                    .noise_texture_inv_dim = 1.0f / 128.0f,
+                    .radius = 0.5f,
+                    .intensity = 2.0f,
+                    .num_directional_step = 4,
+                    .num_step = 8,
+                    .tangent_bias = 0.1f,
+                    .blur_sharpness = 40,
+                    .blur_radius = 10,
+                };
+                board->add<HBAOParams>(std::move(params));
             },
             [](const SSAOPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
@@ -122,25 +126,28 @@ namespace mirai {
 
                 float screen_width = AppSettings::default_window_width * AppSettings::resolution_scale;
                 float screen_height = AppSettings::default_window_height * AppSettings::resolution_scale;
-                float projection_scale = float(screen_height) / (tanf(camera->get_fov() * 0.5f) * 2.0f);
 
+                float fov = glm::radians(renderer->get_scene()->get_camera()->get_fov());
+                float projection_scale = float(screen_height) / (tanf(fov * 0.5f) * 2.0f);
+
+                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                const HBAOParams &params = board->get<HBAOParams>();
                 HBAOConstants push_constants = {
                     .inv_projection_matrix = camera->get_inv_projection_transform(),
                     .ssao_texture_resolution = {SSAO_WIDTH, SSAO_HEIGHT},
                     .depth_texture_resolution = {screen_width, screen_height},
                     .inv_depth_texture_resolution = {1.0f / screen_width, 1.0f / screen_height},
-                    .inv_noise_texture_resolution = glm::vec2{data.noise_texture_inv_dim},
-                    .radius_to_screen = data.radius * projection_scale,
-                    .neg_inv_r2 = -1.0f / (data.radius * data.radius),
-                    .num_step = cast_float(data.num_step),
-                    .direction_step = cast_float(data.num_directional_step),
-                    .intensity = data.intensity,
-                    .tangent_bias = data.tangent_bias,
-                    .noise_texture_index = data.noise_texture,
+                    .inv_noise_texture_resolution = glm::vec2{params.noise_texture_inv_dim},
+                    .radius_to_screen = params.radius * projection_scale,
+                    .neg_inv_r2 = -1.0f / (params.radius * params.radius),
+                    .num_step = cast_float(params.num_step),
+                    .direction_step = cast_float(params.num_directional_step),
+                    .intensity = params.intensity,
+                    .tangent_bias = params.tangent_bias,
+                    .noise_texture_index = params.noise_texture,
                     .padding = 0,
                 };
 
-                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 HBAOBindings *bindings = nullptr;
                 if (!board->has<HBAOBindings>()) {
                     DescriptorInfo descriptor_infos[] = {
@@ -171,7 +178,7 @@ namespace mirai {
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });
-        return;
+
         // SSAO Horizontal Blur Pass
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
@@ -222,12 +229,14 @@ namespace mirai {
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                const HBAOParams &params = board->get<HBAOParams>();
+
                 BlurConstants push_constants = {
                     .width = SSAO_WIDTH,
                     .height = SSAO_HEIGHT,
                     .blur_direction = 0,
-                    .blur_radius = ssao_pass_data.blur_radius,
-                    .sharpness = ssao_pass_data.sharpness,
+                    .blur_radius = params.blur_radius,
+                    .sharpness = params.blur_sharpness,
                     .znear = camera->get_near_plane(),
                     .zfar = camera->get_far_plane(),
                     ._padding = 0,
@@ -303,12 +312,13 @@ namespace mirai {
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                const HBAOParams &params = board->get<HBAOParams>();
                 BlurConstants push_constants = {
                     .width = SSAO_WIDTH,
                     .height = SSAO_HEIGHT,
                     .blur_direction = 1,
-                    .blur_radius = ssao_pass_data.blur_radius,
-                    .sharpness = ssao_pass_data.sharpness,
+                    .blur_radius = params.blur_radius,
+                    .sharpness = params.blur_sharpness,
                     .znear = camera->get_near_plane(),
                     .zfar = camera->get_far_plane(),
                     ._padding = 0,

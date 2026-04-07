@@ -28,4 +28,5 @@ namespace AppSettings {
 
     constexpr uint32_t K_MAX_BINDLESS_TEXTURE_COUNT = 4096;
 };
+
 } // namespace mirai::AppSettings

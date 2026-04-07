@@ -213,96 +213,100 @@ class TestApplication : public App {
             }
         }
     }
-
+    */
     void add_pass_ui() {
-        ASSERT(frame_graph != nullptr);
         if (ImGui::CollapsingHeader("Passes")) {
-            DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
-            if (deferred_pass != nullptr && ImGui::TreeNodeEx("Deferred Pass")) {
-                ImGui::SliderFloat("Split Percentage", &deferred_pass->split_percentage, 0.0f, 1.0f);
-                static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
-                ImGui::Combo("Target", &deferred_pass->debug_texture, options);
+            /*
+                DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
+                if (deferred_pass != nullptr && ImGui::TreeNodeEx("Deferred Pass")) {
+                    ImGui::SliderFloat("Split Percentage", &deferred_pass->split_percentage, 0.0f, 1.0f);
+                    static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+                    ImGui::Combo("Target", &deferred_pass->debug_texture, options);
 
-                FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
-                add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
+                    FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
+                    add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
 
-                FrameGraphResource *normal_texture = frame_graph->get_resource("gbuffer_normal");
-                add_rendertarget_texture_debug_ui("normal_metallic_roughness", normal_texture);
+                    FrameGraphResource *normal_texture = frame_graph->get_resource("gbuffer_normal");
+                    add_rendertarget_texture_debug_ui("normal_metallic_roughness", normal_texture);
 
-                FrameGraphResource *emissive_texture = frame_graph->get_resource("gbuffer_emissive");
-                add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
+                    FrameGraphResource *emissive_texture = frame_graph->get_resource("gbuffer_emissive");
+                    add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
 
-                FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
+                    FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
 
-                add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
+                    add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
 
-                FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
-                add_rendertarget_texture_debug_ui("taa_output", taa_output);
-
-                show_popup();
-                ImGui::TreePop();
-            }
-
-            ForwardPass *forward_pass = (ForwardPass *)frame_graph->get_renderer("forward_pass");
-            if (forward_pass && ImGui::TreeNodeEx("Forward Pass")) {
-                ImGui::SliderFloat("Split Percentage", &forward_pass->split_percentage, 0.0f, 1.0f);
-                static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
-                ImGui::Combo("Target", &forward_pass->debug_texture, options);
-                ImGui::TreePop();
-            }
-
-            bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
-            if (ImGui::TreeNodeEx("Shadow Pass")) {
-                if (supports_raytracing) {
-                    ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
-                    if (AppSettings::enable_rt_shadow) {
-                        FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
-                        add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
-                        show_popup();
-                    }
-                }
-                if (!AppSettings::enable_rt_shadow) {
-                    auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
-                    ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
-                    ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
-                    if (cascaded_shadow_pass->calculate_distance_automatic) {
-                        ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
-                        ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.001f, 0.0f, 1.0f);
-                    } else {
-                        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
-                            std::string cascadeName = "Cascade" + std::to_string(i);
-                            ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i], 1.0f, 0.0f);
-                        }
-                    }
-                    FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
-                    add_rendertarget_texture_debug_ui("csm_shadow", resource);
-                    show_popup();
-                }
-                ImGui::TreePop();
-            }
-            SSAOPass *ssao_pass = (SSAOPass *)frame_graph->get_renderer("ssao_pass");
-            if (ssao_pass != nullptr) {
-                if (ImGui::TreeNodeEx("SSAO Pass")) {
-                    ImGui::Text("SSAO Generation");
-                    ImGui::DragFloat("Num Step", &ssao_pass->constant_data.num_step, 1.0f, 4.0f, 32.0f);
-                    ImGui::DragFloat("Num Direction Step", &ssao_pass->constant_data.direction_step, 1.0f, 2.0f, 16.0f);
-                    ImGui::DragFloat("SSAO Intensity", &ssao_pass->constant_data.intensity, 0.01f, 0.0f, 10.0f);
-                    ImGui::DragFloat("Tangent Bias", &ssao_pass->constant_data.tangent_bias, 0.01f, 0.0f, 1.0f);
-                    ImGui::DragFloat("SSAO Radius", &ssao_pass->radius, 0.01f, 0.0f, 5.0f);
-
-                    ImGui::Separator();
-                    ImGui::Text("SSAO Blur");
-                    ImGui::DragFloat("Blur radius", &ssao_pass->blur_radius, 0.01f, 0.0f, 10.0f);
-                    ImGui::DragFloat("Blur Sharpness", &ssao_pass->blur_sharpness, 0.01f, 0.0f, 100.0f);
-
-                    FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
-                    add_rendertarget_texture_debug_ui("ssao_texture", resource);
+                    FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
+                    add_rendertarget_texture_debug_ui("taa_output", taa_output);
 
                     show_popup();
                     ImGui::TreePop();
                 }
-            }
 
+                ForwardPass *forward_pass = (ForwardPass *)frame_graph->get_renderer("forward_pass");
+                if (forward_pass && ImGui::TreeNodeEx("Forward Pass")) {
+                    ImGui::SliderFloat("Split Percentage", &forward_pass->split_percentage, 0.0f, 1.0f);
+                    static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+                    ImGui::Combo("Target", &forward_pass->debug_texture, options);
+                    ImGui::TreePop();
+                }
+
+                bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
+                if (ImGui::TreeNodeEx("Shadow Pass")) {
+                    if (supports_raytracing) {
+                        ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
+                        if (AppSettings::enable_rt_shadow) {
+                            FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
+                            add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
+                            show_popup();
+                        }
+                    }
+                    if (!AppSettings::enable_rt_shadow) {
+                        auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
+                        ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
+                        ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
+                        if (cascaded_shadow_pass->calculate_distance_automatic) {
+                            ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
+                            ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.001f, 0.0f, 1.0f);
+                        } else {
+                            for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                                std::string cascadeName = "Cascade" + std::to_string(i);
+                                ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i], 1.0f, 0.0f);
+                            }
+                        }
+                        FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
+                        add_rendertarget_texture_debug_ui("csm_shadow", resource);
+                        show_popup();
+                    }
+                    ImGui::TreePop();
+                }
+                */
+            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+            if (board->has<SSAOPassData>()) {
+                if (ImGui::TreeNodeEx("SSAO Pass")) {
+                    HBAOParams &ssao_pass = board->get<HBAOParams>();
+
+                    ImGui::Text("SSAO Generation");
+                    ImGui::DragInt("Num Step", &ssao_pass.num_step, 1.0f, 4, 32);
+                    ImGui::DragInt("Num Direction Step", &ssao_pass.num_directional_step, 1.0f, 2, 16);
+                    ImGui::DragFloat("SSAO Intensity", &ssao_pass.intensity, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("Tangent Bias", &ssao_pass.tangent_bias, 0.01f, 0.0f, 1.0f);
+                    ImGui::DragFloat("SSAO Radius", &ssao_pass.radius, 0.01f, 0.0f, 5.0f);
+
+                    ImGui::Separator();
+                    ImGui::Text("SSAO Blur");
+                    ImGui::DragFloat("Blur radius", &ssao_pass.blur_radius, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("Blur Sharpness", &ssao_pass.blur_sharpness, 0.01f, 0.0f, 100.0f);
+                    /*
+                    FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
+                    add_rendertarget_texture_debug_ui("ssao_texture", resource);
+
+                    show_popup();
+                    */
+                    ImGui::TreePop();
+                }
+            }
+            /*
             TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
             if (ImGui::TreeNodeEx("TAA") && taa != nullptr) {
                 bool should_reset_history_texture = false;
@@ -317,15 +321,16 @@ class TestApplication : public App {
                 should_reset_history_texture |= ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
                 ImGui::TreePop();
             }
+
+        */
         }
     }
-    */
     void add_debug_ui() {
         if (show_debug_ui) {
             ImGui::Begin("Debug UI", 0);
             add_scene_ui();
             add_profiler_ui();
-            // add_pass_ui();
+            add_pass_ui();
             add_entity_inspector_ui(scene);
             ImGui::End();
             // add_skeleton_debug_ui(scene);

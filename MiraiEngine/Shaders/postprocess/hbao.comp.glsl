@@ -50,8 +50,8 @@ ivec2 uv_to_iuv(vec2 uv) {
 
 vec3 get_view_pos_from_uv(ivec2 iuv) {
     vec2 uv = uv_from_iuv(iuv);
-    float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
-    // float depth = texelFetch(u_depth_texture, iuv, 0).r;
+    //float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
+    float depth = texelFetch(u_depth_texture, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
 }
@@ -59,7 +59,7 @@ vec3 get_view_pos_from_uv(ivec2 iuv) {
 vec3 min_diff(vec3 p, vec3 pl, vec3 pr) {
     vec3 v1 = p - pl;
     vec3 v2 = pr - p;
-    return dot(v1, v1) > dot(v2, v2) ? v1 : v2;
+    return dot(v1, v1) < dot(v2, v2) ? v1 : v2;
 }
 
 vec3 get_view_space_normal(ivec2 iuv, vec3 P) {
@@ -96,7 +96,7 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
     float radius_pixels = -hbao.radius_to_screen / V.z;
     const float step_size = radius_pixels / NUM_STEPS;
 
-    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], noise_uv).rgb;
+    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], noise_uv * 2.0).rgb;
 
     float d_angle = (2.0 * PI) / NUM_DIRECTIONS;
     float ao = 0.0f;
@@ -120,12 +120,12 @@ void main() {
     if (id.x > hbao.ssao_texture_res.x || id.y > hbao.ssao_texture_res.y)
         return;
 
-    ivec2 iuv = id.xy;
+    ivec2 iuv = id.xy * 2 + 1;
     vec3 V = get_view_pos_from_uv(iuv);
     vec3 N = get_view_space_normal(iuv, V);
 
     vec2 noise_uv = vec2(id + 0.5) * hbao.inv_noise_texture_res;
     float ao = calculate_ao(iuv, noise_uv, V, N);
 
-    imageStore(u_ssao_texture, id.xy, vec4(ao, ao, ao, 1.0f));
+    imageStore(u_ssao_texture, id.xy, vec4(vec3(ao), 1.0f));
 }

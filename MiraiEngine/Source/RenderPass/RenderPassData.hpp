@@ -18,21 +18,24 @@ namespace mirai {
         ShaderRegistry *registry;
     };
 
-    struct SSAOPassData {
-        FrameGraphResourceHandle depth_texture;
-        FrameGraphResourceHandle output;
-        std::shared_ptr<Shader> shader;
+    struct HBAOParams {
         TextureID noise_texture;
         float noise_texture_inv_dim;
         // SSAO Shader params
         float radius;
         float intensity;
-        uint32_t num_directional_step;
-        uint32_t num_step;
+        int num_directional_step;
+        int num_step;
         float tangent_bias;
 
-        float sharpness;
+        float blur_sharpness;
         float blur_radius;
+    };
+
+    struct SSAOPassData {
+        FrameGraphResourceHandle depth_texture;
+        FrameGraphResourceHandle output;
+        std::shared_ptr<Shader> shader;
     };
 
     struct ForwardPassData {
