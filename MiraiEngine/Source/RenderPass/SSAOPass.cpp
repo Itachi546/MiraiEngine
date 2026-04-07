@@ -10,7 +10,6 @@
 #include "Engine/AppSettings.hpp"
 #include "Scene/TextureCache.hpp"
 namespace mirai {
-
     struct HBAOConstants {
         glm::mat4 inv_projection_matrix;
 
@@ -32,21 +31,45 @@ namespace mirai {
     };
     static_assert(sizeof(HBAOConstants) % 4 == 0);
 
+    struct BlurConstants {
+        float width;
+        float height;
+        float blur_direction;
+        float blur_radius;
+
+        float sharpness;
+        float znear;
+        float zfar;
+        float _padding;
+    };
+
+    struct SSAOBlurBindings {
+        uint32_t hblur_bindings[3];
+        uint32_t vblur_bindings[3];
+    };
+
     struct HBAOBindings {
         uint32_t descriptors[2];
     };
 
+    struct SSAOBlurData {
+        FrameGraphResourceHandle output;
+        std::shared_ptr<Shader> shader;
+    };
+
+    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale * 0.5f;
+    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale * 0.5f;
+
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+        // SSAO Pass
         frame_graph->add_callback_pass<SSAOPassData>(
             "SSAOPass",
             [board](FrameGraph::FrameGraphBuilder &builder, SSAOPassData &data) {
                 RenderingDevice *device = RenderingDevice::get();
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale * 0.5);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale * 0.5);
                 data.output = builder.create_texture("SSAOTexture", {
                                                                         .create_flags = 0,
-                                                                        .width = width,
-                                                                        .height = height,
+                                                                        .width = cast_u32(SSAO_WIDTH),
+                                                                        .height = cast_u32(SSAO_HEIGHT),
                                                                         .depth = 1,
                                                                         .mip_levels = 1,
                                                                         .array_layers = 1,
@@ -87,6 +110,8 @@ namespace mirai {
                 data.num_directional_step = 4;
                 data.num_step = 8;
                 data.tangent_bias = 0.1f;
+                data.blur_radius = 10;
+                data.sharpness = 40;
                 board->add<SSAOPassData>(data);
             },
             [](const SSAOPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
@@ -95,17 +120,15 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Camera *camera = renderer->get_scene()->get_camera();
 
-                float width = AppSettings::default_window_width * AppSettings::resolution_scale;
-                float height = AppSettings::default_window_height * AppSettings::resolution_scale;
-                float ssao_width = width * 0.5f;
-                float ssao_height = height * 0.5f;
-                float projection_scale = float(height) / (tanf(camera->get_fov() * 0.5f) * 2.0f);
+                float screen_width = AppSettings::default_window_width * AppSettings::resolution_scale;
+                float screen_height = AppSettings::default_window_height * AppSettings::resolution_scale;
+                float projection_scale = float(screen_height) / (tanf(camera->get_fov() * 0.5f) * 2.0f);
 
                 HBAOConstants push_constants = {
                     .inv_projection_matrix = camera->get_inv_projection_transform(),
-                    .ssao_texture_resolution = {ssao_width, ssao_height},
-                    .depth_texture_resolution = {width, height},
-                    .inv_depth_texture_resolution = {1.0f / width, 1.0f / height},
+                    .ssao_texture_resolution = {SSAO_WIDTH, SSAO_HEIGHT},
+                    .depth_texture_resolution = {screen_width, screen_height},
+                    .inv_depth_texture_resolution = {1.0f / screen_width, 1.0f / screen_height},
                     .inv_noise_texture_resolution = glm::vec2{data.noise_texture_inv_dim},
                     .radius_to_screen = data.radius * projection_scale,
                     .neg_inv_r2 = -1.0f / (data.radius * data.radius),
@@ -143,8 +166,171 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_constants, sizeof(HBAOConstants));
                 command_buffer->set_push_data(sizeof(HBAOConstants), &bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
 
-                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(ssao_width + 1), 32);
-                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(ssao_height + 1), 32);
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
+                command_buffer->dispatch(work_size_x, work_size_y, 1);
+                command_buffer->end_gpu_debug_label();
+            });
+            
+        // SSAO Horizontal Blur Pass
+        frame_graph->add_callback_pass<SSAOBlurData>(
+            "SSAOHorizontalBlurPass",
+            [board](FrameGraph::FrameGraphBuilder &builder, SSAOBlurData &data) {
+                RenderingDevice *device = RenderingDevice::get();
+
+                data.output = builder.create_texture("SSAOBlurTexture", {
+                                                                            .create_flags = 0,
+                                                                            .width = cast_u32(SSAO_WIDTH),
+                                                                            .height = cast_u32(SSAO_HEIGHT),
+                                                                            .depth = 1,
+                                                                            .mip_levels = 1,
+                                                                            .array_layers = 1,
+                                                                            .texture_type = TEXTURE_TYPE_2D,
+                                                                            .format = FORMAT_R16_SFLOAT,
+                                                                            .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+                                                                        });
+                builder.write(data.output, {
+                                               .access_flags = ACCESS_FLAG_SHADER_WRITE,
+                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                               .layout = IMAGE_LAYOUT_GENERAL,
+                                           });
+
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                builder.read(ssao_pass_data.output, {
+                                                        .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                        .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                        .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    });
+                builder.read(ssao_pass_data.depth_texture, {
+                                                               .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                               .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                           });
+
+                // Create Shader
+                auto shader_registry = std::make_shared<ShaderRegistry>("SSAOBlur");
+                data.shader = Shader::create_from_file("SSAOBlur", "SPIRV/cross-bilateral-blur.comp.spv");
+                shader_registry->add(0, data.shader);
+                ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+                board->add<SSAOBlurData>(data);
+            },
+            [](const SSAOBlurData &data, const FrameGraphPassResource &pass_resource, void *context) {
+                RenderContext *ctx = static_cast<RenderContext *>(context);
+                Renderer *renderer = ctx->renderer;
+                CommandBuffer *command_buffer = ctx->command_buffer;
+                Camera *camera = renderer->get_scene()->get_camera();
+
+                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                BlurConstants push_constants = {
+                    .width = SSAO_WIDTH,
+                    .height = SSAO_HEIGHT,
+                    .blur_direction = 0,
+                    .blur_radius = ssao_pass_data.blur_radius,
+                    .sharpness = ssao_pass_data.sharpness,
+                    .znear = camera->get_near_plane(),
+                    .zfar = camera->get_far_plane(),
+                    ._padding = 0,
+                };
+
+                SSAOBlurBindings *bindings = nullptr;
+                if (!board->has<SSAOBlurBindings>()) {
+                    // We initialize bindings for both direction in same pass
+                    DescriptorInfo descriptor_infos[] = {
+                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.depth_texture).id},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id},
+                    };
+                    DescriptorOffset hblur_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+
+                    descriptor_infos[0].resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id;
+                    descriptor_infos[1].resource = pass_resource.get<FrameGraphTexture>(data.output).id;
+                    DescriptorOffset vblur_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)) - 1);
+
+                    bindings = &board->add<SSAOBlurBindings>(SSAOBlurBindings{
+                        .hblur_bindings = {hblur_descriptor_offset, hblur_descriptor_offset + 1, hblur_descriptor_offset + 2},
+                        .vblur_bindings = {vblur_descriptor_offset, hblur_descriptor_offset + 1, vblur_descriptor_offset + 1},
+                    });
+                } else {
+                    bindings = &board->get<SSAOBlurBindings>();
+                }
+                ASSERT(bindings != nullptr);
+
+                ScopedGpuProfiling(command_buffer, "SSAOHorizontalBlurPass");
+
+                std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
+                command_buffer->prepare_resources(resource_states);
+
+                command_buffer->begin_gpu_debug_label("SSAOHorizontalBlurPass");
+                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
+                command_buffer->set_push_data(sizeof(BlurConstants), &bindings->hblur_bindings, cast_u32(sizeof(bindings->hblur_bindings)));
+
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
+                command_buffer->dispatch(work_size_x, work_size_y, 1);
+                command_buffer->end_gpu_debug_label();
+            });
+
+        // SSAO Vertical Blur Pass
+        frame_graph->add_callback_pass(
+            "SSAOVerticalBlurPass",
+            [board](FrameGraph::FrameGraphBuilder &builder, FrameGraph::NoData &no_data) {
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                const SSAOBlurData &hblur_data = board->get<SSAOBlurData>();
+
+                builder.write(ssao_pass_data.output, {
+                                                         .access_flags = ACCESS_FLAG_SHADER_WRITE,
+                                                         .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                         .layout = IMAGE_LAYOUT_GENERAL,
+                                                     });
+                builder.read(hblur_data.output, {
+                                                    .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                    .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                    .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                });
+                builder.read(ssao_pass_data.depth_texture, {
+                                                               .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                               .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                           });
+            },
+            [](const FrameGraph::NoData &no_data, const FrameGraphPassResource &pass_resource, void *context) {
+                RenderContext *ctx = static_cast<RenderContext *>(context);
+                Renderer *renderer = ctx->renderer;
+                CommandBuffer *command_buffer = ctx->command_buffer;
+                Camera *camera = renderer->get_scene()->get_camera();
+
+                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                BlurConstants push_constants = {
+                    .width = SSAO_WIDTH,
+                    .height = SSAO_HEIGHT,
+                    .blur_direction = 1,
+                    .blur_radius = ssao_pass_data.blur_radius,
+                    .sharpness = ssao_pass_data.sharpness,
+                    .znear = camera->get_near_plane(),
+                    .zfar = camera->get_far_plane(),
+                    ._padding = 0,
+                };
+
+                SSAOBlurBindings *bindings = &board->get<SSAOBlurBindings>();
+                ASSERT(bindings != nullptr);
+
+                const SSAOBlurData &data = board->get<SSAOBlurData>();
+
+                ScopedGpuProfiling(command_buffer, "SSAOVerticalBlurPass");
+
+                std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
+                command_buffer->prepare_resources(resource_states);
+
+                command_buffer->begin_gpu_debug_label("SSAOVerticalPass");
+                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
+                command_buffer->set_push_data(sizeof(BlurConstants), &bindings->vblur_bindings, cast_u32(sizeof(bindings->vblur_bindings)));
+
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });

@@ -30,6 +30,9 @@ namespace mirai {
         uint32_t num_directional_step;
         uint32_t num_step;
         float tangent_bias;
+
+        float sharpness;
+        float blur_radius;
     };
 
     struct ForwardPassData {
