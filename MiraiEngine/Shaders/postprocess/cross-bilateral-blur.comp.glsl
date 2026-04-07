@@ -19,6 +19,7 @@ layout(push_constant) uniform BlurPushConstants {
     float sharpness;
     float z_near;
     float z_far;
+    float _unused;
 };
 
 float get_linear_depth(vec2 uv) {

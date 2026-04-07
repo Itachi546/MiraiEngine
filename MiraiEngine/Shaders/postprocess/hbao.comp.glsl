@@ -51,7 +51,7 @@ ivec2 uv_to_iuv(vec2 uv) {
 vec3 get_view_pos_from_uv(ivec2 iuv) {
     vec2 uv = uv_from_iuv(iuv);
     float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
-    //float depth = texelFetch(u_depth_texture, iuv, 0).r;
+    // float depth = texelFetch(u_depth_texture, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
 }
@@ -97,15 +97,13 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
     const float step_size = radius_pixels / NUM_STEPS;
 
     vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], noise_uv).rgb;
-    float angle = rand.x * PI * 2.0;
-    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     float d_angle = (2.0 * PI) / NUM_DIRECTIONS;
     float ao = 0.0f;
     for (float d = 0.0f; d < NUM_DIRECTIONS; ++d) {
         float ang = d * d_angle;
-        vec2 dir = rotate_direction(vec2(cos(ang), sin(ang)), rand.yz);
-        float ray_pixels = rand.y * step_size + 1.0;
+        vec2 dir = rotate_direction(vec2(cos(ang), sin(ang)), rand.xy);
+        float ray_pixels = rand.z * step_size + 1.0;
         for (float s = 0.0f; s < NUM_STEPS; ++s) {
             ivec2 snapped_uv = ivec2(round(ray_pixels * dir)) + iuv;
             vec3 S = get_view_pos_from_uv(snapped_uv);
@@ -119,15 +117,15 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
 
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    if (id.x >= hbao.ssao_texture_res.x || id.y >= hbao.ssao_texture_res.y)
+    if (id.x > hbao.ssao_texture_res.x || id.y > hbao.ssao_texture_res.y)
         return;
 
-    ivec2 iuv = id.xy * 2 + 1;
+    ivec2 iuv = id.xy;
     vec3 V = get_view_pos_from_uv(iuv);
     vec3 N = get_view_space_normal(iuv, V);
 
     vec2 noise_uv = vec2(id + 0.5) * hbao.inv_noise_texture_res;
     float ao = calculate_ao(iuv, noise_uv, V, N);
 
-    imageStore(u_ssao_texture, id.xy, vec4(vec3(ao), 1.0f));
+    imageStore(u_ssao_texture, id.xy, vec4(ao, ao, ao, 1.0f));
 }

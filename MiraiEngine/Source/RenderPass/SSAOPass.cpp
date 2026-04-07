@@ -57,8 +57,8 @@ namespace mirai {
         std::shared_ptr<Shader> shader;
     };
 
-    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale * 0.5f;
-    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale * 0.5f;
+    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale;
+    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale;
 
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // SSAO Pass
@@ -171,7 +171,6 @@ namespace mirai {
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });
-            
         // SSAO Horizontal Blur Pass
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
