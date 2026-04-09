@@ -16,6 +16,7 @@ namespace mirai {
     class FrameGraph;
     class FrameGraphBlackBoard;
     class Renderer;
+    class ShadowSystem;
     struct RenderContext {
         Renderer *renderer;
         CommandBuffer *command_buffer;
@@ -49,9 +50,6 @@ namespace mirai {
         ~Renderer();
 
         // Uniform Buffer
-        BufferView cascade_uniform_buffer;
-        BufferView per_frame_uniform_buffer;
-
         BufferID global_transform_buffer;
         BufferID global_material_buffer;
 
@@ -62,6 +60,7 @@ namespace mirai {
         DescriptorOffset transform_descriptor;
         DescriptorOffset material_descriptor;
         DescriptorOffset global_geometry_descriptor;
+        DescriptorOffset cascade_data_descriptor;
 
         BufferID per_frame_staging_buffer;
         uint8_t *per_frame_staging_buffer_ptr;
@@ -94,6 +93,7 @@ namespace mirai {
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBlackBoard> frame_graph_blackboard;
         std::unique_ptr<ShaderRegistryMap> shader_registry_map;
+        std::unique_ptr<ShadowSystem> shadow_system;
 
         void copy_buffers();
 

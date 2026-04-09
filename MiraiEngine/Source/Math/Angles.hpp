@@ -14,4 +14,8 @@ namespace mirai {
             cos(pitch) * sin(yaw),
         };
     }
+
+    inline glm::vec3 quat_to_direction(glm::fquat rotation) {
+        return glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+    }
 } // namespace mirai

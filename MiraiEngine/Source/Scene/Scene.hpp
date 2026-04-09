@@ -14,25 +14,6 @@ namespace mirai {
     class Camera;
     class EnvironmentMap;
 
-    constexpr const uint32_t NUM_DIRLIGHT_CASCADE = 4;
-    struct DirectionalLightCascadeInfo {
-        glm::mat4 VP[NUM_DIRLIGHT_CASCADE];
-        float split_distances[4];
-
-        float z_range;
-        float width;
-        float height;
-        float _padding;
-    };
-
-    static_assert(sizeof(DirectionalLightCascadeInfo) % 16 == 0);
-
-    struct DirectionalLightInfo {
-        bool enable_shadow;
-        DirectionalLightCascadeInfo cascade_info;
-        uint32_t cascade_set_binding_id;
-    };
-
     struct RenderableObjectData {
         Entity entity;
         uint32_t material_index;
@@ -73,8 +54,8 @@ namespace mirai {
             return env_map.get();
         }
 
-        LightComponent *get_sun() {
-            return sun.get();
+        Entity get_default_directional_light() {
+            return directional_light;
         }
 
         void add_entity(Entity entity) { entities.push_back(entity); }
@@ -142,8 +123,6 @@ namespace mirai {
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
-        DirectionalLightInfo directional_light_info;
-
         std::vector<GpuMesh> gpu_meshes;
         std::vector<RenderableObjectData> render_object_list;
         bool dirty;
@@ -152,19 +131,21 @@ namespace mirai {
 
       protected:
         std::string name;
-
+        Entity directional_light;
         std::unique_ptr<Camera> camera;
-        std::unique_ptr<LightComponent> sun;
         std::shared_ptr<EnvironmentMap> env_map;
 
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
+        void update_light_data(Entity light);
         void update_materials();
         void update_node_animator_components();
         void update_animator_components();
         void update_transform_components();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
+
+        Entity create_directional_light(const std::string &name, glm::fquat orientation);
     };
 } // namespace mirai

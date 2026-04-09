@@ -57,8 +57,8 @@ namespace mirai {
         std::shared_ptr<Shader> shader;
     };
 
-    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale * 0.5f;
-    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale * 0.5f;
+    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale;
+    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale;
 
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // SSAO Pass
@@ -216,7 +216,7 @@ namespace mirai {
 
                 // Create Shader
                 auto shader_registry = std::make_shared<ShaderRegistry>("SSAOBlur");
-                data.shader = Shader::create_from_file("SSAOBlur", "SPIRV/cross-bilateral-blur.comp.spv");
+                data.shader = Shader::create_from_file("SSAOBlur", "SPIRV/ssao-blur.comp.spv");
                 shader_registry->add(0, data.shader);
                 ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
                 board->add<SSAOBlurData>(data);

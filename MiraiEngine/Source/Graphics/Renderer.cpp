@@ -4,6 +4,7 @@
 #include "Vulkan/CommandBuffer.hpp"
 #include "Scene/ShaderRegistry.hpp"
 #include "Scene/TextureCache.hpp"
+#include "Scene/ShadowSystem.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -36,6 +37,8 @@ namespace mirai {
 
         frame_graph = std::make_unique<FrameGraph>();
         frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
+
+        shadow_system = std::make_unique<ShadowSystem>();
 
         current_frame_jitter = glm::vec2(0.0f);
         prev_frame_jitter = glm::vec2(0.0f);
@@ -351,31 +354,34 @@ namespace mirai {
         uint32_t current_frame = device->get_current_frame();
 
         // Copy per frame uniform data
-        per_frame_uniform_buffer.offset = allocate_staging_buffer(sizeof(scene->per_frame_data), current_frame);
-        per_frame_uniform_buffer.size = sizeof(Scene::FrameData);
-        per_frame_uniform_buffer.buffer = per_frame_staging_buffer;
+        uint32_t per_frame_data_size = sizeof(Scene::FrameData);
+        uint32_t per_frame_data_offset = allocate_staging_buffer(per_frame_data_size, current_frame);
+        uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_data_offset;
+        std::memcpy(staging_buffer_ptr, &scene->per_frame_data, per_frame_data_size);
 
         // Update per frame data descriptor
-        DescriptorInfo per_frame_data_descriptor_info = {
+        DescriptorInfo descriptor_info = {
             .type = DescriptorType::UniformBuffer,
-            .resource = per_frame_uniform_buffer.buffer,
-            .offset = per_frame_uniform_buffer.offset,
-            .size = per_frame_uniform_buffer.size,
+            .resource = per_frame_staging_buffer,
+            .offset = per_frame_data_offset,
+            .size = per_frame_data_size,
         };
-        per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &per_frame_data_descriptor_info, 1);
+        per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
-        uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_uniform_buffer.offset;
-        std::memcpy(staging_buffer_ptr, &scene->per_frame_data, sizeof(scene->per_frame_data));
-
-        DirectionalLightCascadeInfo &cascade_info = scene->directional_light_info.cascade_info;
-        cascade_uniform_buffer.offset = allocate_staging_buffer(sizeof(cascade_info), current_frame);
-        cascade_uniform_buffer.buffer = per_frame_staging_buffer;
-        cascade_uniform_buffer.size = sizeof(cascade_info);
-        staging_buffer_ptr = per_frame_staging_buffer_ptr + cascade_uniform_buffer.offset;
-
-        // Copy cascade info
-        std::memcpy(staging_buffer_ptr, &cascade_info, sizeof(cascade_info));
-
+        // Update cascade data
+        /*
+        if (shadow_system->dir_light_params.enabled) {
+            uint32_t cascade_data_size = sizeof(shadow_system->cascade_info);
+            uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
+            uint8_t *cascade_buffer_ptr = per_frame_staging_buffer_ptr + cascade_data_offset;
+            std::memcpy(cascade_buffer_ptr, &shadow_system->cascade_info, cascade_data_size);
+            descriptor_info.offset = cascade_data_offset;
+            descriptor_info.size = cascade_data_size;
+            cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
+        } else {
+            cascade_data_descriptor = K_INVALID_ID;
+        }
+        */
         // Populate per-frame batch data
         total_visible_entities = 0;
         upload_batch_data(main_opaque_batches, current_frame);
@@ -442,6 +448,8 @@ namespace mirai {
         scene->update();
 
         create_batches();
+
+        shadow_system->update(scene.get());
         /*
         frame_graph->update(this);
 

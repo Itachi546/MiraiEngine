@@ -12,6 +12,27 @@
 
 namespace mirai {
 
+    Entity Scene::create_directional_light(const std::string &name, glm::fquat orientation) {
+        Entity entity = create_entity();
+        TransformComponent &light_transform = ecs->component_manager->add_component<TransformComponent>(entity);
+        light_transform.rotation = orientation;
+        ecs->component_manager->add_component<NameComponent>(entity, NameComponent{name});
+
+        LightComponent &light_component = ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
+                                                                                                            .color = glm::vec3(1.0f),
+                                                                                                            .intensity = 5.0f,
+                                                                                                            .cast_shadow = true,
+                                                                                                        });
+        // This order should be strictly maintained as, it invalidates the vector after insertion
+        HierarchyComponent &current = ecs->component_manager->add_component<HierarchyComponent>(entity);
+        HierarchyComponent *parent = ecs->component_manager->get_component<HierarchyComponent>(entities[0]);
+
+        current.set_parent(entities[0]);
+        parent->add_children(entity);
+
+        return entity;
+    }
+
     Scene::Scene(const std::string &name) : name(name), dirty(true) {
         ecs = std::make_unique<ECS>();
         ecs->component_manager->register_component<NameComponent>();
@@ -20,22 +41,12 @@ namespace mirai {
         ecs->component_manager->register_component<TransformComponent>();
         ecs->component_manager->register_component<NodeAnimatorComponent>();
         ecs->component_manager->register_component<AnimatorComponent>();
+        ecs->component_manager->register_component<LightComponent>();
 
         RenderingDevice *device = RenderingDevice::get();
-        directional_light_info.enable_shadow = true;
 
         // Initialize camera/sun
         camera = std::make_unique<Camera>();
-        sun = std::make_unique<LightComponent>();
-        sun->color = glm::vec3(1.0f);
-        sun->rotation = glm::vec3(110.0f, 336.0f, 0.0f);
-        sun->intensity = 5.0f;
-        sun->cast_shadow = true;
-
-        per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
-        per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
-        per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
-        per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
 
         Entity root_entity = ecs->create_entity();
         ecs->component_manager->add_component<NameComponent>(root_entity, "root");
@@ -46,6 +57,13 @@ namespace mirai {
         };
         ecs->component_manager->add_component<HierarchyComponent>(root_entity, hierarchy_comp);
         entities.push_back(root_entity);
+
+        directional_light = create_directional_light("Sun", glm::quat(glm::radians(glm::vec3(110.0f, 336.0f, 0.0f))));
+
+        per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
     }
 
     void Scene::update() {
@@ -82,10 +100,7 @@ namespace mirai {
         per_frame_data.camera_position = camera->position;
         per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
 
-        per_frame_data.light_direction = sun->get_direction();
-        per_frame_data.cast_shadow = cast_float(sun->cast_shadow);
-        per_frame_data.light_color = sun->color;
-        per_frame_data.light_intensity = sun->intensity;
+        update_light_data(directional_light);
 
         per_frame_data.width = cast_float(width);
         per_frame_data.height = cast_float(height);
@@ -110,6 +125,17 @@ namespace mirai {
                 remove_entity_tree(child);
         }
         ecs->destroy_entity(entity);
+    }
+
+    void Scene::update_light_data(Entity light) {
+        TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(light);
+        LightComponent *light_comp = ecs->component_manager->get_component<LightComponent>(light);
+
+        // Update directional light
+        per_frame_data.light_direction = quat_to_direction(transform->rotation);
+        per_frame_data.cast_shadow = cast_float(light_comp->cast_shadow);
+        per_frame_data.light_color = light_comp->color;
+        per_frame_data.light_intensity = light_comp->intensity;
     }
 
     void Scene::update_materials() {

@@ -3,7 +3,6 @@
 #include "RenderingDevice.hpp"
 
 namespace mirai {
-
     struct GPUSamplerDescriptorHeap {
         BufferID buffer;
         uint32_t size;

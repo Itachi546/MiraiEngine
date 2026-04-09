@@ -11,6 +11,8 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
 layout(set = 0, binding = 1) uniform texture2D u_depth_texture;
 
+#define HALF_RES 0
+
 /*
  * We do everything in integer coordinate instead of normalized uv coordinate
  * because of the issue in the normal reconstruction. While reconstructing the
@@ -50,7 +52,7 @@ ivec2 uv_to_iuv(vec2 uv) {
 
 vec3 get_view_pos_from_uv(ivec2 iuv) {
     vec2 uv = uv_from_iuv(iuv);
-    //float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
+    // float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
     float depth = texelFetch(u_depth_texture, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
@@ -120,7 +122,11 @@ void main() {
     if (id.x > hbao.ssao_texture_res.x || id.y > hbao.ssao_texture_res.y)
         return;
 
+#if HALF_RES
     ivec2 iuv = id.xy * 2 + 1;
+#else
+    ivec2 iuv = id.xy;
+#endif
     vec3 V = get_view_pos_from_uv(iuv);
     vec3 N = get_view_space_normal(iuv, V);
 
