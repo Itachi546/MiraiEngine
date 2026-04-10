@@ -1,0 +1,4 @@
+#ifndef FORWARD_PASS_GLSL
+#define FORWARD_PASS_GLSL
+
+#endif

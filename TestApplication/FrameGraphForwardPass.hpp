@@ -107,7 +107,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
-        std::shared_ptr<Shader> shader;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct LinearizeDepthPassBindings {
@@ -148,11 +148,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
 
             data.depth_texture = cascade_pass_data.output;
 
-            auto shader_registry = std::make_shared<ShaderRegistry>("LinearizeDepthPass");
-            data.shader = Shader::create_from_file("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
-            shader_registry->add(0, data.shader);
-            ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
-
+            data.shader = std::make_shared<ComputeShader>("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
             board->add<LinearizeDepthPassData>(data);
         },
 
@@ -193,7 +189,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             }
             ASSERT(bindings != nullptr);
 
-            command_buffer->bind_pipeline(data.shader->pipeline_id);
+            data.shader->bind(command_buffer);
             command_buffer->set_push_data(0, &push_constant_data, sizeof(PushConstantData));
             command_buffer->set_push_data(sizeof(PushConstantData), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
 

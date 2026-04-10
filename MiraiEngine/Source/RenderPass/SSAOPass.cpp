@@ -54,7 +54,7 @@ namespace mirai {
 
     struct SSAOBlurData {
         FrameGraphResourceHandle output;
-        std::shared_ptr<Shader> shader;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale;
@@ -93,10 +93,7 @@ namespace mirai {
                 board->add<SSAOPassData>(data);
 
                 // Create Shader
-                auto shader_registry = std::make_shared<ShaderRegistry>("SSAOPass");
-                data.shader = Shader::create_from_file("SSAOPass", "SPIRV/hbao.comp.spv");
-                shader_registry->add(0, data.shader);
-                ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+                data.shader = std::make_shared<ComputeShader>("SSAOPass", "SPIRV/hbao.comp.spv");
 
                 // Load Noise texture
                 TextureID noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
@@ -169,7 +166,7 @@ namespace mirai {
                 command_buffer->prepare_resources(resource_states);
 
                 command_buffer->begin_gpu_debug_label("SSAOPass");
-                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(HBAOConstants));
                 command_buffer->set_push_data(sizeof(HBAOConstants), &bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
 
@@ -215,10 +212,7 @@ namespace mirai {
                                                            });
 
                 // Create Shader
-                auto shader_registry = std::make_shared<ShaderRegistry>("SSAOBlur");
-                data.shader = Shader::create_from_file("SSAOBlur", "SPIRV/ssao-blur.comp.spv");
-                shader_registry->add(0, data.shader);
-                ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
+                data.shader = std::make_shared<ComputeShader>("SSAOBlur", "SPIRV/ssao-blur.comp.spv");
                 board->add<SSAOBlurData>(data);
             },
             [](const SSAOBlurData &data, const FrameGraphPassResource &pass_resource, void *context) {
@@ -271,7 +265,7 @@ namespace mirai {
                 command_buffer->prepare_resources(resource_states);
 
                 command_buffer->begin_gpu_debug_label("SSAOHorizontalBlurPass");
-                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
                 command_buffer->set_push_data(sizeof(BlurConstants), &bindings->hblur_bindings, cast_u32(sizeof(bindings->hblur_bindings)));
 
@@ -335,7 +329,7 @@ namespace mirai {
                 command_buffer->prepare_resources(resource_states);
 
                 command_buffer->begin_gpu_debug_label("SSAOVerticalPass");
-                command_buffer->bind_pipeline(data.shader->pipeline_id);
+                data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
                 command_buffer->set_push_data(sizeof(BlurConstants), &bindings->vblur_bindings, cast_u32(sizeof(bindings->vblur_bindings)));
 

@@ -33,6 +33,8 @@ namespace mirai {
         std::string name;
         uint32_t ref_count;
         GraphNode(const std::string_view name) : name(name), ref_count(0) {}
+
+        virtual ~GraphNode() = default;
     };
 
     struct ResourceNode : public GraphNode {
@@ -72,6 +74,8 @@ namespace mirai {
         FrameGraphPassBase &operator=(FrameGraphPassBase &&) = delete;
 
         virtual void operator()(FrameGraphPassResource &, void *) = 0;
+
+        virtual ~FrameGraphPassBase() = default;
     };
 
     template <typename Data, typename Execute>

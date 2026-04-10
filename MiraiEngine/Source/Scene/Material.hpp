@@ -171,9 +171,22 @@ namespace mirai {
         } properties;
     };
 
+    class CommandBuffer;
     struct ShaderMaterial : public Material {
 
-        ShaderMaterial(const std::string_view name) : Material(name) {}
+        ShaderMaterial(const std::string &name);
+        ~ShaderMaterial();
+
+        std::shared_ptr<Shader> shader;
+    };
+
+    struct ComputeShader {
+        ComputeShader(const std::string &name, const std::string &shader_file);
+        void bind(CommandBuffer *command_buffer);
+        ~ComputeShader();
+
+      private:
+        std::shared_ptr<Shader> shader;
     };
 
     // struct ShaderPassKey {

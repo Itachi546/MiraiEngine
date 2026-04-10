@@ -1,3 +1,10 @@
+#include "Overlay3DPass.hpp"
+
+namespace mirai {
+    Overlay3DPass::Overlay3DPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+    }
+}; // namespace mirai
+
 // #include "Overlay3DPass.hpp"
 // #include "Graphics/Vulkan/CommandBuffer.hpp"
 // #include "Engine/Profiler.hpp"

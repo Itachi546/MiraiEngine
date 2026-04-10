@@ -185,6 +185,9 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         device->destroy_buffers(buffers.data(), cast_u32(buffers.size()));
         device->destroy_textures(textures.data(), cast_u32(textures.size()));
+
+        resources.clear();
+        passes.clear();
     }
 
     FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_texture(const std::string_view name, const TextureDescription &desc) {

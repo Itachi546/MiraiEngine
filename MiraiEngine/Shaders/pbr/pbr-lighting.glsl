@@ -1,10 +1,10 @@
 #ifndef PBR_LIGHTING_GLSL
 #define PBR_LIGHTING_GLSL
 
-#include "material.glsl"
-#include "bindless.glsl"
 #include "pbr.glsl"
-#include "color.glsl"
+#include "../utils/material.glsl"
+#include "../utils/bindless-texture.glsl"
+#include "../utils/color.glsl"
 
 struct Light {
     vec3 direction_or_position;

@@ -2,11 +2,13 @@
 #include "Common/FileUtils.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/Renderer.hpp"
+#include "Engine/AppSettings.hpp"
 #include <cmath>
 
 namespace mirai {
 
     void EnvironmentMap::initialize_textures() {
+        uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
         TextureDescription texture_desc = {
             .create_flags = 0,
             .width = (uint32_t)cubemap_size,
@@ -21,6 +23,7 @@ namespace mirai {
 
         RenderingDevice *device = RenderingDevice::get();
 
+        uint32_t irradiance_map_size = EnvironmentSettings::K_IRRADIANCE_MAP_SIZE;
         cubemap_texture = device->create_texture(&texture_desc, "cubemap");
         texture_desc.width = irradiance_map_size;
         texture_desc.height = irradiance_map_size;
@@ -29,13 +32,15 @@ namespace mirai {
         irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
 
         // Create Prefilter Environment map texture
+        uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
         texture_desc.create_flags = TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP;
-        texture_desc.mip_levels = prefilter_num_mip_levels;
+        texture_desc.mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
         texture_desc.width = prefilter_map_size;
         texture_desc.height = prefilter_map_size;
         prefilter_texture = device->create_texture(&texture_desc, "prefilter_envmap");
 
         // Create 2D BRDF Texture
+        uint32_t brdf_texture_size = EnvironmentSettings::K_BRDF_MAP_SIZE;
         texture_desc.create_flags = 0;
         texture_desc.array_layers = 1;
         texture_desc.mip_levels = 1;
@@ -87,16 +92,15 @@ namespace mirai {
         };
         device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
         */
-        // Shader *cubemap_shader = Shader::create_from_file({"SPIRV/hdri-to-cubemap.comp.spv"}, "hdri-cubemap");
-        /*
+        ComputeShader cubemap_shader{"hdri-cubemap", "SPIRV/hdri-to-cubemap.comp.spv"};
+
         DescriptorInfo descriptor_infos[] = {
             {.type = DescriptorType::SampledImage, .resource = hdri_texture},
             {.type = DescriptorType::StorageImage, .resource = cubemap_texture},
         };
 
         Renderer *renderer = Renderer::get();
-        uint32_t descriptor_index = renderer->resource_heap.push_descriptor_per_frame(device, descriptor_infos, cast_u32(std::size(descriptor_infos)));
-        // cubemap_shader->set_custom_bindings(&uniform_set, 1);
+        DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(device, descriptor_infos, cast_u32(std::size(descriptor_infos)));
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
@@ -105,12 +109,16 @@ namespace mirai {
         command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
 
         command_buffer->begin_gpu_debug_label("HDRIConversion");
-        generate_cubemap(command_buffer, cubemap_shader, descriptor_index);
+
+        uint32_t descriptors[] = {descriptor_index, descriptor_index + 1};
+        generate_cubemap(command_buffer, &cubemap_shader, descriptors, 2);
+
         command_buffer->end_gpu_debug_label();
 
         device->submit_command_buffer_immediate(command_buffer);
+
         command_buffer->wait();
-        */
+
         device->destroy_textures(&hdri_texture, 1);
 
         // create_pbr_env_map();
@@ -119,18 +127,21 @@ namespace mirai {
     EnvironmentMap::EnvironmentMap() {
         initialize_textures();
 
-        RenderingDevice *device = RenderingDevice::get();
+        DescriptorInfo descriptor_infos[] = {
+            {.type = DescriptorType::StorageImage, .resource = cubemap_texture},
+        };
+        Renderer *renderer = Renderer::get();
+        DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
 
-        // Shader *generate_cubemap_shader = Shader::create_from_file({"SPIRV/procedural_sky.comp.spv"}, "generate-cubemap");
-        /*
+        RenderingDevice *device = RenderingDevice::get();
+        ComputeShader generate_cubemap_shader{"generate-cubemap", "SPIRV/procedural_sky.comp.spv"};
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         command_buffer->begin_gpu_debug_label("ProceduralSky");
-        generate_cubemap(command_buffer, generate_cubemap_shader, 0);
+        generate_cubemap(command_buffer, &generate_cubemap_shader, &descriptor_index, 1);
         command_buffer->end_gpu_debug_label();
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
-        */
         // create_pbr_env_map();
     }
     /*
@@ -166,11 +177,14 @@ namespace mirai {
         };
         device->add_bindless_texture(textures, cast_u32(std::size(textures)));
     }
-
-    void EnvironmentMap::generate_cubemap(CommandBuffer *command_buffer, Shader *cubemap_shader, uint32_t descriptor_index) {
+    */
+    void EnvironmentMap::generate_cubemap(CommandBuffer *command_buffer, ComputeShader *cubemap_shader, uint32_t *descriptors, uint32_t descriptor_count) {
 
         RenderingDevice *device = RenderingDevice::get();
-        float push_constant_data[] = {(float)cubemap_size, (float)cubemap_size, 0.0f, 0.0f};
+
+        uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
+        float push_constant_data[] = {cast_float(cubemap_size), cast_float(cubemap_size), 0.0f, 0.0f};
+
         PushConstant push_constant = {
             .data = push_constant_data,
             .offset = 0,
@@ -190,7 +204,7 @@ namespace mirai {
         cubemap_shader->bind(command_buffer);
 
         command_buffer->set_push_data(0, &push_constant, sizeof(push_constant));
-        command_buffer->set_push_data(sizeof(PushConstant), &descriptor_index, sizeof(descriptor_index));
+        command_buffer->set_push_data(push_constant.size, descriptors, descriptor_count * sizeof(uint32_t));
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(cubemap_size, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(cubemap_size, 32);
@@ -199,7 +213,7 @@ namespace mirai {
 
         device->generate_mipmap(command_buffer, cubemap_texture, PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     }
-
+    /*
     void EnvironmentMap::convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader) {
         // Layout transition
         TextureBarrierInfo barrier_infos[] = {

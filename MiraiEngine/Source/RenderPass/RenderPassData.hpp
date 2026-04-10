@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Scene/FrameGraph.hpp"
-#include "Scene/Shader.hpp"
+#include "Scene/Material.hpp"
 
 namespace mirai {
     struct ShaderRegistry;
@@ -32,7 +32,7 @@ namespace mirai {
     struct SSAOPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
-        std::shared_ptr<Shader> shader;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct CascadedShadowPassData {

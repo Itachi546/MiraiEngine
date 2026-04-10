@@ -1,3 +1,14 @@
+namespace mirai {
+    class FrameGraph;
+    class FrameGraphBlackBoard;
+
+    class Overlay3DPass {
+      public:
+        Overlay3DPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
+        ~Overlay3DPass() = default;
+    };
+} // namespace mirai
+
 // #pragma once
 // #include "Scene/FrameGraph.hpp"
 // #include "Graphics/LineRenderer.hpp"

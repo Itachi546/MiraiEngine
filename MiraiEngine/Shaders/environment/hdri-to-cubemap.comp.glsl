@@ -1,15 +1,16 @@
 #version 460
 
-#extension GL_GOOGLE_include_directive : enable 
-#include "utils/cubemap.glsl"
+#extension GL_GOOGLE_include_directive : enable
+#include "../utils/cubemap.glsl"
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D u_hdri;
-layout(set = 0, binding = 1,rgba16f) writeonly uniform imageCube u_cubemap;
+layout(set = 0, binding = 1, rgba16f) writeonly uniform imageCube u_cubemap;
 
 layout(push_constant) uniform PushConstants {
     vec2 cubemap_size;
+    vec2 _padding;
 };
 
 const vec2 inv_atan = vec2(0.1591, 0.3183);

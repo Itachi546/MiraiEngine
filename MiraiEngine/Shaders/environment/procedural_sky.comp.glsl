@@ -1,7 +1,7 @@
 #version 460
 
 #extension GL_GOOGLE_include_directive : enable
-#include "utils/cubemap.glsl"
+#include "../utils/cubemap.glsl"
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 

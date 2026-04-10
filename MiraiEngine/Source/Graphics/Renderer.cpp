@@ -623,6 +623,8 @@ namespace mirai {
             sampler_heap.buffer,
         };
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
+        frame_graph.reset();
+        frame_graph_blackboard.reset();
         shader_registry_map->destroy();
         miProfiler::Destroy();
         scene.reset();

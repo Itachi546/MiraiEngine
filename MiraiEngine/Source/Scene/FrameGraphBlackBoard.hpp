@@ -25,6 +25,10 @@ namespace mirai {
         template <typename T>
         bool has();
 
+        ~FrameGraphBlackBoard() {
+            storage.clear();
+        }
+
       private:
         HashMap<std::type_index, std::any> storage;
     };
