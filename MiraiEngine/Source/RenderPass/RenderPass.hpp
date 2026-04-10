@@ -4,3 +4,4 @@
 #include "RenderPassData.hpp"
 #include "SSAOPass.hpp"
 #include "FinalCompositePass.hpp"
+#include "CascadedShadowPass.hpp"

@@ -16,9 +16,73 @@ namespace mirai {
         registry->add(pipeline_state.get_hash() | mesh_type, shader);
     }
     void preload_shaders(ShaderRegistryMap *shader_registry_map) {
-        create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
-        create_shader_material("depth_prepass_double_sided", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass.vert.spv"}, {.cull_mode = CULL_MODE_NONE, .draw_mode = DRAWMODE_INDEXED_INDIRECT, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
-        create_shader_material("depth_prepass_alpha_mask", PASS_MODE_DEPTH_PREPASS, {"SPIRV/depth-prepass-alpha.vert.spv", "SPIRV/depth-prepass-alpha.frag.spv"}, {.cull_mode = CULL_MODE_NONE, .draw_mode = DRAWMODE_INDEXED_INDIRECT, .alpha_mode = ALPHA_MODE_MASK, .depth_test = true, .depth_write = true}, {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+        // Depth prepass materials
+        create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS,
+                               {"SPIRV/depth-prepass.vert.spv"},
+                               {
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                               },
+                               {
+                                   .has_depth_attachment = true,
+                                   .depth_attachment_format = FORMAT_D32_SFLOAT,
+                               });
+        create_shader_material("depth_prepass_double_sided", PASS_MODE_DEPTH_PREPASS,
+                               {"SPIRV/depth-prepass.vert.spv"},
+                               {
+                                   .cull_mode = CULL_MODE_NONE,
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                               },
+                               {
+                                   .has_depth_attachment = true,
+                                   .depth_attachment_format = FORMAT_D32_SFLOAT,
+                               });
+        create_shader_material("depth_prepass_alpha_mask", PASS_MODE_DEPTH_PREPASS,
+                               {"SPIRV/depth-prepass-alpha.vert.spv", "SPIRV/depth-prepass-alpha.frag.spv"},
+                               {
+                                   .cull_mode = CULL_MODE_NONE,
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .alpha_mode = ALPHA_MODE_MASK,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                               },
+                               {
+                                   .has_depth_attachment = true,
+                                   .depth_attachment_format = FORMAT_D32_SFLOAT,
+                               });
+
+        // Cascaded shadow materials
+        create_shader_material("cascaded_shadow", PASS_MODE_DIRLIGHT_SHADOW,
+                               {"SPIRV/cascaded-shadow.vert.spv"},
+                               {
+                                   .cull_mode = CULL_MODE_FRONT,
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                                   .depth_bias = false,
+                                   .depth_clamp = true,
+                               },
+                               {
+                                   .has_depth_attachment = true,
+                                   .depth_attachment_format = FORMAT_D32_SFLOAT,
+                               });
+        create_shader_material("cascaded_shadow_alpha_mask", PASS_MODE_DIRLIGHT_SHADOW,
+                               {"SPIRV/cascaded-shadow-alpha.vert.spv", "SPIRV/cascaded-shadow-alpha.frag.spv"},
+                               {
+                                   .cull_mode = CULL_MODE_NONE,
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                                   .depth_bias = false,
+                                   .depth_clamp = true,
+                               },
+                               {
+                                   .has_depth_attachment = true,
+                                   .depth_attachment_format = FORMAT_D32_SFLOAT,
+                               });
     }
 
 } // namespace mirai

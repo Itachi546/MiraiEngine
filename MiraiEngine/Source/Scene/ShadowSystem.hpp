@@ -11,7 +11,8 @@ namespace mirai {
         bool enabled;
         float split_lambda;
         float shadow_distance;
-        uint32_t shadow_map_size;
+        uint32_t atlas_size;
+        uint32_t split_size;
 
         bool calculate_distance_automatic;
         float split_distances[NUM_DIRLIGHT_CASCADE];
@@ -44,7 +45,8 @@ namespace mirai {
             .enabled = true,
             .split_lambda = 0.909f,
             .shadow_distance = 100.0f,
-            .shadow_map_size = 1024,
+            .atlas_size = 4096,
+            .split_size = 1024,
             .calculate_distance_automatic = true,
             .split_distances = {5.0f, 15.0f, 40.0f, 100.0f},
         };

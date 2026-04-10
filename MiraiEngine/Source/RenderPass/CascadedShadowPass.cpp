@@ -1,3 +1,96 @@
+#include "CascadedShadowPass.hpp"
+#include "Scene/FrameGraph.hpp"
+#include "Scene/FrameGraphBlackBoard.hpp"
+#include "Scene/ShaderRegistry.hpp"
+#include "RenderPassData.hpp"
+#include "Scene/ShadowSystem.hpp"
+#include "Engine/Profiler.hpp"
+#include "Graphics/Renderer.hpp"
+#include "Graphics/Vulkan/CommandBuffer.hpp"
+namespace mirai {
+    CascadedShadowPass::CascadedShadowPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+
+        frame_graph->add_callback_pass<CascadedShadowPassData>(
+            "CascadedShadowPass",
+            [board](FrameGraph::FrameGraphBuilder &builder, CascadedShadowPassData &data) {
+                ShadowSystem *shadow_system = ShadowSystem::get();
+                const DirectionLightShadowParams &params = shadow_system->dir_light_params;
+
+                data.output = builder.create_texture("CascadeDepthTexture", {
+                                                                                .create_flags = 0,
+                                                                                .width = params.atlas_size,
+                                                                                .height = params.atlas_size,
+                                                                                .depth = 1,
+                                                                                .mip_levels = 1,
+                                                                                .array_layers = 1,
+                                                                                .texture_type = TEXTURE_TYPE_2D,
+                                                                                .format = FORMAT_D32_SFLOAT,
+                                                                                .usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+                                                                            });
+                builder.write(data.output, {
+                                               .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE,
+                                               .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                               .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                                           });
+                data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DIRLIGHT_SHADOW);
+                ASSERT(data.registry != nullptr);
+
+                board->add<CascadedShadowPassData>(data);
+            },
+            [](const CascadedShadowPassData &data, FrameGraphPassResource &pass_resource, void *context) {
+                RenderContext *ctx = static_cast<RenderContext *>(context);
+                Renderer *renderer = ctx->renderer;
+                CommandBuffer *command_buffer = ctx->command_buffer;
+
+                ScopedGpuProfiling(command_buffer, "CascadedShadowPass");
+                ScopedCpuProfiling("CSM Render");
+                command_buffer->begin_gpu_debug_label("CascadedShadowPass");
+
+                const auto &resource_states = pass_resource.get_resource_access_states();
+                command_buffer->prepare_resources(resource_states);
+
+                uint32_t push_constant_data[] = {0, 0, 0, 0};
+                PushConstant push_constants = {
+                    .data = &push_constant_data,
+                    .offset = 0,
+                    .size = sizeof(uint32_t) * 4,
+                    .shader_stage = SHADER_STAGE_VERTEX,
+                };
+
+                ShadowSystem *shadow_system = ShadowSystem::get();
+                const DirectionLightShadowParams &shadow_params = shadow_system->dir_light_params;
+                command_buffer->begin_render_pass({},
+                                                  AttachmentInfo{
+                                                      .texture = pass_resource.get<FrameGraphTexture>(data.output).id,
+                                                      .load_op = LOAD_OP_CLEAR,
+                                                      .store_op = STORE_OP_STORE,
+                                                      .clear_color = {1.0f, 0.0f, 0.0f, 0.0f},
+                                                  },
+                                                  shadow_params.atlas_size, shadow_params.atlas_size);
+
+                for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                    std::string split = "Split" + std::to_string(i);
+                    ScopedGpuProfiling(command_buffer, split.c_str());
+
+                    command_buffer->begin_gpu_debug_label(split.c_str());
+
+                    uint32_t y = (i / 2) * shadow_params.split_size;
+                    uint32_t x = (i % 2) * shadow_params.split_size;
+                    uint32_t width = x + shadow_params.split_size;
+                    uint32_t height = y + shadow_params.split_size;
+
+                    command_buffer->set_viewport({cast_float(x), cast_float(y), cast_float(width), cast_float(height), 0.0f, 1.0f});
+
+                    command_buffer->set_scissor(0, 0, width, height);
+
+                    command_buffer->end_gpu_debug_label();
+                }
+
+                command_buffer->end_render_pass();
+                command_buffer->end_gpu_debug_label();
+            });
+    }
+} // namespace mirai
 // #include "CascadedShadowPass.hpp"
 
 // #include "Scene/ShaderHashMap.hpp"

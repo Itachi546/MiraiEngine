@@ -34,6 +34,7 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DEPTH_PREPASS);
+                ASSERT(data.registry != nullptr);
                 board->add<DepthPrePassData>(data);
             },
             [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {

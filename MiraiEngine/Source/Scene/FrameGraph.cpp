@@ -1,6 +1,6 @@
 #include "FrameGraph.hpp"
 #include "Common/HashMap.hpp"
-
+#include "Engine/Log.hpp"
 #include <cassert>
 #include <stack>
 
@@ -51,6 +51,7 @@ namespace mirai {
                 continue;
             }
 
+            Log::Info(producer->name, "[CULLED]");
             assert(producer->ref_count >= 1);
 
             if (--producer->ref_count == 0) {
@@ -68,6 +69,7 @@ namespace mirai {
             uint32_t last_used_by;
         };
 
+        /*
         HashMap<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
         for (uint32_t i = 0; i < passes.size(); ++i) {
             PassNode &pass = passes[i];
@@ -95,7 +97,6 @@ namespace mirai {
             }
         }
 
-        /*
          // Skip resource aliasing if flag is set
          if (!disable_resource_aliasing) {
              // Create aliases

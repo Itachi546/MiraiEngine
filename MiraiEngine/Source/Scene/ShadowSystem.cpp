@@ -58,8 +58,8 @@ namespace mirai {
             last_split_distance = split_distance;
         }
 
-        cascade_info.width = cast_float(dir_light_params.shadow_map_size);
-        cascade_info.height = cast_float(dir_light_params.shadow_map_size);
+        cascade_info.width = cast_float(dir_light_params.split_size);
+        cascade_info.height = cast_float(dir_light_params.split_size);
     }
 
     void ShadowSystem::update(Scene *scene) {

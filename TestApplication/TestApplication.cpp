@@ -43,8 +43,8 @@ class TestApplication : public App {
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();
-        camera->position = glm::vec3(-18.264, 2.394f, 13.56f);
-        camera->rotation = glm::vec3(29.0f, 66.0f, 0.0f);
+        camera->position = glm::vec3(-6.24f, 1.49f, -0.46f);
+        camera->rotation = glm::vec3(-14.21f, 1.65f, 0.0f);
         camera->set_far_plane(1000.0f);
 
         // Create RenderPass

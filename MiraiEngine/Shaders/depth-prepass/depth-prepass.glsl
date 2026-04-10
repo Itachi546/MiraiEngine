@@ -36,8 +36,8 @@ void main() {
     mat4 M = transforms[draw_data.transform_index];
     gl_Position = per_frame_data.VP * M * vec4(position, 1.0f);
 
-    #ifdef ALPHA_MODE_MASK
-        vs_out.uv = unpack_uv(vertex_address);
-        vs_out.mat_id = draw_data.material_index;
-    #endif
+#ifdef ALPHA_MODE_MASK
+    vs_out.uv = unpack_uv(vertex_address);
+    vs_out.mat_id = draw_data.material_index;
+#endif
 }

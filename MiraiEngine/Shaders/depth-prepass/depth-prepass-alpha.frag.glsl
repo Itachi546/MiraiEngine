@@ -20,7 +20,7 @@ void main() {
 
     vec4 albedo = material.albedo;
     if (material.albedo_texture != K_INVALID_TEXTURE)
-        albedo *= sample_texture(material.albedo_texture, u_samplers[0], fs_in.uv);
+        albedo *= sample_texture(material.albedo_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv);
 
     if (albedo.a <= material.alpha_cutoff)
         discard;

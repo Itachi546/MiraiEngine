@@ -13,6 +13,7 @@ namespace mirai {
     enum PassMode {
         PASS_MODE_DEPTH_PREPASS = 0,
         PASS_MODE_FORWARD,
+        PASS_MODE_DIRLIGHT_SHADOW,
         PASS_MODE_COUNT
     };
 

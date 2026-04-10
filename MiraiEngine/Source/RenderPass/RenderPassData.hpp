@@ -5,9 +5,6 @@
 
 namespace mirai {
     struct ShaderRegistry;
-    struct CascadedShadowPassData {
-        FrameGraphResourceHandle output;
-    };
 
     struct FinalCompositePassData {
         FrameGraphResourceHandle output;
@@ -36,6 +33,11 @@ namespace mirai {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
         std::shared_ptr<Shader> shader;
+    };
+
+    struct CascadedShadowPassData {
+        FrameGraphResourceHandle output;
+        ShaderRegistry *registry;
     };
 
     struct ForwardPassData {

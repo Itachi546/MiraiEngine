@@ -12,7 +12,8 @@ using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     DepthPrePass depth_prepass{frame_graph, board};
-    SSAOPass ssao_pass{frame_graph, board};
+    // SSAOPass ssao_pass{frame_graph, board};
+    CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
 
     struct CopyTexturePassData {
         FrameGraphResourceHandle ssao_texture;
@@ -23,7 +24,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct CopyTexturePassBindings {
         uint32_t descriptors[2];
     };
-
+    /*
     // Copy Texture Pass
     frame_graph->add_callback_pass<CopyTexturePassData>(
         "CopyTexturePass",
@@ -102,8 +103,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             uint32_t work_group_y = rendering_utils::get_workgroup_size(height + 1, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
-
-    /*
+    */
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
@@ -138,15 +138,15 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                               .layout = IMAGE_LAYOUT_GENERAL,
                           });
 
-            const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
-            builder.read(depth_prepass_data.output,
+            const CascadedShadowPassData &cascade_pass_data = board->get<CascadedShadowPassData>();
+            builder.read(cascade_pass_data.output,
                          {
                              .access_flags = ACCESS_FLAG_SHADER_READ,
                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                              .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                          });
 
-            data.depth_texture = depth_prepass_data.output;
+            data.depth_texture = cascade_pass_data.output;
 
             auto shader_registry = std::make_shared<ShaderRegistry>("LinearizeDepthPass");
             data.shader = Shader::create_from_file("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
@@ -154,7 +154,6 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
 
             board->add<LinearizeDepthPassData>(data);
-            builder.present(data.output);
         },
 
         [](const LinearizeDepthPassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -203,7 +202,6 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
 
-    */
     // ImGui Pass
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
@@ -211,8 +209,8 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
-            const CopyTexturePassData &copy_texture_pass = board->get<CopyTexturePassData>();
-            data.output = copy_texture_pass.output;
+            const LinearizeDepthPassData &input_pass = board->get<LinearizeDepthPassData>();
+            data.output = input_pass.output;
 
             builder.write(data.output, {
                                            .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE | ACCESS_FLAG_COLOR_ATTACHMENT_READ,
