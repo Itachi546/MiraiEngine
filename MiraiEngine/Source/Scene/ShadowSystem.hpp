@@ -45,7 +45,7 @@ namespace mirai {
             .enabled = true,
             .split_lambda = 0.909f,
             .shadow_distance = 100.0f,
-            .atlas_size = 4096,
+            .atlas_size = 2048,
             .split_size = 1024,
             .calculate_distance_automatic = true,
             .split_distances = {5.0f, 15.0f, 40.0f, 100.0f},

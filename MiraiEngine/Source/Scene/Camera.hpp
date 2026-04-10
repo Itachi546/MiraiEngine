@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Math/Math.hpp"
+#include "Math/Frustum.hpp"
 
 namespace mirai {
     enum ProjectionMode {
@@ -90,8 +90,8 @@ namespace mirai {
             return forward;
         }
 
-        Frustum &get_frustum() {
-            return frustum;
+        const FrustumPlanes &get_frustum_planes() const {
+            return frustum_planes;
         }
 
         void set_jitter_factor(glm::vec2 jitter_factor) {
@@ -115,7 +115,7 @@ namespace mirai {
         float near_plane;
         float far_plane;
 
-        Frustum frustum;
+        FrustumPlanes frustum_planes;
 
         glm::vec2 jitter_factor;
 

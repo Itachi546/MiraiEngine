@@ -47,6 +47,9 @@ namespace mirai {
         // E.g. minUniformBufferOffesetAlignment for uniform buffer
         uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t offset_alignment = 64);
 
+        // Helper function to upload batch data to per frame staging buffer
+        void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
+
         ~Renderer();
 
         // Uniform Buffer
@@ -114,7 +117,6 @@ namespace mirai {
         void patch_global_data(CommandBuffer *command_buffer);
 
         void create_batches();
-        void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;

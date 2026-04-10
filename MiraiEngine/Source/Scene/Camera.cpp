@@ -30,7 +30,7 @@ namespace mirai {
         view_projection_matrix = projection_matrix * view_matrix;
         inv_view_projection_matrix = glm::inverse(view_projection_matrix);
 
-        frustum.create_from_matrix(view_projection_matrix, inv_view_projection_matrix);
+        frustum_planes.create_from_matrix(view_projection_matrix);
         /*
         glm::vec3 near_point = position - near_plane * forward;
 

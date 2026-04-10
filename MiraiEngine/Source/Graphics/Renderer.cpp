@@ -247,9 +247,9 @@ namespace mirai {
         main_skinned_batches.clear();
 
         Camera *camera = scene->get_camera();
-        Frustum &frustum = camera->get_frustum();
+        const FrustumPlanes &frustum_planes = camera->get_frustum_planes();
         std::vector<RenderBatch> batches;
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
+        DrawBatchGenerator::CreateBatch(scene.get(), &frustum_planes, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
 
         for (auto &batch : batches) {
             switch (batch.batch_type) {
@@ -369,7 +369,6 @@ namespace mirai {
         per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Update cascade data
-        /*
         if (shadow_system->dir_light_params.enabled) {
             uint32_t cascade_data_size = sizeof(shadow_system->cascade_info);
             uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
@@ -381,7 +380,7 @@ namespace mirai {
         } else {
             cascade_data_descriptor = K_INVALID_ID;
         }
-        */
+
         // Populate per-frame batch data
         total_visible_entities = 0;
         upload_batch_data(main_opaque_batches, current_frame);

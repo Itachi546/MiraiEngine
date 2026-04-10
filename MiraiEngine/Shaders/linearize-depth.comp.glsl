@@ -30,10 +30,10 @@ void main() {
 
     vec2 uv = vec2(iuv + 0.5) / vec2(width, height);
     #if ENABLE_SAMPLER 
-    float depth = texture(sampler2D(u_depth_texture, u_samplers[0]), uv).r;
+    float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_REPEAT]), uv).r;
     #else 
     float depth = texelFetch(u_depth_texture, iuv, 0).r; 
     #endif
-    float linear_depth = linearize_depth(depth, znear, zfar) * 0.05;
+    float linear_depth = linearize_depth(depth, znear, zfar);
     imageStore(u_output_texture, iuv, vec4(linear_depth, linear_depth, linear_depth, 1.0));
 }

@@ -1,8 +1,10 @@
 #include "CascadedShadowPass.hpp"
+#include "Math/Frustum.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
+#include "Scene/RenderBatch.hpp"
 #include "Scene/ShadowSystem.hpp"
 #include "Engine/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
@@ -68,22 +70,82 @@ namespace mirai {
                                                   },
                                                   shadow_params.atlas_size, shadow_params.atlas_size);
 
+                FrustumPlanes frustum_planes;
+                std::vector<RenderBatch> render_batches;
+                const DirectionalLightCascadeInfo &cascade_info = shadow_system->cascade_info;
+
+                std::vector<DescriptorOffset> descriptors = {
+                    renderer->cascade_data_descriptor,
+                    renderer->global_geometry_descriptor,
+                    0,
+                    renderer->transform_descriptor,
+                };
+
+                PipelineState pipeline_state = {
+                    .cull_mode = CULL_MODE_FRONT,
+                    .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                    .depth_test = true,
+                    .depth_write = true,
+                    .depth_bias = false,
+                    .depth_clamp = true,
+                };
+
+                Shader *opaque_shader = data.registry->find(pipeline_state.get_hash());
+                ASSERT(opaque_shader != nullptr);
+
+                pipeline_state.cull_mode = CULL_MODE_NONE;
+                Shader *alpha_shader = data.registry->find(pipeline_state.get_hash());
+                ASSERT(alpha_shader != nullptr);
+
+                uint32_t current_frame = RenderingDevice::get()->get_current_frame();
+
                 for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
                     std::string split = "Split" + std::to_string(i);
                     ScopedGpuProfiling(command_buffer, split.c_str());
+
+                    // This create both frustum plane and points, we only need plane
+                    frustum_planes.create_from_matrix(cascade_info.VP[i]);
+
+                    DrawBatchGenerator::CreateShadowMeshBatch(
+                        renderer->get_scene(),
+                        &frustum_planes,
+                        render_batches,
+                        BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_SKIP_NEAR_PLANE);
+
+                    if (render_batches.size() == 0)
+                        continue;
+
+                    renderer->upload_batch_data(render_batches, current_frame);
+
+                    // Update push constants
+                    push_constant_data[0] = i;
 
                     command_buffer->begin_gpu_debug_label(split.c_str());
 
                     uint32_t y = (i / 2) * shadow_params.split_size;
                     uint32_t x = (i % 2) * shadow_params.split_size;
-                    uint32_t width = x + shadow_params.split_size;
-                    uint32_t height = y + shadow_params.split_size;
+                    uint32_t width = shadow_params.split_size;
+                    uint32_t height = shadow_params.split_size;
 
                     command_buffer->set_viewport({cast_float(x), cast_float(y), cast_float(width), cast_float(height), 0.0f, 1.0f});
 
-                    command_buffer->set_scissor(0, 0, width, height);
+                    command_buffer->set_scissor(x, y, width, height);
+
+                    // Draw Opaque batch
+                    for (const auto &batch : render_batches) {
+                        if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE && batch.meshes.size() > 0) {
+                            DrawBatch(command_buffer, batch, {
+                                                                 .shader = opaque_shader,
+                                                                 .descriptor_infos = descriptors,
+                                                                 .push_constants = &push_constants,
+                                                                 .draw_data_descriptor_index = 2,
+                                                             });
+                        }
+                    }
 
                     command_buffer->end_gpu_debug_label();
+
+                    render_batches.clear();
                 }
 
                 command_buffer->end_render_pass();

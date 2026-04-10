@@ -9,6 +9,7 @@
 namespace mirai {
     class Scene;
     class CommandBuffer;
+    struct FrustumPlanes;
 
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 1,
@@ -30,7 +31,7 @@ namespace mirai {
         uint32_t material_index;
         uint32_t transform_index;
         // Distance from camera, used for sorting
-        float distance_to_camera;
+        float distance_to_camera_sqr;
         uint32_t vertex_stride;
 
         MeshDrawInfo(uint32_t transform_index,
@@ -38,7 +39,7 @@ namespace mirai {
                      uint32_t vertex_offset_bytes,
                      uint32_t index_offset,
                      uint32_t index_count,
-                     float distance_to_camera,
+                     float distance_to_camera_sqr,
                      uint32_t vertex_stride) : transform_index(transform_index),
                                                material_index(material_index),
                                                draw_info{
@@ -47,7 +48,7 @@ namespace mirai {
                                                    index_offset,
                                                    vertex_offset_bytes,
                                                    0},
-                                               vertex_stride(vertex_stride), distance_to_camera(distance_to_camera) {
+                                               vertex_stride(vertex_stride), distance_to_camera_sqr(distance_to_camera_sqr) {
         }
     };
 
@@ -62,8 +63,8 @@ namespace mirai {
 
         std::vector<MeshDrawInfo> mesh_draw_infos;
 
-        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera, uint32_t vertex_stride) {
-            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera, vertex_stride);
+        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, float distance_to_camera_sqr, uint32_t vertex_stride) {
+            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera_sqr, vertex_stride);
         }
     };
     /*
@@ -88,13 +89,13 @@ namespace mirai {
             if (batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
                 for (auto &mesh_batch : meshes) {
                     std::sort(mesh_batch.mesh_draw_infos.begin(), mesh_batch.mesh_draw_infos.end(), [](const MeshDrawInfo &left, const MeshDrawInfo &right) {
-                        return left.distance_to_camera > right.distance_to_camera;
+                        return left.distance_to_camera_sqr > right.distance_to_camera_sqr;
                     });
                 }
             } else {
                 for (auto &mesh_batch : meshes) {
                     std::sort(mesh_batch.mesh_draw_infos.begin(), mesh_batch.mesh_draw_infos.end(), [](const MeshDrawInfo &left, const MeshDrawInfo &right) {
-                        return left.distance_to_camera < right.distance_to_camera;
+                        return left.distance_to_camera_sqr < right.distance_to_camera_sqr;
                     });
                 }
             }
@@ -102,10 +103,10 @@ namespace mirai {
     };
 
     struct DrawBatchGenerator {
-        static void CreateBatch(const Scene *scene, const Frustum *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &mesh_batches, uint32_t batch_filter_flags);
+        static void CreateBatch(const Scene *scene, const FrustumPlanes *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags);
 
         // Used for Shadow/Cascaded shadow rendering where scene needs to be culled again
-        // static void CreateShadowMeshBatch(const Scene *scene, const Frustum *frustum, std::vector<ShadowMeshBatch> &render_batches, uint32_t batch_filter_flags);
+        static void CreateShadowMeshBatch(const Scene *scene, const FrustumPlanes *frustum, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags);
     };
 
     struct BatchDrawInfo {

@@ -35,7 +35,7 @@ namespace mirai {
             glm::mat4 VP = P * V;
 
             std::array<glm::vec3, 8> frustum_corners;
-            Frustum::calculate_frustum_corners(glm::inverse(VP), frustum_corners);
+            FrustumPoints::calculate_frustum_corners(glm::inverse(VP), frustum_corners);
 
             glm::vec3 center{0.0f};
             for (const auto &corner : frustum_corners)

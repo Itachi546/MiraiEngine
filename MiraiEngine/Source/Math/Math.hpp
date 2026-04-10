@@ -80,35 +80,4 @@ namespace mirai {
         }
     };
 
-    struct Frustum {
-
-        enum FRUSTUM_PLANE {
-            FRUSTUM_PLANE_LEFT = 0,
-            FRUSTUM_PLANE_RIGHT,
-            FRUSTUM_PLANE_TOP,
-            FRUSTUM_PLANE_BOTTOM,
-            FRUSTUM_PLANE_NEAR,
-            FRUSTUM_PLANE_FAR
-        };
-
-        enum FRUSTUM_POINT {
-            NTL = 0,
-            NTR,
-            NBR,
-            NBL,
-            FTL,
-            FTR,
-            FBR,
-            FBL,
-        };
-
-        void create_from_matrix(const glm::mat4 &m, const glm::mat4 &inv_m);
-
-        static void calculate_frustum_corners(const glm::mat4 &inv_m, std::array<glm::vec3, 8> &corners);
-
-        bool intersect(const AABB &aabb, bool skip_near_plane = false) const;
-
-        std::array<Plane, 6> planes;
-        std::array<glm::vec3, 8> points;
-    };
 } // namespace mirai
