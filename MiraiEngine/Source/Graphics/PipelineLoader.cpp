@@ -74,6 +74,7 @@ namespace mirai {
                                {
                                    .cull_mode = CULL_MODE_NONE,
                                    .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .alpha_mode = ALPHA_MODE_MASK,
                                    .depth_test = true,
                                    .depth_write = true,
                                    .depth_bias = false,
@@ -83,6 +84,47 @@ namespace mirai {
                                    .has_depth_attachment = true,
                                    .depth_attachment_format = FORMAT_D32_SFLOAT,
                                });
+        if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
+            create_shader_material("forward-pass", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
+                                   {
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .depth_test = true,
+                                       .depth_write = true,
+                                   },
+                                   {
+                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .has_depth_attachment = true,
+                                       .depth_attachment_format = FORMAT_D32_SFLOAT,
+                                   });
+            create_shader_material("forward-pass-double-sided", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
+                                   {
+                                       .cull_mode = CULL_MODE_NONE,
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .depth_test = true,
+                                       .depth_write = true,
+                                   },
+                                   {
+                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .has_depth_attachment = true,
+                                       .depth_attachment_format = FORMAT_D32_SFLOAT,
+                                   });
+            create_shader_material("forward-pass-alpha-mode", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass-alpha.frag.spv"},
+                                   {
+                                       .cull_mode = CULL_MODE_NONE,
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .alpha_mode = ALPHA_MODE_MASK,
+                                       .depth_test = true,
+                                       .depth_write = true,
+                                   },
+                                   {
+                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .has_depth_attachment = true,
+                                       .depth_attachment_format = FORMAT_D32_SFLOAT,
+                                   });
+        }
     }
 
 } // namespace mirai

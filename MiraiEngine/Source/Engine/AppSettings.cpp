@@ -13,7 +13,7 @@ namespace AppSettings {
     float resolution_scale = 1.0f;
 
     // Renderer Settings
-    RenderMode render_mode = RenderMode::RENDERMODE_DEFERRED;
+    RenderMode render_mode = RenderMode::RENDERMODE_FORWARD;
 
     /**************************************RENDERPASS SETTINGS **********************************************/
 

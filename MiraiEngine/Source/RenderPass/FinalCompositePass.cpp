@@ -27,6 +27,7 @@ namespace mirai {
                         .format = FORMAT_B8G8R8A8_UNORM,
                         .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
                     });
+
                 builder.write(data.output, AccessDeclaration{
                                                .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
                                                .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,

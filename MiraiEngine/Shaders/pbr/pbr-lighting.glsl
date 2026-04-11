@@ -3,7 +3,6 @@
 
 #include "pbr.glsl"
 #include "../utils/material.glsl"
-#include "../utils/bindless-texture.glsl"
 #include "../utils/color.glsl"
 
 struct Light {
@@ -13,7 +12,7 @@ struct Light {
     float intensity;
 };
 
-#define IBL_CONTRIBUTION 0.5f
+#define IBL_CONTRIBUTION 0.1f
 
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params) {
     /*
@@ -30,10 +29,10 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     return ambient;
     */
     float lod = pbr_params.roughness * MAX_REFLECTION_LOD;
-    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, 1.0f - pbr_params.roughness)).rg;
+    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, 1.0f - pbr_params.roughness)).rg;
 
-    vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
-    vec3 specular_light = sample_texture_cube_lod(per_frame_data.prefilter_map, reflection, lod).rgb;
+    vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
+    vec3 specular_light = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
     vec3 f0 = vec3(0.04f);
 
     vec3 diffuse_color = pbr_params.albedo.rgb * (vec3(1.0f) - f0);

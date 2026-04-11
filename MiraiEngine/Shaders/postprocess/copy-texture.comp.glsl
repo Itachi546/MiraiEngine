@@ -17,10 +17,10 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
     ivec2 iuv = ivec2(gl_GlobalInvocationID.xy);
-    if (iuv.x > width  || iuv.y > height)
-       return;
+    if (iuv.x > width || iuv.y > height)
+        return;
 
     vec2 uv = vec2(iuv + 0.5) / vec2(width, height);
-    float val = texture(sampler2D(u_input_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).r;
-    imageStore(u_output_texture, iuv, vec4(val, val, val, 1.0));
+    vec4 val = texture(sampler2D(u_input_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).rgba;
+    imageStore(u_output_texture, iuv, vec4(val.xyz, 1.0));
 }

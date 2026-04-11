@@ -27,7 +27,7 @@ namespace mirai {
                                                                                 .array_layers = 1,
                                                                                 .texture_type = TEXTURE_TYPE_2D,
                                                                                 .format = FORMAT_D32_SFLOAT,
-                                                                                .usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT,
+                                                                                .usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
                                                                             });
                 builder.write(data.output, {
                                                .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE,
@@ -93,6 +93,7 @@ namespace mirai {
                 ASSERT(opaque_shader != nullptr);
 
                 pipeline_state.cull_mode = CULL_MODE_NONE;
+                pipeline_state.alpha_mode = ALPHA_MODE_MASK;
                 Shader *alpha_shader = data.registry->find(pipeline_state.get_hash());
                 ASSERT(alpha_shader != nullptr);
 
@@ -135,6 +136,19 @@ namespace mirai {
                         if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE && batch.meshes.size() > 0) {
                             DrawBatch(command_buffer, batch, {
                                                                  .shader = opaque_shader,
+                                                                 .descriptor_infos = descriptors,
+                                                                 .push_data = &push_constants,
+                                                                 .draw_data_descriptor_index = 2,
+                                                             });
+                        }
+                    }
+
+                    // Draw Alpha mask batch
+                    descriptors.push_back(renderer->material_descriptor);
+                    for (const auto &batch : render_batches) {
+                        if (batch.batch_type == RENDERBATCH_TYPE_ALPHA_MASK && batch.meshes.size() > 0) {
+                            DrawBatch(command_buffer, batch, {
+                                                                 .shader = alpha_shader,
                                                                  .descriptor_infos = descriptors,
                                                                  .push_data = &push_constants,
                                                                  .draw_data_descriptor_index = 2,

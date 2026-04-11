@@ -6,3 +6,4 @@
 #include "FinalCompositePass.hpp"
 #include "CascadedShadowPass.hpp"
 #include "DeferredOverlay3DPass.hpp"
+#include "ForwardPass.hpp"

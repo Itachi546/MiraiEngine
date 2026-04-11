@@ -187,6 +187,15 @@ class TestApplication : public App {
             ImGui::DragFloat("Damping(T)", &controller->smoothing_factor, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Damping(R)", &controller->rotation_smoothing_factor, 0.001f, 0.0f, 1.0f);
         }
+
+        FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+        if (ImGui::CollapsingHeader("Render Debug Options") && board->has<RenderDebugData>()) {
+            RenderDebugData &debug_data = board->get<RenderDebugData>();
+            ImGui::SliderFloat("Split Percentage", &debug_data.split_percentage, 0.0f, 1.0f);
+            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+            ImGui::Combo("Target", &debug_data.debug_param_index, options);
+            ImGui::Checkbox("Show shadow cascade", &debug_data.show_debug_cascade_color);
+        }
     }
     /*
     bool show_render_pass_debug_popup = false;
@@ -358,7 +367,7 @@ int main(int argc, char **argv) {
     EngineInitializationOptions options = {
         .width = 1360,
         .height = 769,
-        .render_mode = RenderMode::RENDERMODE_DEFERRED,
+        .render_mode = RenderMode::RENDERMODE_FORWARD,
     };
 
     std::vector<std::string> model_paths;

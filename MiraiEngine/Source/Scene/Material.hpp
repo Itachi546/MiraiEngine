@@ -141,6 +141,7 @@ namespace mirai {
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
             pipeline_state.depth_test = true;
+            pipeline_state.depth_write = true;
             pipeline_state.draw_mode = DRAWMODE_INDEXED_INDIRECT;
         }
 

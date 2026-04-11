@@ -4,23 +4,24 @@
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "RenderPass/RenderPass.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Scene/ShaderRegistry.hpp"
 #include "ImGuiService.hpp"
 #include "Graphics/GPUResource.hpp"
+#include "Scene/Material.hpp"
 
 using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     DepthPrePass depth_prepass{frame_graph, board};
-    DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
-    // SSAOPass ssao_pass{frame_graph, board};
-    // CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
-
+    SSAOPass ssao_pass{frame_graph, board};
+    CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
+    ForwardPass forward_pass{frame_graph, board};
+    FinalCompositePass composite_pass{frame_graph, board};
+    // DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
     /*
     struct CopyTexturePassData {
         FrameGraphResourceHandle ssao_texture;
         FrameGraphResourceHandle output;
-        std::shared_ptr<Shader> shader;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct CopyTexturePassBindings {
@@ -51,20 +52,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                               .layout = IMAGE_LAYOUT_GENERAL,
                           });
 
-            const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
-            builder.read(ssao_pass_data.output,
-                         {
-                             .access_flags = ACCESS_FLAG_SHADER_READ,
-                             .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                             .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         });
-            data.ssao_texture = ssao_pass_data.output;
-
-            auto shader_registry = std::make_shared<ShaderRegistry>("CopyTextureShader");
-            data.shader = Shader::create_from_file("CopyTextureShader", "SPIRV/copy-r16-texture.comp.spv");
-            shader_registry->add(0, data.shader);
-            ShaderRegistryMap::get()->add_registry(GetCustomPassID(), shader_registry);
-
+            data.shader = std::make_shared<ComputeShader>("CopyTextureShader", "SPIRV/copy-texture.comp.spv");
             board->add<CopyTexturePassData>(data);
         },
 
@@ -72,6 +60,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             RenderContext *ctx = static_cast<RenderContext *>(context);
             CommandBuffer *command_buffer = ctx->command_buffer;
             Renderer *renderer = ctx->renderer;
+            EnvironmentMap *env_map = renderer->get_scene()->get_environment_map();
 
             std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
             command_buffer->prepare_resources(resource_states);
@@ -80,9 +69,10 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             CopyTexturePassBindings *bindings = nullptr;
             if (!board->has<CopyTexturePassBindings>()) {
                 DescriptorInfo descriptor_infos[] = {
-                    {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.ssao_texture).id},
-                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
+                    {.type = DescriptorType::SampledImage, .resource = env_map->get_brdf_texture(), .image_info = {0, ~0u, 0, ~0u}},
+                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id, .image_info = {0, ~0u, 0, ~0u}},
                 };
+
                 DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
                 bindings = &board->add<CopyTexturePassBindings>(CopyTexturePassBindings{
                     .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
@@ -97,14 +87,13 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
 
             uint32_t push_constants[] = {width, height, 0, 0};
 
-            command_buffer->bind_pipeline(data.shader->pipeline_id);
+            data.shader->bind(command_buffer);
             command_buffer->set_push_data(0, push_constants, cast_u32(sizeof(push_constants)));
             command_buffer->set_push_data(sizeof(push_constants), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
             uint32_t work_group_x = rendering_utils::get_workgroup_size(width + 1, 32);
             uint32_t work_group_y = rendering_utils::get_workgroup_size(height + 1, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
-    */
     /*
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
@@ -205,10 +194,11 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
     };
+
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
-            const DeferredOverlay3DPassData &input_pass = board->get<DeferredOverlay3DPassData>();
+            const ForwardPassData &input_pass = board->get<ForwardPassData>();
             data.output = input_pass.output;
 
             builder.write(data.output, {

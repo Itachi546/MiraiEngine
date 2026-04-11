@@ -13,22 +13,22 @@ vs_out;
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_shader_draw_parameters : enable
 
-#include "utils/per-frame-data.glsl"
+#include "../utils/per-frame-data.glsl"
 
 layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
-layout(set = 2, binding = 0) readonly buffer VertexBinding {
+layout(set = 0, binding = 1) readonly buffer VertexBinding {
     uint vertices[];
 };
 
-layout(set = 3, binding = 0) readonly buffer TransformBinding {
+layout(set = 0, binding = 2) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
-#include "utils/vertexdata.glsl"
-layout(set = 4, binding = 0) readonly buffer DrawDataBindings {
+#include "../utils/vertexdata.glsl"
+layout(set = 0, binding = 3) readonly buffer DrawDataBindings {
     DrawData draw_datas[];
 };
 

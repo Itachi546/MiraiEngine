@@ -7,5 +7,6 @@ namespace mirai {
     class ForwardPass {
       public:
         ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
+        ~ForwardPass() = default;
     };
 } // namespace mirai

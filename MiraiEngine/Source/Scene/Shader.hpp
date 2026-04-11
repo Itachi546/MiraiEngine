@@ -50,7 +50,7 @@ namespace mirai {
     struct PipelineState {
         CullMode cull_mode = CULL_MODE_BACK;
         FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
-        CompareOp depth_op = COMPARE_OP_LESS;
+        CompareOp depth_op = COMPARE_OP_LESS_OR_EQUAL;
         PolygonMode polygon_mode = POLYGON_MODE_FILL;
         Topology topology = TOPOLOGY_TRIANGLE_LIST;
         DrawMode draw_mode = DRAWMODE_INDEXED;

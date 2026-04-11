@@ -1,7 +1,7 @@
 #ifndef DIRECTIONAL_SHADOW_GLSL
 #define DIRECTIONAL_SHADOW_GLSL
 
-#include "color.glsl"
+#include "../utils/color.glsl"
 
 vec2 POISSON_DISK[16] = vec2[](
     vec2(-0.94201624, -0.39906216),
@@ -30,7 +30,7 @@ float texture_proj(vec4 shadow_coord, vec2 offset, float bias) {
     float shadow = 1.0;
     float current_depth = shadow_coord.z;
     if (current_depth > -1.0 && current_depth < 1.0) {
-        float depth_from_texture = texture(shadow_depth_texture, shadow_coord.xy + offset + bias).r;
+        float depth_from_texture = texture(sampler2D(u_shadow_texture, u_samplers[SAMPLER_POINT_CLAMP]), shadow_coord.xy + offset + bias).r;
         if (shadow_coord.w > 0.0 && depth_from_texture < current_depth)
             shadow = 0.0f;
     }

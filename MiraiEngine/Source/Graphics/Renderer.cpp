@@ -5,6 +5,7 @@
 #include "Scene/ShaderRegistry.hpp"
 #include "Scene/TextureCache.hpp"
 #include "Scene/ShadowSystem.hpp"
+#include "RenderPass/RenderPassData.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/Camera.hpp"
 #include "Scene/FrameGraph.hpp"
@@ -37,6 +38,12 @@ namespace mirai {
 
         frame_graph = std::make_unique<FrameGraph>();
         frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
+        // Add debug data to blackboard
+        frame_graph_blackboard->add<RenderDebugData>(RenderDebugData{
+            .split_percentage = 0.0f,
+            .debug_param_index = 0,
+            .show_debug_cascade_color = false,
+        });
 
         shadow_system = std::make_unique<ShadowSystem>();
 

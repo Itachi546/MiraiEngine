@@ -7,6 +7,7 @@ namespace mirai {
     class FinalCompositePass {
       public:
         FinalCompositePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
+        ~FinalCompositePass() = default;
 
       private:
     };

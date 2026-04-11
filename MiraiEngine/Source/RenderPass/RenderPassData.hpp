@@ -42,7 +42,16 @@ namespace mirai {
 
     struct ForwardPassData {
         FrameGraphResourceHandle output;
+        FrameGraphResourceHandle depth_texture;
+        FrameGraphResourceHandle ssao_texture;
+        FrameGraphResourceHandle csm_texture;
         ShaderRegistry *registry;
+    };
+
+    struct RenderDebugData {
+        float split_percentage;
+        int debug_param_index;
+        bool show_debug_cascade_color;
     };
 
     struct DeferredOverlay3DPassData {
