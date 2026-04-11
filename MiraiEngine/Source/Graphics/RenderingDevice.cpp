@@ -15,22 +15,26 @@ namespace mirai {
         SAMPLER_POINT_REPEAT_ANISO16,
     };
 
+    void *descriptor_address(void *ptr, uint32_t descriptor_index, uint32_t descriptor_size) {
+        return static_cast<uint8_t *>(ptr) + descriptor_index * descriptor_size;
+    }
+
     RenderingDevice *RenderingDevice::Instance = nullptr;
 
     void rendering_utils::upload_default_samplers(RenderingDevice *device, void *ptr) {
         // Linear Sampler
-        uint32_t sampler_descriptor_size = device->get_sampler_descriptor_size();
+        uint32_t descriptor_size = device->get_sampler_descriptor_size();
         {
             SamplerDescription sampler_info = SamplerDescription::create();
             sampler_info.address_mode_u = sampler_info.address_mode_v = sampler_info.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_REPEAT * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_LINEAR_REPEAT, descriptor_size));
 
             sampler_info.enable_anisotropy = true;
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_REPEAT_ANISO16 * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_LINEAR_REPEAT_ANISO16, descriptor_size));
         }
         {
             SamplerDescription sampler_info = SamplerDescription::create();
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_LINEAR_CLAMP * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_LINEAR_CLAMP, descriptor_size));
         }
 
         // Point Sampler
@@ -39,16 +43,16 @@ namespace mirai {
             sampler_info.address_mode_u = sampler_info.address_mode_v = sampler_info.address_mode_w = SAMPLER_ADDRESS_MODE_REPEAT;
             sampler_info.min_filter = sampler_info.mag_filter = FILTER_NEAREST;
             sampler_info.mipmap_mode = SAMPLER_MIPMAP_NEAREST;
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_REPEAT * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_POINT_REPEAT, descriptor_size));
 
             sampler_info.enable_anisotropy = true;
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_REPEAT_ANISO16 * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_POINT_REPEAT_ANISO16, descriptor_size));
         }
         {
             SamplerDescription sampler_info = SamplerDescription::create();
             sampler_info.min_filter = sampler_info.mag_filter = FILTER_NEAREST;
             sampler_info.mipmap_mode = SAMPLER_MIPMAP_NEAREST;
-            device->write_sampler_descriptors(&sampler_info, 1, static_cast<uint8_t *>(ptr) + SAMPLER_POINT_CLAMP * sampler_descriptor_size);
+            device->write_sampler_descriptors(&sampler_info, 1, descriptor_address(ptr, SAMPLER_POINT_CLAMP, descriptor_size));
         }
     }
 
