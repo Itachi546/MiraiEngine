@@ -37,11 +37,9 @@ namespace mirai {
         TextureID cubemap_texture, irradiance_texture, prefilter_texture, brdf_texture;
 
         void generate_cubemap(CommandBuffer *command_buffer, ComputeShader *cubemap_shader, uint32_t *descriptors, uint32_t descriptor_count);
-        // void convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader);
-        // void convolute_specular_cubemap(CommandBuffer *command_buffer, Shader *prefilter_shader);
-        // void integrate_brdf_texture(CommandBuffer *command_buffer, Shader *integrate_brdf_shader);
+        void convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader *convolute_shader);
+        void convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader *prefilter_shader);
+        void integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader *integrate_brdf_shader);
         void initialize_textures();
-
-        // void create_pbr_env_map();
     };
 } // namespace mirai

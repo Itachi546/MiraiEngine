@@ -79,24 +79,15 @@ namespace mirai {
         data = nullptr;
 
         initialize_textures();
-        /*
-        UniformLayout layout[] = {
-            {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
-            {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
-        };
 
-        UniformSetID uniform_set = device->create_uniform_set(layout, (uint32_t)std::size(layout), 0, "hdri_to_cubemap_set");
-        UniformBinding bindings[] = {
-            {.resource_id = hdri_texture, .texture_info = {.sampler = hdri_sampler}},
-            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
-        };
-        device->update_uniform_set(uniform_set, bindings, (uint32_t)std::size(bindings));
-        */
         ComputeShader cubemap_shader{"hdri-cubemap", "SPIRV/hdri-to-cubemap.comp.spv"};
+        ComputeShader convolute_shader{"ConvoluteEnvMap", "SPIRV/convolute-cubemap.comp.spv"};
+        ComputeShader prefilter_shader{"PrefilterEnvMap", "SPIRV/prefilter-envmap.comp.spv"};
+        ComputeShader integrate_brdf_shader{"IntegrateBRDF", "SPIRV/integrate-brdf.comp.spv"};
 
         DescriptorInfo descriptor_infos[] = {
             {.type = DescriptorType::SampledImage, .resource = hdri_texture, .image_info = {0, ~0u, 0, ~0u}},
-            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, 1, 0, 6}},
+            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}},
         };
 
         Renderer *renderer = Renderer::get();
@@ -108,10 +99,17 @@ namespace mirai {
         command_buffer->bind_resource_heap(renderer->resource_heap.buffer);
         command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
 
-        command_buffer->begin_gpu_debug_label("HDRIConversion");
+        command_buffer->begin_gpu_debug_label("EnvironmentMap");
 
         uint32_t descriptors[] = {descriptor_index, descriptor_index + 1};
+
         generate_cubemap(command_buffer, &cubemap_shader, descriptors, 2);
+
+        convolute_diffuse_cubemap(command_buffer, &convolute_shader);
+
+        convolute_specular_cubemap(command_buffer, &prefilter_shader);
+
+        integrate_brdf_texture(command_buffer, &integrate_brdf_shader);
 
         command_buffer->end_gpu_debug_label();
 
@@ -120,68 +118,44 @@ namespace mirai {
         command_buffer->wait();
 
         device->destroy_textures(&hdri_texture, 1);
-
-        // create_pbr_env_map();
     }
 
     EnvironmentMap::EnvironmentMap() {
         initialize_textures();
 
         DescriptorInfo descriptor_infos[] = {
-            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, 1, 0, 6}},
+            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}},
         };
         Renderer *renderer = Renderer::get();
         DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
 
         RenderingDevice *device = RenderingDevice::get();
         ComputeShader generate_cubemap_shader{"generate-cubemap", "SPIRV/procedural-sky.comp.spv"};
+        ComputeShader convolute_shader{"ConvoluteEnvMap", "SPIRV/convolute-cubemap.comp.spv"};
+        ComputeShader prefilter_shader{"PrefilterEnvMap", "SPIRV/prefilter-envmap.comp.spv"};
+        ComputeShader integrate_brdf_shader{"IntegrateBRDF", "SPIRV/integrate-brdf.comp.spv"};
+
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
-        command_buffer->begin_gpu_debug_label("ProceduralSky");
+        command_buffer->begin_gpu_debug_label("EnvironmentMap");
 
         command_buffer->bind_resource_heap(renderer->resource_heap.buffer);
         command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
+
         generate_cubemap(command_buffer, &generate_cubemap_shader, &descriptor_index, 1);
 
-        command_buffer->end_gpu_debug_label();
-        device->submit_command_buffer_immediate(command_buffer);
-        command_buffer->wait();
-        // create_pbr_env_map();
-    }
-    /*
-    void EnvironmentMap::create_pbr_env_map() {
-        RenderingDevice *device = RenderingDevice::get();
+        convolute_diffuse_cubemap(command_buffer, &convolute_shader);
 
-        Shader *convolute_shader = Shader::create_from_file("SPIRV/convolute-cubemap.comp.spv", "convolute-shader");
+        convolute_specular_cubemap(command_buffer, &prefilter_shader);
 
-        Shader *prefilter_shader = Shader::create_from_file("SPIRV/prefilter-envmap.comp.spv", "prefilter-shader");
-
-        Shader *integrate_brdf_shader = Shader::create_from_file("SPIRV/integrate-brdf.comp.spv", "integrate-brdf-shader");
-
-        CommandBuffer *command_buffer = device->get_command_buffer(0);
-        command_buffer->begin();
-        command_buffer->begin_gpu_debug_label("GenEnvMap");
-
-        convolute_diffuse_cubemap(command_buffer, convolute_shader);
-        convolute_specular_cubemap(command_buffer, prefilter_shader);
-        integrate_brdf_texture(command_buffer, integrate_brdf_shader);
+        integrate_brdf_texture(command_buffer, &integrate_brdf_shader);
 
         command_buffer->end_gpu_debug_label();
+
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
-
-        SamplerDescription sampler_desc = SamplerDescription::create();
-        sampler_desc.mipmap_mode = SAMPLER_MIPMAP_LINEAR;
-        SamplerID prefilter_sampler = device->create_sampler(&sampler_desc);
-
-        BindlessTextureEntry textures[] = {
-            {.texture = irradiance_texture, .sampler = default_sampler},
-            {.texture = brdf_texture, .sampler = default_sampler},
-            {.texture = prefilter_texture, .sampler = prefilter_sampler},
-        };
-        device->add_bindless_texture(textures, cast_u32(std::size(textures)));
     }
-    */
+
     void EnvironmentMap::generate_cubemap(CommandBuffer *command_buffer, ComputeShader *cubemap_shader, uint32_t *descriptors, uint32_t descriptor_count) {
 
         RenderingDevice *device = RenderingDevice::get();
@@ -211,8 +185,7 @@ namespace mirai {
 
         device->generate_mipmap(command_buffer, cubemap_texture, PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     }
-    /*
-    void EnvironmentMap::convolute_diffuse_cubemap(CommandBuffer *command_buffer, Shader *convolute_shader) {
+    void EnvironmentMap::convolute_diffuse_cubemap(CommandBuffer *command_buffer, ComputeShader *convolute_shader) {
         // Layout transition
         TextureBarrierInfo barrier_infos[] = {
             {
@@ -232,30 +205,23 @@ namespace mirai {
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         RenderingDevice *device = RenderingDevice::get();
-        UniformLayout layouts[] = {
-            {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
-            {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
-        };
-        UniformSetID uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_convolute_cubemap_set");
-        UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = irradiance_texture},
-        };
-        device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
+        Renderer *renderer = Renderer::get();
 
+        DescriptorInfo descriptor_infos[] = {
+            {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}},
+            {.type = DescriptorType::StorageImage, .resource = irradiance_texture, .image_info = {0, ~0u, 0, ~0u}},
+        };
+        DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(device, descriptor_infos, cast_u32(std::size(descriptor_infos)));
+        uint32_t descriptors[] = {descriptor_index, descriptor_index + 1};
+
+        uint32_t irradiance_map_size = EnvironmentSettings::K_IRRADIANCE_MAP_SIZE;
+        uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
         float map_dims[] = {cast_float(irradiance_map_size), cast_float(irradiance_map_size),
                             cast_float(cubemap_size), cast_float(cubemap_size)};
 
-        PushConstant push_constant = {
-            .data = &map_dims,
-            .offset = 0,
-            .size = sizeof(float) * 4,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-        };
-
         convolute_shader->bind(command_buffer);
-        command_buffer->set_uniform_sets(convolute_shader->pipeline_id, &uniform_set, 1);
-        command_buffer->set_push_constants(convolute_shader->pipeline_id, &push_constant, 1);
+        command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
+        command_buffer->set_push_data(sizeof(float) * 4, &descriptors, cast_u32(sizeof(uint32_t) * 2));
 
         uint32_t work_group_size = rendering_utils::get_workgroup_size(irradiance_map_size, 32);
         command_buffer->dispatch(work_group_size, work_group_size, 6);
@@ -266,7 +232,7 @@ namespace mirai {
         command_buffer->prepare_image(&barrier_infos[1], 1);
     }
 
-    void EnvironmentMap::convolute_specular_cubemap(CommandBuffer *command_buffer, Shader *prefilter_shader) {
+    void EnvironmentMap::convolute_specular_cubemap(CommandBuffer *command_buffer, ComputeShader *prefilter_shader) {
         // Layout transition
         TextureBarrierInfo barrier_infos[] = {
             {
@@ -286,45 +252,32 @@ namespace mirai {
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         RenderingDevice *device = RenderingDevice::get();
+        Renderer *renderer = Renderer::get();
+        DescriptorInfo cubemap_descriptor_info = {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}};
+        DescriptorOffset cubemap_descriptor = renderer->resource_heap.push_descriptors_per_frame(device, &cubemap_descriptor_info, 1);
 
-        UniformLayout layouts[] = {
-            {0, BINDING_TYPE_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE},
-            {1, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
-        };
-        std::vector<UniformSetID> uniform_sets(prefilter_num_mip_levels);
+        DescriptorInfo prefilter_map_descriptor_info = {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, 1, 0, ~0u}};
 
-        UniformBinding bindings[] = {
-            {.resource_id = cubemap_texture, .texture_info = {.sampler = default_sampler}},
-            {.resource_id = prefilter_texture},
-        };
-
+        uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
+        uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
         float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size),
                             cast_float(cubemap_size), cast_float(cubemap_size)};
 
-        PushConstant push_constant = {
-            .data = &map_dims,
-            .offset = 0,
-            .size = sizeof(float) * 4,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-        };
-
-        for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
-            uniform_sets[i] = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_uniform_set");
-            bindings[1].texture_info.mip_levels = i;
-            device->update_uniform_set(uniform_sets[i], bindings, cast_u32(std::size(bindings)));
-        }
-
         prefilter_shader->bind(command_buffer);
-        PipelineID pipeline_id = prefilter_shader->pipeline_id;
-        uint32_t dims = prefilter_map_size;
 
-        for (uint32_t i = 0; i < prefilter_num_mip_levels; ++i) {
-            map_dims[3] = cast_float(i) / cast_float(prefilter_num_mip_levels - 1);
+        uint32_t dims = prefilter_map_size;
+        uint32_t num_mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
+        for (uint32_t i = 0; i < num_mip_levels; ++i) {
+            map_dims[3] = cast_float(i) / cast_float(num_mip_levels - 1);
             map_dims[0] = cast_float(dims);
             map_dims[1] = cast_float(dims);
 
-            command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
-            command_buffer->set_uniform_sets(pipeline_id, &uniform_sets[i], 1);
+            prefilter_map_descriptor_info.image_info.base_mip_level = i;
+            DescriptorOffset descriptors[2] = {cubemap_descriptor, renderer->resource_heap.push_descriptors_per_frame(device, &prefilter_map_descriptor_info, 1)};
+
+            command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
+            command_buffer->set_push_data(sizeof(float) * 4, &descriptors, sizeof(uint32_t) * 2);
+
             uint32_t work_group_size = rendering_utils::get_workgroup_size(dims, 16);
             command_buffer->dispatch(work_group_size, work_group_size, 6);
             dims = dims / 2;
@@ -339,7 +292,7 @@ namespace mirai {
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
     }
 
-    void EnvironmentMap::integrate_brdf_texture(CommandBuffer *command_buffer, Shader *integrate_brdf_shader) {
+    void EnvironmentMap::integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader *integrate_brdf_shader) {
         // Layout transition
         TextureBarrierInfo barrier_infos[] = {
             {
@@ -353,30 +306,19 @@ namespace mirai {
         command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
 
         RenderingDevice *device = RenderingDevice::get();
-        UniformLayout layouts[] = {
-            {0, BINDING_TYPE_STORAGE_IMAGE, SHADER_STAGE_COMPUTE},
-        };
-        UniformSetID uniform_set = device->create_uniform_set(layouts, cast_u32(std::size(layouts)), 0, "temp_brdf_set");
-        UniformBinding bindings[] = {
-            {.resource_id = brdf_texture},
-        };
-        device->update_uniform_set(uniform_set, bindings, cast_u32(std::size(bindings)));
+
+        uint32_t brdf_texture_size = EnvironmentSettings::K_BRDF_MAP_SIZE;
+
+        DescriptorInfo descriptor_info = {.type = DescriptorType::StorageImage, .resource = brdf_texture, .image_info = {0, ~0u, 0, ~0u}};
+        DescriptorOffset descriptor = Renderer::get()->resource_heap.push_descriptors_per_frame(device, &descriptor_info, 1);
 
         float inv_brdf_texture_size = 1.0f / cast_float(brdf_texture_size);
-        float map_dims[] = {inv_brdf_texture_size, inv_brdf_texture_size};
-
-        PushConstant push_constant = {
-            .data = &map_dims,
-            .offset = 0,
-            .size = sizeof(float) * 2,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-        };
+        float map_dims[] = {inv_brdf_texture_size, inv_brdf_texture_size, 0.0f, 0.0f};
 
         integrate_brdf_shader->bind(command_buffer);
 
-        PipelineID pipeline_id = integrate_brdf_shader->pipeline_id;
-        command_buffer->set_uniform_sets(pipeline_id, &uniform_set, 1);
-        command_buffer->set_push_constants(pipeline_id, &push_constant, 1);
+        command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
+        command_buffer->set_push_data(sizeof(float) * 4, &descriptor, cast_u32(sizeof(uint32_t)));
 
         uint32_t work_group_size = rendering_utils::get_workgroup_size(brdf_texture_size, 32);
         command_buffer->dispatch(work_group_size, work_group_size, 1);
@@ -386,7 +328,7 @@ namespace mirai {
         barrier_infos[0].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         command_buffer->prepare_image(barrier_infos, 1);
     }
-    */
+
     EnvironmentMap::~EnvironmentMap() {
         RenderingDevice *device = RenderingDevice::get();
         TextureID textures[] = {cubemap_texture, irradiance_texture, prefilter_texture, brdf_texture};

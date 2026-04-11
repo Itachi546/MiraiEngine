@@ -4,11 +4,12 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform samplerCube u_cubemap;
+layout(set = 0, binding = 0) uniform textureCube u_cubemap;
 layout(set = 0, binding = 1, rgba16f) uniform imageCube u_prefilter_map;
 
-#include "utils/cubemap.glsl"
-#include "utils/pbr.glsl"
+#include "../utils/cubemap.glsl"
+#include "../pbr/pbr.glsl"
+#include "../utils/bindless-sampler.glsl"
 
 layout(push_constant) uniform PushConstants {
     vec2 prefilter_map_dims;
@@ -44,7 +45,7 @@ void main() {
             float sa_sample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
             float mip_level = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
 
-            Lo += textureLod(u_cubemap, L, mip_level).rgb * ndotl;
+            Lo += textureLod(samplerCube(u_cubemap, u_samplers[SAMPLER_LINEAR_CLAMP]), L, mip_level).rgb * ndotl;
             weight += ndotl;
         }
     }

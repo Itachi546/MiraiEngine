@@ -4,10 +4,11 @@
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform samplerCube u_cubemap;
+layout(set = 0, binding = 0) uniform textureCube u_cubemap;
 layout(set = 0, binding = 1, rgba16f) uniform imageCube u_irradiance_map;
 
-#include "utils/cubemap.glsl"
+#include "../utils/cubemap.glsl"
+#include "../utils/bindless-sampler.glsl"
 
 layout(push_constant) uniform PushConstants {
     vec2 irradiance_map_dims;
@@ -38,7 +39,7 @@ vec3 convolute(vec3 direction) {
         for (float theta = 0.0f; theta < PIH; theta += dT) {
             vec3 temp_vec = cos(phi) * right + sin(phi) * up;
             vec3 sample_dir = cos(theta) * normal + sin(theta) * temp_vec;
-            irradiance += texture(u_cubemap, sample_dir).rgb * cos(theta) * sin(theta);
+            irradiance += texture(samplerCube(u_cubemap, u_samplers[SAMPLER_LINEAR_CLAMP]), sample_dir).rgb * cos(theta) * sin(theta);
             sample_count++;
         }
     }
@@ -80,7 +81,7 @@ vec3 convolute_importance_sample(vec3 direction, uvec2 uv) {
         float sin_theta = sin(theta);
         vec3 sphere_coord = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
         vec3 sample_dir = sphere_coord.x * tangent + sphere_coord.y * bitangent + sphere_coord.z * normal;
-        I += texture(u_cubemap, normalize(sample_dir)).rgb;
+        I += texture(samplerCube(u_cubemap, u_samplers[SAMPLER_LINEAR_CLAMP]), normalize(sample_dir)).rgb;
     }
     return I / float(sample_count);
 }

@@ -62,7 +62,7 @@ namespace mirai {
                 FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
                 DeferredOverlay3DPassBindings *bindings = nullptr;
                 if (!board->has<DeferredOverlay3DPassBindings>()) {
-                    DescriptorInfo descriptor_info = {.type = DescriptorType::SampledImage, .resource = env_map->get_cubemap(), .image_info = {0, 1, 0, 6}};
+                    DescriptorInfo descriptor_info = {.type = DescriptorType::SampledImage, .resource = env_map->get_cubemap(), .image_info = {0, ~0u, 0, ~0u}};
                     DescriptorOffset descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), &descriptor_info, 1);
                     bindings = &board->add<DeferredOverlay3DPassBindings>(DeferredOverlay3DPassBindings{
                         .descriptor = descriptor_offset,
