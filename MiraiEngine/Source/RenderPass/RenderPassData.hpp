@@ -44,4 +44,9 @@ namespace mirai {
         FrameGraphResourceHandle output;
         ShaderRegistry *registry;
     };
+
+    struct DeferredOverlay3DPassData {
+        FrameGraphResourceHandle output;
+        std::shared_ptr<ShaderMaterial> skybox_shader;
+    };
 } // namespace mirai

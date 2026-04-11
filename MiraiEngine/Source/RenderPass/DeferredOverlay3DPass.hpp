@@ -2,10 +2,10 @@ namespace mirai {
     class FrameGraph;
     class FrameGraphBlackBoard;
 
-    class Overlay3DPass {
+    class DeferredOverlay3DPass {
       public:
-        Overlay3DPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
-        ~Overlay3DPass() = default;
+        DeferredOverlay3DPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
+        ~DeferredOverlay3DPass() = default;
     };
 } // namespace mirai
 

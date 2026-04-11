@@ -183,7 +183,7 @@ namespace mirai {
             render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset_bytes, object.first_index, object.index_count, 0.0f, object.vertex_stride);
         }
     }
-   
+
     void DrawBatchIndirect(CommandBuffer *command_buffer, const MeshBatch *batch) {
         command_buffer->set_index_buffer(batch->index_buffer);
         uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
@@ -210,9 +210,9 @@ namespace mirai {
 
         uint32_t descriptor_push_index_offset = 0;
         // We have only one push constant, so we can ignore the offset which should be always zero
-        if (batch_info.push_constants != nullptr) {
-            command_buffer->set_push_data(batch_info.push_constants->offset, batch_info.push_constants->data, batch_info.push_constants->size);
-            descriptor_push_index_offset = batch_info.push_constants->size;
+        if (batch_info.push_data != nullptr) {
+            command_buffer->set_push_data(batch_info.push_data->offset, batch_info.push_data->data, batch_info.push_data->size);
+            descriptor_push_index_offset = batch_info.push_data->size;
         }
 
         Renderer *renderer = Renderer::get();
@@ -222,8 +222,8 @@ namespace mirai {
                 continue;
             // We are copying data, yes
             mesh_data_descriptor_info.resource = mesh_batch.draw_data_buffer_view.buffer;
-            mesh_data_descriptor_info.offset = mesh_batch.draw_data_buffer_view.offset;
-            mesh_data_descriptor_info.size = mesh_batch.draw_data_buffer_view.size;
+            mesh_data_descriptor_info.buffer_info.offset = mesh_batch.draw_data_buffer_view.offset;
+            mesh_data_descriptor_info.buffer_info.size = mesh_batch.draw_data_buffer_view.size;
 
             std::vector<DescriptorOffset> descriptors = batch_info.descriptor_infos;
             descriptors[batch_info.draw_data_descriptor_index] = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &mesh_data_descriptor_info, 1);

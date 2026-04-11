@@ -213,22 +213,17 @@ namespace mirai {
             {
                 .type = DescriptorType::StorageBuffer,
                 .resource = global_transform_buffer,
-                .offset = 0,
-                .size = UINT64_MAX,
+                .buffer_info = {0, UINT64_MAX},
             },
             {
                 .type = DescriptorType::StorageBuffer,
                 .resource = global_material_buffer,
-                .offset = 0,
-                .size = UINT64_MAX,
-
+                .buffer_info = {0, UINT64_MAX},
             },
             {
                 .type = DescriptorType::StorageBuffer,
                 .resource = vertex_buffer_allocator.buffer,
-                .offset = 0,
-                .size = UINT64_MAX,
-
+                .buffer_info = {0, UINT64_MAX},
             },
         };
         transform_descriptor = resource_heap.push_descriptors(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
@@ -363,8 +358,7 @@ namespace mirai {
         DescriptorInfo descriptor_info = {
             .type = DescriptorType::UniformBuffer,
             .resource = per_frame_staging_buffer,
-            .offset = per_frame_data_offset,
-            .size = per_frame_data_size,
+            .buffer_info = {per_frame_data_offset, per_frame_data_size},
         };
         per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
@@ -374,8 +368,8 @@ namespace mirai {
             uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
             uint8_t *cascade_buffer_ptr = per_frame_staging_buffer_ptr + cascade_data_offset;
             std::memcpy(cascade_buffer_ptr, &shadow_system->cascade_info, cascade_data_size);
-            descriptor_info.offset = cascade_data_offset;
-            descriptor_info.size = cascade_data_size;
+            descriptor_info.buffer_info.offset = cascade_data_offset;
+            descriptor_info.buffer_info.size = cascade_data_size;
             cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
         } else {
             cascade_data_descriptor = K_INVALID_ID;
@@ -396,6 +390,7 @@ namespace mirai {
         DescriptorInfo descriptor_info = {
             .type = DescriptorType::SampledImage,
             .resource = texture,
+            .image_info = {0, UINT32_MAX, 0, UINT32_MAX},
         };
 
         resource_heap.push_descriptor_at_index(device.get(), &descriptor_info, 1, texture.id);

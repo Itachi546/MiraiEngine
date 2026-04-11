@@ -95,8 +95,8 @@ namespace mirai {
         ComputeShader cubemap_shader{"hdri-cubemap", "SPIRV/hdri-to-cubemap.comp.spv"};
 
         DescriptorInfo descriptor_infos[] = {
-            {.type = DescriptorType::SampledImage, .resource = hdri_texture},
-            {.type = DescriptorType::StorageImage, .resource = cubemap_texture},
+            {.type = DescriptorType::SampledImage, .resource = hdri_texture, .image_info = {0, ~0u, 0, ~0u}},
+            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, 1, 0, 6}},
         };
 
         Renderer *renderer = Renderer::get();
@@ -128,17 +128,21 @@ namespace mirai {
         initialize_textures();
 
         DescriptorInfo descriptor_infos[] = {
-            {.type = DescriptorType::StorageImage, .resource = cubemap_texture},
+            {.type = DescriptorType::StorageImage, .resource = cubemap_texture, .image_info = {0, 1, 0, 6}},
         };
         Renderer *renderer = Renderer::get();
         DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
 
         RenderingDevice *device = RenderingDevice::get();
-        ComputeShader generate_cubemap_shader{"generate-cubemap", "SPIRV/procedural_sky.comp.spv"};
+        ComputeShader generate_cubemap_shader{"generate-cubemap", "SPIRV/procedural-sky.comp.spv"};
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         command_buffer->begin_gpu_debug_label("ProceduralSky");
+
+        command_buffer->bind_resource_heap(renderer->resource_heap.buffer);
+        command_buffer->bind_sampler_heap(renderer->sampler_heap.buffer);
         generate_cubemap(command_buffer, &generate_cubemap_shader, &descriptor_index, 1);
+
         command_buffer->end_gpu_debug_label();
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
@@ -183,14 +187,7 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
 
         uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
-        float push_constant_data[] = {cast_float(cubemap_size), cast_float(cubemap_size), 0.0f, 0.0f};
-
-        PushConstant push_constant = {
-            .data = push_constant_data,
-            .offset = 0,
-            .size = sizeof(uint32_t) * 4,
-            .shader_stage = SHADER_STAGE_COMPUTE,
-        };
+        float push_data[] = {cast_float(cubemap_size), cast_float(cubemap_size), 0.0f, 0.0f};
 
         TextureBarrierInfo barrier_info = {
             .texture_id = cubemap_texture,
@@ -203,8 +200,9 @@ namespace mirai {
 
         cubemap_shader->bind(command_buffer);
 
-        command_buffer->set_push_data(0, &push_constant, sizeof(push_constant));
-        command_buffer->set_push_data(push_constant.size, descriptors, descriptor_count * sizeof(uint32_t));
+        uint32_t push_data_size = sizeof(float) * 4;
+        command_buffer->set_push_data(0, push_data, push_data_size);
+        command_buffer->set_push_data(push_data_size, descriptors, descriptor_count * sizeof(uint32_t));
 
         uint32_t work_size_x = rendering_utils::get_workgroup_size(cubemap_size, 32);
         uint32_t work_size_y = rendering_utils::get_workgroup_size(cubemap_size, 32);

@@ -563,8 +563,10 @@ namespace mirai {
                     .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
                     .subresourceRange = {
                         .aspectMask = texture->image_aspect,
-                        .levelCount = texture->mip_levels,
-                        .layerCount = texture->array_layers,
+                        .baseMipLevel = descriptor_info->image_info.base_mip_level,
+                        .levelCount = descriptor_info->image_info.mip_level_count,
+                        .baseArrayLayer = descriptor_info->image_info.array_layer,
+                        .layerCount = descriptor_info->image_info.array_layer_count,
                     },
                 });
 
@@ -583,8 +585,8 @@ namespace mirai {
             case DescriptorType::StorageBuffer: {
                 VulkanBuffer *buffer = resource_pool_buffers.access(descriptor_info->resource);
                 VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
-                address_range.address = buffer->device_address + descriptor_info->offset;
-                address_range.size = std::min(descriptor_info->size, size_t(buffer->size));
+                address_range.address = buffer->device_address + descriptor_info->buffer_info.offset;
+                address_range.size = std::min(descriptor_info->buffer_info.size, size_t(buffer->size));
 
                 descriptor_resource_infos[i].type = descriptor_info->type == DescriptorType::StorageBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 descriptor_resource_infos[i].data.pAddressRange = &address_range;

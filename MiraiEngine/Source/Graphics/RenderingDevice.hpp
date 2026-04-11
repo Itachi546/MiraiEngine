@@ -494,11 +494,23 @@ namespace mirai {
         DescriptorType type;
         ID resource;
 
-        // Only used for buffer
-        size_t offset;
-        // If the size specified is greater than the actual size of buffer, the sized is clamped to buffer size
-        // We can specify the whole region of buffer by using large value like UINT64_MAX
-        size_t size;
+        union {
+            struct {
+                // Only used for buffer
+                size_t offset;
+                // If the size specified is greater than the actual size of buffer, the sized is clamped to buffer size
+                // We can specify the whole region of buffer by using large value like UINT64_MAX
+                size_t size;
+            } buffer_info;
+
+            struct {
+                uint32_t base_mip_level;
+                uint32_t mip_level_count;
+
+                uint32_t array_layer;
+                uint32_t array_layer_count;
+            } image_info;
+        };
     };
 
     using DescriptorOffset = uint32_t;
@@ -515,14 +527,6 @@ namespace mirai {
         uint32_t height;
         uint32_t mip_level;
         uint32_t array_layer;
-    };
-
-    struct PushConstant {
-        void *data;
-        uint32_t offset;
-        uint32_t size;
-        // ShaderStage
-        uint32_t shader_stage;
     };
 
     struct DrawIndexedIndirectCommand {

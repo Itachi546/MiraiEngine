@@ -40,6 +40,7 @@ class TestApplication : public App {
         scene = renderer->get_scene();
 
         std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/the_sky_is_on_fire_2k.hdr");
+        // std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>();
         scene->set_environment_map(env_map);
 
         Camera *camera = scene->get_camera();

@@ -11,6 +11,12 @@ namespace mirai {
     class CommandBuffer;
     struct FrustumPlanes;
 
+    struct PushData {
+        void *data;
+        uint32_t offset;
+        uint32_t size;
+    };
+
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 1,
         RENDERBATCH_TYPE_ALPHA_MASK = 2,
@@ -112,7 +118,7 @@ namespace mirai {
     struct BatchDrawInfo {
         Shader *shader;
         std::vector<DescriptorOffset> descriptor_infos;
-        PushConstant *push_constants;
+        PushData *push_data;
         uint32_t draw_data_descriptor_index;
     };
 

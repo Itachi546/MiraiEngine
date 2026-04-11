@@ -148,8 +148,16 @@ namespace mirai {
                 HBAOBindings *bindings = nullptr;
                 if (!board->has<HBAOBindings>()) {
                     DescriptorInfo descriptor_infos[] = {
-                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
+                        {
+                            .type = DescriptorType::StorageImage,
+                            .resource = pass_resource.get<FrameGraphTexture>(data.output).id,
+                            .image_info = {0, 1, 0, 1},
+                        },
+                        {
+                            .type = DescriptorType::SampledImage,
+                            .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id,
+                            .image_info = {0, 1, 0, 1},
+                        },
                     };
                     DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
                     bindings = &board->add<HBAOBindings>(HBAOBindings{
@@ -240,9 +248,9 @@ namespace mirai {
                 if (!board->has<SSAOBlurBindings>()) {
                     // We initialize bindings for both direction in same pass
                     DescriptorInfo descriptor_infos[] = {
-                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.depth_texture).id},
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id},
+                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id, .image_info = {0, 1, 0, 1}},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.depth_texture).id, .image_info = {0, 1, 0, 1}},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, .image_info = {0, 1, 0, 1}},
                     };
                     DescriptorOffset hblur_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
 

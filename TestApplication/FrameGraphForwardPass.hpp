@@ -12,9 +12,11 @@ using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     DepthPrePass depth_prepass{frame_graph, board};
+    DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
     // SSAOPass ssao_pass{frame_graph, board};
-    CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
+    // CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
 
+    /*
     struct CopyTexturePassData {
         FrameGraphResourceHandle ssao_texture;
         FrameGraphResourceHandle output;
@@ -24,7 +26,6 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     struct CopyTexturePassBindings {
         uint32_t descriptors[2];
     };
-    /*
     // Copy Texture Pass
     frame_graph->add_callback_pass<CopyTexturePassData>(
         "CopyTexturePass",
@@ -104,6 +105,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
     */
+    /*
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
@@ -197,6 +199,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             uint32_t work_group_y = rendering_utils::get_workgroup_size(push_constant_data.height, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
+    */
 
     // ImGui Pass
     struct ImGuiPassData {
@@ -205,7 +208,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
-            const LinearizeDepthPassData &input_pass = board->get<LinearizeDepthPassData>();
+            const DeferredOverlay3DPassData &input_pass = board->get<DeferredOverlay3DPassData>();
             data.output = input_pass.output;
 
             builder.write(data.output, {

@@ -173,8 +173,8 @@ namespace mirai {
 
     class CommandBuffer;
     struct ShaderMaterial : public Material {
-
-        ShaderMaterial(const std::string &name);
+        ShaderMaterial(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_infos);
+        void bind(CommandBuffer *command_buffer);
         ~ShaderMaterial();
 
         std::shared_ptr<Shader> shader;

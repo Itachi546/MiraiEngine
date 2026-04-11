@@ -19,7 +19,13 @@ namespace mirai {
         on_change_material();
     }
 
-    ShaderMaterial::ShaderMaterial(const std::string& name) : Material(name) {
+    ShaderMaterial::ShaderMaterial(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_infos) : Material(name) {
+        shader = Shader::create_from_file(name, shader_files, pipeline_state, attachment_infos);
+        ASSERT(shader != nullptr);
+    }
+
+    void ShaderMaterial::bind(CommandBuffer *command_buffer) {
+        command_buffer->bind_pipeline(shader->pipeline_id);
     }
 
     ShaderMaterial::~ShaderMaterial() {
@@ -27,8 +33,9 @@ namespace mirai {
             RenderingDevice::get()->destroy_pipelines(&shader->pipeline_id, 1);
     }
 
-    ComputeShader::ComputeShader(const std::string& name, const std::string &shader_file) {
+    ComputeShader::ComputeShader(const std::string &name, const std::string &shader_file) {
         shader = Shader::create_from_file(name, shader_file);
+        ASSERT(shader != nullptr);
     }
 
     void ComputeShader::bind(CommandBuffer *command_buffer) {

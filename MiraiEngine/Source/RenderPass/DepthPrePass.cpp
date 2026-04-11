@@ -80,7 +80,7 @@ namespace mirai {
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
                                                          .descriptor_infos = descriptor_infos,
-                                                         .push_constants = nullptr,
+                                                         .push_data = nullptr,
                                                          // Used to override descriptor info at given index
                                                          .draw_data_descriptor_index = 3,
                                                      });
@@ -94,7 +94,7 @@ namespace mirai {
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
                                                          .descriptor_infos = descriptor_infos,
-                                                         .push_constants = nullptr,
+                                                         .push_data = nullptr,
                                                          .draw_data_descriptor_index = 3,
                                                      });
                 }

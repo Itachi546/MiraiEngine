@@ -52,11 +52,10 @@ namespace mirai {
                 command_buffer->prepare_resources(resource_states);
 
                 uint32_t push_constant_data[] = {0, 0, 0, 0};
-                PushConstant push_constants = {
+                PushData push_constants = {
                     .data = &push_constant_data,
                     .offset = 0,
                     .size = sizeof(uint32_t) * 4,
-                    .shader_stage = SHADER_STAGE_VERTEX,
                 };
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
@@ -137,7 +136,7 @@ namespace mirai {
                             DrawBatch(command_buffer, batch, {
                                                                  .shader = opaque_shader,
                                                                  .descriptor_infos = descriptors,
-                                                                 .push_constants = &push_constants,
+                                                                 .push_data = &push_constants,
                                                                  .draw_data_descriptor_index = 2,
                                                              });
                         }
