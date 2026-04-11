@@ -126,6 +126,18 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
     }
 }
 
+void add_light_component_ui(LightComponent *light, Entity entity) {
+    if (!light)
+        return;
+    if (ImGui::CollapsingHeader("Directional Light")) {
+        ImGui::PushID(entity);
+        ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+        ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
+        ImGui::ColorPicker3("Color", &light->color[0]);
+        ImGui::PopID();
+    }
+}
+
 void add_entity_ui(std::unique_ptr<ComponentManager> &comp_manager, Entity entity, Scene *scene) {
     auto name_component = comp_manager->get_component<NameComponent>(entity);
     std::string name = "unnamed" + std::to_string(entity);
@@ -275,6 +287,7 @@ void add_entity_components(Entity entity, Scene *scene) {
     add_transform_component(comp_manager->get_component<TransformComponent>(entity), entity);
     add_material_component_ui(comp_manager->get_component<MeshComponent>(entity), scene, entity);
     add_animator_component(comp_manager->get_component<AnimatorComponent>(entity), scene, entity);
+    add_light_component_ui(comp_manager->get_component<LightComponent>(entity), entity);
 }
 
 void add_entity_inspector_ui(Scene *scene) {

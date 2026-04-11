@@ -102,8 +102,8 @@ namespace mirai {
 
         update_light_data(directional_light);
 
-        per_frame_data.width = cast_float(width);
-        per_frame_data.height = cast_float(height);
+        per_frame_data.width = AppSettings::default_window_width * AppSettings::resolution_scale;
+        per_frame_data.height = AppSettings::default_window_height * AppSettings::resolution_scale;
         if (env_map) {
             per_frame_data.irradiance_map = env_map->get_irradiance_map().id;
             per_frame_data.prefilter_map = env_map->get_prefilter_map().id;
