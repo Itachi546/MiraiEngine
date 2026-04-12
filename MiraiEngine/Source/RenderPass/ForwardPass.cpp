@@ -34,8 +34,8 @@ namespace mirai {
                                                                          .mip_levels = 1,
                                                                          .array_layers = 1,
                                                                          .texture_type = TEXTURE_TYPE_2D,
-                                                                         .format = FORMAT_B8G8R8A8_UNORM,
-                                                                         .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+                                                                         .format = FORMAT_R16G16B16A16_SFLOAT,
+                                                                         .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
                                                                      });
                 builder.write(data.output, {
                                                .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
@@ -76,7 +76,7 @@ namespace mirai {
                                                                           .depth_test = true,
                                                                       },
                                                                       PipelineAttachmentInfo{
-                                                                          .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                                                          .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT},
                                                                           .has_depth_attachment = true,
                                                                           .depth_attachment_format = FORMAT_D32_SFLOAT,
                                                                       });

@@ -43,6 +43,7 @@ namespace mirai {
             .split_percentage = 0.0f,
             .debug_param_index = 0,
             .show_debug_cascade_color = false,
+            .enable_gamma_correction = true,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
@@ -165,8 +166,8 @@ namespace mirai {
         if (mesh_infos.size() > 0)
             device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
 
-        if (device->supports_raytracing())
-            AppSettings::enable_rt_shadow = true;
+        // if (device->supports_raytracing())
+        //    AppSettings::enable_rt_shadow = true;
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();

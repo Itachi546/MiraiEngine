@@ -14,6 +14,11 @@ namespace mirai {
         Entity sun = scene->get_default_directional_light();
         Camera *camera = scene->get_camera();
 
+        LightComponent *light_component = scene->ecs->component_manager->get_component<LightComponent>(sun);
+        dir_light_params.enabled = light_component->cast_shadow;
+        if (!light_component->cast_shadow)
+            return;
+
         TransformComponent *light_transform = scene->ecs->component_manager->get_component<TransformComponent>(sun);
         glm::vec3 light_direction = quat_to_direction(light_transform->rotation);
 
@@ -64,8 +69,7 @@ namespace mirai {
 
     void ShadowSystem::update(Scene *scene) {
         ScopedCpuProfiling("CSM Update");
-        if (dir_light_params.enabled)
-            update_directional_cascade(scene);
+        update_directional_cascade(scene);
     }
 
     void ShadowSystem::calculate_split_distances(float znear, float zfar) {

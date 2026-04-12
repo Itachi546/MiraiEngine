@@ -11,6 +11,7 @@
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
 #include "FrameGraphForwardPass.hpp"
+#include "Scene/ShadowSystem.hpp"
 
 // #include "ImGuiService.hpp"
 
@@ -187,6 +188,7 @@ class TestApplication : public App {
             static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Show shadow cascade", &debug_data.show_debug_cascade_color);
+            ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
         }
     }
     /*
@@ -218,6 +220,7 @@ class TestApplication : public App {
     */
     void add_pass_ui() {
         if (ImGui::CollapsingHeader("Passes")) {
+            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
             /*
                 DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
                 if (deferred_pass != nullptr && ImGui::TreeNodeEx("Deferred Pass")) {
@@ -252,38 +255,42 @@ class TestApplication : public App {
                     ImGui::Combo("Target", &forward_pass->debug_texture, options);
                     ImGui::TreePop();
                 }
-
-                bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
-                if (ImGui::TreeNodeEx("Shadow Pass")) {
-                    if (supports_raytracing) {
-                        ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
-                        if (AppSettings::enable_rt_shadow) {
-                            FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
-                            add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
-                            show_popup();
-                        }
-                    }
-                    if (!AppSettings::enable_rt_shadow) {
-                        auto *cascaded_shadow_pass = (CascadedShadowPass *)frame_graph->get_renderer("directional_shadow_pass");
-                        ImGui::Text("Shadow Map Size: %d", cascaded_shadow_pass->shadow_map_size);
-                        ImGui::Checkbox("Split Distance Automatic", &cascaded_shadow_pass->calculate_distance_automatic);
-                        if (cascaded_shadow_pass->calculate_distance_automatic) {
-                            ImGui::DragFloat("Shadow Distance", &cascaded_shadow_pass->shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
-                            ImGui::DragFloat("Split Lambda", &cascaded_shadow_pass->split_lamda, 0.001f, 0.0f, 1.0f);
-                        } else {
-                            for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
-                                std::string cascadeName = "Cascade" + std::to_string(i);
-                                ImGui::DragFloat(cascadeName.c_str(), &cascaded_shadow_pass->split_distances_constants[i], 1.0f, 0.0f);
-                            }
-                        }
-                        FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
-                        add_rendertarget_texture_debug_ui("csm_shadow", resource);
+            */
+            bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
+            if (ImGui::TreeNodeEx("Shadow Pass")) {
+                ShadowSystem *shadow_system = ShadowSystem::get();
+                if (supports_raytracing) {
+                    /*
+                    ImGui::Checkbox("Ray Traced Shadow", &AppSettings::enable_rt_shadow);
+                    if (AppSettings::enable_rt_shadow) {
+                        FrameGraphResource *resource = frame_graph->get_resource("rt_directional_shadow_map");
+                        add_rendertarget_texture_debug_ui("rt_shadow_pass", resource);
                         show_popup();
                     }
-                    ImGui::TreePop();
+                    */
                 }
-                */
-            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+                if (!AppSettings::enable_rt_shadow) {
+                    DirectionLightShadowParams &shadow_params = shadow_system->dir_light_params;
+                    ImGui::Text("Shadow Atlas Size: %d", shadow_params.atlas_size);
+                    ImGui::Text("Shadow Map Size: %d", shadow_params.split_size);
+
+                    ImGui::Checkbox("Split Distance Automatic", &shadow_params.calculate_distance_automatic);
+                    if (shadow_params.calculate_distance_automatic) {
+                        ImGui::DragFloat("Shadow Distance", &shadow_params.shadow_distance, 1.0f, 0.0f, scene->get_camera()->get_far_plane());
+                        ImGui::DragFloat("Split Lambda", &shadow_params.split_lambda, 0.001f, 0.0f, 1.0f);
+                    } else {
+                        for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
+                            std::string cascadeName = "Cascade" + std::to_string(i);
+                            ImGui::DragFloat(cascadeName.c_str(), &shadow_params.split_distances[i], 1.0f, 0.0f);
+                        }
+                    }
+                    // FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
+                    //  add_rendertarget_texture_debug_ui("csm_shadow", resource);
+                    // show_popup();
+                }
+                ImGui::TreePop();
+            }
+
             if (board->has<SSAOPassData>()) {
                 if (ImGui::TreeNodeEx("SSAO Pass")) {
                     HBAOParams &ssao_pass = board->get<HBAOParams>();

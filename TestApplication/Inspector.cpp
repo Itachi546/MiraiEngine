@@ -195,8 +195,15 @@ void add_transform_component(TransformComponent *transform_component, Entity ent
         bool changed = ImGui::DragFloat3("position", &transform_component->position[0]);
 
         glm::vec3 rotation = glm::degrees(glm::eulerAngles(transform_component->rotation));
-        if (ImGui::DragFloat3("rotation", &rotation[0], 1.0f, 0.0f, 360.0f)) {
-            transform_component->rotation = glm::normalize(glm::fquat(glm::radians(rotation)));
+        for (int i = 0; i < 3; i++) {
+            if (rotation[i] < -180.0f)
+                rotation[i] += 360.0f;
+            if (rotation[i] > 180.0f)
+                rotation[i] -= 360.0f;
+        }
+
+        if (ImGui::DragFloat3("rotation", &rotation[0], 1.0f, -180.0f, 180.0f)) {
+            transform_component->rotation = glm::fquat(glm::radians(rotation));
             changed |= true;
         }
         changed |= ImGui::DragFloat3("scale", &transform_component->scale[0]);

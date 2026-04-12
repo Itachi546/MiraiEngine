@@ -85,6 +85,7 @@ namespace mirai {
                                    .depth_attachment_format = FORMAT_D32_SFLOAT,
                                });
         if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
+            Format color_format = FORMAT_R16G16B16A16_SFLOAT;
             create_shader_material("forward-pass", PASS_MODE_FORWARD,
                                    {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
                                    {
@@ -94,7 +95,7 @@ namespace mirai {
                                        .depth_write = true,
                                    },
                                    {
-                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .color_attachments_format = {color_format},
                                        .has_depth_attachment = true,
                                        .depth_attachment_format = FORMAT_D32_SFLOAT,
                                    });
@@ -108,7 +109,7 @@ namespace mirai {
                                        .depth_write = true,
                                    },
                                    {
-                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .color_attachments_format = {color_format},
                                        .has_depth_attachment = true,
                                        .depth_attachment_format = FORMAT_D32_SFLOAT,
                                    });
@@ -123,7 +124,7 @@ namespace mirai {
                                        .depth_write = true,
                                    },
                                    {
-                                       .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                       .color_attachments_format = {color_format},
                                        .has_depth_attachment = true,
                                        .depth_attachment_format = FORMAT_D32_SFLOAT,
                                    });

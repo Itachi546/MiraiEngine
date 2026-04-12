@@ -8,6 +8,8 @@ namespace mirai {
 
     struct FinalCompositePassData {
         FrameGraphResourceHandle output;
+        FrameGraphResourceHandle input;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct DepthPrePassData {
@@ -53,6 +55,7 @@ namespace mirai {
         float split_percentage;
         int debug_param_index;
         bool show_debug_cascade_color;
+        bool enable_gamma_correction;
     };
 
     struct DeferredOverlay3DPassData {

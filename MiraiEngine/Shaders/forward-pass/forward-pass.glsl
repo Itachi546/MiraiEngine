@@ -132,7 +132,7 @@ void main() {
     } else {
         Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
     }
-    Lo = linear_to_srgb(ACESFilm(Lo));
+
     fragColor = vec4(Lo, 1.0f);
 }
 

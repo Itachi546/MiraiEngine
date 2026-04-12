@@ -198,7 +198,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::FrameGraphBuilder &builder, ImGuiPassData &data) {
-            const ForwardPassData &input_pass = board->get<ForwardPassData>();
+            const FinalCompositePassData &input_pass = board->get<FinalCompositePassData>();
             data.output = input_pass.output;
 
             builder.write(data.output, {
