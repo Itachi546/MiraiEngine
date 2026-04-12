@@ -890,27 +890,28 @@ namespace mirai {
         VK_CHECK(vmaCreateImage(vma_allocator, &create_info, &allocation_create_info, &texture->image, &texture->allocation, &allocation_info));
         set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE, (uint64_t)texture->image, debug_name.c_str());
         total_memory_usage += texture->allocation->GetSize();
+        if ((usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) || (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+            VkImageViewCreateInfo imageViewCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = texture->image,
+                .viewType = image_view_type,
+                .format = texture->format,
+                .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
+                .subresourceRange = {
+                    .aspectMask = texture->image_aspect,
+                    .levelCount = texture->mip_levels,
+                    .layerCount = texture->array_layers,
+                },
+            };
 
-        VkImageViewCreateInfo imageViewCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = texture->image,
-            .viewType = image_view_type,
-            .format = texture->format,
-            .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
-            .subresourceRange = {
-                .aspectMask = texture->image_aspect,
-                .levelCount = texture->mip_levels,
-                .layerCount = texture->array_layers,
-            },
-        };
-
-        uint32_t image_view_count = (texture_description->create_flags & TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP) > 0 ? texture->mip_levels : 1;
-        texture->image_views.resize(image_view_count);
-        for (uint32_t i = 0; i < image_view_count; ++i) {
-            imageViewCreateInfo.subresourceRange.baseMipLevel = i;
-            imageViewCreateInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-            VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_views[i]));
-            set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_views[i], (debug_name + "_image_view" + std::to_string(i)).c_str());
+            uint32_t image_view_count = (texture_description->create_flags & TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP) > 0 ? texture->mip_levels : 1;
+            texture->image_views.resize(image_view_count);
+            for (uint32_t i = 0; i < image_view_count; ++i) {
+                imageViewCreateInfo.subresourceRange.baseMipLevel = i;
+                imageViewCreateInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+                VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &texture->image_views[i]));
+                set_debug_marker_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)texture->image_views[i], (debug_name + "_image_view" + std::to_string(i)).c_str());
+            }
         }
         return TextureID{textureID};
     }
