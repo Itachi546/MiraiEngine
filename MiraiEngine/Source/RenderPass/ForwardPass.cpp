@@ -7,12 +7,14 @@
 #include "RenderPassData.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/Profiler.hpp"
-
+#include "Scene/EnvironmentMap.hpp"
+#include "Scene/Camera.hpp"
 namespace mirai {
 
     struct ForwardPassBindings {
         DescriptorOffset ssao_binding;
         DescriptorOffset csm_binding;
+        DescriptorOffset cubemap_binding;
     };
 
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
@@ -66,6 +68,19 @@ namespace mirai {
                 data.csm_texture = csm_data.output;
 
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_FORWARD);
+
+                data.skybox_shader = std::make_shared<ShaderMaterial>("OverlaySkyboxShader",
+                                                                      std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"},
+                                                                      PipelineState{
+                                                                          .cull_mode = CULL_MODE_NONE,
+                                                                          .depth_test = true,
+                                                                      },
+                                                                      PipelineAttachmentInfo{
+                                                                          .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                                                          .has_depth_attachment = true,
+                                                                          .depth_attachment_format = FORMAT_D32_SFLOAT,
+                                                                      });
+
                 board->add<ForwardPassData>(data);
             },
 
@@ -85,7 +100,10 @@ namespace mirai {
 
                 ForwardPassBindings *bindings = nullptr;
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                Scene *scene = renderer->get_scene();
+
                 if (!board->has<ForwardPassBindings>()) {
+                    EnvironmentMap *env_map = scene->get_environment_map();
                     DescriptorInfo descriptor_infos[] = {
                         {
                             .type = DescriptorType::SampledImage,
@@ -97,11 +115,16 @@ namespace mirai {
                             .resource = pass_resource.get<FrameGraphTexture>(data.csm_texture).id,
                             .image_info = {0, ~0u, 0, ~0u},
                         },
-                    };
+                        {
+                            .type = DescriptorType::SampledImage,
+                            .resource = env_map->get_cubemap(),
+                            .image_info = {0, ~0u, 0, ~0u},
+                        }};
                     DescriptorOffset descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
                     bindings = &board->add<ForwardPassBindings>(ForwardPassBindings{
                         .ssao_binding = descriptor_offset,
                         .csm_binding = descriptor_offset + 1,
+                        .cubemap_binding = descriptor_offset + 2,
                     });
                 } else {
                     bindings = &board->get<ForwardPassBindings>();
@@ -151,9 +174,12 @@ namespace mirai {
                     renderer->cascade_data_descriptor,
                 };
 
+                const uint32_t depth_compare_bit_pos = 3;
+                const uint32_t depth_compare_mask = 7 << depth_compare_bit_pos;
                 const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
                 for (const auto &batch : opaque_batches) {
-                    Shader *shader = data.registry->find(batch.sort_key);
+                    uint32_t sort_key = (batch.sort_key & ~(depth_compare_mask)) | (COMPARE_OP_EQUAL << depth_compare_bit_pos);
+                    Shader *shader = data.registry->find(sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
@@ -164,7 +190,8 @@ namespace mirai {
                 }
                 const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
                 for (const auto &batch : alpha_mask_batches) {
-                    Shader *shader = data.registry->find(batch.sort_key);
+                    uint32_t sort_key = (batch.sort_key & ~(depth_compare_mask)) | (COMPARE_OP_EQUAL << depth_compare_bit_pos);
+                    Shader *shader = data.registry->find(sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
@@ -173,6 +200,18 @@ namespace mirai {
                                                          .draw_data_descriptor_index = 3,
                                                      });
                 }
+
+                // Draw Skybox
+                Camera *camera = scene->get_camera();
+                glm::mat4 skybox_push_data[] = {
+                    camera->get_inv_projection_transform(),
+                    camera->get_inv_view_transform(),
+                };
+
+                data.skybox_shader->bind(command_buffer);
+                command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
+                command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &bindings->cubemap_binding, cast_u32(sizeof(uint32_t)));
+                command_buffer->draw(3, 1, 0, 0);
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

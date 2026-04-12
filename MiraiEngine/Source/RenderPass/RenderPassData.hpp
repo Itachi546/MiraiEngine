@@ -46,6 +46,7 @@ namespace mirai {
         FrameGraphResourceHandle ssao_texture;
         FrameGraphResourceHandle csm_texture;
         ShaderRegistry *registry;
+        std::shared_ptr<ShaderMaterial> skybox_shader;
     };
 
     struct RenderDebugData {

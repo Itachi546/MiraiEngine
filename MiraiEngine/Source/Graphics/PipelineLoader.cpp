@@ -88,6 +88,7 @@ namespace mirai {
             create_shader_material("forward-pass", PASS_MODE_FORWARD,
                                    {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
                                    {
+                                       .depth_op = COMPARE_OP_EQUAL,
                                        .draw_mode = DRAWMODE_INDEXED_INDIRECT,
                                        .depth_test = true,
                                        .depth_write = true,
@@ -101,6 +102,7 @@ namespace mirai {
                                    {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
                                    {
                                        .cull_mode = CULL_MODE_NONE,
+                                       .depth_op = COMPARE_OP_EQUAL,
                                        .draw_mode = DRAWMODE_INDEXED_INDIRECT,
                                        .depth_test = true,
                                        .depth_write = true,
@@ -114,6 +116,7 @@ namespace mirai {
                                    {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass-alpha.frag.spv"},
                                    {
                                        .cull_mode = CULL_MODE_NONE,
+                                       .depth_op = COMPARE_OP_EQUAL,
                                        .draw_mode = DRAWMODE_INDEXED_INDIRECT,
                                        .alpha_mode = ALPHA_MODE_MASK,
                                        .depth_test = true,
