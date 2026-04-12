@@ -27,11 +27,11 @@ vec2 IntegrateBRDF(float ndotv, float roughness) {
     for (uint i = 0; i < SAMPLE_COUNT; ++i) {
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
         vec3 H = ImportanceSampleGGX(Xi, N, roughness);
-        vec3 L = normalize(2.0 * dot(V, H) * H - V);
+        vec3 L = 2.0 * dot(V, H) * H - V;
 
-        float ndotl = max(L.z, 0.0);
-        float ndoth = max(H.z, 0.0);
-        float vdoth = max(dot(V, H), 0.0);
+        float ndotl = clamp(L.z, 0.0, 1.0);
+        float ndoth = clamp(H.z, 0.0, 1.0);
+        float vdoth = clamp(dot(V, H), 0.0, 1.0);
 
         if (ndotl > 0.0) {
             float G = G_Smith(ndotv, ndotl, roughness);
@@ -43,13 +43,12 @@ vec2 IntegrateBRDF(float ndotv, float roughness) {
         }
     }
 
-    float inv_sample_count = 1.0f / float(SAMPLE_COUNT);
-    return brdf * inv_sample_count;
+    return brdf / float(SAMPLE_COUNT);
 }
 
 void main() {
     ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
     vec2 tex_coord = (vec2(uv.xy) + 0.5f) * inv_brdf_texture_size;
-    vec2 brdf = IntegrateBRDF(tex_coord.x, 1.0f - tex_coord.y);
+    vec2 brdf = IntegrateBRDF(tex_coord.x, tex_coord.y);
     imageStore(u_brdf_texture, uv.xy, vec4(brdf, 0.0f, 0.0f));
 }

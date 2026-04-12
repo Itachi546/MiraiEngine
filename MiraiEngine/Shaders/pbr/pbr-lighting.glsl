@@ -28,11 +28,11 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     vec3 ambient = (Kd * diffuse + specular) * pbr_params.ao;
     return ambient;
     */
-    float lod = pbr_params.roughness * MAX_REFLECTION_LOD;
-    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, 1.0f - pbr_params.roughness)).rg;
-
+    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, pbr_params.roughness)).rg;
     vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
-    vec3 specular_light = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
+
+    float lod = pbr_params.roughness * MAX_REFLECTION_LOD;
+    vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
     vec3 f0 = vec3(0.04f);
 
     vec3 diffuse_color = pbr_params.albedo.rgb * (vec3(1.0f) - f0);
@@ -41,7 +41,7 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
 
     vec3 specular_color = mix(f0, pbr_params.albedo.rgb, pbr_params.metallic);
 
-    vec3 specular = specular_light * (specular_color * brdf.x + brdf.y);
+    vec3 specular = prefilter_color * (specular_color * brdf.x + brdf.y);
 
     return (diffuse + specular) * IBL_CONTRIBUTION;
 }
