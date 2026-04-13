@@ -2,6 +2,7 @@
 
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
+#include "Scene/ShadowSystem.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
@@ -131,8 +132,14 @@ namespace mirai {
                 }
                 ASSERT(bindings != nullptr);
 
+                ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
-                float push_constants[] = {debug_data.split_percentage, cast_float(debug_data.debug_param_index), cast_float(debug_data.show_debug_cascade_color), 0.0f};
+                float push_constants[4] = {
+                    debug_data.split_percentage,
+                    cast_float(debug_data.debug_param_index),
+                    shadow_system->dir_light_params.pcf_radius,
+                    shadow_system->dir_light_params.pcf_sample_count,
+                };
                 PushData push_data = {
                     .data = push_constants,
                     .offset = 0,

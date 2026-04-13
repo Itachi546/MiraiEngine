@@ -185,9 +185,8 @@ class TestApplication : public App {
         if (ImGui::CollapsingHeader("Render Debug Options") && board->has<RenderDebugData>()) {
             RenderDebugData &debug_data = board->get<RenderDebugData>();
             ImGui::SliderFloat("Split Percentage", &debug_data.split_percentage, 0.0f, 1.0f);
-            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
+            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
-            ImGui::Checkbox("Show shadow cascade", &debug_data.show_debug_cascade_color);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
         }
     }
@@ -284,6 +283,9 @@ class TestApplication : public App {
                             ImGui::DragFloat(cascadeName.c_str(), &shadow_params.split_distances[i], 1.0f, 0.0f);
                         }
                     }
+
+                    ImGui::DragFloat("PCF Radius", &shadow_params.pcf_radius, 0.1f, 0.0f, 20.0f);
+                    ImGui::DragFloat("PCF Sample Count", &shadow_params.pcf_sample_count, 1.0f, 0.0f, 64.0f);
                     // FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
                     //  add_rendertarget_texture_debug_ui("csm_shadow", resource);
                     // show_popup();

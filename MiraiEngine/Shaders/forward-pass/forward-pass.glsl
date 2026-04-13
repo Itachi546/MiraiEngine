@@ -41,6 +41,8 @@ layout(set = 0, binding = 7) uniform CascadeInfoUniform {
 layout(push_constant) uniform PushConstants {
     float split_percentage;
     float debug_texture_index;
+    float pcf_radius;
+    float pcf_sample_count;
 };
 
 bool is_valid(uint texture) {
@@ -109,15 +111,18 @@ void main() {
     light.intensity = per_frame_data.light_intensity;
 
     float shadow_factor = 1.0f;
+    int cascade_index = 0;
     if (light.cast_shadow > 0.5) {
-        int cascade_index = 0;
-        shadow_factor = max(calculate_shadow_factor(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index), 0.0f);
+        shadow_factor = max(calculate_shadow_factor(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.0f);
     }
 
     // Debug Params
     vec3 Lo;
     if (split_percentage >= screen_uv.x) {
-        if (debug_texture_index > 4.5f)
+        if (debug_texture_index > 5.5) {
+            Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
+            Lo *= light.cast_shadow > 0.5 ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
+        } else if (debug_texture_index > 4.5f)
             Lo = vec3(shadow_factor);
         else if (debug_texture_index > 3.5f)
             Lo = vec3(pbr_params.ao);

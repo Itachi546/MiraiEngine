@@ -16,14 +16,18 @@ namespace mirai {
 
         bool calculate_distance_automatic;
         float split_distances[NUM_DIRLIGHT_CASCADE];
+        float pcf_sample_count;
+        float pcf_radius;
     };
 
     struct DirectionalLightCascadeInfo {
         glm::mat4 VP[NUM_DIRLIGHT_CASCADE];
         float split_distances[4];
+
         float z_range;
         float width;
         float height;
+        float _padding;
     };
 
     class ShadowSystem {
@@ -49,6 +53,8 @@ namespace mirai {
             .split_size = 1024,
             .calculate_distance_automatic = true,
             .split_distances = {5.0f, 15.0f, 40.0f, 100.0f},
+            .pcf_sample_count = 32.0f,
+            .pcf_radius = 4.0f,
         };
         DirectionalLightCascadeInfo cascade_info;
 
