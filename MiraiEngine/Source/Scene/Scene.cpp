@@ -58,7 +58,7 @@ namespace mirai {
         ecs->component_manager->add_component<HierarchyComponent>(root_entity, hierarchy_comp);
         entities.push_back(root_entity);
 
-        directional_light = create_directional_light("Sun", glm::quat(glm::radians(glm::vec3(110.0f, 336.0f, 0.0f))));
+        directional_light = create_directional_light("Sun", glm::quat(glm::radians(glm::vec3(89.0f, -24.0f, 26.0f))));
 
         per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
@@ -110,6 +110,7 @@ namespace mirai {
             per_frame_data.brdf_texture_map = env_map->get_brdf_texture().id;
         }
 
+        // if frustum is freezed then we don't regenerate render object list
         generate_render_object_list();
 
         if (updated_transforms.size() > 0)

@@ -123,6 +123,7 @@ namespace mirai {
         // @TODO Fix this
         scene->update();
         prev_frame_VP = scene->get_camera()->get_view_projection_transform();
+        last_frame_frustum = scene->get_camera()->get_frustum_planes();
 
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
@@ -250,7 +251,7 @@ namespace mirai {
         main_skinned_batches.clear();
 
         Camera *camera = scene->get_camera();
-        const FrustumPlanes &frustum_planes = camera->get_frustum_planes();
+        const FrustumPlanes &frustum_planes = freeze_frustum ? last_frame_frustum : camera->get_frustum_planes();
         std::vector<RenderBatch> batches;
         DrawBatchGenerator::CreateBatch(scene.get(), &frustum_planes, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
 
@@ -287,6 +288,8 @@ namespace mirai {
         std::for_each(std::execution::par_unseq, main_skinned_batches.begin(), main_skinned_batches.end(), [](RenderBatch &batch) {
             batch.sort();
         });
+
+        last_frame_frustum = frustum_planes;
     }
 
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {

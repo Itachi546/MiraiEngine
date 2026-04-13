@@ -8,7 +8,7 @@
 #include "Scene/RenderBatch.hpp"
 #include "Math/Math.hpp"
 #include "GPUResource.hpp"
-
+#include "Math/Frustum.hpp"
 namespace mirai {
     class CommandBuffer;
     class ShaderRegistryMap;
@@ -82,6 +82,9 @@ namespace mirai {
         glm::mat4 prev_frame_VP;
         glm::vec2 prev_frame_jitter;
         glm::vec2 current_frame_jitter;
+
+        bool freeze_frustum = false;
+        FrustumPlanes last_frame_frustum;
 
         int jitter_index = 0;
         int jitter_period = 4;

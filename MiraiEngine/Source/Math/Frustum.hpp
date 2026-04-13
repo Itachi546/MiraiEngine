@@ -1,3 +1,5 @@
+#ifndef FRUSTUM_HPP
+#define FRUSTUM_HPP
 #include "Math.hpp"
 
 namespace mirai {
@@ -40,3 +42,5 @@ namespace mirai {
         std::array<glm::vec3, 8> points;
     };
 } // namespace mirai
+
+#endif

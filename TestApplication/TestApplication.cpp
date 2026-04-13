@@ -132,6 +132,7 @@ class TestApplication : public App {
 
             ImGui::Checkbox("Vsync", &AppSettings::enable_vsync);
             ImGui::Checkbox("Pause Animation", &scene->pause_animation);
+            ImGui::Checkbox("Freeze frustum", &Renderer::get()->freeze_frustum);
             if (ImGui::DragFloat("Global Scene Scale", &global_scene_scale, 0.01f)) {
                 TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);
                 transform->scale = glm::vec3(global_scene_scale);
