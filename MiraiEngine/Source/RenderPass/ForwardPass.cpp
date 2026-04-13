@@ -7,6 +7,7 @@
 #include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "Graphics/LineRenderer.hpp"
 #include "Engine/Profiler.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Scene/Camera.hpp"
@@ -208,8 +209,12 @@ namespace mirai {
                                                      });
                 }
 
-                // Draw Skybox
                 Camera *camera = scene->get_camera();
+
+                // DebugDraw line
+                LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+
+                // Draw Skybox
                 glm::mat4 skybox_push_data[] = {
                     camera->get_inv_projection_transform(),
                     camera->get_inv_view_transform(),

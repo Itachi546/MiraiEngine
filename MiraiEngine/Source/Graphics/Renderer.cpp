@@ -17,6 +17,7 @@
 #include "PipelineLoader.hpp"
 #include "Common/Random.hpp"
 #include "RenderPass/TAAResolvePass.hpp"
+#include "LineRenderer.hpp"
 
 #include <cstring>
 #include <algorithm>
@@ -30,6 +31,7 @@ namespace mirai {
         device = std::make_unique<VulkanRenderingDevice>();
         scene = std::make_unique<Scene>("default");
         texture_cache = std::make_unique<TextureCache>();
+        line_renderer = std::make_unique<LineRenderer>();
         miProfiler::Initialize();
 
         // Preload shaders
@@ -122,8 +124,11 @@ namespace mirai {
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
         scene->update();
-        prev_frame_VP = scene->get_camera()->get_view_projection_transform();
-        last_frame_frustum = scene->get_camera()->get_frustum_planes();
+
+        Camera *camera = scene->get_camera();
+        prev_frame_VP = camera->get_view_projection_transform();
+        freezed_inv_VP = camera->get_inv_view_projection_transform();
+        freezed_frustum_planes = camera->get_frustum_planes();
 
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
@@ -251,7 +256,7 @@ namespace mirai {
         main_skinned_batches.clear();
 
         Camera *camera = scene->get_camera();
-        const FrustumPlanes &frustum_planes = freeze_frustum ? last_frame_frustum : camera->get_frustum_planes();
+        const FrustumPlanes &frustum_planes = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
         std::vector<RenderBatch> batches;
         DrawBatchGenerator::CreateBatch(scene.get(), &frustum_planes, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
 
@@ -289,7 +294,10 @@ namespace mirai {
             batch.sort();
         });
 
-        last_frame_frustum = frustum_planes;
+        if (!freeze_frustum) {
+            freezed_frustum_planes = frustum_planes;
+            freezed_inv_VP = camera->get_inv_view_projection_transform();
+        }
     }
 
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
@@ -425,16 +433,19 @@ namespace mirai {
     }
 
     void Renderer::update() {
+        ScopedCpuProfiling("Update renderer");
         uint32_t current_frame_index = device->get_current_frame();
-        resource_heap.new_frame(device->get_current_frame());
+        resource_heap.new_frame(current_frame_index);
+        line_renderer->new_frame(current_frame_index);
 
+        Camera *camera = scene->get_camera();
+        prev_frame_VP = camera->get_view_projection_transform();
         /*
         // Update camera jitter
         FrameGraphNode *node = frame_graph->get_node("deferred_pass");
         if (node) {
             ASSERT(node != nullptr);
 
-            prev_frame_VP = camera->get_view_projection_transform();
             prev_frame_jitter = current_frame_jitter;
 
             glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
@@ -455,16 +466,22 @@ namespace mirai {
         create_batches();
 
         shadow_system->update(scene.get());
-        /*
-        frame_graph->update(this);
 
-        FrameGraphNode *shadow_pass = frame_graph->get_node("directional_shadow_pass");
-        FrameGraphNode *rt_shadow_pass = frame_graph->get_node("rt_directional_shadow_pass");
-        if (rt_shadow_pass)
-            rt_shadow_pass->enabled = AppSettings::enable_rt_shadow;
-        if (shadow_pass)
-            shadow_pass->enabled = !AppSettings::enable_rt_shadow;
-        */
+        // Debug Data
+        if (freeze_frustum) {
+            FrustumPoints frustum_points;
+            frustum_points.create_from_matrix(freezed_inv_VP);
+            line_renderer->add_frustum(frustum_points.points, 0x00ff00ff);
+        }
+
+        if (show_aabbs) {
+            const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
+            for (const auto &renderable : scene->render_object_list) {
+                if (!frustum.intersect(renderable.transformed_aabb))
+                    continue;
+                line_renderer->add_aabb(renderable.transformed_aabb, 0xf07314ff);
+            }
+        }
     }
 
     void copy_continuous_region(CommandBuffer *cb, const std::vector<uint32_t> &indices, BufferView src, BufferView dst, uint32_t data_element_size) {
@@ -631,6 +648,7 @@ namespace mirai {
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
         frame_graph.reset();
         frame_graph_blackboard.reset();
+        line_renderer.reset();
         shader_registry_map->destroy();
         miProfiler::Destroy();
         scene.reset();

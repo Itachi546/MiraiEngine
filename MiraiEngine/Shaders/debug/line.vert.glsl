@@ -1,6 +1,6 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#include "utils/color.glsl"
+#include "../utils/color.glsl"
 
 struct Vertex {
     float sx, sy, sz;

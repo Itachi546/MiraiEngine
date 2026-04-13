@@ -17,6 +17,7 @@ namespace mirai {
     class FrameGraphBlackBoard;
     class Renderer;
     class ShadowSystem;
+    struct LineRenderer;
     struct RenderContext {
         Renderer *renderer;
         CommandBuffer *command_buffer;
@@ -84,7 +85,9 @@ namespace mirai {
         glm::vec2 current_frame_jitter;
 
         bool freeze_frustum = false;
-        FrustumPlanes last_frame_frustum;
+        bool show_aabbs = false;
+        FrustumPlanes freezed_frustum_planes;
+        glm::mat4 freezed_inv_VP;
 
         int jitter_index = 0;
         int jitter_period = 4;
@@ -100,6 +103,7 @@ namespace mirai {
         std::unique_ptr<FrameGraphBlackBoard> frame_graph_blackboard;
         std::unique_ptr<ShaderRegistryMap> shader_registry_map;
         std::unique_ptr<ShadowSystem> shadow_system;
+        std::unique_ptr<LineRenderer> line_renderer;
 
         void copy_buffers();
 

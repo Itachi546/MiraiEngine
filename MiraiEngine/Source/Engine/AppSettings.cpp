@@ -14,7 +14,7 @@ namespace AppSettings {
 
     // Renderer Settings
     RenderMode render_mode = RenderMode::RENDERMODE_FORWARD;
-
+    bool enable_debug_draw = true;
     /**************************************RENDERPASS SETTINGS **********************************************/
 
     // RT Shadow toggle

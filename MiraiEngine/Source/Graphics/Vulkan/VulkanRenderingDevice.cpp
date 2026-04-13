@@ -585,6 +585,7 @@ namespace mirai {
             case DescriptorType::StorageBuffer: {
                 VulkanBuffer *buffer = resource_pool_buffers.access(descriptor_info->resource);
                 VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
+                ASSERT(buffer->device_address != 0);
                 address_range.address = buffer->device_address + descriptor_info->buffer_info.offset;
                 address_range.size = std::min(descriptor_info->buffer_info.size, size_t(buffer->size));
 
@@ -702,6 +703,7 @@ namespace mirai {
         buffer->allocation = allocation;
         buffer->size = buffer_description->size;
         buffer->buffer_ptr = nullptr;
+        buffer->device_address = 0;
 
         if (HAS_FLAG(buffer_description->usage_flags, BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
             VkBufferDeviceAddressInfo buffer_address_info = {
