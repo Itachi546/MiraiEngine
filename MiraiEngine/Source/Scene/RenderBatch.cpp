@@ -66,8 +66,6 @@ namespace mirai {
         uint32_t shader_batch = UINT32_MAX;
         uint32_t mesh_batch = UINT32_MAX;
 
-        bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
-
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
             const Material3D *material = scene->materials[object.material_index].get();
@@ -94,7 +92,7 @@ namespace mirai {
             bool disable_frustum_culling = false;
             if (!disable_frustum_culling && frustum != nullptr) {
                 // Cache AABB Transform
-                if (!frustum->intersect(object.transformed_aabb, skip_near_plane))
+                if (!frustum->intersect(object.transformed_aabb))
                     continue;
             }
 
@@ -129,8 +127,6 @@ namespace mirai {
         uint32_t shader_batch = UINT32_MAX;
         uint32_t mesh_batch = UINT32_MAX;
 
-        bool skip_near_plane = (batch_filter_flags & BATCH_FILTER_SKIP_NEAR_PLANE) == BATCH_FILTER_SKIP_NEAR_PLANE;
-
         auto &component_manager = scene->ecs->component_manager;
         for (auto &object : render_object_list) {
             const Material3D *material = scene->materials[object.material_index].get();
@@ -162,7 +158,7 @@ namespace mirai {
             bool disable_frustum_culling = false;
             if (!disable_frustum_culling && frustum != nullptr) {
                 // Cache AABB Transform
-                if (!frustum->intersect(object.transformed_aabb, skip_near_plane))
+                if (!frustum->intersect(object.transformed_aabb))
                     continue;
             }
 

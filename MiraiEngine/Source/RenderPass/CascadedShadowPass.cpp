@@ -110,7 +110,7 @@ namespace mirai {
                         renderer->get_scene(),
                         &frustum_planes,
                         render_batches,
-                        BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_SKIP_NEAR_PLANE);
+                        BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE);
 
                     if (render_batches.size() == 0)
                         continue;

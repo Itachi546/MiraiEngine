@@ -28,8 +28,7 @@ namespace mirai {
         BATCH_FILTER_FLAG_OPAQUE = 1,
         BATCH_FILTER_FLAG_ALPHA_MASK = 2,
         BATCH_FILTER_FLAG_TRANSPARENT = 4,
-        BATCH_FILTER_SKIP_NEAR_PLANE = 8,
-        BATCH_FILTER_FLAG_SKINNED = 16
+        BATCH_FILTER_FLAG_SKINNED = 8
     };
 
     struct MeshDrawInfo {

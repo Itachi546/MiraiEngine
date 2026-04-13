@@ -33,14 +33,11 @@ namespace mirai {
         */
     }
 
-    bool FrustumPlanes::intersect(const AABB &aabb, bool skip_near_plane) const {
+    bool FrustumPlanes::intersect(const AABB &aabb) const {
         const glm::vec3 &min = aabb.min;
         const glm::vec3 &max = aabb.max;
 
         for (int i = 0; i < 6; ++i) {
-            if (skip_near_plane && i == FRUSTUM_PLANE_NEAR)
-                continue;
-
             glm::vec3 p = min;
             const glm::vec3 &normal = planes[i].normal;
             if (normal.x >= 0.0f)

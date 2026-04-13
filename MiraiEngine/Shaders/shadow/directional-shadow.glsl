@@ -3,6 +3,8 @@
 
 #include "../utils/color.glsl"
 
+#define ENABLE_SOFT_SHADOW 0
+
 vec2 POISSON_DISK[16] = vec2[](
     vec2(-0.94201624, -0.39906216),
     vec2(0.94558609, -0.76890725),
@@ -55,13 +57,13 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
     vec2 shadow_dims = vec2(cascade_info.dims[1], cascade_info.dims[2]);
     vec2 inv_res = 1.0f / shadow_dims.xy;
 
+#if ENABLE_SOFT_SHADOW
     int k_sample_radius = 2;
     int sample_count = 0;
 
     const float k_pcf_radius_multiplier = 1.0f;
 
     vec2 delta = vec2(inv_res.x, inv_res.y) * k_pcf_radius_multiplier;
-
     for (int x = -k_sample_radius; x <= k_sample_radius; ++x) {
         for (int y = -k_sample_radius; y <= k_sample_radius; ++y) {
             vec2 coord = vec2(x + 0.5, y + 0.5) * 10.0f;
@@ -71,9 +73,12 @@ float calculate_shadow_from_texture(vec3 world_pos, int cascade_index) {
         }
     }
     return shadow_factor / sample_count;
+#else
+    return texture_proj(shadow_coord, vec2(0.0), 0.0);
+#endif
 }
 
-const float CASCADE_BLEND_EDGE_LENGTH = 0.2f;
+const float CASCADE_BLEND_EDGE_LENGTH = 0.4f;
 float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_index) {
     cascade_index = -1;
     float z_range = cascade_info.dims[0];
