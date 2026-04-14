@@ -59,7 +59,20 @@ namespace mirai {
 
             glm::mat4 light_view_transform = glm::lookAt(center - light_direction * min_extents.z, center, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 light_projection_transform = glm::ortho(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.0f, max_extents.z - min_extents.z);
-            cascade_info.VP[cascade] = light_projection_transform * light_view_transform;
+            glm::mat4 light_VP = light_projection_transform * light_view_transform;
+
+            glm::vec4 shadow_origin = light_VP * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            float half_size = dir_light_params.split_size * 0.5f;
+            shadow_origin *= glm::vec4(half_size, half_size, 1.0f, 1.0f);
+            glm::vec2 texel_offset = glm::round(glm::vec2(shadow_origin)) - glm::vec2(shadow_origin);
+            texel_offset /= glm::vec2(half_size);
+
+            // Add translation to the matrix, only intended for projection matrix
+            light_VP[3][0] += texel_offset.x;
+            light_VP[3][1] += texel_offset.y;
+
+            cascade_info.VP[cascade] = light_VP;
+
             last_split_distance = split_distance;
         }
 
