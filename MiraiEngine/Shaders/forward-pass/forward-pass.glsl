@@ -113,7 +113,7 @@ void main() {
     float shadow_factor = 1.0f;
     int cascade_index = 0;
     if (light.cast_shadow > 0.5) {
-        shadow_factor = max(calculate_shadow_factor(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.0f);
+        shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.0f);
     }
 
     // Debug Params
