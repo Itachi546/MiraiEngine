@@ -17,6 +17,7 @@ namespace mirai {
         extern RenderMode render_mode;
         extern bool enable_rt_shadow;
         extern bool enable_debug_draw;
+        extern float ibl_contribution;
 
         // Vulkan Specific settings
         constexpr uint32_t K_RESOURCE_DESCRIPTOR_LIMIT = 65536;

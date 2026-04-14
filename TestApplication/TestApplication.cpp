@@ -190,6 +190,7 @@ class TestApplication : public App {
             static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
+            ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
         }
     }
     /*

@@ -12,9 +12,7 @@ struct Light {
     float intensity;
 };
 
-#define IBL_CONTRIBUTION 0.5f
-
-vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params) {
+vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params, float ibl_contribution) {
     /*
     vec3 Ks = F_SchlickRoughness(ndotv, F0, pbr_params.roughness);
     vec3 Kd = (1.0 - Ks) * (1.0 - pbr_params.metallic);
@@ -43,10 +41,10 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
 
     vec3 specular = prefilter_color * (specular_color * brdf.x + brdf.y);
 
-    return (diffuse + specular) * IBL_CONTRIBUTION;
+    return (diffuse + specular) * ibl_contribution;
 }
 
-vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
+vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor, float ibl_contribution) {
     vec3 light_direction = light.direction_or_position;
     vec3 halfway_vector = normalize(view_dir + light_direction);
     vec3 reflection = normalize(reflect(-view_dir, normal));
@@ -74,6 +72,6 @@ vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec
 
         Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
     }
-    return Lo + getIBLContribution(reflection, normal, ndotv, F0, pbr_params) * pbr_params.ao + pbr_params.emissive;
+    return Lo + getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_contribution) * pbr_params.ao + pbr_params.emissive;
 }
 #endif

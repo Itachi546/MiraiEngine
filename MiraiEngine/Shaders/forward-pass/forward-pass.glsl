@@ -43,6 +43,8 @@ layout(push_constant) uniform PushConstants {
     float debug_texture_index;
     float pcf_radius;
     float pcf_sample_count;
+    float ibl_intensity;
+    float _padding[3];
 };
 
 bool is_valid(uint texture) {
@@ -120,7 +122,7 @@ void main() {
     vec3 Lo;
     if (split_percentage >= screen_uv.x) {
         if (debug_texture_index > 5.5) {
-            Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
+            Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f, ibl_intensity);
             Lo *= light.cast_shadow > 0.5 ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
         } else if (debug_texture_index > 4.5f)
             Lo = vec3(shadow_factor);
@@ -135,7 +137,7 @@ void main() {
         else
             Lo = pbr_params.albedo.xyz;
     } else {
-        Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f);
+        Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f, ibl_intensity);
     }
 
     fragColor = vec4(Lo, 1.0f);

@@ -135,12 +135,17 @@ namespace mirai {
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
-                float push_constants[4] = {
+                float push_constants[8] = {
                     debug_data.split_percentage,
                     cast_float(debug_data.debug_param_index),
                     shadow_system->dir_light_params.pcf_radius,
                     shadow_system->dir_light_params.pcf_sample_count,
+                    AppSettings::ibl_contribution,
+                    0.0f,
+                    0.0f,
+                    0.0f,
                 };
+
                 PushData push_data = {
                     .data = push_constants,
                     .offset = 0,
