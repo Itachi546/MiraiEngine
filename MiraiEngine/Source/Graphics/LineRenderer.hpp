@@ -6,7 +6,7 @@
 namespace mirai {
 
     class CommandBuffer;
-    struct ShaderMaterial;
+    struct EffectMaterial;
     struct LineRenderer {
 
         LineRenderer();
@@ -24,7 +24,7 @@ namespace mirai {
         ~LineRenderer();
 
         BufferID buffer;
-        std::shared_ptr<ShaderMaterial> shader;
+        std::shared_ptr<EffectMaterial> shader;
         uint32_t line_count = 0;
 
         static LineRenderer *get() {

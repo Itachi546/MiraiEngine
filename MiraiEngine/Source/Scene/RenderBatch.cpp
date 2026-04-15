@@ -105,14 +105,23 @@ namespace mirai {
                     continue;
             }
 
-            uint32_t sort_key = compute_sort_key(params.pass_state_override,
-                                                 material,
-                                                 object.mesh_type);
+            // Sort key — standard PBR uses material state hash; ShaderMaterial3D uses pipeline_id.
+            Shader *object_custom_shader = nullptr;
+            uint32_t sort_key;
+
+            if (material->is_custom_shader()) {
+                object_custom_shader = material->get_custom_shader();
+                sort_key = make_custom_sort_key(object_custom_shader->pipeline_id.id);
+            } else {
+                sort_key = compute_sort_key(params.pass_state_override, material, object.mesh_type);
+            }
 
             if (sort_key != cached_batch_info.sort_key ||
                 cached_batch_info.batch_type != render_batch_type ||
                 shader_batch == UINT32_MAX) {
                 shader_batch = FindOrCreateShaderBatch(sort_key, render_batch_type, render_batches);
+                if (object_custom_shader != nullptr)
+                    render_batches[shader_batch].custom_shader = object_custom_shader;
                 cached_batch_info.update_cache_info(render_batch_type, sort_key, BufferID{K_INVALID_ID});
             }
 

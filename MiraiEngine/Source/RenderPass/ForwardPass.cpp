@@ -71,7 +71,7 @@ namespace mirai {
 
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_FORWARD);
 
-                data.skybox_shader = std::make_shared<ShaderMaterial>("OverlaySkyboxShader",
+                data.skybox_shader = std::make_shared<EffectMaterial>("OverlaySkyboxShader",
                                                                       std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"},
                                                                       PipelineState{
                                                                           .cull_mode = CULL_MODE_NONE,
@@ -189,7 +189,9 @@ namespace mirai {
 
                 const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
                 for (const auto &batch : opaque_batches) {
-                    Shader *shader = data.registry->find(batch.sort_key);
+                    Shader *shader = is_custom_sort_key(batch.sort_key)
+                                         ? batch.custom_shader
+                                         : data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
@@ -200,7 +202,9 @@ namespace mirai {
                 }
                 const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
                 for (const auto &batch : alpha_mask_batches) {
-                    Shader *shader = data.registry->find(batch.sort_key);
+                    Shader *shader = is_custom_sort_key(batch.sort_key)
+                                         ? batch.custom_shader
+                                         : data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,

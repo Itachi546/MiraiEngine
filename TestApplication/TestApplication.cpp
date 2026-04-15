@@ -8,6 +8,7 @@
 #include "Utils/FirstPersonController.hpp"
 #include "Scene/GLTFLoader.hpp"
 #include "Scene/EnvironmentMap.hpp"
+#include "Scene/AsyncLoader.hpp"
 #include "Math/MathUtils.hpp"
 #include "Inspector.hpp"
 #include "FrameGraphForwardPass.hpp"

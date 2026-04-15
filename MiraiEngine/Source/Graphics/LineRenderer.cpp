@@ -28,7 +28,7 @@ namespace mirai {
         line_array = (Line *)device->map_buffer(buffer);
 
         // @TODO move this to pipeline loader
-        shader = std::make_shared<ShaderMaterial>("DebugDrawLine",
+        shader = std::make_shared<EffectMaterial>("DebugDrawLine",
                                                   std::vector<std::string>{"SPIRV/line.vert.spv", "SPIRV/line.frag.spv"},
                                                   PipelineState{
                                                       .topology = TOPOLOGY_LINE_LIST,

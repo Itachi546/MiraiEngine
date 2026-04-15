@@ -78,6 +78,10 @@ namespace mirai {
         RenderBatchType batch_type;
         std::vector<MeshBatch> meshes;
 
+        // Non-null only when is_custom_sort_key(sort_key) == true (ShaderMaterial3D batch).
+        // The draw layer uses this directly instead of a registry lookup.
+        Shader *custom_shader = nullptr;
+
         void sort() {
             if (batch_type == RENDERBATCH_TYPE_TRANSPARENT) {
                 for (auto &mesh_batch : meshes) {
@@ -94,6 +98,17 @@ namespace mirai {
             }
         }
     };
+
+    // Bit 31 distinguishes a ShaderMaterial3D batch from a standard registry batch.
+    // pipeline_id.id values are small sequential device integers; they never reach bit 31.
+    constexpr uint32_t K_CUSTOM_SHADER_BIT = (1u << 31);
+
+    inline uint32_t make_custom_sort_key(uint32_t pipeline_id) {
+        return K_CUSTOM_SHADER_BIT | pipeline_id;
+    }
+    inline bool is_custom_sort_key(uint32_t sort_key) {
+        return (sort_key & K_CUSTOM_SHADER_BIT) != 0;
+    }
 
     struct BatchBuildParams {
         uint32_t              filter_flags        = BATCH_FILTER_FLAG_OPAQUE;

@@ -48,7 +48,7 @@ namespace mirai {
         FrameGraphResourceHandle ssao_texture;
         FrameGraphResourceHandle csm_texture;
         ShaderRegistry *registry;
-        std::shared_ptr<ShaderMaterial> skybox_shader;
+        std::shared_ptr<EffectMaterial> skybox_shader;
     };
 
     struct RenderDebugData {
@@ -60,6 +60,6 @@ namespace mirai {
 
     struct DeferredOverlay3DPassData {
         FrameGraphResourceHandle output;
-        std::shared_ptr<ShaderMaterial> skybox_shader;
+        std::shared_ptr<EffectMaterial> skybox_shader;
     };
 } // namespace mirai
