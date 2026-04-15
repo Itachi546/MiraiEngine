@@ -14,112 +14,58 @@ namespace mirai {
       public:
         Material(const std::string_view name);
 
-        void set_cull_mode(CullMode cull_mode) {
-            pipeline_state.cull_mode = cull_mode;
+        void set_cull_mode(CullMode m) {
+            material_state.cull_mode = m;
         }
 
         CullMode get_cull_mode() const {
-            return pipeline_state.cull_mode;
+            return material_state.cull_mode;
         }
 
-        void set_front_face(FrontFace front_face) {
-            pipeline_state.front_face = front_face;
+        void set_front_face(FrontFace f) {
+            material_state.front_face = f;
         }
 
         FrontFace get_front_face() const {
-            return pipeline_state.front_face;
+            return material_state.front_face;
         }
 
-        void set_depth_compare_op(CompareOp op) {
-            pipeline_state.depth_op = op;
-        }
-
-        CompareOp get_depth_compare_op() const {
-            return pipeline_state.depth_op;
-        }
-
-        void set_polygon_mode(PolygonMode polygon_mode) {
-            pipeline_state.polygon_mode = polygon_mode;
+        void set_polygon_mode(PolygonMode p) {
+            material_state.polygon_mode = p;
         }
 
         PolygonMode get_polygon_mode() const {
-            return pipeline_state.polygon_mode;
+            return material_state.polygon_mode;
         }
 
-        void set_topology(Topology topology) {
-            pipeline_state.topology = topology;
-        }
-
-        Topology get_topology() const {
-            return pipeline_state.topology;
-        }
-
-        void set_draw_mode(DrawMode draw_mode) {
-            pipeline_state.draw_mode = draw_mode;
-        }
-
-        DrawMode get_draw_mode() const {
-            return pipeline_state.draw_mode;
-        }
-
-        void set_blend_mode(BlendMode blend_mode) {
-            pipeline_state.blend_mode = blend_mode;
-        }
-
-        BlendMode get_blend_mode() const {
-            return pipeline_state.blend_mode;
-        }
-
-        void set_depth_test_state(bool state) {
-            pipeline_state.depth_test = state;
-        }
-
-        bool is_depth_test_enabled() const {
-            return pipeline_state.depth_test;
-        }
-
-        void set_depth_write_state(bool state) {
-            pipeline_state.depth_write = state;
-        }
-
-        bool is_depth_write_enabled() const {
-            return pipeline_state.depth_write;
-        }
-
-        bool is_depth_bias_enabled() const {
-            return pipeline_state.depth_bias;
-        }
-
-        void set_depth_clamp(bool state) {
-            pipeline_state.depth_clamp = state;
-        }
-
-        bool is_depth_clamp_enabled() const {
-            return pipeline_state.depth_clamp;
-        }
-
-        void set_stencil_test_state(bool state) {
-            pipeline_state.stencil_test = state;
-        }
-
-        bool is_stencil_test_enabled() const {
-            return pipeline_state.stencil_test;
-        }
-
-        void set_alpha_mode(AlphaMode alpha_mode) {
-            pipeline_state.alpha_mode = alpha_mode;
+        void set_alpha_mode(AlphaMode a) {
+            material_state.alpha_mode = a;
         }
 
         AlphaMode get_alpha_mode() const {
-            return pipeline_state.alpha_mode;
+            return material_state.alpha_mode;
         }
 
-        void on_change_material();
+        // Render flags — behavioral, NOT part of the sort key.
+        void set_render_flags(uint32_t flags) {
+            material_state.render_flags = flags;
+        }
 
-        void update_from_pipeline_state(const PipelineState &pipeline_state);
+        void add_render_flag(RenderFlags flag) {
+            material_state.render_flags |= flag;
+        }
 
+        void remove_render_flag(RenderFlags flag) {
+            material_state.render_flags &= ~static_cast<uint32_t>(flag);
+        }
+
+        bool has_render_flag(RenderFlags flag) const {
+            return material_state.has_flag(flag);
+        }
+
+        // Hash is computed live — get_hash() is a trivial bitfield pack.
         uint32_t get_hash() const {
-            return current_key;
+            return material_state.get_hash();
         }
 
         void set_dirty(bool state) {
@@ -134,23 +80,20 @@ namespace mirai {
         bool dirty = false;
 
       protected:
-        uint32_t current_key;
-        PipelineState pipeline_state;
+        MaterialState material_state;
     };
 
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
-            pipeline_state.depth_test = true;
-            pipeline_state.depth_write = true;
-            pipeline_state.draw_mode = DRAWMODE_INDEXED_INDIRECT;
+            // Pipeline state is pass-controlled — nothing to set here.
         }
 
         bool is_transparent() const {
-            return pipeline_state.alpha_mode == ALPHA_MODE_BLEND;
+            return material_state.alpha_mode == ALPHA_MODE_BLEND;
         }
 
         bool is_alpha_mask() const {
-            return pipeline_state.alpha_mode == ALPHA_MODE_MASK;
+            return material_state.alpha_mode == ALPHA_MODE_MASK;
         }
 
         struct Properties {

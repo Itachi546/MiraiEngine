@@ -17,22 +17,22 @@ namespace mirai {
         ALPHA_MODE_MASK,
     };
 
+    // Behavioral flags — not part of the sort key.
+    enum RenderFlags : uint32_t {
+        RENDER_FLAG_NONE           = 0,
+        RENDER_FLAG_CAST_SHADOW    = 1 << 0,
+        RENDER_FLAG_RECEIVE_SHADOW = 1 << 1,
+        RENDER_FLAG_DEFAULT        = RENDER_FLAG_CAST_SHADOW | RENDER_FLAG_RECEIVE_SHADOW,
+    };
+
+    // Only material-facing variant bits are hashed.
     union MaterialKey {
         struct {
-            uint32_t cull_mode : 2;
-            uint32_t front_face : 1;
-            uint32_t depth_op : 3;
-            uint32_t polygon_mode : 2;
-            uint32_t topology : 4;
-            uint32_t draw_mode : 2;
-            uint32_t blend_mode : 3;
-            uint32_t depth_test : 1;
-            uint32_t depth_write : 1;
-            uint32_t depth_bias : 1;
-            uint32_t depth_clamp : 1;
-            uint32_t stencil_test : 1;
-            uint32_t alpha_mode : 2;
-            uint32_t padding : 8;
+            uint32_t cull_mode    : 2;  // affects pipeline variant
+            uint32_t front_face   : 1;  // affects pipeline variant
+            uint32_t polygon_mode : 2;  // affects pipeline variant (wireframe)
+            uint32_t alpha_mode   : 2;  // opaque / blend / mask
+            uint32_t padding      : 25;
         };
         struct {
             uint32_t hash;
@@ -44,6 +44,30 @@ namespace mirai {
 
         bool operator<=(const MaterialKey &other) const {
             return hash <= other.hash;
+        }
+    };
+
+    // Material-facing properties — drives sort key and shader variant selection.
+    // render_flags is behavioral and intentionally NOT part of the hash.
+    struct MaterialState {
+        CullMode    cull_mode    = CULL_MODE_BACK;
+        FrontFace   front_face   = FRONT_FACE_COUNTER_CLOCKWISE;
+        PolygonMode polygon_mode = POLYGON_MODE_FILL;
+        AlphaMode   alpha_mode   = ALPHA_MODE_OPAQUE;
+        uint32_t    render_flags = RENDER_FLAG_DEFAULT;
+
+        uint32_t get_hash() const {
+            MaterialKey key = {};
+            key.cull_mode    = cull_mode;
+            key.front_face   = front_face;
+            key.polygon_mode = polygon_mode;
+            key.alpha_mode   = alpha_mode;
+            key.padding      = 0;
+            return key.hash;
+        }
+
+        bool has_flag(RenderFlags flag) const {
+            return (render_flags & flag) == flag;
         }
     };
 
@@ -62,24 +86,8 @@ namespace mirai {
         bool depth_clamp = false;
         bool stencil_test = false;
 
-        inline uint32_t get_hash() const {
-            MaterialKey key;
-            key.cull_mode = cull_mode;
-            key.front_face = front_face;
-            key.depth_op = depth_op;
-            key.polygon_mode = polygon_mode;
-            key.topology = topology;
-            key.draw_mode = draw_mode;
-            key.blend_mode = blend_mode;
-            key.alpha_mode = alpha_mode;
-            key.depth_test = depth_test;
-            key.depth_write = depth_write;
-            key.depth_bias = depth_bias;
-            key.depth_clamp = depth_clamp;
-            key.stencil_test = stencil_test;
-            key.padding = 0;
-            return key.hash;
-        }
+        // Note: PipelineState has no get_hash() — it is only used at shader
+        // creation time. Sort keys are derived from MaterialState::get_hash().
     };
 
     struct PipelineAttachmentInfo {

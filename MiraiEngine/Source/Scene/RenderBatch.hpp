@@ -72,19 +72,7 @@ namespace mirai {
             mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, distance_to_camera_sqr, vertex_stride);
         }
     };
-    /*
-    struct ShadowMeshBatch {
-        BufferView vertex_buffer;
-        BufferView index_buffer;
 
-        std::vector<MeshDrawInfo> mesh_draw_infos;
-
-        void add(uint32_t transform_index, uint32_t material_index, uint32_t vertex_offset, uint32_t index_offset, uint32_t index_count, uint32_t vertex_stride) {
-            mesh_draw_infos.emplace_back(transform_index, material_index, vertex_offset, index_offset, index_count, 0.0f, vertex_stride);
-        }
-        RenderBatchType render_batch_type;
-    };
-    */
     struct RenderBatch {
         uint32_t sort_key;
         RenderBatchType batch_type;
@@ -107,11 +95,16 @@ namespace mirai {
         }
     };
 
-    struct DrawBatchGenerator {
-        static void CreateBatch(const Scene *scene, const FrustumPlanes *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags);
+    struct BatchBuildParams {
+        uint32_t              filter_flags        = BATCH_FILTER_FLAG_OPAQUE;
+        const FrustumPlanes  *frustum             = nullptr;
+        const glm::vec3      *camera_position     = nullptr;
+        const MaterialState  *pass_state_override = nullptr;
+        bool                  shadow_pass         = false;
+    };
 
-        // Used for Shadow/Cascaded shadow rendering where scene needs to be culled again
-        static void CreateShadowMeshBatch(const Scene *scene, const FrustumPlanes *frustum, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags);
+    struct DrawBatchGenerator {
+        static void BuildBatches(const Scene *scene, const BatchBuildParams &params, std::vector<RenderBatch> &out_batches);
     };
 
     struct BatchDrawInfo {

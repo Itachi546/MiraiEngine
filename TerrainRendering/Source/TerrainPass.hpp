@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include <stdint.h>
@@ -58,3 +59,4 @@ namespace mirai {
         void update_subdivision(CommandBuffer *command_buffer, Camera *camera);
     };
 } // namespace mirai
+ */

@@ -258,7 +258,11 @@ namespace mirai {
         Camera *camera = scene->get_camera();
         const FrustumPlanes &frustum_planes = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
         std::vector<RenderBatch> batches;
-        DrawBatchGenerator::CreateBatch(scene.get(), &frustum_planes, camera->position, batches, BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED);
+        DrawBatchGenerator::BuildBatches(scene.get(), BatchBuildParams{
+            .filter_flags    = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED,
+            .frustum         = &frustum_planes,
+            .camera_position = &camera->position,
+        }, batches);
 
         for (auto &batch : batches) {
             switch (batch.batch_type) {

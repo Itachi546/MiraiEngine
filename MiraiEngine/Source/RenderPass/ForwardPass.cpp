@@ -187,12 +187,9 @@ namespace mirai {
                     renderer->cascade_data_descriptor,
                 };
 
-                const uint32_t depth_compare_bit_pos = 3;
-                const uint32_t depth_compare_mask = 7 << depth_compare_bit_pos;
                 const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
                 for (const auto &batch : opaque_batches) {
-                    uint32_t sort_key = (batch.sort_key & ~(depth_compare_mask)) | (COMPARE_OP_EQUAL << depth_compare_bit_pos);
-                    Shader *shader = data.registry->find(sort_key);
+                    Shader *shader = data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,
@@ -203,8 +200,7 @@ namespace mirai {
                 }
                 const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
                 for (const auto &batch : alpha_mask_batches) {
-                    uint32_t sort_key = (batch.sort_key & ~(depth_compare_mask)) | (COMPARE_OP_EQUAL << depth_compare_bit_pos);
-                    Shader *shader = data.registry->find(sort_key);
+                    Shader *shader = data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
                                                          .shader = shader,

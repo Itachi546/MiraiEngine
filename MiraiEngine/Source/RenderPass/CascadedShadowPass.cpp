@@ -80,22 +80,6 @@ namespace mirai {
                     renderer->transform_descriptor,
                 };
 
-                PipelineState pipeline_state = {
-                    .cull_mode = CULL_MODE_FRONT,
-                    .draw_mode = DRAWMODE_INDEXED_INDIRECT,
-                    .depth_test = true,
-                    .depth_write = true,
-                    .depth_bias = false,
-                    .depth_clamp = true,
-                };
-
-                Shader *opaque_shader = data.registry->find(pipeline_state.get_hash());
-                ASSERT(opaque_shader != nullptr);
-
-                pipeline_state.cull_mode = CULL_MODE_NONE;
-                pipeline_state.alpha_mode = ALPHA_MODE_MASK;
-                Shader *alpha_shader = data.registry->find(pipeline_state.get_hash());
-                ASSERT(alpha_shader != nullptr);
 
                 uint32_t current_frame = RenderingDevice::get()->get_current_frame();
 
@@ -106,11 +90,18 @@ namespace mirai {
                     // This create both frustum plane and points, we only need plane
                     frustum_planes.create_from_matrix(cascade_info.VP[i]);
 
-                    DrawBatchGenerator::CreateShadowMeshBatch(
+                    // Shadow pass: front-cull opaque geometry to prevent shadow acne.
+                    // Alpha-mask objects get CULL_NONE applied automatically in BuildBatches.
+                    static const MaterialState shadow_state{.cull_mode = CULL_MODE_FRONT};
+                    DrawBatchGenerator::BuildBatches(
                         renderer->get_scene(),
-                        &frustum_planes,
-                        render_batches,
-                        BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_OPAQUE);
+                        BatchBuildParams{
+                            .filter_flags        = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK,
+                            .frustum             = &frustum_planes,
+                            .pass_state_override = &shadow_state,
+                            .shadow_pass         = true,
+                        },
+                        render_batches);
 
                     if (render_batches.size() == 0)
                         continue;
@@ -134,8 +125,10 @@ namespace mirai {
                     // Draw Opaque batch
                     for (const auto &batch : render_batches) {
                         if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE && batch.meshes.size() > 0) {
+                            Shader *shader = data.registry->find(batch.sort_key);
+                            ASSERT(shader != nullptr);
                             DrawBatch(command_buffer, batch, {
-                                                                 .shader = opaque_shader,
+                                                                 .shader = shader,
                                                                  .descriptor_infos = descriptors,
                                                                  .push_data = &push_constants,
                                                                  .draw_data_descriptor_index = 2,
@@ -147,8 +140,10 @@ namespace mirai {
                     descriptors.push_back(renderer->material_descriptor);
                     for (const auto &batch : render_batches) {
                         if (batch.batch_type == RENDERBATCH_TYPE_ALPHA_MASK && batch.meshes.size() > 0) {
+                            Shader *shader = data.registry->find(batch.sort_key);
+                            ASSERT(shader != nullptr);
                             DrawBatch(command_buffer, batch, {
-                                                                 .shader = alpha_shader,
+                                                                 .shader = shader,
                                                                  .descriptor_infos = descriptors,
                                                                  .push_data = &push_constants,
                                                                  .draw_data_descriptor_index = 2,

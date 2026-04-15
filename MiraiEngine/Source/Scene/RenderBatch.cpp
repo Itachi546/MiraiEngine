@@ -6,6 +6,8 @@
 #include "Engine/AppSettings.hpp"
 
 namespace mirai {
+    // ── Internal helpers ─────────────────────────────────────────────────────
+
     struct CachedBatchInfo {
         RenderBatchType batch_type;
         uint32_t sort_key;
@@ -18,7 +20,7 @@ namespace mirai {
         }
     };
 
-    uint32_t FindOrCreateShaderBatch(uint32_t sort_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
+    static uint32_t FindOrCreateShaderBatch(uint32_t sort_key, RenderBatchType render_batch_type, std::vector<RenderBatch> &render_batches) {
         for (uint32_t i = 0; i < render_batches.size(); ++i) {
             if (sort_key == render_batches[i].sort_key && render_batches[i].batch_type == render_batch_type)
                 return i;
@@ -27,9 +29,8 @@ namespace mirai {
         return cast_u32(render_batches.size() - 1);
     }
 
-    uint32_t FindOrCreateMeshBatch(BufferID vertex_buffer, BufferID index_buffer, std::vector<MeshBatch> &mesh_batches) {
+    static uint32_t FindOrCreateMeshBatch(BufferID vertex_buffer, BufferID index_buffer, std::vector<MeshBatch> &mesh_batches) {
         for (uint32_t i = 0; i < mesh_batches.size(); ++i) {
-            // No need to check index buffer for now
             if (mesh_batches[i].vertex_buffer == vertex_buffer && mesh_batches[i].index_buffer == index_buffer)
                 return i;
         }
@@ -40,153 +41,111 @@ namespace mirai {
         return cast_u32(mesh_batches.size() - 1);
     }
 
-    /*
-    uint32_t FindOrCreateShadowMeshBatch(BufferView vertex_buffer, BufferView index_buffer, std::vector<ShadowMeshBatch> &mesh_batches, RenderBatchType render_batch_type) {
-        for (uint32_t i = 0; i < mesh_batches.size(); ++i) {
-            // No need to check index buffer for now
-            if (mesh_batches[i].vertex_buffer.buffer == vertex_buffer.buffer && mesh_batches[i].index_buffer.buffer == index_buffer.buffer && mesh_batches[i].render_batch_type == render_batch_type)
-                return i;
+    static uint32_t compute_sort_key(const MaterialState *override_state,
+                                     const Material3D    *material,
+                                     MeshType             mesh_type) {
+        if (override_state == nullptr)
+            return material->get_hash() | mesh_type;
+
+        MaterialState s = *override_state;
+        if (material->is_alpha_mask()) {
+            s.cull_mode  = CULL_MODE_NONE;
+            s.alpha_mode = ALPHA_MODE_MASK;
         }
-        mesh_batches.push_back(ShadowMeshBatch{
-            .vertex_buffer = vertex_buffer,
-            .index_buffer = index_buffer,
-            .render_batch_type = render_batch_type,
-        });
-        return cast_u32(mesh_batches.size() - 1);
+        return s.get_hash() | mesh_type;
     }
-    */
-    void DrawBatchGenerator::CreateBatch(const Scene *scene, const FrustumPlanes *frustum, const glm::vec3 &camera_position, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags) {
+
+    void DrawBatchGenerator::BuildBatches(const Scene            *scene,
+                                          const BatchBuildParams &params,
+                                          std::vector<RenderBatch> &render_batches) {
         const auto &render_object_list = scene->render_object_list;
+
         CachedBatchInfo cached_batch_info = {
-            .batch_type = RENDERBATCH_TYPE_OPAQUE,
-            .sort_key = 0,
+            .batch_type    = RENDERBATCH_TYPE_OPAQUE,
+            .sort_key      = 0,
             .vertex_buffer = BufferID{K_INVALID_ID},
         };
 
         uint32_t shader_batch = UINT32_MAX;
-        uint32_t mesh_batch = UINT32_MAX;
+        uint32_t mesh_batch   = UINT32_MAX;
 
         auto &component_manager = scene->ecs->component_manager;
+
         for (auto &object : render_object_list) {
             const Material3D *material = scene->materials[object.material_index].get();
 
+            if (params.shadow_pass) {
+                if (!material->has_render_flag(RENDER_FLAG_CAST_SHADOW))
+                    continue;
+                if (material->is_transparent())
+                    continue;
+            }
+
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
-            uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
+            uint32_t        filter_flag       = BATCH_FILTER_FLAG_OPAQUE;
+
             if (material->is_transparent()) {
                 render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
-                filter_flag = BATCH_FILTER_FLAG_TRANSPARENT;
+                filter_flag       = BATCH_FILTER_FLAG_TRANSPARENT;
             } else if (material->is_alpha_mask()) {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
-                filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
+                filter_flag       = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
 
             if (object.mesh_type == MESH_TYPE_SKINNED) {
                 render_batch_type = RENDERBATCH_TYPE_SKINNED;
-                filter_flag = BATCH_FILTER_FLAG_SKINNED;
+                filter_flag       = BATCH_FILTER_FLAG_SKINNED;
             }
 
-            if ((batch_filter_flags & filter_flag) != filter_flag)
+            if ((params.filter_flags & filter_flag) != filter_flag)
                 continue;
 
-            // Check if the AABB is visible or not in current frustum
-            bool disable_frustum_culling = false;
-            if (!disable_frustum_culling && frustum != nullptr) {
-                // Cache AABB Transform
-                if (!frustum->intersect(object.transformed_aabb))
+            if (params.frustum != nullptr) {
+                if (!params.frustum->intersect(object.transformed_aabb))
                     continue;
             }
 
-            // Check Shader Batch
-            uint32_t sort_key = material->get_hash() | object.mesh_type;
-            if (sort_key != cached_batch_info.sort_key || cached_batch_info.batch_type != render_batch_type) {
-                // We have a different batch
+            uint32_t sort_key = compute_sort_key(params.pass_state_override,
+                                                 material,
+                                                 object.mesh_type);
+
+            if (sort_key != cached_batch_info.sort_key ||
+                cached_batch_info.batch_type != render_batch_type ||
+                shader_batch == UINT32_MAX) {
                 shader_batch = FindOrCreateShaderBatch(sort_key, render_batch_type, render_batches);
                 cached_batch_info.update_cache_info(render_batch_type, sort_key, BufferID{K_INVALID_ID});
             }
 
-            // Check Mesh Batch
             if (cached_batch_info.vertex_buffer != object.vertex_buffer) {
                 mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, render_batches[shader_batch].meshes);
                 cached_batch_info.vertex_buffer = object.vertex_buffer;
             }
 
-            TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
-            float distance_to_camera_sqr = glm::dot(transform->position, camera_position);
-            uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset_bytes, object.first_index, object.index_count, distance_to_camera_sqr, object.vertex_stride);
-        }
-    }
-    void DrawBatchGenerator::CreateShadowMeshBatch(const Scene *scene, const FrustumPlanes *frustum, std::vector<RenderBatch> &render_batches, uint32_t batch_filter_flags) {
-        const auto &render_object_list = scene->render_object_list;
-        CachedBatchInfo cached_batch_info = {
-            .batch_type = RENDERBATCH_TYPE_OPAQUE,
-            .sort_key = 0,
-            .vertex_buffer = BufferID{K_INVALID_ID},
-        };
-
-        uint32_t shader_batch = UINT32_MAX;
-        uint32_t mesh_batch = UINT32_MAX;
-
-        auto &component_manager = scene->ecs->component_manager;
-        for (auto &object : render_object_list) {
-            const Material3D *material = scene->materials[object.material_index].get();
-
-            RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
-            uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
-
-            // Skip depth test disabled material
-            if (!material->is_depth_test_enabled())
-                continue;
-            // We skip transparent object in shadow pass
-            if (material->is_transparent())
-                continue;
-
-            if (material->is_alpha_mask()) {
-                render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
-                filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
-            }
-
-            if (object.mesh_type == MESH_TYPE_SKINNED) {
-                render_batch_type = RENDERBATCH_TYPE_SKINNED;
-                filter_flag = BATCH_FILTER_FLAG_SKINNED;
-            }
-
-            if ((batch_filter_flags & filter_flag) != filter_flag)
-                continue;
-
-            // Check if the AABB is visible or not in current frustum
-            bool disable_frustum_culling = false;
-            if (!disable_frustum_culling && frustum != nullptr) {
-                // Cache AABB Transform
-                if (!frustum->intersect(object.transformed_aabb))
-                    continue;
-            }
-
-            // Ignore sort key
-            if (cached_batch_info.batch_type != render_batch_type || shader_batch == UINT32_MAX) {
-                // We have a different batch
-                shader_batch = FindOrCreateShaderBatch(0, render_batch_type, render_batches);
-                cached_batch_info.update_cache_info(render_batch_type, 0, BufferID{K_INVALID_ID});
-            }
-
-            // Check Mesh Batch
-            if (cached_batch_info.vertex_buffer != object.vertex_buffer) {
-                mesh_batch = FindOrCreateMeshBatch(object.vertex_buffer, object.index_buffer, render_batches[shader_batch].meshes);
-                cached_batch_info.vertex_buffer = object.vertex_buffer;
+            float distance_to_camera_sqr = 0.0f;
+            if (params.camera_position != nullptr) {
+                TransformComponent *transform = component_manager->get_component<TransformComponent>(object.entity);
+                distance_to_camera_sqr = glm::dot(transform->position, *params.camera_position);
             }
 
             uint32_t transform_index = component_manager->get_component_index<TransformComponent>(object.entity);
-            render_batches[shader_batch].meshes[mesh_batch].add(transform_index, object.material_index, object.vertex_offset_bytes, object.first_index, object.index_count, 0.0f, object.vertex_stride);
+            render_batches[shader_batch].meshes[mesh_batch].add(
+                transform_index,
+                object.material_index,
+                object.vertex_offset_bytes,
+                object.first_index,
+                object.index_count,
+                distance_to_camera_sqr,
+                object.vertex_stride);
         }
     }
 
-    void DrawBatchIndirect(CommandBuffer *command_buffer, const MeshBatch *batch) {
+    static void DrawBatchIndirect(CommandBuffer *command_buffer, const MeshBatch *batch) {
         command_buffer->set_index_buffer(batch->index_buffer);
         uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
         command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
     }
 
-    void _DrawBatch(CommandBuffer *command_buffer, const MeshBatch *batch, DrawMode draw_mode) {
+    static void _DrawBatch(CommandBuffer *command_buffer, const MeshBatch *batch, DrawMode draw_mode) {
         switch (draw_mode) {
         case DRAWMODE_INDEXED_INDIRECT:
             DrawBatchIndirect(command_buffer, batch);

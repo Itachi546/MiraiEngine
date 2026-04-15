@@ -353,8 +353,6 @@ namespace mirai {
         for (uint32_t i = 0; i < material_count; ++i) {
             const tinygltf::Material *gltf_material = &model->materials[i];
             std::unique_ptr<Material3D> material = std::make_unique<Material3D>(gltf_material->name);
-            material->set_depth_test_state(true);
-            material->set_depth_write_state(true);
 
             const tinygltf::PbrMetallicRoughness &pbr = gltf_material->pbrMetallicRoughness;
 
@@ -365,7 +363,6 @@ namespace mirai {
                 material->set_alpha_mode(ALPHA_MODE_OPAQUE);
             else if (alpha_mode == "BLEND") {
                 material->set_alpha_mode(ALPHA_MODE_BLEND);
-                material->set_depth_write_state(false);
             } else if (alpha_mode == "MASK")
                 material->set_alpha_mode(ALPHA_MODE_MASK);
             else
@@ -427,7 +424,6 @@ namespace mirai {
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
             properties.occlusion_texture = LoadTexture(occlusion_texture.index, false);
 
-            material->on_change_material();
             load_state->scene->materials.push_back(std::move(material));
         }
     }
