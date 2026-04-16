@@ -74,8 +74,20 @@ namespace mirai {
             this->env_map = env_map;
         }
 
-        Entity create_entity() {
+        Entity create_entity(const std::string &name, Entity parent_entity = K_INVALID_ENTITY) {
             Entity entity = ecs->create_entity();
+            TransformComponent &transform = ecs->component_manager->add_component<TransformComponent>(entity);
+            ecs->component_manager->add_component<NameComponent>(entity, NameComponent{name});
+
+            // We choose the scene root node as parent entity if the parent is invalid
+            parent_entity = parent_entity == K_INVALID_ENTITY ? entities[0] : parent_entity;
+
+            // This order should be strictly maintained as, it invalidates the vector after insertion
+            HierarchyComponent &current = ecs->component_manager->add_component<HierarchyComponent>(entity);
+            HierarchyComponent *parent = ecs->component_manager->get_component<HierarchyComponent>(parent_entity);
+            current.set_parent(entities[0]);
+            parent->add_children(entity);
+
             entities.push_back(entity);
             return entity;
         }

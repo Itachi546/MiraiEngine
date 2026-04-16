@@ -878,9 +878,9 @@ namespace mirai {
         }
     }
 
-    void ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state, MeshType mesh_type) {
+    Entity ParseNodes(const tinygltf::Model *model, int node_index, Entity parent, LoadState *load_state, MeshType mesh_type) {
         if (load_state->global_joint_list.find(node_index) != load_state->global_joint_list.end())
-            return;
+            return K_INVALID_ENTITY;
 
         Scene *scene = load_state->scene;
         // We skip skeleton node in node hierarchy
@@ -889,25 +889,10 @@ namespace mirai {
         // Create parent as default entity to be passed on recursion
         // For camera, we don't create new entity
         auto &comp_manager = scene->ecs->component_manager;
-        Entity entity = scene->create_entity();
-        // NameComponent
         std::string name = node->name.empty() ? ("Mesh" + std::to_string(node_index)) : node->name;
-        comp_manager->add_component<HierarchyComponent>(entity);
-
-        // TransformComponent
-        TransformComponent &transform = comp_manager->add_component<TransformComponent>(entity);
-        ParseNodeTransform(node, &transform);
-
-        // HierarchyComponent
-        if (!comp_manager->has_component<HierarchyComponent>(parent))
-            comp_manager->add_component<HierarchyComponent>(parent);
-
-        // Update Hierarchy
-        HierarchyComponent *parent_hierarchy = comp_manager->get_component<HierarchyComponent>(parent);
-        HierarchyComponent *child_hierarchy = comp_manager->get_component<HierarchyComponent>(entity);
-
-        child_hierarchy->set_parent(parent);
-        parent_hierarchy->add_children(entity);
+        Entity entity = scene->create_entity(name, parent);
+        TransformComponent *transform = comp_manager->get_component<TransformComponent>(entity);
+        ParseNodeTransform(node, transform);
 
         if (node->mesh >= 0) {
             // Add Mesh Component
@@ -935,14 +920,14 @@ namespace mirai {
             camera->set_far_plane(cast_float(perspective.zfar));
 
             if (node->translation.size() > 0)
-                camera->position = transform.position;
+                camera->position = transform->position;
             if (node->rotation.size() > 0) {
                 glm::fquat rotation = glm::fquat{(float)node->rotation[3], (float)node->rotation[0], (float)node->rotation[1], (float)node->rotation[2]};
                 camera->rotation = glm::degrees(glm::eulerAngles(rotation));
             }
             if (node->matrix.size()) {
-                camera->position = transform.position;
-                camera->rotation = glm::degrees(glm::eulerAngles(transform.rotation));
+                camera->position = transform->position;
+                camera->rotation = glm::degrees(glm::eulerAngles(transform->rotation));
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
         }
@@ -990,11 +975,10 @@ namespace mirai {
             mesh_type = MESH_TYPE_DYNAMIC;
         }
 
-        comp_manager->add_component<NameComponent>(entity, name);
-        // Check if node has animation
-
         for (const auto &child : node->children)
             ParseNodes(model, child, entity, load_state, mesh_type);
+
+        return entity;
     }
 
     Entity ImportModel_GLTF(const std::string &filename, Scene *scene) {
@@ -1026,14 +1010,13 @@ namespace mirai {
         }
         scene->dirty = true;
 
-        auto &comp_manager = scene->ecs->component_manager;
-        Entity root_entity = scene->entities[0];
-        std::string root_entity_name = utils::get_filename(filename);
-        // comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
-        // comp_manager->add_component<TransformComponent>(root_entity);
-        // Make this entity child of scene root
-        // HierarchyComponent &child_comp = comp_manager->add_component<HierarchyComponent>(root_entity);
-        // child_comp.set_parent(scene->entities[0]);
+        // auto &comp_manager = scene->ecs->component_manager;
+
+        //  comp_manager->add_component<NameComponent>(root_entity, root_entity_name);
+        //  comp_manager->add_component<TransformComponent>(root_entity);
+        //  Make this entity child of scene root
+        //  HierarchyComponent &child_comp = comp_manager->add_component<HierarchyComponent>(root_entity);
+        //  child_comp.set_parent(scene->entities[0]);
 
         // Update scene root hierarchy component
         // HierarchyComponent *parent_comp = comp_manager->get_component<HierarchyComponent>(scene->entities[0]);
@@ -1053,15 +1036,20 @@ namespace mirai {
         LoadAnimations(&gltf_model, &load_state);
         LoadSkins(&gltf_model, &load_state);
 
-        for (const auto &scene : gltf_model.scenes) {
-            for (const auto &node : scene.nodes)
-                ParseNodes(&gltf_model, node, root_entity, &load_state, MESH_TYPE_STATIC);
+        Entity entity = K_INVALID_ID;
+        Entity root_entity = scene->entities[0];
+        std::string root_entity_name = utils::get_filename(filename);
+
+        for (const auto &gltf_scene : gltf_model.scenes) {
+            for (const auto &node : gltf_scene.nodes)
+                entity = ParseNodes(&gltf_model, node, root_entity, &load_state, MESH_TYPE_STATIC);
         }
+
         async_loader.wait();
 
         Log::Info("Loaded: ", root_entity_name, "[", load_timer.elapsed_seconds(), "s]");
         Log::Info("meshes: ", load_state.mesh_components.size());
 
-        return root_entity;
+        return entity;
     } // namespace mirai
 } // namespace mirai

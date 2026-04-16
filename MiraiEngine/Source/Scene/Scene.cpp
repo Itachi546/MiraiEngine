@@ -13,23 +13,14 @@
 namespace mirai {
 
     Entity Scene::create_directional_light(const std::string &name, glm::fquat orientation) {
-        Entity entity = create_entity();
-        TransformComponent &light_transform = ecs->component_manager->add_component<TransformComponent>(entity);
-        light_transform.rotation = orientation;
-        ecs->component_manager->add_component<NameComponent>(entity, NameComponent{name});
-
+        Entity entity = create_entity(name, entities[0]);
+        TransformComponent *light_transform = ecs->component_manager->get_component<TransformComponent>(entity);
+        light_transform->rotation = orientation;
         LightComponent &light_component = ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
                                                                                                             .color = glm::vec3(1.0f),
                                                                                                             .intensity = 5.0f,
                                                                                                             .cast_shadow = true,
                                                                                                         });
-        // This order should be strictly maintained as, it invalidates the vector after insertion
-        HierarchyComponent &current = ecs->component_manager->add_component<HierarchyComponent>(entity);
-        HierarchyComponent *parent = ecs->component_manager->get_component<HierarchyComponent>(entities[0]);
-
-        current.set_parent(entities[0]);
-        parent->add_children(entity);
-
         return entity;
     }
 
