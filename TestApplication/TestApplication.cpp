@@ -66,20 +66,26 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-#if 0
-        const uint32_t light_count = 100;
-
+        const uint32_t light_count = 1000;
+        auto &component_manager = scene->ecs->component_manager;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
             Entity entity = scene->create_entity("Light" + std::to_string(i), root_light);
-            scene->ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
-                                                                                     .light_type = LIGHT_TYPE_POINT,
-                                                                                     .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
-                                                                                     .intensity = randomFloat01() * 10.0f,
-                                                                                     .cast_shadow = false,
-                                                                                 });
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+            transform->position = glm::vec3(
+                -10.0f + randomFloat01() * 20.0f,
+                -5.0f + randomFloat01() * 5.0f,
+                -5.0f + randomFloat01() * 5.0f);
+
+            component_manager->add_component<LightComponent>(entity, LightComponent{
+                                                                         .light_type = LIGHT_TYPE_POINT,
+                                                                         .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
+                                                                         .intensity = randomFloat01() * 10.0f,
+                                                                         .radius = 5.0f + randomFloat01() * 10.0f,
+                                                                         .cast_shadow = false,
+                                                                     });
         }
-#endif
+
         controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(10.0f);
         controller->set_run_speed(20.0f);
@@ -155,6 +161,7 @@ class TestApplication : public App {
             }
 
             ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
+            ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_visible_lights);
 
             uint32_t total_materials = cast_u32(scene->materials.size());
             ImGui::Text("Total Materials: %u", total_materials);

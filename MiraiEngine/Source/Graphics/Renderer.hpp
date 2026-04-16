@@ -60,6 +60,7 @@ namespace mirai {
         GPUResourceDescriptorHeap resource_heap;
         GPUSamplerDescriptorHeap sampler_heap;
 
+        DescriptorOffset per_frame_light_descriptor;
         DescriptorOffset per_frame_data_descriptor;
         DescriptorOffset transform_descriptor;
         DescriptorOffset material_descriptor;
@@ -92,6 +93,7 @@ namespace mirai {
         int jitter_index = 0;
         int jitter_period = 4;
 
+        uint32_t total_visible_lights = 0;
         uint32_t total_visible_entities = 0;
 
       private:
@@ -124,6 +126,8 @@ namespace mirai {
         void patch_global_data(CommandBuffer *command_buffer);
 
         void create_batches();
+
+        void upload_visible_lights();
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;

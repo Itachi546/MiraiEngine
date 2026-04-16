@@ -42,11 +42,6 @@ namespace mirai {
         ShaderRegistry *registry;
     };
 
-    struct TiledLightCullingFrustumPassData {
-        FrameGraphResourceHandle buffer;
-        std::shared_ptr<ComputeShader> shader;
-    };
-
     struct ForwardPassData {
         FrameGraphResourceHandle output;
         FrameGraphResourceHandle depth_texture;

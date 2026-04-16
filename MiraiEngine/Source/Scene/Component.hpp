@@ -118,6 +118,7 @@ namespace mirai {
         glm::vec3 color;
         float intensity;
 
+        float radius;
         bool cast_shadow;
     };
 

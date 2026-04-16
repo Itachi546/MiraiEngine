@@ -14,6 +14,7 @@
 #include "Engine/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
+#include "Math/Frustum.hpp"
 #include "PipelineLoader.hpp"
 #include "Common/Random.hpp"
 #include "RenderPass/TAAResolvePass.hpp"
@@ -248,6 +249,70 @@ namespace mirai {
         frame_graph->compile();
     }
 
+    void Renderer::upload_visible_lights() {
+        const uint32_t LIGHT_CULLING_THRESHOLD = 256;
+        struct LightData {
+            glm::vec3 position_or_direction;
+            uint32_t light_type;
+
+            glm::vec3 color;
+            float radius;
+        };
+
+        auto &component_manager = scene->ecs->component_manager;
+        const auto &light_array = component_manager->get_component_array<LightComponent>();
+        const FrustumPlanes &frustum = scene->get_camera()->get_frustum_planes();
+
+        std::vector<LightData> visible_lights;
+        visible_lights.reserve(1000);
+        uint32_t total_lights = cast_u32(light_array->entities.size());
+
+        for (auto entity : light_array->entities) {
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
+            LightComponent *light = component_manager->get_component<LightComponent>(entity);
+            if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
+                visible_lights.push_back(LightData{
+                    .position_or_direction = quat_to_direction(transform->rotation),
+                    .light_type = cast_u32(light->light_type),
+                    .color = light->color,
+                    .radius = 0.0f,
+                });
+            } else if (light->light_type == LIGHT_TYPE_POINT) {
+                if (total_lights > LIGHT_CULLING_THRESHOLD) {
+                    if (!frustum.intersect(transform->position, light->radius)) {
+                        continue;
+                    }
+                }
+                visible_lights.push_back(LightData{
+                    .position_or_direction = transform->position,
+                    .light_type = cast_u32(light->light_type),
+                    .color = light->color,
+                    .radius = light->radius,
+                });
+            } else {
+                ASSERT_MSG(0, "Unknown light type");
+            }
+        }
+        total_visible_lights = cast_u32(visible_lights.size());
+
+        uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(LightData));
+        uint32_t light_buffer_offset = allocate_staging_buffer(light_data_size, device->get_current_frame());
+
+        uint8_t *light_buffer_ptr = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + light_buffer_offset);
+        std::memcpy(light_buffer_ptr, visible_lights.data(), light_data_size);
+
+        DescriptorInfo descriptor = {
+            .type = DescriptorType::StorageBuffer,
+            .resource = per_frame_staging_buffer.id,
+            .buffer_info = {
+                .offset = light_buffer_offset,
+                .size = light_data_size,
+            },
+        };
+
+        per_frame_light_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor, 1);
+    }
+
     // @TODO this must be handled somewhere else
     void Renderer::create_batches() {
         ScopedCpuProfiling("Create Batch");
@@ -468,6 +533,7 @@ namespace mirai {
         */
         scene->update();
 
+        // Generate and Upload visible lights
         create_batches();
 
         shadow_system->update(scene.get());
@@ -622,6 +688,9 @@ namespace mirai {
             ScopedGpuProfiling(cb, "GPU Time");
             // Copy per frame data from staging buffer to gpu uniform buffer
             copy_buffers();
+
+            // Generate and Upload visible lights
+            upload_visible_lights();
 
             // Patch transform and Materials if it has changed
             patch_global_data(cb);

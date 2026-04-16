@@ -53,6 +53,15 @@ namespace mirai {
         return true;
     }
 
+    bool FrustumPlanes::intersect(glm::vec3 position, float radius) const {
+        for (int i = 0; i < 6; ++i) {
+            float dist = planes[i].distance_to_point(position);
+            if (dist < -radius)
+                return false;
+        }
+        return true;
+    }
+
     void FrustumPoints::calculate_frustum_corners(const glm::mat4 &inv_m, std::array<glm::vec3, 8> &corners) {
         for (int i = 0; i < 8; ++i) {
             glm::vec4 corner = inv_m * glm::vec4(frustum_corner_ndc[i], 1.0f);
