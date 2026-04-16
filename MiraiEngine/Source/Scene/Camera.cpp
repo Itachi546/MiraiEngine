@@ -6,12 +6,12 @@
 namespace mirai {
     Camera::Camera() : position(glm::vec3(0.0f, 0.0f, -3.0f)),
                        rotation(glm::vec3(0.0f)),
+                       projection_mode(PROJECTION_MODE_PERSPECTIVE),
                        fov(60.0f),
                        aspect_ratio(4.0f / 3.0f),
                        near_plane(0.2f),
                        far_plane(100.0f),
-                       jitter_factor(glm::vec2(0.0f)),
-                       projection_mode(PROJECTION_MODE_PERSPECTIVE) {
+                       jitter_factor(glm::vec2(0.0f)) {
         view_projection_matrix = glm::mat4(1.0f);
     }
 

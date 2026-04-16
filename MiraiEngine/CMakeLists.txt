@@ -89,7 +89,7 @@ endif()
 
 target_compile_options(${TARGET_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W3>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Wno-missing-field-initializers -Wno-gnu-anonymous-struct -Wno-microsoft-anon-tag -Wno-nested-anon-types>
 )
 
 add_subdirectory(Shaders/)

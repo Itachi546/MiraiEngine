@@ -9,10 +9,10 @@ namespace mirai {
     template <typename T>
     struct ResourcePool {
 
-        ResourcePool(uint32_t pool_size, std::string name) : pool_size(pool_size),
-                                                             name(name),
-                                                             used_indices(0),
-                                                             free_list_head(0) {
+        ResourcePool(uint32_t pool_size, std::string name) : name(name),
+                                                             pool_size(pool_size),
+                                                             free_list_head(0),
+                                                             used_indices(0) {
             free_list = new uint32_t[pool_size];
             resources = new T[pool_size];
             for (uint32_t i = 0; i < pool_size; ++i)

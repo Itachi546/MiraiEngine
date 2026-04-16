@@ -136,7 +136,6 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         // Allocate actual resources
         for (auto &resource : resources) {
-            std::variant<FrameGraphBuffer, FrameGraphTexture> &raw_resource = resource.resource;
             if (resource.resource_type == ResourceType::Buffer) {
                 FrameGraphBuffer &buffer = resource.get<FrameGraphBuffer>();
                 ASSERT(!buffer.id.is_valid());

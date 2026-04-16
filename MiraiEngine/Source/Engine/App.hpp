@@ -21,7 +21,6 @@ namespace mirai {
         virtual ~App() = default;
 
       private:
-        bool started = false;
         std::string name;
     };
 } // namespace mirai

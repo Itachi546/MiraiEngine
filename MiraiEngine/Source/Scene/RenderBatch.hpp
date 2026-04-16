@@ -32,12 +32,12 @@ namespace mirai {
     };
 
     struct MeshDrawInfo {
-        DrawIndexedIndirectCommand draw_info;
-        uint32_t material_index;
         uint32_t transform_index;
+        uint32_t material_index;
+        DrawIndexedIndirectCommand draw_info;
         // Distance from camera, used for sorting
-        float distance_to_camera_sqr;
         uint32_t vertex_stride;
+        float distance_to_camera_sqr;
 
         MeshDrawInfo(uint32_t transform_index,
                      uint32_t material_index,

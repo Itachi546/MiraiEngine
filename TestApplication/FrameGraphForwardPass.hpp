@@ -95,7 +95,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             uint32_t work_group_y = rendering_utils::get_workgroup_size(height + 1, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
-    /*
+
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;

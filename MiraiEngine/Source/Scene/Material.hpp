@@ -79,6 +79,8 @@ namespace mirai {
         std::string name;
         bool dirty = false;
 
+        virtual ~Material() = default;
+
       protected:
         MaterialState material_state;
     };
@@ -102,6 +104,7 @@ namespace mirai {
         // Returns the embedded Shader* when is_custom_shader() is true; nullptr otherwise.
         virtual Shader *get_custom_shader() const { return nullptr; }
 
+        virtual ~Material3D() = default;
         struct Properties {
             glm::vec4 albedo;
 
@@ -139,7 +142,7 @@ namespace mirai {
                          const PipelineAttachmentInfo &attachment_info);
         ~ShaderMaterial3D();
 
-        bool    is_custom_shader()  const override { return true; }
+        bool is_custom_shader() const override { return true; }
         Shader *get_custom_shader() const override { return shader.get(); }
 
       private:

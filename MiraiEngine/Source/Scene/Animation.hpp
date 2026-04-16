@@ -141,7 +141,7 @@ namespace mirai {
         }
 
         void add_bone(int index, int parent, const std::string &name, const glm::mat4 &local_transform, const glm::mat4 &inv_bind_transform) {
-            ASSERT(index < parents.size());
+            ASSERT(index < cast_int(parents.size()));
             parents[index] = parent;
             names[index] = name;
             local_transforms[index] = local_transform;

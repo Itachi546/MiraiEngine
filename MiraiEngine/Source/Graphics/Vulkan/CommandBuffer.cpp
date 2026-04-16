@@ -14,7 +14,7 @@ namespace mirai {
 
         VkRenderingInfo rendering_info = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea = {0, 0, render_area_width, render_area_height},
+            .renderArea = {{0, 0}, {render_area_width, render_area_height}},
         };
 
         std::vector<VkRenderingAttachmentInfo> vk_color_attachments;
@@ -29,10 +29,14 @@ namespace mirai {
                 .loadOp = VkAttachmentLoadOp(attachment.load_op),
                 .storeOp = VkAttachmentStoreOp(attachment.store_op),
                 .clearValue = {
-                    attachment.clear_color.r,
-                    attachment.clear_color.g,
-                    attachment.clear_color.b,
-                    attachment.clear_color.a,
+                    .color = {
+                        .float32 = {
+                            attachment.clear_color.r,
+                            attachment.clear_color.g,
+                            attachment.clear_color.b,
+                            attachment.clear_color.a,
+                        },
+                    },
                 },
             });
             layer_count = std::max(texture->array_layers, layer_count);
@@ -55,9 +59,10 @@ namespace mirai {
                 .loadOp = VkAttachmentLoadOp(depth_attachment->load_op),
                 .storeOp = VkAttachmentStoreOp(depth_attachment->store_op),
                 .clearValue = {
-                    depth_attachment->clear_color.r,
-                    0,
-                },
+                    .depthStencil = {
+                        depth_attachment->clear_color.r,
+                        0,
+                    }},
             };
 
             VkRenderingAttachmentInfo *p_depth_attachment = &vk_depth_attachment.value();

@@ -176,7 +176,7 @@ namespace mirai {
     }
 
     bool LoadEmbeddedImage(std::string filename, tinygltf::Image *image, const tinygltf::Sampler *sampler, UserData *p_user_data, bool is_color_texture = false) {
-        unsigned char *data = image->image.data();
+        (void)sampler;
         uint32_t width = image->width;
         uint32_t height = image->height;
         uint32_t nchannel = image->component;
@@ -218,6 +218,7 @@ namespace mirai {
     }
 
     bool LoadExternalImage(tinygltf::Image *image, const tinygltf::Sampler *sampler, void *user_data, bool is_color_texture = false) {
+        (void)sampler;
 
         image->uri = FormatTextureURI(image->uri);
         if (TextureCache::get()->get_texture_id(image->uri).is_valid()) {
@@ -898,7 +899,7 @@ namespace mirai {
             // Add Mesh Component
             int mesh_id = node->mesh;
             if (mesh_id >= 0) {
-                ASSERT(mesh_id < load_state->mesh_components.size());
+                ASSERT(mesh_id < cast_int(load_state->mesh_components.size()));
                 MeshComponent &mesh_comp = comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
                 if (mesh_comp.mesh_type != MESH_TYPE_SKINNED)
                     mesh_comp.mesh_type = mesh_type;

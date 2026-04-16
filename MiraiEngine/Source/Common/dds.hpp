@@ -146,7 +146,8 @@ namespace dds {
         unsigned dwCaps4;
         unsigned dwReserved2;
     } DDS_HEADER;
-    enum DXGI_FORMAT {
+
+    enum DXGI_FORMAT : unsigned int {
         DXGI_FORMAT_UNKNOWN = 0,
         DXGI_FORMAT_R32G32B32A32_TYPELESS = 1,
         DXGI_FORMAT_R32G32B32A32_FLOAT = 2,

@@ -65,7 +65,6 @@ namespace mirai {
         frame_graph->add_callback_pass<SSAOPassData>(
             "SSAOPass",
             [board](FrameGraph::FrameGraphBuilder &builder, SSAOPassData &data) {
-                RenderingDevice *device = RenderingDevice::get();
                 data.output = builder.create_texture("SSAOTexture", {
                                                                         .create_flags = 0,
                                                                         .width = cast_u32(SSAO_WIDTH),
@@ -188,8 +187,6 @@ namespace mirai {
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
             [board](FrameGraph::FrameGraphBuilder &builder, SSAOBlurData &data) {
-                RenderingDevice *device = RenderingDevice::get();
-
                 data.output = builder.create_texture("SSAOBlurTexture", {
                                                                             .create_flags = 0,
                                                                             .width = cast_u32(SSAO_WIDTH),
@@ -286,7 +283,7 @@ namespace mirai {
         // SSAO Vertical Blur Pass
         frame_graph->add_callback_pass(
             "SSAOVerticalBlurPass",
-            [board](FrameGraph::FrameGraphBuilder &builder, FrameGraph::NoData &no_data) {
+            [board](FrameGraph::FrameGraphBuilder &builder, FrameGraph::NoData &) {
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const SSAOBlurData &hblur_data = board->get<SSAOBlurData>();
 
@@ -306,14 +303,13 @@ namespace mirai {
                                                                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                            });
             },
-            [](const FrameGraph::NoData &no_data, const FrameGraphPassResource &pass_resource, void *context) {
+            [](const FrameGraph::NoData &, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Camera *camera = renderer->get_scene()->get_camera();
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
-                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const HBAOParams &params = board->get<HBAOParams>();
                 BlurConstants push_constants = {
                     .width = SSAO_WIDTH,

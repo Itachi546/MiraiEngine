@@ -19,5 +19,5 @@ void main() {
     vec3 rd = generate_camera_ray(vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y), invP, invV);
     rd.y = -rd.y;
     vec3 col = texture(samplerCube(u_cubemap, u_samplers[SAMPLER_LINEAR_CLAMP]), rd).rgb;
-    fragColor = vec4(linear_to_srgb(ACESFilm(col)), 1.0f);
+    fragColor = vec4(col, 1.0f);
 }

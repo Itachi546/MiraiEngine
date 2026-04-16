@@ -24,7 +24,6 @@ namespace mirai {
         frame_graph->add_callback_pass<ForwardPassData>(
             "ForwardPass",
             [board](FrameGraph::FrameGraphBuilder &builder, ForwardPassData &data) {
-                RenderingDevice *device = RenderingDevice::get();
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
 

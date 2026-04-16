@@ -6,11 +6,14 @@
 
 namespace mirai {
     void WindowKeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+        (void)window;
+        (void)scancode;
         Input::get()->set_modifiers(mods);
         Input::get()->set_state(Key(key), action != GLFW_RELEASE);
     }
 
     void WindowButtonCallback(GLFWwindow *window, int button, int action, int mods) {
+        (void)window;
         Input::get()->set_modifiers(mods);
         Input::get()->set_state(Key(button), action != GLFW_RELEASE);
     }
@@ -22,6 +25,9 @@ namespace mirai {
     }
 
     void WindowCursorPosCallback(GLFWwindow *glfw_window, double x, double y) {
+        (void)glfw_window;
+        (void)x;
+        (void)y;
     }
 
     void WindowScrollCallback(GLFWwindow *glfw_window, double xoffset, double yoffset) {
@@ -45,11 +51,11 @@ namespace mirai {
                                                                                 height(height),
                                                                                 title(title),
                                                                                 fullscreen(false),
+                                                                                minimized(false),
                                                                                 mouse_pos(0.0f, 0.0f),
                                                                                 mouse_pos_delta(0.0f, 0.0f),
                                                                                 mouse_scroll(0.0f, 0.0f),
-                                                                                mouse_scroll_delta(0.0f, 0.0f),
-                                                                                minimized(false) {
+                                                                                mouse_scroll_delta(0.0f, 0.0f) {
         ASSERT(Instance == nullptr);
         Instance = this;
 
@@ -65,8 +71,6 @@ namespace mirai {
         glfw_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 
         ASSERT_MSG(glfw_window != nullptr, "Failed to Create Window");
-
-        auto monitor = glfwGetPrimaryMonitor();
 
         glfwSetWindowUserPointer(glfw_window, this);
 

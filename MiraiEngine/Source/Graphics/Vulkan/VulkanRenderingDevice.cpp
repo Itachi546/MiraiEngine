@@ -126,7 +126,7 @@ namespace mirai {
         if (!PhysicalDeviceSupportPresentation(instance, physical_device, graphics_queue))
             Log::Fatal("VULKAN::Selected Physical Device Doesn't Support Presentation!!!");
 
-        device = CreateDevice(instance, physical_device, queue_family_indices, requested_device_extensions, has_rt_support);
+        device = CreateDevice(physical_device, queue_family_indices, requested_device_extensions, has_rt_support);
 
         vma_allocator = create_allocator();
 
@@ -525,6 +525,8 @@ namespace mirai {
         };
 
         VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &create_info, nullptr, &pipeline->pipeline));
+
+        set_debug_marker_object_name(VK_OBJECT_TYPE_PIPELINE, (uint64_t)pipeline->pipeline, debug_name.c_str());
 
         DestroyShader(&shader, device);
 
@@ -1227,7 +1229,6 @@ namespace mirai {
         out_compacted_size.resize(mesh_count);
 
         const size_t k_alignment = 256;
-        uint32_t total_primitives = 0;
         VkDeviceSize blas_buffer_size = 0;
         VkDeviceSize scratch_buffer_size = 0;
 
@@ -1254,7 +1255,6 @@ namespace mirai {
             acceleration_sizes[i] = size_info.accelerationStructureSize;
             scratch_sizes[i] = size_info.buildScratchSize;
 
-            total_primitives += max_primitives;
             blas_buffer_size += align_memory(size_info.accelerationStructureSize, k_alignment);
             scratch_buffer_size = std::max(scratch_buffer_size, size_info.buildScratchSize);
         }
@@ -1281,6 +1281,7 @@ namespace mirai {
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+                .pNext = nullptr,
                 .buffer = blas_buffer->buffer,
                 .offset = out_compacted_offsets[i],
                 .size = acceleration_sizes[i],
@@ -1293,6 +1294,7 @@ namespace mirai {
         VkQueryPool query_pool = 0;
         VkQueryPoolCreateInfo blas_query_create_info = {
             .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .pNext = nullptr,
             .queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
             .queryCount = mesh_count,
         };
@@ -1415,6 +1417,7 @@ namespace mirai {
                                                                            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext = nullptr,
             .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
             .memoryBarrierCount = 0,
             .bufferMemoryBarrierCount = 1,
@@ -1460,6 +1463,7 @@ namespace mirai {
         for (uint32_t i = 0; i < mesh_count; ++i) {
             VkAccelerationStructureCreateInfoKHR acceleration_create_info = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+                .pNext = nullptr,
                 .buffer = blas_buffer->buffer,
                 .offset = blas_compacted_offsets[i],
                 .size = blas_compacted_sizes[i],
@@ -1469,6 +1473,7 @@ namespace mirai {
 
             VkCopyAccelerationStructureInfoKHR copy_info = {
                 .sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
+                .pNext = nullptr,
                 .src = build_blas[i],
                 .dst = acceleration_structure.blas[i],
                 .mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR,

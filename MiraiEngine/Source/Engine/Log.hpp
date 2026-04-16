@@ -66,8 +66,10 @@ namespace mirai {
 
         template <typename... Args>
         static void Write(Args &&...args) {
-            std::unique_lock<std::mutex> lock(WriteMutex);
+            std::unique_lock<std::mutex>
+                lock(WriteMutex);
 #ifdef _DEBUG
+            ((void)args, ...);
             const LogEntry &entry = entries.back();
             std::cout << entry.message << std::endl;
 #else

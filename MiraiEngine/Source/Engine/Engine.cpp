@@ -13,7 +13,7 @@ using namespace std::chrono_literals;
 namespace mirai {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine(const EngineInitializationOptions &options) : running(true), dt_ms(16), elapsed_time_ms(0) {
+    Engine::Engine(const EngineInitializationOptions &options) : dt_ms(16), elapsed_time_ms(0), running(true) {
         ASSERT(Instance == nullptr);
 
         Instance = this;

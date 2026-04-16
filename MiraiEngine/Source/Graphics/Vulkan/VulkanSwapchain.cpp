@@ -22,6 +22,8 @@ namespace mirai {
 
         VkWin32SurfaceCreateInfoKHR create_info = {
             .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .flags = 0,
             .hinstance = GetModuleHandle(0),
             .hwnd = hwnd,
         };
@@ -66,6 +68,8 @@ namespace mirai {
     static void create_swapchain(VulkanSwapchain *swapchain, VkDevice device, VkSurfaceKHR surface, uint32_t min_image_count) {
         VkSwapchainCreateInfoKHR createInfo = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .flags = 0,
             .surface = surface,
             .minImageCount = min_image_count,
             .imageFormat = swapchain->surface_format.format,
@@ -108,12 +112,17 @@ namespace mirai {
     static void create_swapchain_image_views(VkDevice device, VulkanSwapchain *swapchain) {
         VkImageViewCreateInfo image_view_create_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .image = VK_NULL_HANDLE, // Populated later
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = swapchain->surface_format.format,
             .components = {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A},
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
                 .levelCount = 1,
+                .baseArrayLayer = 0,
                 .layerCount = 1,
             },
         };
@@ -175,9 +184,9 @@ namespace mirai {
 
         swapchain->present_mode = select_present_mode(physical_device, surface, vsync);
 
-        VkSurfaceTransformFlagBitsKHR old_transform = swapchain->current_transform;
+        // VkSurfaceTransformFlagBitsKHR old_transform = swapchain->current_transform;
 
-        uint32_t min_image_count = std::min(std::max(swapchain_image_count, surface_caps.minImageCount), min_image_count);
+        uint32_t min_image_count = std::min(std::max(swapchain_image_count, surface_caps.minImageCount), surface_caps.maxImageCount);
         create_swapchain(swapchain, device, surface, min_image_count);
 
         uint32_t image_count = 0;

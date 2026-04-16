@@ -22,7 +22,7 @@ namespace mirai {
         registry->add(material_state.get_hash() | mesh_type, shader);
     }
 
-    void preload_shaders(ShaderRegistryMap *shader_registry_map) {
+    void preload_shaders() {
         // ── Depth Pre-Pass ─────────────────────────────────────────────────────
         create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS,
                                {"SPIRV/depth-prepass.vert.spv"},

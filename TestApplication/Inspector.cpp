@@ -268,7 +268,7 @@ void add_animator_component(AnimatorComponent *animator_component, Scene *scene,
             AnimationClip *current_animation = &scene->animation_clips[animator_component->current_animation_clip];
             ImGui::Text("Animation: %s\n", current_animation->name.c_str());
             ImGui::Text("Duration: %.2fs", current_animation->get_duration());
-            ImGui::Text("Tick per seconds: %d", current_animation->tick_per_seconds);
+            ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
         }
 
         if (last_selected_entity != entity) {
@@ -288,8 +288,7 @@ void add_entity_components(Entity entity, Scene *scene) {
     std::string name = name_component != nullptr ? name_component->name : "unnamed";
 
     ImGui::Separator();
-    std::string title = "Components(" + name + ")";
-    ImGui::Text(title.c_str());
+    ImGui::Text("Components(%s)", name.c_str());
 
     add_transform_component(comp_manager->get_component<TransformComponent>(entity), entity);
     add_material_component_ui(comp_manager->get_component<MeshComponent>(entity), scene, entity);

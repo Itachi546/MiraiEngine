@@ -36,7 +36,7 @@ namespace mirai {
 
         // Preload shaders
         shader_registry_map = std::make_unique<ShaderRegistryMap>();
-        preload_shaders(shader_registry_map.get());
+        preload_shaders();
 
         frame_graph = std::make_unique<FrameGraph>();
         frame_graph_blackboard = std::make_unique<FrameGraphBlackBoard>();
@@ -151,10 +151,11 @@ namespace mirai {
                 },
                 .index_buffer = {
                     .buffer = object.index_buffer,
-                    .offset = object.first_index * sizeof(uint32_t),
+                    .offset = cast_u32(object.first_index * sizeof(uint32_t)),
                     .count = object.index_count,
                     .stride = sizeof(uint32_t),
                 },
+                .transform = {},
             });
 
             AccelerationStructureMeshInfo &mesh_info = mesh_infos.back();
@@ -331,7 +332,6 @@ namespace mirai {
         uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
         uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
 
-        auto &component_manager = scene->ecs->component_manager;
         for (auto &render_batch : batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());

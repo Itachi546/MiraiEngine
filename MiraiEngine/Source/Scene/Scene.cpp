@@ -16,15 +16,16 @@ namespace mirai {
         Entity entity = create_entity(name, entities[0]);
         TransformComponent *light_transform = ecs->component_manager->get_component<TransformComponent>(entity);
         light_transform->rotation = orientation;
-        LightComponent &light_component = ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
-                                                                                                            .color = glm::vec3(1.0f),
-                                                                                                            .intensity = 5.0f,
-                                                                                                            .cast_shadow = true,
-                                                                                                        });
+        ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
+                                                                          .light_type = LIGHT_TYPE_DIRECTIONAL,
+                                                                          .color = glm::vec3(1.0f),
+                                                                          .intensity = 5.0f,
+                                                                          .cast_shadow = true,
+                                                                      });
         return entity;
     }
 
-    Scene::Scene(const std::string &name) : name(name), dirty(true) {
+    Scene::Scene(const std::string &name) : dirty(true), name(name) {
         ecs = std::make_unique<ECS>();
         ecs->component_manager->register_component<NameComponent>();
         ecs->component_manager->register_component<HierarchyComponent>();
@@ -33,8 +34,6 @@ namespace mirai {
         ecs->component_manager->register_component<NodeAnimatorComponent>();
         ecs->component_manager->register_component<AnimatorComponent>();
         ecs->component_manager->register_component<LightComponent>();
-
-        RenderingDevice *device = RenderingDevice::get();
 
         // Initialize camera/sun
         camera = std::make_unique<Camera>();
@@ -45,6 +44,7 @@ namespace mirai {
 
         HierarchyComponent hierarchy_comp = {
             .parent = K_INVALID_ENTITY,
+            .childrens = {},
         };
         ecs->component_manager->add_component<HierarchyComponent>(root_entity, hierarchy_comp);
         entities.push_back(root_entity);
@@ -282,7 +282,6 @@ namespace mirai {
         }
 
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
-        std::vector<Entity> &entities = mesh_component_ptr->entities;
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
         render_object_list.clear();
@@ -293,7 +292,6 @@ namespace mirai {
             MeshComponent &mesh_component = mesh_component_ptr->components[i];
             const Entity entity = mesh_component_ptr->entities[i];
 
-            GpuMesh &gpu_mesh = gpu_meshes[mesh_component.gpu_mesh_index];
             TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
 
             BufferView vertex_buffer = mesh_component.vertex_buffer;
@@ -311,7 +309,7 @@ namespace mirai {
                     .vertex_buffer = vertex_buffer.buffer,
                     .index_buffer = index_buffer.buffer,
                     .vertex_offset_bytes = subset.vertex_offset_bytes, // Manually calculating in shader
-                    .first_index = subset.index_offset_bytes / sizeof(uint32_t),
+                    .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
                     .index_count = subset.index_count,
                     .vertex_stride = subset.vertex_stride,
                     .local_aabb = std::move(aabb),

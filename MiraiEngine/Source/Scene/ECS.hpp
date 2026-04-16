@@ -25,7 +25,7 @@ namespace mirai {
      * This doesn't seem to work when the dll is made and
      * called from exe?
      */
-    static uint32_t GetId() {
+    static inline uint32_t GetId() {
         static uint32_t g_component_id = 0;
         ASSERT_MSG(g_component_id < K_MAX_COMPONENTS, "Component count exceed the max limit");
         return g_component_id++;
@@ -35,7 +35,7 @@ namespace mirai {
       public:
         virtual ~IComponentArray() = default;
 
-        virtual bool remove_entity(Entity &handle) { return false; }
+        virtual bool remove_entity(Entity &) { return false; }
 
         virtual std::size_t size() const = 0;
     };

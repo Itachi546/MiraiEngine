@@ -4,7 +4,7 @@
 #include <string.h>
 
 namespace mirai {
-    VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT object_type, uint64_t object, size_t location, int message_code, const char *p_layer_prefix, const char *p_message, void *p_user_data) {
+    VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int, const char *, const char *p_message, void *) {
         const char *type = (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) ? "ERROR" : (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) ? "WARNING"
                                                                                                                          : "INFO";
         char message[4096];

@@ -42,14 +42,14 @@ namespace mirai {
         void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) override;
         void write_sampler_descriptors(const SamplerDescription *samplers, uint32_t sampler_count, void *start_address) override;
 
-        uint32_t get_resource_descriptor_size() const;
-        uint32_t get_sampler_descriptor_size() const;
+        uint32_t get_resource_descriptor_size() const override;
+        uint32_t get_sampler_descriptor_size() const override;
 
-        uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const;
-        uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const;
+        uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const override;
+        uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const override;
 
         BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
-        void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name);
+        void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
         void unmap_buffer(BufferID buffer) override;
 
@@ -99,7 +99,7 @@ namespace mirai {
         }
 
         // Raytracing utilities
-        void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count);
+        void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) override;
         bool supports_raytracing() const override {
             return has_rt_support;
         }

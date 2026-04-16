@@ -83,7 +83,7 @@ namespace mirai {
         ASSERT_MSG(queue_family_indices[QUEUE_TYPE_GRAPHICS] != K_INVALID_QUEUE_ID, "Graphics Queue is not supported...");
     }
 
-    VkDevice CreateDevice(VkInstance instance, VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
+    VkDevice CreateDevice(VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
         VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr};
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
         vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);

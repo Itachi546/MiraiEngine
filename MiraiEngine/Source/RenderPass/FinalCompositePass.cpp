@@ -63,7 +63,6 @@ namespace mirai {
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
 
-                const FrameGraphTexture &output_texture = pass_resource.get<FrameGraphTexture>(data.output);
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 

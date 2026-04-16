@@ -76,7 +76,7 @@ namespace mirai {
 
         Entity create_entity(const std::string &name, Entity parent_entity = K_INVALID_ENTITY) {
             Entity entity = ecs->create_entity();
-            TransformComponent &transform = ecs->component_manager->add_component<TransformComponent>(entity);
+            ecs->component_manager->add_component<TransformComponent>(entity);
             ecs->component_manager->add_component<NameComponent>(entity, NameComponent{name});
 
             // We choose the scene root node as parent entity if the parent is invalid

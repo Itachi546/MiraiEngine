@@ -3,6 +3,5 @@
 #include <string>
 
 namespace mirai {
-    class ShaderRegistryMap;
-    void preload_shaders(ShaderRegistryMap *lookup);
+    void preload_shaders();
 } // namespace mirai

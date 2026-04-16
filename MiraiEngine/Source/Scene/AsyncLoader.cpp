@@ -85,7 +85,7 @@ namespace mirai {
         size_t read_size = fread(staging_buffer_ptr, 1, image_size, file);
         ASSERT(read_size == image_size);
 
-        size_t ret = fgetc(file);
+        int ret = fgetc(file);
         if (ret != -1) {
             Log::Warn("Incomplete file read: ", load_task.filename);
         }

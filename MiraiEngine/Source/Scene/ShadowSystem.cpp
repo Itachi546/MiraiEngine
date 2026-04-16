@@ -33,7 +33,7 @@ namespace mirai {
         float aspect_ratio = camera->get_aspect_ratio();
         glm::mat4 V = camera->get_view_transform();
 
-        for (int cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
+        for (uint32_t cascade = 0; cascade < NUM_DIRLIGHT_CASCADE; ++cascade) {
             float split_distance = cascade_info.split_distances[cascade] * z_range;
             glm::mat4 P = glm::perspective(fov, aspect_ratio, last_split_distance, split_distance);
 
