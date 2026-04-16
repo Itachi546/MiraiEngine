@@ -11,7 +11,7 @@
 
 namespace mirai {
 
-    constexpr uint32_t K_MAX_ENTITIES = 6'000;
+    constexpr uint32_t K_MAX_ENTITIES = 10'000;
     constexpr uint32_t K_INVALID_ENTITY = 0;
     using ComponentType = std::uint8_t;
     const uint8_t K_MAX_COMPONENTS = 64;

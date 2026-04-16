@@ -3,7 +3,7 @@
 #include "Math/Math.hpp"
 
 namespace mirai {
-    float halton(int i, int b) {
+    inline float halton(int i, int b) {
         // Creates a halton sequence of values between 0 and 1.
         // https://en.wikipedia.org/wiki/Halton_sequence
         // Used for jittering based on a constant set of 2D points.
@@ -17,8 +17,12 @@ namespace mirai {
         return r;
     }
 
-    glm::vec2 halton23_sequence(int index) {
+    inline glm::vec2 halton23_sequence(int index) {
         return glm::vec2{halton(index, 2), halton(index, 3)};
+    }
+
+    inline float randomFloat01() {
+        return float(rand()) / float(RAND_MAX);
     }
 
 } // namespace mirai

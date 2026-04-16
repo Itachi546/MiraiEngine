@@ -96,7 +96,15 @@ namespace mirai {
         for (auto &state : resource_states) {
             switch (state.resource_type) {
             case ResourceType::Buffer: {
-                ASSERT("Not implemented yet");
+                VulkanBuffer *buffer = device->access_buffer(state.resource);
+                memory_barriers.push_back(CreateBufferMemoryBarrier2(
+                    buffer->buffer,
+                    0,
+                    0,
+                    VkPipelineStageFlags2(state.declaration->stage_mask),
+                    VkAccessFlags2(state.declaration->access_flags),
+                    0,
+                    buffer->size));
                 break;
             };
             case ResourceType::Texture: {
@@ -573,6 +581,8 @@ namespace mirai {
     }
     */
     void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count) {
+        if (image_memory_barrier_count == 0 && buffer_memory_barrier_count == 0)
+            return;
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
             .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,

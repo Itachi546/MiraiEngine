@@ -42,8 +42,9 @@ namespace mirai {
         ShaderRegistry *registry;
     };
 
-    struct TiledLightCullingPassData {
-        std::shared_ptr<ComputeShader> frustum_gen_shader;
+    struct TiledLightCullingFrustumPassData {
+        FrameGraphResourceHandle buffer;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct ForwardPassData {

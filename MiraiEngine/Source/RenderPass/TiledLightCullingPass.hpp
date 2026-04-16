@@ -2,11 +2,11 @@
 
 namespace mirai {
     class FrameGraph;
-    class FrameGraphBlackboard;
+    class FrameGraphBlackBoard;
 
     class TiledLightCullingPass {
       public:
-        TiledLightCullingPass(FrameGraph *frame_graph, FrameGraphBlackboard *board);
+        TiledLightCullingPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
         ~TiledLightCullingPass() = default;
     };
 

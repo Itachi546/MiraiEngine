@@ -14,6 +14,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     DepthPrePass depth_prepass{frame_graph, board};
     SSAOPass ssao_pass{frame_graph, board};
     CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
+    TiledLightCullingPass light_cull_pass{frame_graph, board};
     ForwardPass forward_pass{frame_graph, board};
     FinalCompositePass composite_pass{frame_graph, board};
     // DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
