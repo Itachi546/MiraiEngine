@@ -78,6 +78,12 @@ namespace mirai {
             return resource.get<FrameGraphTexture>().id;
         }
 
+        const TextureDescription &get_texture_description(FrameGraphResourceHandle resource_id) const {
+            const ResourceNode &resource = resources[resource_id];
+            ASSERT(resource.resource_type == ResourceType::Texture);
+            return resource.get<FrameGraphTexture>().desc;
+        }
+
         ~FrameGraph();
 
       private:

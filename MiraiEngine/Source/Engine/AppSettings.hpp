@@ -17,6 +17,8 @@ namespace mirai {
         extern RenderMode render_mode;
         extern bool enable_rt_shadow;
         extern bool enable_debug_draw;
+        extern bool enable_debug_light_tile;
+
         extern float ibl_contribution;
 
         // Vulkan Specific settings

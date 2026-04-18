@@ -9,7 +9,7 @@
 
 namespace mirai {
     struct FinalCompositeBindings {
-        DescriptorOffset descriptors[2];
+        DescriptorOffset descriptors[3];
     };
 
     FinalCompositePass::FinalCompositePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
@@ -43,9 +43,17 @@ namespace mirai {
                 builder.read(forward_pass_data.output, {
                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                           .layout = IMAGE_LAYOUT_GENERAL,
+                                                           .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                        });
                 data.input = forward_pass_data.output;
+
+                const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
+                builder.read(light_cull_data.debug_texture, {
+                                                                .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+
+                                                            });
 
                 data.shader = std::make_shared<ComputeShader>("FinalCompositeShader", "SPIRV/final-composite.comp.spv");
                 ASSERT(data.shader != nullptr);
@@ -68,13 +76,16 @@ namespace mirai {
 
                 FinalCompositeBindings *bindings = nullptr;
                 if (!board->has<FinalCompositeBindings>()) {
+                    const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
                     DescriptorInfo descriptors[] = {
                         {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.input).id, .image_info = {0, ~0u, 0, ~0u}},
                         {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id, .image_info = {0, ~0u, 0, ~0u}},
+                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(light_cull_data.debug_texture).id, .image_info = {0, ~0u, 0, ~0u}},
                     };
+
                     DescriptorOffset descriptor = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptors, cast_u32(std::size(descriptors)));
                     bindings = &board->add<FinalCompositeBindings>(FinalCompositeBindings{
-                        .descriptors = {descriptor, descriptor + 1},
+                        .descriptors = {descriptor, descriptor + 1, descriptor + 2},
                     });
                 } else {
                     bindings = &board->get<FinalCompositeBindings>();

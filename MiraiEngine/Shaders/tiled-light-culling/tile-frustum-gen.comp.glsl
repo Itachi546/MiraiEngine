@@ -4,7 +4,9 @@
 #include "../utils/transform.glsl"
 #include "../utils/frustum.glsl"
 
-layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+#define LOCAL_WORK_SIZE 16
+
+layout(local_size_x = LOCAL_WORK_SIZE, local_size_y = LOCAL_WORK_SIZE, local_size_z = 1) in;
 
 layout(binding = 0) writeonly buffer TileFrustumBuffer {
     TileFrustum frustums[];
@@ -13,8 +15,8 @@ layout(binding = 0) writeonly buffer TileFrustumBuffer {
 layout(push_constant) uniform PushConstant {
     mat4 invP;
     vec2 resolution;
-    float tile_size;
-    float _padding;
+    int tile_size;
+    int tile_count_x;
 };
 
 vec2 to_ndc(vec2 coord, vec2 resolution) {
@@ -53,8 +55,7 @@ void main() {
     vec3 p0 = vec3(0.0);
 
     // Tile count along x-axis
-    int tile_stride = int((resolution.x + tile_size - 1) / tile_size);
-    int buffer_index = id.y * tile_stride + id.x;
+    int buffer_index = id.y * tile_count_x + id.x;
 
     frustums[buffer_index].planes[0] = compute_plane(p0, bl, tl);
     frustums[buffer_index].planes[1] = compute_plane(p0, br, tr);

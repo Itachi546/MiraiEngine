@@ -126,14 +126,25 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
     }
 }
 
+static const char *light_type_array[] = {
+    "Directional",
+    "Point",
+    "Spot",
+};
+
 void add_light_component_ui(LightComponent *light, Entity entity) {
     if (!light)
         return;
-    if (ImGui::CollapsingHeader("Directional Light")) {
+    if (ImGui::CollapsingHeader("LightComponent")) {
         ImGui::PushID(entity);
-        ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+        ImGui::Text("Light Type:%s", light_type_array[light->light_type]);
         ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
         ImGui::ColorPicker3("Color", &light->color[0]);
+        if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
+            ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+        } else if (light->light_type == LIGHT_TYPE_POINT) {
+            ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
+        }
         ImGui::PopID();
     }
 }

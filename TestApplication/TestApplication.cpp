@@ -14,6 +14,7 @@
 #include "FrameGraphForwardPass.hpp"
 #include "Scene/ShadowSystem.hpp"
 #include "Common/Random.hpp"
+#include "Graphics/LineRenderer.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -66,26 +67,38 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-        const uint32_t light_count = 1000;
         auto &component_manager = scene->ecs->component_manager;
+#if 0
+        point_light = scene->create_entity("Light");
+        TransformComponent *transform = component_manager->get_component<TransformComponent>(point_light);
+        transform->position = glm::vec3(0.0f, 4.0f, 0.0f);
+        component_manager->add_component<LightComponent>(point_light, LightComponent{
+                                                                          .light_type = LIGHT_TYPE_POINT,
+                                                                          .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
+                                                                          .intensity = 10.0f,
+                                                                          .radius = 5.0f,
+                                                                          .cast_shadow = false,
+                                                                      });
+#else
+        const uint32_t light_count = 1000;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
             Entity entity = scene->create_entity("Light" + std::to_string(i), root_light);
             TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
             transform->position = glm::vec3(
                 -10.0f + randomFloat01() * 20.0f,
-                -5.0f + randomFloat01() * 5.0f,
-                -5.0f + randomFloat01() * 5.0f);
+                randomFloat01() * 10.0f,
+                -5.0f + randomFloat01() * 10.0f);
 
             component_manager->add_component<LightComponent>(entity, LightComponent{
                                                                          .light_type = LIGHT_TYPE_POINT,
                                                                          .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
                                                                          .intensity = randomFloat01() * 10.0f,
-                                                                         .radius = 5.0f + randomFloat01() * 10.0f,
+                                                                         .radius = -2.0f + randomFloat01() * 4.0f,
                                                                          .cast_shadow = false,
                                                                      });
         }
-
+#endif
         controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(10.0f);
         controller->set_run_speed(20.0f);
@@ -110,6 +123,30 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
+#if 0
+        TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(point_light);
+        LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(point_light);
+        LineRenderer *line_renderer = LineRenderer::get();
+
+        const uint32_t theta_sample = 20;
+        const uint32_t phi_sample = 10;
+        float theta_step = (glm::pi<float>() * 2.0f) / float(theta_sample);
+        float phi_step = glm::pi<float>() / float(phi_sample);
+
+        for (uint32_t t = 0; t < theta_sample; ++t) {
+            for (uint32_t p = 0; p < phi_sample; ++p) {
+                float phi = p * phi_step;
+                float theta = t * theta_step;
+                glm::vec3 direction = {
+                    sin(phi) * cos(theta),
+                    sin(phi) * sin(theta),
+                    cos(phi),
+                };
+
+                line_renderer->add_line(transform->position, transform->position + light->radius * glm::normalize(direction), 0xffff00ff);
+            }
+        }
+#endif
         add_debug_ui();
     }
 
@@ -386,6 +423,7 @@ class TestApplication : public App {
     FrameGraph *frame_graph = nullptr;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
+    Entity point_light;
 };
 
 int main(int argc, char **argv) {
