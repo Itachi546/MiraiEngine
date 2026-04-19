@@ -22,7 +22,7 @@
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 
-#define DEBUG_SINGLE_LIGHT 1 
+#define DEBUG_SINGLE_LIGHT 1
 
 class TestApplication : public App {
   public:
@@ -125,7 +125,7 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
-#if DEBUG_SINGLE_LIGHT
+#if 0 
         TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(point_light);
         LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(point_light);
         LineRenderer *line_renderer = LineRenderer::get();

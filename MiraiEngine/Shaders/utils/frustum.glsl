@@ -16,10 +16,10 @@ bool sphere_inside_frustum(TileFrustum frustum, vec4 sphere, float znear, float 
     if (sphere.z - sphere.w > znear)
         return false;
 
-    if (sphere.z + sphere.r < zfar)
+    if (sphere.z + sphere.w < zfar)
         return false;
 
-    // if (sphere.z - sphere.r > znear || sphere.z + sphere.r < zfar)
+    // if (sphere.z - sphere.r > znear || sphere.z + sphere.w < zfar)
     //   return false;
 
     for (int i = 0; i < 4; ++i) {

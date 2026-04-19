@@ -196,7 +196,7 @@ void main() {
 #if 0
     vec3 heatmap = mix(a, b, l - floor(l));
 #else
-    vec3 heatmap = map_tex[s_opaque_light_count];
+    vec3 heatmap = map_tex[s_opaque_light_count + 1];
 #endif
     imageStore(u_debug_texture, id, vec4(heatmap, 1.0f));
 #endif
