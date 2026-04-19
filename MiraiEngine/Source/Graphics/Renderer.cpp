@@ -251,12 +251,17 @@ namespace mirai {
 
     void Renderer::upload_visible_lights() {
         const uint32_t LIGHT_CULLING_THRESHOLD = 256;
+        // @TODO optimize this structure later
         struct LightData {
             glm::vec3 position_or_direction;
             uint32_t light_type;
 
             glm::vec3 color;
             float radius;
+
+            float intensity;
+            bool cast_shadow;
+            float _padding[2];
         };
 
         auto &component_manager = scene->ecs->component_manager;
@@ -276,6 +281,8 @@ namespace mirai {
                     .light_type = cast_u32(light->light_type),
                     .color = light->color,
                     .radius = 0.0f,
+                    .intensity = light->intensity,
+                    .cast_shadow = light->cast_shadow,
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
                 if (total_lights > LIGHT_CULLING_THRESHOLD) {
@@ -288,6 +295,8 @@ namespace mirai {
                     .light_type = cast_u32(light->light_type),
                     .color = light->color,
                     .radius = light->radius,
+                    .intensity = light->intensity,
+                    .cast_shadow = light->cast_shadow,
                 });
             } else {
                 ASSERT_MSG(0, "Unknown light type");

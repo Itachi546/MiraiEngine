@@ -147,7 +147,7 @@ void main() {
     float max_depth_vs = clip_pos_to_view_pos(vec3(0.0, 0.0, fmax_depth), invP).z;
     float near_clip_vs = clip_pos_to_view_pos(vec3(0.0, 0.0, 0.0), invP).z;
     // The near and far plane is simple in view space
-    vec4 min_plane = vec4(0.0f, 0.0f, -1.0f, -min_depth_vs);
+    vec4 min_plane = vec4(0.0f, 0.0f, -1.0f, min_depth_vs);
 
     ivec2 group_id = ivec2(gl_WorkGroupID.xy);
 #if 1
@@ -165,9 +165,8 @@ void main() {
         } else if (light.light_type == LIGHT_TYPE_POINT) {
             vec4 light_position_vs = V * vec4(light.position_or_direction, 1.0f);
             vec4 sphere = vec4(light_position_vs.xyz, light.radius);
-            if (sphere_inside_frustum(frustum, sphere, near_clip_vs, min_depth_vs)) {
+            if (sphere_inside_frustum(frustum, sphere, near_clip_vs, max_depth_vs)) {
                 append_light_transparent(i);
-                append_light_opaque(i);
                 if (sphere_inside_plane(sphere, min_plane))
                     append_light_opaque(i);
             }
@@ -181,7 +180,6 @@ void main() {
     const vec3 map_tex[] = {
         vec3(0.0, 0.0, 0.0),
         vec3(0.0, 0.0, 1.0),
-        // vec3(0.0, 1.0, 0.0),
         vec3(0.0, 1.0, 1.0),
         vec3(0.0, 1.0, 0.0),
         vec3(1.0, 1.0, 1.0),
@@ -195,8 +193,11 @@ void main() {
     vec3 a = map_tex[int(floor(l))];
     vec3 b = map_tex[int(ceil(l))];
 
+#if 0
     vec3 heatmap = mix(a, b, l - floor(l));
-    // vec3 heatmap = map_tex[s_opaque_light_count];
+#else
+    vec3 heatmap = map_tex[s_opaque_light_count];
+#endif
     imageStore(u_debug_texture, id, vec4(heatmap, 1.0f));
 #endif
 }

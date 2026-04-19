@@ -6,8 +6,13 @@
 struct Light {
     vec3 position_or_direction;
     uint light_type;
+
     vec3 color;
     float radius;
+
+    float intensity;
+    bool cast_shadow;
+    float _padding[2];
 };
 
 #endif

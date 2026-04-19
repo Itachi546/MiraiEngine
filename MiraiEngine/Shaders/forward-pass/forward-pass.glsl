@@ -22,6 +22,7 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
+#include "../utils/light.glsl"
 #include "../pbr/pbr-lighting.glsl"
 
 layout(set = 0, binding = 4) readonly buffer Materials {
@@ -36,6 +37,10 @@ layout(set = 0, binding = 7) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
 };
 
+layout(set = 0, binding = 8) readonly buffer Lights {
+    Light lights[];
+};
+
 #include "../shadow/directional-shadow.glsl"
 
 layout(push_constant) uniform PushConstants {
@@ -43,8 +48,10 @@ layout(push_constant) uniform PushConstants {
     float debug_texture_index;
     float pcf_radius;
     float pcf_sample_count;
+
     float ibl_intensity;
-    float _padding[3];
+    float num_lights;
+    float _padding[2];
 };
 
 bool is_valid(uint texture) {
@@ -106,24 +113,27 @@ void main() {
     float cam_dist = length(view_dir);
     view_dir /= cam_dist;
 
-    Light light;
-    light.direction_or_position = per_frame_data.light_direction;
-    light.cast_shadow = per_frame_data.cast_shadow;
-    light.color = per_frame_data.light_color;
-    light.intensity = per_frame_data.light_intensity;
-
-    float shadow_factor = 1.0f;
+    vec3 Lo = vec3(0.0f);
+    bool dir_light_cast_shadow = false;
     int cascade_index = 0;
-    if (light.cast_shadow > 0.5) {
-        shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.0f);
+    float shadow_factor = 1.0f;
+    for (int i = 0; i < int(num_lights); ++i) {
+        Light light = lights[i];
+        if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
+            if (light.cast_shadow) {
+                dir_light_cast_shadow = true;
+                shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+            }
+            Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+        } else if (light.light_type == LIGHT_TYPE_POINT) {
+            Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+        }
     }
 
     // Debug Params
-    vec3 Lo;
     if (split_percentage >= screen_uv.x) {
         if (debug_texture_index > 5.5) {
-            Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f, ibl_intensity);
-            Lo *= light.cast_shadow > 0.5 ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
+            Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
         } else if (debug_texture_index > 4.5f)
             Lo = vec3(shadow_factor);
         else if (debug_texture_index > 3.5f)
@@ -136,8 +146,6 @@ void main() {
             Lo = normal * 0.5 + 0.5;
         else
             Lo = pbr_params.albedo.xyz;
-    } else {
-        Lo = calculateDirectionalLightIntensity(light, view_dir, normal, pbr_params, shadow_factor + 0.05f, ibl_intensity);
     }
 
     fragColor = vec4(Lo, 1.0f);

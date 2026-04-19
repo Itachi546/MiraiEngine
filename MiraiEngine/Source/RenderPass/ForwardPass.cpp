@@ -140,7 +140,7 @@ namespace mirai {
                     shadow_system->dir_light_params.pcf_radius,
                     shadow_system->dir_light_params.pcf_sample_count,
                     AppSettings::ibl_contribution,
-                    0.0f,
+                    cast_float(renderer->total_visible_lights),
                     0.0f,
                     0.0f,
                 };
@@ -184,6 +184,7 @@ namespace mirai {
                     bindings->ssao_binding,
                     bindings->csm_binding,
                     renderer->cascade_data_descriptor,
+                    renderer->per_frame_light_descriptor,
                 };
 
                 const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;

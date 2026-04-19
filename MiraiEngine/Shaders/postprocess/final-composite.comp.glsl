@@ -28,7 +28,7 @@ void main() {
     vec4 debug_col = texture(sampler2D(u_tile_debug_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv);
 
     if (enable_gamma_correction > 0.5f)
-        col.rgb = linear_to_srgb(ACESFilm(col.rgb * debug_col.rgb));
+        col.rgb = linear_to_srgb(ACESFilm(col.rgb));
 
     imageStore(u_output_texture, id, vec4(col.rgb, 1.0f));
 }

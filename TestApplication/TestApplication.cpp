@@ -22,6 +22,8 @@
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 
+#define DEBUG_SINGLE_LIGHT 1 
+
 class TestApplication : public App {
   public:
     TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
@@ -68,7 +70,7 @@ class TestApplication : public App {
         }
 
         auto &component_manager = scene->ecs->component_manager;
-#if 0
+#if DEBUG_SINGLE_LIGHT
         point_light = scene->create_entity("Light");
         TransformComponent *transform = component_manager->get_component<TransformComponent>(point_light);
         transform->position = glm::vec3(0.0f, 4.0f, 0.0f);
@@ -80,7 +82,7 @@ class TestApplication : public App {
                                                                           .cast_shadow = false,
                                                                       });
 #else
-        const uint32_t light_count = 1000;
+        const uint32_t light_count = 2000;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
             Entity entity = scene->create_entity("Light" + std::to_string(i), root_light);
@@ -94,7 +96,7 @@ class TestApplication : public App {
                                                                          .light_type = LIGHT_TYPE_POINT,
                                                                          .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
                                                                          .intensity = randomFloat01() * 10.0f,
-                                                                         .radius = -2.0f + randomFloat01() * 4.0f,
+                                                                         .radius = -4.0f + randomFloat01() * 8.0f,
                                                                          .cast_shadow = false,
                                                                      });
         }
@@ -123,7 +125,7 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
-#if 0
+#if DEBUG_SINGLE_LIGHT
         TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(point_light);
         LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(point_light);
         LineRenderer *line_renderer = LineRenderer::get();

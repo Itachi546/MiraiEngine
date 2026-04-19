@@ -11,16 +11,23 @@ bool sphere_inside_plane(vec4 sphere, vec4 plane) {
 }
 
 bool sphere_inside_frustum(TileFrustum frustum, vec4 sphere, float znear, float zfar) {
-    bool inside = true;
-    if (sphere.z - sphere.r > znear || sphere.z + sphere.r < zfar)
+    // Z-coordinate is all negative, so we have to invert sign when comparing
+    // check if the sphere lies outside zfar
+    if (sphere.z - sphere.w > znear)
         return false;
+
+    if (sphere.z + sphere.r < zfar)
+        return false;
+
+    // if (sphere.z - sphere.r > znear || sphere.z + sphere.r < zfar)
+    //   return false;
 
     for (int i = 0; i < 4; ++i) {
         if (!sphere_inside_plane(sphere, frustum.planes[i])) {
             return false;
         }
     }
-    return inside;
+    return true;
 }
 
 #endif

@@ -5,13 +5,6 @@
 #include "../utils/material.glsl"
 #include "../utils/color.glsl"
 
-struct Light {
-    vec3 direction_or_position;
-    float cast_shadow;
-    vec3 color;
-    float intensity;
-};
-
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params, float ibl_contribution) {
     /*
     vec3 Ks = F_SchlickRoughness(ndotv, F0, pbr_params.roughness);
@@ -44,8 +37,8 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     return (diffuse + specular) * ibl_contribution;
 }
 
-vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor, float ibl_contribution) {
-    vec3 light_direction = light.direction_or_position;
+vec3 evaluateDirectionalLight(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
+    vec3 light_direction = light.position_or_direction;
     vec3 halfway_vector = normalize(view_dir + light_direction);
     vec3 reflection = normalize(reflect(-view_dir, normal));
 
@@ -57,21 +50,55 @@ vec3 calculateDirectionalLightIntensity(in Light light, in vec3 view_dir, in vec
     // Directional Light Lighting calculation
     vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
-    {
-        vec3 diffuse = pbr_params.albedo.rgb / PI;
+    vec3 diffuse = pbr_params.albedo.rgb / PI;
 
-        float D = D_GGX(ndoth, pbr_params.roughness);
-        float G = G_Smith(ndotv, ndotl, pbr_params.roughness);
+    float D = D_GGX(ndoth, pbr_params.roughness);
+    float G = G_Smith(ndotv, ndotl, pbr_params.roughness);
 
-        vec3 F = F_Schlick(ldoth, F0);
-        vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
+    vec3 F = F_Schlick(ldoth, F0);
+    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
 
-        // For directional light
-        vec3 radiance = light.color * light.intensity;
-        vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
+    // For directional light
+    vec3 radiance = light.color * light.intensity;
+    vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
 
-        Lo += (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
-    }
-    return Lo + getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_contribution) * pbr_params.ao + pbr_params.emissive;
+    return (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
 }
+
+vec3 evaluatePointLight(in Light light, in vec3 world_pos, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
+    vec3 light_direction = light.position_or_direction - world_pos;
+    float distance2 = dot(light_direction, light_direction);
+    light_direction /= length(distance2);
+
+    vec3 halfway_vector = normalize(view_dir + light_direction);
+    vec3 reflection = normalize(reflect(-view_dir, normal));
+
+    float ndotl = clamp(dot(normal, light_direction), 0.001, 1.0);
+    float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
+    float ndoth = clamp(dot(normal, halfway_vector), 0.0, 1.0);
+    float ldoth = clamp(dot(light_direction, halfway_vector), 0.0, 1.0);
+
+    // Directional Light Lighting calculation
+    vec3 Lo = vec3(0.0f);
+    vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
+    vec3 diffuse = pbr_params.albedo.rgb / PI;
+
+    float D = D_GGX(ndoth, pbr_params.roughness);
+    float G = G_Smith(ndotv, ndotl, pbr_params.roughness);
+
+    vec3 F = F_Schlick(ldoth, F0);
+    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
+
+    vec3 radiance = light.color * light.intensity;
+    vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
+
+    // Attenuation
+    // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
+    // return saturate(1 - pow(dist / range, 4)) / dist2;
+    float dist_per_range = distance2 / (light.radius * light.radius);
+    dist_per_range *= dist_per_range;
+    float attenuation = clamp(1 - dist_per_range, 0.0, 1.0) / max(0.0001, distance2);
+    return (kD * diffuse + specular) * shadow_factor * radiance * ndotl * attenuation;
+}
+
 #endif
