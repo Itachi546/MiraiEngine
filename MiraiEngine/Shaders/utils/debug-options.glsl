@@ -10,4 +10,26 @@
 #define DEBUG_CSM_SPLIT 6
 #define DEBUG_LIGHT_TILE 7
 
+vec3 get_tile_heatmap(uint light_count, uint max_heat) {
+    const vec3 map_tex[] = {
+        vec3(0.0, 0.0, 0.0),
+        vec3(0.0, 0.0, 1.0),
+        vec3(0.0, 1.0, 1.0),
+        vec3(0.0, 1.0, 0.0),
+        vec3(1.0, 1.0, 1.0),
+        vec3(1.0, 0.0, 0.0),
+    };
+
+    uint max_tex_len = 5;
+    float l = clamp(float(light_count) / float(max_heat), 0.0, 1.0) * max_tex_len;
+    vec3 a = map_tex[int(floor(l))];
+    vec3 b = map_tex[int(ceil(l))];
+
+#if 0 
+    return mix(a, b, l - floor(l));
+#else
+    return map_tex[light_count + 1];
+#endif
+}
+
 #endif

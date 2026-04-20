@@ -202,7 +202,7 @@ namespace mirai {
                 } else {
                     render_data = &board->get<TiledLightCullRenderData>();
                 }
-                render_data->descriptors[2] = renderer->per_frame_light_descriptor;
+                render_data->descriptors[3] = renderer->per_frame_light_descriptor;
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
                 glm::uvec2 tile_count = get_light_tile_count(width, height);

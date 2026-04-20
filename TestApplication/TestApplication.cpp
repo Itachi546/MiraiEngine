@@ -247,7 +247,7 @@ class TestApplication : public App {
         if (ImGui::CollapsingHeader("Render Debug Options") && board->has<RenderDebugData>()) {
             RenderDebugData &debug_data = board->get<RenderDebugData>();
             ImGui::SliderFloat("Split Percentage", &debug_data.split_percentage, 0.0f, 1.0f);
-            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0\0";
+            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0LightTile\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
             ImGui::Checkbox("Disable Light Culling", &debug_data.disable_light_culling);

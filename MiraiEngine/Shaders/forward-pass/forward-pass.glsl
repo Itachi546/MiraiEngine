@@ -137,8 +137,14 @@ void main() {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
         }
-    } else {
     }
+
+    // @TODO temp
+    uvec2 resolution = uvec2(per_frame_data.width, per_frame_data.height);
+    uvec2 tile_count = resolution / uvec2(tile_size);
+    uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
+    uint tile_index = (tile_id.y * tile_count.x + tile_id.x) * 257;
+    uint light_count = light_lists[tile_index];
 
     // Debug Params
     if (split_percentage >= screen_uv.x) {
@@ -165,8 +171,11 @@ void main() {
         case DEBUG_CSM_SPLIT:
             Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
             break;
+        case DEBUG_LIGHT_TILE:
+            Lo *= get_tile_heatmap(light_count, 50);
         };
     }
     fragColor = vec4(Lo, 1.0f);
 }
+
 #endif

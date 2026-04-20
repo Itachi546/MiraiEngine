@@ -176,42 +176,17 @@ void main() {
 
     memoryBarrierShared();
     barrier();
-    /*
+
     // The additional +1 offset is the first uint32_t used to track the number of light per tile
     uint tile_offset_opaque = (group_id.y * tile_count_x + group_id.x) * (MAX_LIGHT_PER_TILE + 1);
     light_lists[tile_offset_opaque++] = s_opaque_light_count;
     for (uint i = groupIndex; i < s_opaque_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
-        light_lists[tile_offset_opaque] = s_tile_opaque_list[i];
+        light_lists[tile_offset_opaque + i] = s_tile_opaque_list[i];
     }
 
     uint tile_offset_transparent = tile_offset_opaque + (tile_count_x * tile_count_y) * (MAX_LIGHT_PER_TILE + 1);
     light_lists[tile_offset_transparent++] = s_transparent_light_count;
     for (uint i = groupIndex; i < s_transparent_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
-        light_lists[tile_offset_transparent] = s_tile_transparent_list[i];
+        light_lists[tile_offset_transparent + i] = s_tile_transparent_list[i];
     }
-    */
-#ifdef DEBUG_TILEDLIGHTCULLING
-    const vec3 map_tex[] = {
-        vec3(0.0, 0.0, 0.0),
-        vec3(0.0, 0.0, 1.0),
-        vec3(0.0, 1.0, 1.0),
-        vec3(0.0, 1.0, 0.0),
-        vec3(1.0, 1.0, 1.0),
-        vec3(1.0, 0.0, 0.0),
-    };
-
-    uint max_tex_len = 5;
-    uint max_heat = 50;
-
-    float l = clamp(float(s_opaque_light_count) / float(max_heat), 0.0, 1.0) * max_tex_len;
-    vec3 a = map_tex[int(floor(l))];
-    vec3 b = map_tex[int(ceil(l))];
-
-#if 0
-    vec3 heatmap = mix(a, b, l - floor(l));
-#else
-    vec3 heatmap = map_tex[s_opaque_light_count + 1];
-#endif
-    imageStore(u_debug_texture, id, vec4(heatmap, 1.0f));
-#endif
 }
