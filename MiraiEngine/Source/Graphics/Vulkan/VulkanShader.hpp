@@ -37,6 +37,9 @@ namespace mirai {
         uint32_t size;
         void *buffer_ptr;
         VkDeviceSize device_address;
+
+        VkAccessFlags2 access_flags;
+        VkPipelineStageFlags2 stage_mask;
     };
 
     struct VulkanShader {

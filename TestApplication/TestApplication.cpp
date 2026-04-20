@@ -125,7 +125,7 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
-#if 0 
+#if DEBUG_SINGLE_LIGHT
         TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(point_light);
         LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(point_light);
         LineRenderer *line_renderer = LineRenderer::get();

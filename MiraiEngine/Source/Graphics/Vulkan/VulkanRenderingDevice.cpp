@@ -1156,6 +1156,9 @@ namespace mirai {
             buffer->buffer = VK_NULL_HANDLE;
             buffer->buffer_ptr = nullptr;
             buffer->size = 0;
+            buffer->access_flags = 0;
+            buffer->stage_mask = 0;
+            buffer->device_address = 0;
             resource_pool_buffers.release(buffers[i]);
         }
     }
