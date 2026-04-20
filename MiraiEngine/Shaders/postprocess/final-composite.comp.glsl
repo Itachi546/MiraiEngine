@@ -5,7 +5,6 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform texture2D u_input_texture;
 layout(set = 0, binding = 1) uniform writeonly image2D u_output_texture;
-layout(set = 0, binding = 2) uniform texture2D u_tile_debug_texture;
 
 layout(push_constant) uniform PushConstants {
     vec2 resolution;
@@ -25,13 +24,10 @@ void main() {
     vec2 uv = vec2(id) / resolution;
 
     vec4 col = texture(sampler2D(u_input_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv);
-    vec4 debug_col = texture(sampler2D(u_tile_debug_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv);
 
     // @TODO Temp
     if (enable_gamma_correction > 0.5f) {
         col.rgb = linear_to_srgb(ACESFilm(col.rgb));
-    } else {
-        col.rgb = linear_to_srgb(ACESFilm(col.rgb * debug_col.rgb));
     }
 
     imageStore(u_output_texture, id, vec4(col.rgb, 1.0f));

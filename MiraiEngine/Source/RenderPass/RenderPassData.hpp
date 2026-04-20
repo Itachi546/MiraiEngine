@@ -46,7 +46,7 @@ namespace mirai {
         // FrameGraphResourceHandle light_list_buffer;
         FrameGraphResourceHandle frustum_buffer;
         FrameGraphResourceHandle depth_texture;
-        FrameGraphResourceHandle debug_texture;
+        FrameGraphResourceHandle light_list_buffer;
         uint32_t depth_texture_width;
         uint32_t depth_texture_height;
         std::shared_ptr<ComputeShader> shader;
@@ -57,6 +57,7 @@ namespace mirai {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle ssao_texture;
         FrameGraphResourceHandle csm_texture;
+        FrameGraphResourceHandle light_list_buffer;
         ShaderRegistry *registry;
         std::shared_ptr<EffectMaterial> skybox_shader;
     };
@@ -66,6 +67,7 @@ namespace mirai {
         int debug_param_index;
         bool show_debug_cascade_color;
         bool enable_gamma_correction;
+        bool disable_light_culling;
     };
 
     struct DeferredOverlay3DPassData {

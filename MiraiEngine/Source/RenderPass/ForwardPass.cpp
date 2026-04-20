@@ -17,6 +17,7 @@ namespace mirai {
         DescriptorOffset ssao_binding;
         DescriptorOffset csm_binding;
         DescriptorOffset cubemap_binding;
+        DescriptorOffset light_list_binding;
     };
 
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
@@ -24,8 +25,8 @@ namespace mirai {
         frame_graph->add_callback_pass<ForwardPassData>(
             "ForwardPass",
             [board](FrameGraph::FrameGraphBuilder &builder, ForwardPassData &data) {
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
                 data.output = builder.create_texture("FinalTexture", {
                                                                          .create_flags = 0,
@@ -68,6 +69,13 @@ namespace mirai {
                                               });
                 data.csm_texture = csm_data.output;
 
+                const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
+                builder.read(light_cull_data.light_list_buffer, {
+                                                                    .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                    .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                                });
+                data.light_list_buffer = light_cull_data.light_list_buffer;
+
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_FORWARD);
 
                 data.skybox_shader = std::make_shared<EffectMaterial>("OverlaySkyboxShader",
@@ -93,8 +101,8 @@ namespace mirai {
                 ScopedGpuProfiling(command_buffer, "ForwardPass");
                 command_buffer->begin_gpu_debug_label("ForwardPass");
 
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
                 const auto &resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -120,12 +128,19 @@ namespace mirai {
                             .type = DescriptorType::SampledImage,
                             .resource = env_map->get_cubemap(),
                             .image_info = {0, ~0u, 0, ~0u},
-                        }};
+                        },
+                        {
+                            .type = DescriptorType::StorageBuffer,
+                            .resource = pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id,
+                            .buffer_info = {0, ~0u},
+                        },
+                    };
                     DescriptorOffset descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
                     bindings = &board->add<ForwardPassBindings>(ForwardPassBindings{
                         .ssao_binding = descriptor_offset,
                         .csm_binding = descriptor_offset + 1,
                         .cubemap_binding = descriptor_offset + 2,
+                        .light_list_binding = descriptor_offset + 3,
                     });
                 } else {
                     bindings = &board->get<ForwardPassBindings>();
@@ -141,8 +156,8 @@ namespace mirai {
                     shadow_system->dir_light_params.pcf_sample_count,
                     AppSettings::ibl_contribution,
                     cast_float(renderer->total_visible_lights),
-                    0.0f,
-                    0.0f,
+                    cast_float(debug_data.disable_light_culling),
+                    cast_float(AppSettings::K_LIGHT_TILE_SIZE),
                 };
 
                 PushData push_data = {
@@ -185,6 +200,7 @@ namespace mirai {
                     bindings->csm_binding,
                     renderer->cascade_data_descriptor,
                     renderer->per_frame_light_descriptor,
+                    bindings->light_list_binding,
                 };
 
                 const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;

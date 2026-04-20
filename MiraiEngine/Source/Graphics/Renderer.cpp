@@ -47,6 +47,7 @@ namespace mirai {
             .debug_param_index = 0,
             .show_debug_cascade_color = false,
             .enable_gamma_correction = true,
+            .disable_light_culling = true,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();

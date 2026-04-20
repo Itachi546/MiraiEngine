@@ -41,6 +41,10 @@ layout(set = 0, binding = 8) readonly buffer Lights {
     Light lights[];
 };
 
+layout(set = 0, binding = 9) readonly buffer LightLists {
+    uint light_lists[];
+};
+
 #include "../shadow/directional-shadow.glsl"
 
 layout(push_constant) uniform PushConstants {
@@ -51,7 +55,8 @@ layout(push_constant) uniform PushConstants {
 
     float ibl_intensity;
     float num_lights;
-    float _padding[2];
+    float disable_light_culling;
+    float tile_size;
 };
 
 bool is_valid(uint texture) {
@@ -117,17 +122,21 @@ void main() {
     bool dir_light_cast_shadow = false;
     int cascade_index = 0;
     float shadow_factor = 1.0f;
-    for (int i = 0; i < int(num_lights); ++i) {
-        Light light = lights[i];
-        if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
-            if (light.cast_shadow) {
-                dir_light_cast_shadow = true;
-                shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+
+    if (disable_light_culling > 0.5) {
+        for (int i = 0; i < int(num_lights); ++i) {
+            Light light = lights[i];
+            if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
+                if (light.cast_shadow) {
+                    dir_light_cast_shadow = true;
+                    shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                }
+                Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+            } else if (light.light_type == LIGHT_TYPE_POINT) {
+                Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
-            Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
-        } else if (light.light_type == LIGHT_TYPE_POINT) {
-            Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
         }
+    } else {
     }
 
     // Debug Params

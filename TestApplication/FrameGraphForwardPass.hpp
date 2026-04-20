@@ -219,8 +219,8 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             const auto &resource_states = pass_resource.get_resource_access_states();
             command_buffer->prepare_resources(resource_states);
 
-            uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-            uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+            uint32_t width = AppSettings::get_width();
+            uint32_t height = AppSettings::get_height();
 
             const FrameGraphTexture &texture = pass_resource.get<FrameGraphTexture>(data.output);
             command_buffer->begin_render_pass({

@@ -22,17 +22,23 @@ namespace mirai {
         DescriptorOffset descriptors[4];
     };
 
-    const uint32_t TILE_SIZE = 16;
+    glm::uvec2 get_light_tile_count(uint32_t width, uint32_t height) {
+        return glm::uvec2{
+            ((width + AppSettings::K_LIGHT_TILE_SIZE - 1) / AppSettings::K_LIGHT_TILE_SIZE),
+            ((height + AppSettings::K_LIGHT_TILE_SIZE - 1) / AppSettings::K_LIGHT_TILE_SIZE),
+        };
+    }
+
     TiledLightCullingPass::TiledLightCullingPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // Generate tile frustum
         frame_graph->add_callback_pass<TiledLightCullingFrustumPassData>(
             "TiledLightCullingFrustumPass",
             [board](FrameGraph::FrameGraphBuilder &builder, TiledLightCullingFrustumPassData &data) {
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
-                uint32_t tile_count = ((width + TILE_SIZE - 1) / TILE_SIZE) * ((height + TILE_SIZE - 1) / TILE_SIZE);
-                uint32_t buffer_size = cast_u32(tile_count * sizeof(glm::vec4) * 4);
+                glm::uvec2 tile_count = get_light_tile_count(width, height);
+                uint32_t buffer_size = cast_u32(tile_count.x * tile_count.y * sizeof(glm::vec4) * 4);
                 data.buffer = builder.create_buffer("FrustumBuffer", {
                                                                          // 4 planes for each tile
                                                                          .size = buffer_size,
@@ -76,10 +82,9 @@ namespace mirai {
                     render_data = &board->get<TiledLightFrustumRenderData>();
                 }
 
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
-                uint32_t tile_count_x = ((width + TILE_SIZE - 1) / TILE_SIZE);
-                uint32_t tile_count_y = ((height + TILE_SIZE - 1) / TILE_SIZE);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
+                glm::uvec2 tile_count = get_light_tile_count(width, height);
 
                 const glm::mat4 &invP = renderer->get_scene()->get_camera()->get_inv_projection_transform();
                 // Generate tile frustum in view space
@@ -93,8 +98,8 @@ namespace mirai {
 
                     push_data.invP = invP;
                     push_data.resolution = glm::vec2(cast_float(width), cast_float(height));
-                    push_data.tile_size = TILE_SIZE;
-                    push_data.tile_count_x = tile_count_x;
+                    push_data.tile_size = AppSettings::K_LIGHT_TILE_SIZE;
+                    push_data.tile_count_x = tile_count.x;
 
                     ScopedGpuProfiling(command_buffer, "Tile Frustum Generation");
                     command_buffer->begin_gpu_debug_label("Tile Frustum Generation");
@@ -104,8 +109,8 @@ namespace mirai {
                     command_buffer->set_push_data(0, &push_data, push_constant_data_size);
                     command_buffer->set_push_data(push_constant_data_size, &render_data->frustum_buffer_binding, cast_u32(sizeof(uint32_t)));
 
-                    uint32_t local_size_x = rendering_utils::get_workgroup_size(tile_count_x, TILE_SIZE);
-                    uint32_t local_size_y = rendering_utils::get_workgroup_size(tile_count_y, TILE_SIZE);
+                    uint32_t local_size_x = rendering_utils::get_workgroup_size(tile_count.x, AppSettings::K_LIGHT_TILE_SIZE);
+                    uint32_t local_size_y = rendering_utils::get_workgroup_size(tile_count.y, AppSettings::K_LIGHT_TILE_SIZE);
                     command_buffer->dispatch(local_size_x, local_size_y, 1);
 
                     command_buffer->end_gpu_debug_label();
@@ -116,28 +121,25 @@ namespace mirai {
         frame_graph->add_callback_pass<TiledLightCullPassData>(
             "TiledLightCullingPass",
             [frame_graph, board](FrameGraph::FrameGraphBuilder &builder, TiledLightCullPassData &data) {
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
-                data.debug_texture = builder.create_texture(
-                    "TiledDebugTexture",
-                    {
-                        .create_flags = 0,
-                        .width = width,
-                        .height = height,
-                        .depth = 1,
-                        .mip_levels = 1,
-                        .array_layers = 1,
-                        .texture_type = TEXTURE_TYPE_2D,
-                        .format = FORMAT_B8G8R8A8_UNORM,
-                        .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
-                    });
+                glm::uvec2 tile_count = get_light_tile_count(width, height);
+                uint32_t total_tiles = tile_count.x * tile_count.y;
+                // We allocate twice the required size, one for opaque and one for transparent
+                // We also allocate single uint for each tile to allocate the light count in each tile
+                uint32_t light_list_buffer_size = cast_u32((total_tiles * (AppSettings::K_MAX_LIGHT_PER_TILE + 1)) * 2 * sizeof(uint32_t));
 
-                builder.write(data.debug_texture, {
-                                                      .access_flags = ACCESS_FLAG_SHADER_WRITE,
-                                                      .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                      .layout = IMAGE_LAYOUT_GENERAL,
-                                                  });
+                data.light_list_buffer = builder.create_buffer("LightListBuffer", {
+                                                                                      .size = light_list_buffer_size,
+                                                                                      .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                                                                      .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+                                                                                  });
+
+                builder.write(data.light_list_buffer, {
+                                                          .access_flags = ACCESS_FLAG_SHADER_WRITE,
+                                                          .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                      });
 
                 const TiledLightCullingFrustumPassData &frustum_data = board->get<TiledLightCullingFrustumPassData>();
                 builder.read(frustum_data.buffer, {
@@ -180,9 +182,9 @@ namespace mirai {
                             .image_info = {0, ~0u, 0, ~0u},
                         },
                         {
-                            .type = DescriptorType::StorageImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.debug_texture).id,
-                            .image_info = {0, ~0u, 0, ~0u},
+                            .type = DescriptorType::StorageBuffer,
+                            .resource = pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id,
+                            .buffer_info = {0, ~0u},
                         },
                     };
 
@@ -192,9 +194,9 @@ namespace mirai {
                     render_data = &board->add<TiledLightCullRenderData>(TiledLightCullRenderData{
                         .descriptors = {
                             descriptors,
+                            descriptors + 1,
                             frustum_render_data.frustum_buffer_binding,
                             0,
-                            descriptors + 1,
                         },
                     });
                 } else {
@@ -203,8 +205,7 @@ namespace mirai {
                 render_data->descriptors[2] = renderer->per_frame_light_descriptor;
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
-                uint32_t tile_count_x = ((width + TILE_SIZE - 1) / TILE_SIZE);
-                uint32_t tile_count_y = ((height + TILE_SIZE - 1) / TILE_SIZE);
+                glm::uvec2 tile_count = get_light_tile_count(width, height);
 
                 Camera *camera = renderer->get_scene()->get_camera();
                 struct PushData {
@@ -222,11 +223,11 @@ namespace mirai {
                 push_data.invP = camera->get_inv_projection_transform();
                 push_data.V = camera->get_view_transform();
                 push_data.light_count = renderer->total_visible_lights;
-                push_data.tile_count_x = tile_count_x;
-                push_data.tile_count_y = tile_count_y;
-                push_data.depth_texture_width = 1920;
-                push_data.depth_texture_height = 1080;
-                push_data.tile_size = TILE_SIZE;
+                push_data.tile_count_x = tile_count.x;
+                push_data.tile_count_y = tile_count.y;
+                push_data.depth_texture_width = data.depth_texture_width;
+                push_data.depth_texture_height = data.depth_texture_height;
+                push_data.tile_size = AppSettings::K_LIGHT_TILE_SIZE;
                 push_data._padding[0] = push_data._padding[1] = 0;
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
@@ -238,8 +239,8 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_data, push_data_size);
                 command_buffer->set_push_data(push_data_size, render_data->descriptors, cast_u32(sizeof(render_data->descriptors)));
 
-                uint32_t local_size_x = rendering_utils::get_workgroup_size(width, TILE_SIZE);
-                uint32_t local_size_y = rendering_utils::get_workgroup_size(height, TILE_SIZE);
+                uint32_t local_size_x = rendering_utils::get_workgroup_size(width, AppSettings::K_LIGHT_TILE_SIZE);
+                uint32_t local_size_y = rendering_utils::get_workgroup_size(height, AppSettings::K_LIGHT_TILE_SIZE);
                 command_buffer->dispatch(local_size_x, local_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });

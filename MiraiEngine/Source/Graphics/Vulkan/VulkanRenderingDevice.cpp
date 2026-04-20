@@ -706,6 +706,8 @@ namespace mirai {
         buffer->size = buffer_description->size;
         buffer->buffer_ptr = nullptr;
         buffer->device_address = 0;
+        buffer->stage_mask = 0;
+        buffer->access_flags = 0;
 
         if (HAS_FLAG(buffer_description->usage_flags, BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
             VkBufferDeviceAddressInfo buffer_address_info = {

@@ -102,7 +102,7 @@ namespace mirai {
             switch (state.resource_type) {
             case ResourceType::Buffer: {
                 VulkanBuffer *buffer = device->access_buffer(state.resource);
-                VkPipelineStageFlags dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
+                VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
                 VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
                 memory_barriers.push_back(CreateBufferMemoryBarrier2(
                     buffer->buffer,
@@ -114,7 +114,7 @@ namespace mirai {
                     buffer->size));
 
                 buffer->access_flags = dst_access_flag;
-                buffer->stage_mask = dst_stage_flag;
+                buffer->stage_mask = dst_stage;
                 break;
             };
             case ResourceType::Texture: {

@@ -57,18 +57,19 @@ namespace mirai {
         std::shared_ptr<ComputeShader> shader;
     };
 
-    const float SSAO_WIDTH = AppSettings::default_window_width * AppSettings::resolution_scale;
-    const float SSAO_HEIGHT = AppSettings::default_window_height * AppSettings::resolution_scale;
-
+    const float SSAO_RESOLUTION_SCALE = 1.0f;
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // SSAO Pass
         frame_graph->add_callback_pass<SSAOPassData>(
             "SSAOPass",
             [board](FrameGraph::FrameGraphBuilder &builder, SSAOPassData &data) {
+                const uint32_t width = AppSettings::get_width();
+                const uint32_t height = AppSettings::get_height();
+
                 data.output = builder.create_texture("SSAOTexture", {
                                                                         .create_flags = 0,
-                                                                        .width = cast_u32(SSAO_WIDTH),
-                                                                        .height = cast_u32(SSAO_HEIGHT),
+                                                                        .width = cast_u32(width * SSAO_RESOLUTION_SCALE),
+                                                                        .height = cast_u32(height * SSAO_RESOLUTION_SCALE),
                                                                         .depth = 1,
                                                                         .mip_levels = 1,
                                                                         .array_layers = 1,
@@ -120,8 +121,8 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Camera *camera = renderer->get_scene()->get_camera();
 
-                float screen_width = AppSettings::default_window_width * AppSettings::resolution_scale;
-                float screen_height = AppSettings::default_window_height * AppSettings::resolution_scale;
+                float screen_width = cast_float(AppSettings::get_width());
+                float screen_height = cast_float(AppSettings::get_height());
 
                 float fov = glm::radians(renderer->get_scene()->get_camera()->get_fov());
                 float projection_scale = float(screen_height) / (tanf(fov * 0.5f) * 2.0f);
@@ -130,7 +131,7 @@ namespace mirai {
                 const HBAOParams &params = board->get<HBAOParams>();
                 HBAOConstants push_constants = {
                     .inv_projection_matrix = camera->get_inv_projection_transform(),
-                    .ssao_texture_resolution = {SSAO_WIDTH, SSAO_HEIGHT},
+                    .ssao_texture_resolution = {screen_width * SSAO_RESOLUTION_SCALE, screen_height * SSAO_RESOLUTION_SCALE},
                     .depth_texture_resolution = {screen_width, screen_height},
                     .inv_depth_texture_resolution = {1.0f / screen_width, 1.0f / screen_height},
                     .inv_noise_texture_resolution = glm::vec2{params.noise_texture_inv_dim},
@@ -177,8 +178,8 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_constants, sizeof(HBAOConstants));
                 command_buffer->set_push_data(sizeof(HBAOConstants), &bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
 
-                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
-                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(screen_width * SSAO_RESOLUTION_SCALE), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(screen_height * SSAO_RESOLUTION_SCALE), 32);
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });
@@ -187,10 +188,12 @@ namespace mirai {
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
             [board](FrameGraph::FrameGraphBuilder &builder, SSAOBlurData &data) {
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("SSAOBlurTexture", {
                                                                             .create_flags = 0,
-                                                                            .width = cast_u32(SSAO_WIDTH),
-                                                                            .height = cast_u32(SSAO_HEIGHT),
+                                                                            .width = cast_u32(width * SSAO_RESOLUTION_SCALE),
+                                                                            .height = cast_u32(height * SSAO_RESOLUTION_SCALE),
                                                                             .depth = 1,
                                                                             .mip_levels = 1,
                                                                             .array_layers = 1,
@@ -229,10 +232,12 @@ namespace mirai {
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const HBAOParams &params = board->get<HBAOParams>();
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
                 BlurConstants push_constants = {
-                    .width = SSAO_WIDTH,
-                    .height = SSAO_HEIGHT,
+                    .width = width * SSAO_RESOLUTION_SCALE,
+                    .height = height * SSAO_RESOLUTION_SCALE,
                     .blur_direction = 0,
                     .blur_radius = params.blur_radius,
                     .sharpness = params.blur_sharpness,
@@ -274,8 +279,8 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
                 command_buffer->set_push_data(sizeof(BlurConstants), &bindings->hblur_bindings, cast_u32(sizeof(bindings->hblur_bindings)));
 
-                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
-                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(width * SSAO_RESOLUTION_SCALE), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(height * SSAO_RESOLUTION_SCALE), 32);
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });
@@ -309,11 +314,14 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Camera *camera = renderer->get_scene()->get_camera();
 
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
+
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const HBAOParams &params = board->get<HBAOParams>();
                 BlurConstants push_constants = {
-                    .width = SSAO_WIDTH,
-                    .height = SSAO_HEIGHT,
+                    .width = width * SSAO_RESOLUTION_SCALE,
+                    .height = height * SSAO_RESOLUTION_SCALE,
                     .blur_direction = 1,
                     .blur_radius = params.blur_radius,
                     .sharpness = params.blur_sharpness,
@@ -337,8 +345,8 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
                 command_buffer->set_push_data(sizeof(BlurConstants), &bindings->vblur_bindings, cast_u32(sizeof(bindings->vblur_bindings)));
 
-                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(SSAO_WIDTH), 32);
-                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(SSAO_HEIGHT), 32);
+                uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(width * SSAO_RESOLUTION_SCALE), 32);
+                uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(height * SSAO_RESOLUTION_SCALE), 32);
                 command_buffer->dispatch(work_size_x, work_size_y, 1);
                 command_buffer->end_gpu_debug_label();
             });

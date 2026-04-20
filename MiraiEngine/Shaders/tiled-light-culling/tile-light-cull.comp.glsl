@@ -8,22 +8,23 @@
 #include "../utils/light.glsl"
 #include "../utils/transform.glsl"
 
-#define DEBUG_TILEDLIGHTCULLING
 #define LOCAL_WORK_SIZE 16
 
 layout(local_size_x = LOCAL_WORK_SIZE, local_size_y = LOCAL_WORK_SIZE, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D u_depth_texture;
-layout(set = 0, binding = 1) readonly buffer TileFrustumBuffer {
+
+layout(set = 0, binding = 1) writeonly buffer LightList {
+    uint light_lists[];
+};
+
+layout(set = 0, binding = 2) readonly buffer TileFrustumBuffer {
     TileFrustum u_frustums[];
 };
 
-layout(set = 0, binding = 2) readonly buffer LightBuffer {
+layout(set = 0, binding = 3) readonly buffer LightBuffer {
     Light lights[];
 };
-#ifdef DEBUG_TILEDLIGHTCULLING
-layout(set = 0, binding = 3, rgba8) writeonly uniform image2D u_debug_texture;
-#endif
 
 layout(push_constant) uniform PushConstant {
     mat4 invP;
@@ -175,7 +176,20 @@ void main() {
 
     memoryBarrierShared();
     barrier();
+    /*
+    // The additional +1 offset is the first uint32_t used to track the number of light per tile
+    uint tile_offset_opaque = (group_id.y * tile_count_x + group_id.x) * (MAX_LIGHT_PER_TILE + 1);
+    light_lists[tile_offset_opaque++] = s_opaque_light_count;
+    for (uint i = groupIndex; i < s_opaque_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+        light_lists[tile_offset_opaque] = s_tile_opaque_list[i];
+    }
 
+    uint tile_offset_transparent = tile_offset_opaque + (tile_count_x * tile_count_y) * (MAX_LIGHT_PER_TILE + 1);
+    light_lists[tile_offset_transparent++] = s_transparent_light_count;
+    for (uint i = groupIndex; i < s_transparent_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+        light_lists[tile_offset_transparent] = s_tile_transparent_list[i];
+    }
+    */
 #ifdef DEBUG_TILEDLIGHTCULLING
     const vec3 map_tex[] = {
         vec3(0.0, 0.0, 0.0),

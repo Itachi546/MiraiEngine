@@ -18,8 +18,8 @@ namespace mirai {
         frame_graph->add_callback_pass<DeferredOverlay3DPassData>(
             "Overlay3DPass",
             [=](FrameGraph::FrameGraphBuilder &builder, DeferredOverlay3DPassData &data) {
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("Overlay3DPass", {
                                                                           .create_flags = 0,
                                                                           .width = width,
@@ -80,8 +80,8 @@ namespace mirai {
                 push_constant_data.invP = camera->get_inv_projection_transform();
                 push_constant_data.invV = camera->get_inv_view_transform();
 
-                uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
-                uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
+                uint32_t width = AppSettings::get_width();
+                uint32_t height = AppSettings::get_height();
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);

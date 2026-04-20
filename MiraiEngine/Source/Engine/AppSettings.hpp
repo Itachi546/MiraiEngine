@@ -21,6 +21,9 @@ namespace mirai {
 
         extern float ibl_contribution;
 
+        constexpr uint32_t K_LIGHT_TILE_SIZE = 16;
+        constexpr uint32_t K_MAX_LIGHT_PER_TILE = 256;
+
         // Vulkan Specific settings
         constexpr uint32_t K_RESOURCE_DESCRIPTOR_LIMIT = 65536;
         constexpr uint32_t K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT = 1024;
@@ -31,6 +34,14 @@ namespace mirai {
         constexpr uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
 
         constexpr uint32_t K_MAX_BINDLESS_TEXTURE_COUNT = 4096;
+
+        inline uint32_t get_width() {
+            return cast_u32(default_window_width * resolution_scale);
+        }
+
+        inline uint32_t get_height() {
+            return cast_u32(default_window_height * resolution_scale);
+        }
     }; // namespace AppSettings
 
     namespace EnvironmentSettings {
