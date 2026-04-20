@@ -22,7 +22,7 @@
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 
-#define DEBUG_SINGLE_LIGHT 1
+#define DEBUG_SINGLE_LIGHT 0
 
 class TestApplication : public App {
   public:

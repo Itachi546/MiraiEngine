@@ -123,6 +123,7 @@ void main() {
     bool dir_light_cast_shadow = false;
     int cascade_index = 0;
     float shadow_factor = 1.0f;
+    uint light_count = 0;
 
     if (disable_light_culling > 0.5) {
         for (int i = 0; i < int(num_lights); ++i) {
@@ -137,14 +138,27 @@ void main() {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
         }
-    }
+    } else {
+        uvec2 resolution = uvec2(per_frame_data.width, per_frame_data.height);
+        uvec2 tile_count = resolution / uvec2(tile_size);
+        uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
 
-    // @TODO temp
-    uvec2 resolution = uvec2(per_frame_data.width, per_frame_data.height);
-    uvec2 tile_count = resolution / uvec2(tile_size);
-    uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
-    uint tile_index = (tile_id.y * tile_count.x + tile_id.x) * 257;
-    uint light_count = light_lists[tile_index];
+        uint tile_index = (tile_id.y * tile_count.x + tile_id.x) * 257;
+        light_count = light_lists[tile_index++];
+        for (int i = 0; i < light_count; ++i) {
+            uint light_index = light_lists[tile_index + i];
+            Light light = lights[light_index];
+            if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
+                if (light.cast_shadow) {
+                    dir_light_cast_shadow = true;
+                    shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                }
+                Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+            } else if (light.light_type == LIGHT_TYPE_POINT) {
+                Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+            }
+        }
+    }
 
     // Debug Params
     if (split_percentage >= screen_uv.x) {
@@ -172,7 +186,7 @@ void main() {
             Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
             break;
         case DEBUG_LIGHT_TILE:
-            Lo *= get_tile_heatmap(light_count, 50);
+            Lo = get_tile_heatmap(light_count, 50);
         };
     }
     fragColor = vec4(Lo, 1.0f);
