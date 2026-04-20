@@ -5,6 +5,7 @@
 #include "../utils/shadow.glsl"
 #include "../utils/bindless-texture.glsl"
 #include "../utils/bindless-sampler.glsl"
+#include "../utils/debug-options.glsl"
 
 layout(location = 0) out vec4 fragColor;
 
@@ -141,23 +142,31 @@ void main() {
 
     // Debug Params
     if (split_percentage >= screen_uv.x) {
-        if (debug_texture_index > 5.5) {
-            Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
-        } else if (debug_texture_index > 4.5f)
-            Lo = vec3(shadow_factor);
-        else if (debug_texture_index > 3.5f)
-            Lo = vec3(pbr_params.ao);
-        else if (debug_texture_index > 2.5f)
-            Lo = vec3(pbr_params.roughness);
-        else if (debug_texture_index > 1.5f)
-            Lo = vec3(pbr_params.metallic);
-        else if (debug_texture_index > 0.5f)
-            Lo = normal * 0.5 + 0.5;
-        else
+        uint debug_index = uint(debug_texture_index);
+        switch (debug_index) {
+        case DEBUG_ALBEDO:
             Lo = pbr_params.albedo.xyz;
+            break;
+        case DEBUG_NORMAL:
+            Lo = normal * 0.5 + 0.5;
+            break;
+        case DEBUG_METALLIC:
+            Lo = vec3(pbr_params.metallic);
+            break;
+        case DEBUG_ROUGHNESS:
+            Lo = vec3(pbr_params.roughness);
+            break;
+        case DEBUG_AO:
+            Lo = vec3(pbr_params.ao);
+            break;
+        case DEBUG_SHADOW:
+            Lo = vec3(shadow_factor);
+            break;
+        case DEBUG_CSM_SPLIT:
+            Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
+            break;
+        };
     }
-
     fragColor = vec4(Lo, 1.0f);
 }
-
 #endif
