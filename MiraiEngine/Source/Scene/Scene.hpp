@@ -119,12 +119,6 @@ namespace mirai {
             glm::vec3 camera_position;
             float elapsed_time;
 
-            glm::vec3 light_direction;
-            float cast_shadow;
-
-            glm::vec3 light_color;
-            float light_intensity;
-
             float width;
             float height;
             uint32_t irradiance_map;

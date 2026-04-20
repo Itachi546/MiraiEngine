@@ -67,7 +67,7 @@ namespace mirai {
         int debug_param_index;
         bool show_debug_cascade_color;
         bool enable_gamma_correction;
-        bool disable_light_culling;
+        bool light_culling;
     };
 
     struct DeferredOverlay3DPassData {

@@ -82,7 +82,7 @@ class TestApplication : public App {
                                                                           .cast_shadow = false,
                                                                       });
 #else
-        const uint32_t light_count = 2000;
+        const uint32_t light_count = 512;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
             Entity entity = scene->create_entity("Light" + std::to_string(i), root_light);
@@ -96,7 +96,7 @@ class TestApplication : public App {
                                                                          .light_type = LIGHT_TYPE_POINT,
                                                                          .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
                                                                          .intensity = randomFloat01() * 10.0f,
-                                                                         .radius = -4.0f + randomFloat01() * 8.0f,
+                                                                         .radius = randomFloat01() * 2.0f + 2.0f,
                                                                          .cast_shadow = false,
                                                                      });
         }
@@ -250,7 +250,7 @@ class TestApplication : public App {
             static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0LightTile\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
-            ImGui::Checkbox("Disable Light Culling", &debug_data.disable_light_culling);
+            ImGui::Checkbox("Light Culling", &debug_data.light_culling);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
         }
     }

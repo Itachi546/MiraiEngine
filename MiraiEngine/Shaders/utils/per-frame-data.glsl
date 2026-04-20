@@ -10,13 +10,6 @@ struct PerFrameData {
     vec3 camera_position;
     float elapsed_time;
 
-    vec3 light_direction;
-    float cast_shadow;
-
-
-    vec3 light_color;
-    float light_intensity;
-
     float width;
     float height;
     uint irradiance_map;

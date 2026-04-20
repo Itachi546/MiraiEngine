@@ -56,7 +56,7 @@ layout(push_constant) uniform PushConstants {
 
     float ibl_intensity;
     float num_lights;
-    float disable_light_culling;
+    float light_culling;
     float tile_size;
 };
 
@@ -123,9 +123,9 @@ void main() {
     bool dir_light_cast_shadow = false;
     int cascade_index = 0;
     float shadow_factor = 1.0f;
-    uint light_count = 0;
+    uint tile_light_count = 0;
 
-    if (disable_light_culling > 0.5) {
+    if (light_culling < 0.5) {
         for (int i = 0; i < int(num_lights); ++i) {
             Light light = lights[i];
             if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
@@ -143,9 +143,10 @@ void main() {
         uvec2 tile_count = resolution / uvec2(tile_size);
         uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
 
+        // @TODO (Max Light + 1) is hardcoded
         uint tile_index = (tile_id.y * tile_count.x + tile_id.x) * 257;
-        light_count = light_lists[tile_index++];
-        for (int i = 0; i < light_count; ++i) {
+        tile_light_count = light_lists[tile_index++];
+        for (int i = 0; i < tile_light_count; ++i) {
             uint light_index = light_lists[tile_index + i];
             Light light = lights[light_index];
             if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
@@ -186,7 +187,7 @@ void main() {
             Lo *= dir_light_cast_shadow ? get_cascade_debug_color(fs_in.world_pos + normal * 0.001f, cam_dist, cascade_index) : vec3(1.0f);
             break;
         case DEBUG_LIGHT_TILE:
-            Lo = get_tile_heatmap(light_count, 50);
+            Lo = get_tile_heatmap(tile_light_count, 50);
         };
     }
     fragColor = vec4(Lo, 1.0f);

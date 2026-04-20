@@ -156,7 +156,7 @@ namespace mirai {
                     shadow_system->dir_light_params.pcf_sample_count,
                     AppSettings::ibl_contribution,
                     cast_float(renderer->total_visible_lights),
-                    cast_float(debug_data.disable_light_culling),
+                    cast_float(debug_data.light_culling),
                     cast_float(AppSettings::K_LIGHT_TILE_SIZE),
                 };
 

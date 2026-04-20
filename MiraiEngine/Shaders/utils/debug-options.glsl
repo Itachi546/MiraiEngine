@@ -25,7 +25,7 @@ vec3 get_tile_heatmap(uint light_count, uint max_heat) {
     vec3 a = map_tex[int(floor(l))];
     vec3 b = map_tex[int(ceil(l))];
 
-#if 1
+#if 1 
     return mix(a, b, l - floor(l));
 #else
     return map_tex[light_count + 1];

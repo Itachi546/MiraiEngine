@@ -91,10 +91,9 @@ namespace mirai {
         per_frame_data.camera_position = camera->position;
         per_frame_data.elapsed_time = Engine::get()->get_elapsed_seconds();
 
-        update_light_data(directional_light);
-
         per_frame_data.width = AppSettings::default_window_width * AppSettings::resolution_scale;
         per_frame_data.height = AppSettings::default_window_height * AppSettings::resolution_scale;
+
         if (env_map) {
             per_frame_data.irradiance_map = env_map->get_irradiance_map().id;
             per_frame_data.prefilter_map = env_map->get_prefilter_map().id;
@@ -117,17 +116,6 @@ namespace mirai {
                 remove_entity_tree(child);
         }
         ecs->destroy_entity(entity);
-    }
-
-    void Scene::update_light_data(Entity light) {
-        TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(light);
-        LightComponent *light_comp = ecs->component_manager->get_component<LightComponent>(light);
-
-        // Update directional light
-        per_frame_data.light_direction = quat_to_direction(transform->rotation);
-        per_frame_data.cast_shadow = cast_float(light_comp->cast_shadow);
-        per_frame_data.light_color = light_comp->color;
-        per_frame_data.light_intensity = light_comp->intensity;
     }
 
     void Scene::update_materials() {
