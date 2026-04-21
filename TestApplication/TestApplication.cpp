@@ -67,6 +67,7 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
+#if 0
         auto &component_manager = scene->ecs->component_manager;
         const uint32_t light_count = 512;
         Entity root_light = scene->create_entity("Lights");
@@ -86,7 +87,7 @@ class TestApplication : public App {
                                                                          .cast_shadow = false,
                                                                      });
         }
-
+#endif
         controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(10.0f);
         controller->set_run_speed(20.0f);

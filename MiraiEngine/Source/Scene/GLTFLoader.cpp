@@ -773,6 +773,27 @@ namespace mirai {
         }
     }
 
+    void ParseLightComponent(const tinygltf::Light *light, LightComponent *light_component) {
+        if (light->type == "directional") {
+            light_component->light_type = LIGHT_TYPE_DIRECTIONAL;
+        } else if (light->type == "point") {
+            light_component->light_type = LIGHT_TYPE_POINT;
+        } else if (light->type == "spot") {
+            light_component->light_type = LIGHT_TYPE_SPOT;
+            ASSERT_MSG(0, "Not implemented");
+        } else {
+            ASSERT_MSG(0, "Unsupported light type");
+        }
+
+        light_component->color.x = cast_float(light->color[0]);
+        light_component->color.y = cast_float(light->color[1]);
+        light_component->color.z = cast_float(light->color[2]);
+
+        light_component->intensity = cast_float(light->intensity);
+        light_component->radius = cast_float(light->range);
+        light_component->cast_shadow = false;
+    }
+
     void LoadSkins(const tinygltf::Model *model, LoadState *load_state) {
 
         // List all the skeleton nodes
@@ -930,6 +951,12 @@ namespace mirai {
                 camera->rotation = glm::degrees(glm::eulerAngles(transform->rotation));
                 camera->rotation.y = -90.0f + camera->rotation.y;
             }
+        }
+
+        if (node->light >= 0) {
+            const tinygltf::Light *light = &model->lights[node->light];
+            LightComponent &light_component = comp_manager->add_component<LightComponent>(entity, LightComponent{});
+            ParseLightComponent(light, &light_component);
         }
 
         // Either it is skeleton animation or it is a node animation

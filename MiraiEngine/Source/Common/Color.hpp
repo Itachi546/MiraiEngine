@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 namespace mirai {
     struct Color {
         union {
@@ -24,4 +26,17 @@ namespace mirai {
             a = float(hex & 0xff) / 255.0f;
         }
     };
+    inline uint32_t to_byte(float v) {
+        v = std::clamp(v, 0.0f, 1.0f);
+        return static_cast<uint32_t>(v * 255.0f + 0.5f); // round to nearest
+    }
+
+    inline uint32_t rgba_to_u32(float *rgba) {
+        uint32_t r = to_byte(rgba[0]);
+        uint32_t g = to_byte(rgba[1]);
+        uint32_t b = to_byte(rgba[2]);
+        uint32_t a = to_byte(rgba[3]);
+
+        return (r) | (g << 8) | (b << 16) | (a << 24);
+    }
 } // namespace mirai
