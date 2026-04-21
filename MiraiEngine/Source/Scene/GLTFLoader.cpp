@@ -788,8 +788,8 @@ namespace mirai {
         light_component->color.x = cast_float(light->color[0]);
         light_component->color.y = cast_float(light->color[1]);
         light_component->color.z = cast_float(light->color[2]);
-
-        light_component->intensity = cast_float(light->intensity);
+        // @NOTE custom intensity scaling
+        light_component->intensity = cast_float(light->intensity) * 0.001f;
         light_component->radius = cast_float(light->range);
         light_component->cast_shadow = false;
     }

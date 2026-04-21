@@ -11,7 +11,7 @@ struct Light {
     float radius;
 
     float intensity;
-    bool cast_shadow;
+    float cast_shadow;
     float _padding[2];
 };
 

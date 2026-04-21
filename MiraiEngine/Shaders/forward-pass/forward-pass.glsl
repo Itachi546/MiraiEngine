@@ -129,7 +129,7 @@ void main() {
         for (int i = 0; i < int(num_lights); ++i) {
             Light light = lights[i];
             if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (light.cast_shadow) {
+                if (light.cast_shadow > 0.5f) {
                     dir_light_cast_shadow = true;
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
@@ -149,7 +149,7 @@ void main() {
             uint light_index = light_lists[tile_index + i];
             Light light = lights[light_index];
             if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (light.cast_shadow) {
+                if (light.cast_shadow > 0.5f) {
                     dir_light_cast_shadow = true;
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }

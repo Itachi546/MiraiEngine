@@ -261,7 +261,7 @@ namespace mirai {
             float radius;
 
             float intensity;
-            bool cast_shadow;
+            float cast_shadow;
             float _padding[2];
         };
 
@@ -283,7 +283,7 @@ namespace mirai {
                     .color = light->color,
                     .radius = 0.0f,
                     .intensity = light->intensity,
-                    .cast_shadow = light->cast_shadow,
+                    .cast_shadow = cast_float(light->cast_shadow),
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
                 if (total_lights > LIGHT_CULLING_THRESHOLD) {
@@ -297,7 +297,7 @@ namespace mirai {
                     .color = light->color,
                     .radius = light->radius,
                     .intensity = light->intensity,
-                    .cast_shadow = light->cast_shadow,
+                    .cast_shadow = cast_float(light->cast_shadow),
                 });
             } else {
                 ASSERT_MSG(0, "Unknown light type");
