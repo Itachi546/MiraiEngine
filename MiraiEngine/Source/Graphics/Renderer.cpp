@@ -325,7 +325,6 @@ namespace mirai {
         per_frame_light_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor, 1);
     }
 
-    // @TODO this must be handled somewhere else
     void Renderer::create_batches() {
         ScopedCpuProfiling("Create Batch");
         main_opaque_batches.clear();

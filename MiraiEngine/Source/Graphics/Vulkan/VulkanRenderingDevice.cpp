@@ -1361,7 +1361,6 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::create_tlas(BufferID instance_buffer_id, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id) {
-        // @TODO implement
         VulkanBuffer *instance_buffer = resource_pool_buffers.access(instance_buffer_id);
 
         VkAccelerationStructureGeometryKHR geometry = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};

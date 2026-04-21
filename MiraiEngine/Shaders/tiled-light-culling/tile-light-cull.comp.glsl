@@ -8,9 +8,7 @@
 #include "../utils/light.glsl"
 #include "../utils/transform.glsl"
 
-#define LOCAL_WORK_SIZE 16
-
-layout(local_size_x = LOCAL_WORK_SIZE, local_size_y = LOCAL_WORK_SIZE, local_size_z = 1) in;
+layout(local_size_x = LIGHT_TILE_SIZE, local_size_y = LIGHT_TILE_SIZE, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform sampler2D u_depth_texture;
 
@@ -18,11 +16,7 @@ layout(set = 0, binding = 1) writeonly buffer LightList {
     uint light_lists[];
 };
 
-layout(set = 0, binding = 2) readonly buffer TileFrustumBuffer {
-    TileFrustum u_frustums[];
-};
-
-layout(set = 0, binding = 3) readonly buffer LightBuffer {
+layout(set = 0, binding = 2) readonly buffer LightBuffer {
     Light lights[];
 };
 
@@ -39,8 +33,6 @@ layout(push_constant) uniform PushConstant {
     uint _padding[2];
 };
 
-const uint MAX_LIGHT_PER_TILE = 256;
-
 shared uint s_tile_opaque_list[MAX_LIGHT_PER_TILE];
 shared uint s_tile_transparent_list[MAX_LIGHT_PER_TILE];
 
@@ -48,6 +40,7 @@ shared uint s_tile_min_depth;
 shared uint s_tile_max_depth;
 shared uint s_opaque_light_count;
 shared uint s_transparent_light_count;
+shared TileFrustum s_frustum;
 
 void append_light_opaque(uint light_index) {
     uint index = atomicAdd(s_opaque_light_count, 1);
@@ -107,21 +100,23 @@ void calculate_tile_frustum(ivec2 id, out TileFrustum frustum) {
 
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-
+    ivec2 group_id = ivec2(gl_WorkGroupID.xy);
     uint groupIndex = gl_LocalInvocationIndex;
 
     // Initialize the bucket
-    for (uint i = groupIndex; i < MAX_LIGHT_PER_TILE; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+    for (uint i = groupIndex; i < MAX_LIGHT_PER_TILE; i += LIGHT_TILE_SIZE * LIGHT_TILE_SIZE) {
         s_tile_opaque_list[i] = 0;
         s_tile_transparent_list[i] = 0;
     }
 
+    // Initialize per group variables
     if (groupIndex == 0) {
         // Using float max to be on safe side
         s_tile_min_depth = 0xFFFFFFFF;
         s_tile_max_depth = 0;
         s_opaque_light_count = 0;
         s_transparent_light_count = 0;
+        calculate_tile_frustum(group_id, s_frustum);
     }
 
     memoryBarrierShared();
@@ -153,13 +148,7 @@ void main() {
     // The near and far plane is simple in view space
     vec4 min_plane = vec4(0.0f, 0.0f, -1.0f, min_depth_vs);
 
-    ivec2 group_id = ivec2(gl_WorkGroupID.xy);
-
-    // @TODO load it from buffer or just generate once for this group
-    TileFrustum frustum;
-    calculate_tile_frustum(group_id, frustum); // u_frustums[group_id.y * tile_count_x + group_id.x];
-
-    for (uint i = groupIndex; i < light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+    for (uint i = groupIndex; i < light_count; i += LIGHT_TILE_SIZE * LIGHT_TILE_SIZE) {
         Light light = lights[i];
         if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
             append_light_opaque(i);
@@ -167,7 +156,7 @@ void main() {
         } else if (light.light_type == LIGHT_TYPE_POINT) {
             vec4 light_position_vs = V * vec4(light.position_or_direction, 1.0f);
             vec4 sphere = vec4(light_position_vs.xyz, light.radius);
-            if (sphere_inside_frustum(frustum, sphere, near_clip_vs, max_depth_vs)) {
+            if (sphere_inside_frustum(s_frustum, sphere, near_clip_vs, max_depth_vs)) {
                 append_light_transparent(i);
                 if (sphere_inside_plane(sphere, min_plane))
                     append_light_opaque(i);
@@ -179,8 +168,8 @@ void main() {
     barrier();
 
     // The additional +1 offset is the first uint32_t used to track the number of light per tile
-    uint opaque_bucket_address = (group_id.y * tile_count_x + group_id.x) * (MAX_LIGHT_PER_TILE + 1);
-    uint transparent_bucket_address = opaque_bucket_address + (tile_count_x * tile_count_y) * (MAX_LIGHT_PER_TILE + 1);
+    uint opaque_bucket_address = get_tile_address_opaque(group_id, ivec2(tile_count_x, tile_count_y));
+    uint transparent_bucket_address = get_tile_address_transparent(group_id, ivec2(tile_count_x, tile_count_y));
 
     if (groupIndex == 0) {
         light_lists[opaque_bucket_address] = min(s_opaque_light_count, MAX_LIGHT_PER_TILE);
@@ -188,14 +177,12 @@ void main() {
     }
 
     uint opaque_light_count = min(s_opaque_light_count, MAX_LIGHT_PER_TILE);
-    for (uint i = groupIndex; i < opaque_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+    for (uint i = groupIndex; i < opaque_light_count; i += LIGHT_TILE_SIZE * LIGHT_TILE_SIZE) {
         light_lists[opaque_bucket_address + i + 1] = s_tile_opaque_list[i];
     }
 
-    /*
     uint transparent_light_count = min(s_transparent_light_count, MAX_LIGHT_PER_TILE);
-    for (uint i = groupIndex; i < transparent_light_count; i += LOCAL_WORK_SIZE * LOCAL_WORK_SIZE) {
+    for (uint i = groupIndex; i < transparent_light_count; i += LIGHT_TILE_SIZE * LIGHT_TILE_SIZE) {
         light_lists[transparent_bucket_address + i + 1] = s_tile_transparent_list[i];
     }
-    */
 }

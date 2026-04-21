@@ -43,8 +43,6 @@ namespace mirai {
     };
 
     struct TiledLightCullPassData {
-        // FrameGraphResourceHandle light_list_buffer;
-        FrameGraphResourceHandle frustum_buffer;
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle light_list_buffer;
         uint32_t depth_texture_width;

@@ -844,7 +844,6 @@ namespace mirai {
                         .name = animation.name,
                         .start_time = animation.start_time,
                         .end_time = animation.end_time,
-                        // @TODO temp
                         .tick_per_seconds = 24,
                     });
                     animation_clip.positions.resize(joint_count);
@@ -958,7 +957,6 @@ namespace mirai {
                     .name = animation.name,
                     .start_time = animation.start_time,
                     .end_time = animation.end_time,
-                    // @TODO temp
                     .tick_per_seconds = 24,
                 });
 

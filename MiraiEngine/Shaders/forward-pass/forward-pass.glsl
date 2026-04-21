@@ -143,8 +143,7 @@ void main() {
         uvec2 tile_count = resolution / uvec2(tile_size);
         uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
 
-        // @TODO (Max Light + 1) is hardcoded
-        uint tile_index = (tile_id.y * tile_count.x + tile_id.x) * 257;
+        uint tile_index = get_tile_address_opaque(tile_id, tile_count);
         tile_light_count = light_lists[tile_index++];
         for (int i = 0; i < tile_light_count; ++i) {
             uint light_index = light_lists[tile_index + i];

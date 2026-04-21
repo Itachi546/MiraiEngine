@@ -13,10 +13,7 @@ namespace mirai {
     LineRenderer::LineRenderer() {
         ASSERT(Instance == nullptr);
         Instance = this;
-        /**
-         * @TODO memory should be allocated with frame in flight
-         * in consideration
-         */
+
         BufferDescription buffer_desc = {
             .size = cast_u32(K_MAX_LINE_COUNT * sizeof(Line)) * AppSettings::K_MAX_FRAME_IN_FLIGHTS,
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -27,7 +24,6 @@ namespace mirai {
         buffer = device->create_buffer(&buffer_desc, "line_vertex_buffer");
         line_array = (Line *)device->map_buffer(buffer);
 
-        // @TODO move this to pipeline loader
         shader = std::make_shared<EffectMaterial>("DebugDrawLine",
                                                   std::vector<std::string>{"SPIRV/line.vert.spv", "SPIRV/line.frag.spv"},
                                                   PipelineState{

@@ -25,7 +25,6 @@ void main() {
 
     vec4 col = texture(sampler2D(u_input_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv);
 
-    // @TODO Temp
     if (enable_gamma_correction > 0.5f) {
         col.rgb = linear_to_srgb(ACESFilm(col.rgb));
     }
