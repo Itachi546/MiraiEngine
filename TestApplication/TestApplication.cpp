@@ -22,8 +22,6 @@
 using namespace mirai;
 const Color Color_Black = {0.0f, 0.0f, 0.0f, 1.0f};
 
-#define DEBUG_SINGLE_LIGHT 0
-
 class TestApplication : public App {
   public:
     TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
@@ -70,18 +68,6 @@ class TestApplication : public App {
         }
 
         auto &component_manager = scene->ecs->component_manager;
-#if DEBUG_SINGLE_LIGHT
-        point_light = scene->create_entity("Light");
-        TransformComponent *transform = component_manager->get_component<TransformComponent>(point_light);
-        transform->position = glm::vec3(0.0f, 4.0f, 0.0f);
-        component_manager->add_component<LightComponent>(point_light, LightComponent{
-                                                                          .light_type = LIGHT_TYPE_POINT,
-                                                                          .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
-                                                                          .intensity = 10.0f,
-                                                                          .radius = 5.0f,
-                                                                          .cast_shadow = false,
-                                                                      });
-#else
         const uint32_t light_count = 512;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
@@ -100,7 +86,7 @@ class TestApplication : public App {
                                                                          .cast_shadow = false,
                                                                      });
         }
-#endif
+
         controller = std::make_unique<FirstPersonController>(camera);
         controller->set_walk_speed(10.0f);
         controller->set_run_speed(20.0f);
@@ -125,30 +111,6 @@ class TestApplication : public App {
             show_debug_ui = !show_debug_ui;
         }
 
-#if DEBUG_SINGLE_LIGHT
-        TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(point_light);
-        LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(point_light);
-        LineRenderer *line_renderer = LineRenderer::get();
-
-        const uint32_t theta_sample = 20;
-        const uint32_t phi_sample = 10;
-        float theta_step = (glm::pi<float>() * 2.0f) / float(theta_sample);
-        float phi_step = glm::pi<float>() / float(phi_sample);
-
-        for (uint32_t t = 0; t < theta_sample; ++t) {
-            for (uint32_t p = 0; p < phi_sample; ++p) {
-                float phi = p * phi_step;
-                float theta = t * theta_step;
-                glm::vec3 direction = {
-                    sin(phi) * cos(theta),
-                    sin(phi) * sin(theta),
-                    cos(phi),
-                };
-
-                line_renderer->add_line(transform->position, transform->position + light->radius * glm::normalize(direction), 0xffff00ff);
-            }
-        }
-#endif
         add_debug_ui();
     }
 
