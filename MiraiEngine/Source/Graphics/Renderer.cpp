@@ -463,17 +463,13 @@ namespace mirai {
         per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Update cascade data
-        if (shadow_system->dir_light_params.enabled) {
-            uint32_t cascade_data_size = sizeof(shadow_system->cascade_info);
-            uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
-            uint8_t *cascade_buffer_ptr = per_frame_staging_buffer_ptr + cascade_data_offset;
-            std::memcpy(cascade_buffer_ptr, &shadow_system->cascade_info, cascade_data_size);
-            descriptor_info.buffer_info.offset = cascade_data_offset;
-            descriptor_info.buffer_info.size = cascade_data_size;
-            cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
-        } else {
-            cascade_data_descriptor = K_INVALID_ID;
-        }
+        uint32_t cascade_data_size = sizeof(shadow_system->cascade_info);
+        uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
+        uint8_t *cascade_buffer_ptr = per_frame_staging_buffer_ptr + cascade_data_offset;
+        std::memcpy(cascade_buffer_ptr, &shadow_system->cascade_info, cascade_data_size);
+        descriptor_info.buffer_info.offset = cascade_data_offset;
+        descriptor_info.buffer_info.size = cascade_data_size;
+        cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Populate per-frame batch data
         total_visible_entities = 0;
