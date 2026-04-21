@@ -286,13 +286,11 @@ namespace mirai {
                     .cast_shadow = light->cast_shadow,
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
-                /*
                 if (total_lights > LIGHT_CULLING_THRESHOLD) {
                     if (!frustum.intersect(transform->position, light->radius)) {
                         continue;
                     }
                 }
-                */
                 visible_lights.push_back(LightData{
                     .position_or_direction = transform->position,
                     .light_type = cast_u32(light->light_type),
