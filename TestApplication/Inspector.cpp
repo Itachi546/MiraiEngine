@@ -145,9 +145,15 @@ void add_light_component_ui(LightComponent *light, Entity entity) {
         } else if (light->light_type == LIGHT_TYPE_POINT) {
             ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
         } else if (light->light_type == LIGHT_TYPE_SPOT) {
-            ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
-            ImGui::SliderFloat("Inner Angle", &light->inner_cone_angle, 0.0f, glm::pi<float>() * 0.5f);
-            ImGui::SliderFloat("OuterAngle Angle", &light->outer_cone_angle, 0.0f, glm::pi<float>() * 0.5f);
+            ImGui::SliderFloat("Height", &light->radius, 0.0f, 20.0f);
+            float inner_angle = glm::degrees(light->inner_cone_angle);
+            float outer_angle = glm::degrees(light->outer_cone_angle);
+            if (ImGui::SliderFloat("Outer Angle", &outer_angle, 0.0f, 90.0f)) {
+                light->outer_cone_angle = glm::radians(outer_angle);
+            }
+            if (ImGui::SliderFloat("Inner Angle", &inner_angle, 0.0f, outer_angle)) {
+                light->inner_cone_angle = glm::radians(inner_angle);
+            }
         }
         ImGui::PopID();
     }

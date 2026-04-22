@@ -310,6 +310,7 @@ namespace mirai {
                     .inner_angle = light->inner_cone_angle,
                     .outer_angle = light->outer_cone_angle,
                 });
+                line_renderer->add_cone(transform->position, quat_to_direction(transform->rotation), light->radius, light->outer_cone_angle);
             } else {
                 ASSERT_MSG(0, "Unknown light type");
             }

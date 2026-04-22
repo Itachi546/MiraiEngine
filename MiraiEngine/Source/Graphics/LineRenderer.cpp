@@ -61,7 +61,7 @@ namespace mirai {
         command_buffer->draw(line_count * 2, 1, 0, 0);
     }
 
-    void LineRenderer::add_line(glm::vec3 s, glm::vec3 e, uint32_t color) {
+    void LineRenderer::add_line(const glm::vec3 &s, const glm::vec3 &e, uint32_t color) {
         if (!AppSettings::enable_debug_draw)
             return;
         ASSERT(line_count < K_MAX_LINE_COUNT);
@@ -118,6 +118,48 @@ namespace mirai {
         add_line(points[1], points[5], color);
         add_line(points[3], points[7], color);
         add_line(points[2], points[6], color);
+    }
+
+    void LineRenderer::add_circle(const glm::vec3 &p, float r, uint32_t color) {
+        const uint32_t num_segment = 50;
+        const float segment_step = (glm::pi<float>() * 2.0f) / float(num_segment);
+
+        glm::vec3 s = p + glm::vec3{r, 0.0f, 0.0f};
+        for (uint32_t i = 1; i < num_segment; ++i) {
+            float angle = i * segment_step;
+            glm::vec3 e = p + r * glm::vec3{cos(angle), 0.0f, sin(angle)};
+            add_line(s, e, color);
+            s = e;
+        }
+        add_line(s, p + glm::vec3{r, 0.0f, 0.0f}, color);
+    }
+
+    void LineRenderer::add_cone(const glm::vec3 &p, const glm::vec3 &direction, float height, float angle, uint32_t color) {
+        glm::vec3 forward = direction;
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        if (abs(forward.y) >= 0.99f)
+            up = glm::vec3(0.0f, 0.0f, 1.0f);
+        up = normalize(up - dot(up, forward) * forward);
+        glm::vec3 right = cross(up, forward);
+
+        const uint32_t num_segment = 50;
+        const float segment_step = (glm::pi<float>() * 2.0f) / float(num_segment);
+
+        float radius = height * tan(angle);
+
+        glm::vec3 center = p + height * forward;
+
+        glm::vec3 start = center + right * radius;
+        add_line(p, start, color);
+
+        for (uint32_t i = 1; i < num_segment; ++i) {
+            float angle = i * segment_step;
+            glm::vec3 end = center + (right * cos(angle) + up * sin(angle)) * radius;
+            add_line(start, end, color);
+            add_line(p, end, color);
+            start = end;
+        }
+        add_line(start, center + right * radius, color);
     }
 
     LineRenderer::~LineRenderer() {

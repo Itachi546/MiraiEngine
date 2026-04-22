@@ -17,9 +17,11 @@ namespace mirai {
 
         void render(CommandBuffer *command_buffer, const glm::mat4 &VP);
 
-        void add_line(glm::vec3 s, glm::vec3 e, uint32_t color = 0xffffffff);
+        void add_line(const glm::vec3 &s, const glm::vec3 &e, uint32_t color = 0xffffffff);
         void add_aabb(const AABB &aabb, uint32_t color = 0x00ff00ff);
         void add_frustum(const std::array<glm::vec3, 8> &points, uint32_t color);
+        void add_circle(const glm::vec3 &p, float r, uint32_t color = 0xffffffff);
+        void add_cone(const glm::vec3 &p, const glm::vec3 &d, float height, float angle, uint32_t color = 0xffffffff);
 
         ~LineRenderer();
 
