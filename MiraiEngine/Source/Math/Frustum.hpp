@@ -19,7 +19,9 @@ namespace mirai {
 
         bool intersect_aabb(const AABB &aabb) const;
 
-        bool intersect_sphere(glm::vec3 position, float radius) const;
+        bool intersect_sphere(const glm::vec3 &position, float radius) const;
+
+        bool intersect_cone(glm::vec3 &position, glm::vec3& direction, float height, float radius) const;
 
         std::array<Plane, 6> planes;
     };

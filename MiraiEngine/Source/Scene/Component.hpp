@@ -117,8 +117,10 @@ namespace mirai {
         LightType light_type;
         glm::vec3 color;
         float intensity;
-
-        float radius;
+        union {
+            float radius;
+            float height;
+        };
         bool cast_shadow;
 
         float inner_cone_angle;

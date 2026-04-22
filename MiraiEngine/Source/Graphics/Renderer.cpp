@@ -261,7 +261,7 @@ namespace mirai {
             float intensity;
 
             uint32_t color;
-            float radius;
+            float radius_or_height;
             float inner_angle;
             float outer_angle;
         };
@@ -297,20 +297,24 @@ namespace mirai {
                     .flag = flag,
                     .intensity = light->intensity,
                     .color = rgb_to_u32(&light->color[0]),
-                    .radius = light->radius,
+                    .radius_or_height = light->radius,
                 });
             } else if (light->light_type == LIGHT_TYPE_SPOT) {
-                visible_lights.push_back(GPULightData{
-                    .position = transform->position,
-                    .flag = flag,
-                    .direction = quat_to_direction(transform->rotation),
-                    .intensity = light->intensity,
-                    .color = rgb_to_u32(&light->color[0]),
-                    .radius = light->radius,
-                    .inner_angle = light->inner_cone_angle,
-                    .outer_angle = light->outer_cone_angle,
-                });
-                line_renderer->add_cone(transform->position, quat_to_direction(transform->rotation), light->radius, light->outer_cone_angle);
+                glm::vec3 direction = quat_to_direction(transform->rotation);
+                float radius = light->height * tan(light->outer_cone_angle);
+                if (frustum.intersect_cone(transform->position, direction, light->height, radius)) {
+                    visible_lights.push_back(GPULightData{
+                        .position = transform->position,
+                        .flag = flag,
+                        .direction = direction,
+                        .intensity = light->intensity,
+                        .color = rgb_to_u32(&light->color[0]),
+                        .radius_or_height = light->height,
+                        .inner_angle = light->inner_cone_angle,
+                        .outer_angle = light->outer_cone_angle,
+                    });
+                    line_renderer->add_cone(transform->position, direction, light->height, light->outer_cone_angle);
+                }
             } else {
                 ASSERT_MSG(0, "Unknown light type");
             }

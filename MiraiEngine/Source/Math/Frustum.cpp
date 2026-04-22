@@ -53,10 +53,35 @@ namespace mirai {
         return true;
     }
 
-    bool FrustumPlanes::intersect_sphere(glm::vec3 position, float radius) const {
+    bool FrustumPlanes::intersect_sphere(const glm::vec3 &position, float radius) const {
         for (int i = 0; i < 6; ++i) {
             float dist = planes[i].distance_to_point(position);
             if (dist < -radius)
+                return false;
+        }
+        return true;
+    }
+
+    bool FrustumPlanes::intersect_cone(glm::vec3 &position, glm::vec3 &direction, float height, float radius) const {
+        // Returns some false positive result
+        glm::vec3 base = position + direction * height;
+        for (int i = 0; i < 6; ++i) {
+            // The tip has already intersected, no need to check for farthest point
+            if (planes[i].distance_to_point(position) >= 0.0f)
+                continue;
+
+            glm::vec3 m = glm::cross(glm::cross(planes[i].normal, direction), direction);
+
+            // Divide by zero prevention
+            float len = length(m);
+            if (len <= 0.0001f)
+                continue;
+
+            m = m / len;
+
+            // if the farthest point and tip is both outside the plane, then it is outside
+            glm::vec3 farthest_point = base - m * radius;
+            if (planes[i].distance_to_point(farthest_point) < 0.0f)
                 return false;
         }
         return true;
