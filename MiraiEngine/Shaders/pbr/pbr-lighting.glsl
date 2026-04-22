@@ -37,8 +37,7 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     return (diffuse + specular) * ibl_contribution;
 }
 
-vec3 evaluateDirectionalLight(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
-    vec3 light_direction = light.position_or_direction;
+vec3 evaluateBRDF(vec3 light_direction, vec3 view_dir, vec3 normal, PBRParameter pbr_params) {
     vec3 halfway_vector = normalize(view_dir + light_direction);
     vec3 reflection = normalize(reflect(-view_dir, normal));
 
@@ -58,47 +57,54 @@ vec3 evaluateDirectionalLight(in Light light, in vec3 view_dir, in vec3 normal, 
     vec3 F = F_Schlick(ldoth, F0);
     vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
 
-    // For directional light
-    vec3 radiance = light.color * light.intensity;
     vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
+    return (kD * diffuse + specular) * ndotl;
+}
 
-    return (kD * diffuse + specular) * shadow_factor * radiance * ndotl;
+vec3 evaluateDirectionalLight(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
+    vec3 light_direction = light.direction;
+    vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
+    return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance;
+}
+
+// Attenuation
+// GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
+// return saturate(1 - pow(dist / range, 4)) / dist2;
+float getSquareFallOffAttenaution(float distance2, float radius) {
+    float dist_per_range = distance2 / (radius * radius);
+    dist_per_range *= dist_per_range;
+    return clamp(1 - dist_per_range, 0.0, 1.0) / max(0.0001, distance2);
+}
+
+float getAngularAttenuation(vec3 light_dir, vec3 spot_dir, float inner_angle, float outer_angle) {
+    float cos_outer = cos(outer_angle);
+    float spot_scale = 1.0f / max(cos(inner_angle) - cos_outer, 0.001f);
+    float spot_offset = -cos_outer * spot_scale;
+
+    float angle = dot(light_dir, spot_dir);
+    float attenuation = clamp(angle * spot_scale + spot_offset, 0.0, 1.0);
+    return attenuation * attenuation;
 }
 
 vec3 evaluatePointLight(in Light light, in vec3 world_pos, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
-    vec3 light_direction = light.position_or_direction - world_pos;
+    vec3 light_direction = light.position - world_pos;
     float distance2 = dot(light_direction, light_direction);
-    light_direction /= length(distance2);
+    light_direction /= sqrt(distance2);
 
-    vec3 halfway_vector = normalize(view_dir + light_direction);
-    vec3 reflection = normalize(reflect(-view_dir, normal));
+    vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius);
+    return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
+}
 
-    float ndotl = clamp(dot(normal, light_direction), 0.001, 1.0);
-    float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
-    float ndoth = clamp(dot(normal, halfway_vector), 0.0, 1.0);
-    float ldoth = clamp(dot(light_direction, halfway_vector), 0.0, 1.0);
+vec3 evaluateSpotLight(in Light light, in vec3 world_pos, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
+    vec3 light_direction = light.position - world_pos;
+    float distance2 = dot(light_direction, light_direction);
+    light_direction /= sqrt(distance2);
 
-    // Directional Light Lighting calculation
-    vec3 Lo = vec3(0.0f);
-    vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
-    vec3 diffuse = pbr_params.albedo.rgb / PI;
-
-    float D = D_GGX(ndoth, pbr_params.roughness);
-    float G = G_Smith(ndotv, ndotl, pbr_params.roughness);
-
-    vec3 F = F_Schlick(ldoth, F0);
-    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
-
-    vec3 radiance = light.color * light.intensity;
-    vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
-
-    // Attenuation
-    // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
-    // return saturate(1 - pow(dist / range, 4)) / dist2;
-    float dist_per_range = distance2 / (light.radius * light.radius);
-    dist_per_range *= dist_per_range;
-    float attenuation = clamp(1 - dist_per_range, 0.0, 1.0) / max(0.0001, distance2);
-    return (kD * diffuse + specular) * shadow_factor * radiance * ndotl * attenuation;
+    vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius);
+    attenuation *= getAngularAttenuation(-light_direction, light.direction, light.inner_angle, light.outer_angle);
+    return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
 }
 
 #endif

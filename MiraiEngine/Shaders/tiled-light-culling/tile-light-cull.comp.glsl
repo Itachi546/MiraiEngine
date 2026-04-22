@@ -150,11 +150,12 @@ void main() {
 
     for (uint i = groupIndex; i < light_count; i += LIGHT_TILE_SIZE * LIGHT_TILE_SIZE) {
         Light light = lights[i];
-        if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
+        uint light_type = get_light_type(light.flag);
+        if (light_type == LIGHT_TYPE_DIRECTIONAL) {
             append_light_opaque(i);
             append_light_transparent(i);
-        } else if (light.light_type == LIGHT_TYPE_POINT) {
-            vec4 light_position_vs = V * vec4(light.position_or_direction, 1.0f);
+        } else if (light_type == LIGHT_TYPE_POINT) {
+            vec4 light_position_vs = V * vec4(light.position, 1.0f);
             vec4 sphere = vec4(light_position_vs.xyz, light.radius);
             if (sphere_inside_frustum(s_frustum, sphere, near_clip_vs, max_depth_vs)) {
                 append_light_transparent(i);

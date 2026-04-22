@@ -47,7 +47,7 @@ namespace mirai {
             .debug_param_index = 0,
             .show_debug_cascade_color = false,
             .enable_gamma_correction = true,
-            .light_culling = true,
+            .light_culling = false,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
@@ -253,37 +253,38 @@ namespace mirai {
     void Renderer::upload_visible_lights() {
         const uint32_t LIGHT_CULLING_THRESHOLD = 256;
         // @TODO optimize this structure later
-        struct LightData {
-            glm::vec3 position_or_direction;
-            uint32_t light_type;
+        struct GPULightData {
+            glm::vec3 position;
+            uint32_t flag;
 
-            glm::vec3 color;
-            float radius;
-
+            glm::vec3 direction;
             float intensity;
-            float cast_shadow;
-            float _padding[2];
+
+            uint32_t color;
+            float radius;
+            float inner_angle;
+            float outer_angle;
         };
+        static_assert(sizeof(GPULightData) % 16 == 0);
 
         auto &component_manager = scene->ecs->component_manager;
         const auto &light_array = component_manager->get_component_array<LightComponent>();
         const FrustumPlanes &frustum = scene->get_camera()->get_frustum_planes();
 
-        std::vector<LightData> visible_lights;
+        std::vector<GPULightData> visible_lights;
         visible_lights.reserve(1000);
         uint32_t total_lights = cast_u32(light_array->entities.size());
 
         for (auto entity : light_array->entities) {
             TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
             LightComponent *light = component_manager->get_component<LightComponent>(entity);
+            uint32_t flag = light->light_type | (uint32_t(light->cast_shadow) << 3);
             if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
-                visible_lights.push_back(LightData{
-                    .position_or_direction = quat_to_direction(transform->rotation),
-                    .light_type = cast_u32(light->light_type),
-                    .color = light->color,
-                    .radius = 0.0f,
+                visible_lights.push_back(GPULightData{
+                    .flag = flag,
+                    .direction = quat_to_direction(transform->rotation),
                     .intensity = light->intensity,
-                    .cast_shadow = cast_float(light->cast_shadow),
+                    .color = rgb_to_u32(&light->color[0]),
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
                 if (total_lights > LIGHT_CULLING_THRESHOLD) {
@@ -291,13 +292,23 @@ namespace mirai {
                         continue;
                     }
                 }
-                visible_lights.push_back(LightData{
-                    .position_or_direction = transform->position,
-                    .light_type = cast_u32(light->light_type),
-                    .color = light->color,
-                    .radius = light->radius,
+                visible_lights.push_back(GPULightData{
+                    .position = transform->position,
+                    .flag = flag,
                     .intensity = light->intensity,
-                    .cast_shadow = cast_float(light->cast_shadow),
+                    .color = rgb_to_u32(&light->color[0]),
+                    .radius = light->radius,
+                });
+            } else if (light->light_type == LIGHT_TYPE_SPOT) {
+                visible_lights.push_back(GPULightData{
+                    .position = transform->position,
+                    .flag = flag,
+                    .direction = quat_to_direction(transform->rotation),
+                    .intensity = light->intensity,
+                    .color = rgb_to_u32(&light->color[0]),
+                    .radius = light->radius,
+                    .inner_angle = light->inner_cone_angle,
+                    .outer_angle = light->outer_cone_angle,
                 });
             } else {
                 ASSERT_MSG(0, "Unknown light type");
@@ -305,7 +316,7 @@ namespace mirai {
         }
         total_visible_lights = cast_u32(visible_lights.size());
 
-        uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(LightData));
+        uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(GPULightData));
         uint32_t light_buffer_offset = allocate_staging_buffer(light_data_size, device->get_current_frame());
 
         uint8_t *light_buffer_ptr = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + light_buffer_offset);

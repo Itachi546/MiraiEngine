@@ -120,6 +120,9 @@ namespace mirai {
 
         float radius;
         bool cast_shadow;
+
+        float inner_cone_angle;
+        float outer_cone_angle;
     };
 
     struct NodeAnimatorComponent {

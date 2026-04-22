@@ -780,7 +780,8 @@ namespace mirai {
             light_component->light_type = LIGHT_TYPE_POINT;
         } else if (light->type == "spot") {
             light_component->light_type = LIGHT_TYPE_SPOT;
-            ASSERT_MSG(0, "Not implemented");
+            light_component->inner_cone_angle = cast_float(light->spot.innerConeAngle);
+            light_component->outer_cone_angle = cast_float(light->spot.outerConeAngle);
         } else {
             ASSERT_MSG(0, "Unsupported light type");
         }

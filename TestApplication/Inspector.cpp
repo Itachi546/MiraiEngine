@@ -144,6 +144,10 @@ void add_light_component_ui(LightComponent *light, Entity entity) {
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
         } else if (light->light_type == LIGHT_TYPE_POINT) {
             ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
+        } else if (light->light_type == LIGHT_TYPE_SPOT) {
+            ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
+            ImGui::SliderFloat("Inner Angle", &light->inner_cone_angle, 0.0f, glm::pi<float>() * 0.5f);
+            ImGui::SliderFloat("OuterAngle Angle", &light->outer_cone_angle, 0.0f, glm::pi<float>() * 0.5f);
         }
         ImGui::PopID();
     }

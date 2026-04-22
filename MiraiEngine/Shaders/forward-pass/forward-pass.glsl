@@ -128,14 +128,17 @@ void main() {
     if (light_culling < 0.5) {
         for (int i = 0; i < int(num_lights); ++i) {
             Light light = lights[i];
-            if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (light.cast_shadow > 0.5f) {
+            uint light_type = get_light_type(light.flag);
+            if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+                if (cast_shadow(light.flag)) {
                     dir_light_cast_shadow = true;
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
-            } else if (light.light_type == LIGHT_TYPE_POINT) {
+            } else if (light_type == LIGHT_TYPE_POINT) {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+            } else if (light_type == LIGHT_TYPE_SPOT) {
+                Lo += evaluateSpotLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
         }
     } else {
@@ -148,13 +151,14 @@ void main() {
         for (int i = 0; i < tile_light_count; ++i) {
             uint light_index = light_lists[tile_index + i];
             Light light = lights[light_index];
-            if (light.light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (light.cast_shadow > 0.5f) {
+            uint light_type = get_light_type(light.flag);
+            if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+                if (cast_shadow(light.flag)) {
                     dir_light_cast_shadow = true;
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
-            } else if (light.light_type == LIGHT_TYPE_POINT) {
+            } else if (light_type == LIGHT_TYPE_POINT) {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
         }

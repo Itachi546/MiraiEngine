@@ -37,6 +37,15 @@ namespace mirai {
         uint32_t b = to_byte(rgba[2]);
         uint32_t a = to_byte(rgba[3]);
 
-        return (r) | (g << 8) | (b << 16) | (a << 24);
+        return (a) | (b << 8) | (g << 16) | (r << 24);
+    }
+
+    inline uint32_t rgb_to_u32(float *rgb) {
+        uint32_t r = to_byte(rgb[0]);
+        uint32_t g = to_byte(rgb[1]);
+        uint32_t b = to_byte(rgb[2]);
+        uint32_t a = to_byte(0.0f);
+
+        return (a) | (b << 8) | (g << 16) | (r << 24);
     }
 } // namespace mirai
