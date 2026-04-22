@@ -67,25 +67,39 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-#if 0
+#if 1
         auto &component_manager = scene->ecs->component_manager;
-        const uint32_t light_count = 512;
+        const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {
-            Entity entity = scene->create_entity("Light" + std::to_string(i), root_light);
+            bool is_spot_light = randomFloat01() < 0.1f;
+            Entity entity = scene->create_entity((is_spot_light ? "SpotLight" : "PointLight") + std::to_string(i), root_light);
             TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
             transform->position = glm::vec3(
                 -10.0f + randomFloat01() * 20.0f,
                 randomFloat01() * 10.0f,
                 -5.0f + randomFloat01() * 10.0f);
+            transform->rotate(glm::vec3(-glm::pi<float>() * 0.5f, 0.0f, 0.0f));
 
-            component_manager->add_component<LightComponent>(entity, LightComponent{
-                                                                         .light_type = LIGHT_TYPE_POINT,
-                                                                         .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
-                                                                         .intensity = randomFloat01() * 10.0f,
-                                                                         .radius = randomFloat01() * 2.0f + 2.0f,
-                                                                         .cast_shadow = false,
-                                                                     });
+            if (is_spot_light) {
+                component_manager->add_component<LightComponent>(entity, LightComponent{
+                                                                             .light_type = LIGHT_TYPE_SPOT,
+                                                                             .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
+                                                                             .intensity = randomFloat01() * 10.0f,
+                                                                             .height = randomFloat01() * 2.0f + 2.0f,
+                                                                             .cast_shadow = false,
+                                                                             .inner_cone_angle = 0.1f,
+                                                                             .outer_cone_angle = 0.4f,
+                                                                         });
+            } else {
+                component_manager->add_component<LightComponent>(entity, LightComponent{
+                                                                             .light_type = LIGHT_TYPE_POINT,
+                                                                             .color = glm::vec3(randomFloat01(), randomFloat01(), randomFloat01()),
+                                                                             .intensity = randomFloat01() * 10.0f,
+                                                                             .radius = randomFloat01() * 2.0f + 2.0f,
+                                                                             .cast_shadow = false,
+                                                                         });
+            }
         }
 #endif
         controller = std::make_unique<FirstPersonController>(camera);
@@ -93,7 +107,8 @@ class TestApplication : public App {
         controller->set_run_speed(20.0f);
     }
 
-    void update() override {
+    void
+    update() override {
         ImGuiService::NewFrame();
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();

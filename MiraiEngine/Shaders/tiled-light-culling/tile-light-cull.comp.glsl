@@ -156,10 +156,21 @@ void main() {
             append_light_transparent(i);
         } else if (light_type == LIGHT_TYPE_POINT) {
             vec4 light_position_vs = V * vec4(light.position, 1.0f);
-            vec4 sphere = vec4(light_position_vs.xyz, light.radius);
+            vec4 sphere = vec4(light_position_vs.xyz, light.radius_or_height);
             if (sphere_inside_frustum(s_frustum, sphere, near_clip_vs, max_depth_vs)) {
                 append_light_transparent(i);
                 if (sphere_inside_plane(sphere, min_plane))
+                    append_light_opaque(i);
+            }
+        } else if (light_type == LIGHT_TYPE_SPOT) {
+            vec4 light_position_vs = V * vec4(light.position, 1.0f);
+            vec3 light_direction_vs = normalize(vec3(V * vec4(light.direction, 0.0f)));
+            float height = light.radius_or_height;
+            float radius = height * tan(light.outer_angle);
+            if (cone_inside_frustum(s_frustum, light_position_vs.xyz, light_direction_vs.xyz, height, radius, near_clip_vs, max_depth_vs)) {
+                append_light_transparent(i);
+                vec3 base = light_position_vs.xyz + light_direction_vs.xyz * height;
+                if (cone_inside_plane(min_plane, light_position_vs.xyz, light_direction_vs.xyz, base, radius))
                     append_light_opaque(i);
             }
         }

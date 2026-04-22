@@ -16,7 +16,7 @@ struct Light {
     float intensity;
 
     uint color;
-    float radius;
+    float radius_or_height;
 
     float inner_angle;
     float outer_angle;

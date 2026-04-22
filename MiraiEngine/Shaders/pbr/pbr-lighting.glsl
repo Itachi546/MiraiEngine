@@ -92,7 +92,7 @@ vec3 evaluatePointLight(in Light light, in vec3 world_pos, in vec3 view_dir, in 
     light_direction /= sqrt(distance2);
 
     vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    float attenuation = getSquareFallOffAttenaution(distance2, light.radius);
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height);
     return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
 }
 
@@ -102,7 +102,7 @@ vec3 evaluateSpotLight(in Light light, in vec3 world_pos, in vec3 view_dir, in v
     light_direction /= sqrt(distance2);
 
     vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    float attenuation = getSquareFallOffAttenaution(distance2, light.radius);
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height);
     attenuation *= getAngularAttenuation(-light_direction, light.direction, light.inner_angle, light.outer_angle);
     return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
 }

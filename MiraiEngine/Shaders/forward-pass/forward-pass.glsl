@@ -160,6 +160,8 @@ void main() {
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
             } else if (light_type == LIGHT_TYPE_POINT) {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+            } else if (light_type == LIGHT_TYPE_SPOT) {
+                Lo += evaluateSpotLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             }
         }
     }

@@ -47,7 +47,7 @@ namespace mirai {
             .debug_param_index = 0,
             .show_debug_cascade_color = false,
             .enable_gamma_correction = true,
-            .light_culling = false,
+            .light_culling = true,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
@@ -251,7 +251,6 @@ namespace mirai {
     }
 
     void Renderer::upload_visible_lights() {
-        const uint32_t LIGHT_CULLING_THRESHOLD = 256;
         // @TODO optimize this structure later
         struct GPULightData {
             glm::vec3 position;
@@ -287,11 +286,6 @@ namespace mirai {
                     .color = rgb_to_u32(&light->color[0]),
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
-                if (total_lights > LIGHT_CULLING_THRESHOLD) {
-                    if (!frustum.intersect_sphere(transform->position, light->radius)) {
-                        continue;
-                    }
-                }
                 visible_lights.push_back(GPULightData{
                     .position = transform->position,
                     .flag = flag,
@@ -302,19 +296,16 @@ namespace mirai {
             } else if (light->light_type == LIGHT_TYPE_SPOT) {
                 glm::vec3 direction = quat_to_direction(transform->rotation);
                 float radius = light->height * tan(light->outer_cone_angle);
-                if (frustum.intersect_cone(transform->position, direction, light->height, radius)) {
-                    visible_lights.push_back(GPULightData{
-                        .position = transform->position,
-                        .flag = flag,
-                        .direction = direction,
-                        .intensity = light->intensity,
-                        .color = rgb_to_u32(&light->color[0]),
-                        .radius_or_height = light->height,
-                        .inner_angle = light->inner_cone_angle,
-                        .outer_angle = light->outer_cone_angle,
-                    });
-                    line_renderer->add_cone(transform->position, direction, light->height, light->outer_cone_angle);
-                }
+                visible_lights.push_back(GPULightData{
+                    .position = transform->position,
+                    .flag = flag,
+                    .direction = direction,
+                    .intensity = light->intensity,
+                    .color = rgb_to_u32(&light->color[0]),
+                    .radius_or_height = light->height,
+                    .inner_angle = light->inner_cone_angle,
+                    .outer_angle = light->outer_cone_angle,
+                });
             } else {
                 ASSERT_MSG(0, "Unknown light type");
             }
