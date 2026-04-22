@@ -64,7 +64,19 @@ uint32_t add_image_selection_popup(uint32_t current_texture) {
 uint32_t *selected_texture_ptr = nullptr;
 
 void add_pbr_standard_material_ui(Material3D *material) {
-    ImGui::Text("%s: %s", "material_type", material->is_transparent() ? "Transparent" : "Opaque");
+    if (material->is_transparent())
+        ImGui::Text("%s: %s", "Type", "Transparent");
+    else if (material->is_alpha_mask())
+        ImGui::Text("%s: %s", "Type", "AlphaMask");
+    else
+        ImGui::Text("%s: %s", "Type", "Opaque");
+
+    const char *alpha_mode = "Opaque\0Blend\0Mask\0\0";
+    int current_mode = material->get_alpha_mode();
+    if (ImGui::Combo("Alpha Mode", &current_mode, alpha_mode)) {
+        material->set_alpha_mode(AlphaMode(current_mode));
+    }
+
     material->dirty |= ImGui::ColorEdit4("albedo", &material->properties.albedo[0]);
     material->dirty |= ImGui::DragFloat("roughness", &material->properties.roughness_factor, 0.01f, 0.0f, 1.0f);
     material->dirty |= ImGui::DragFloat("metallic", &material->properties.metallic_factor, 0.01f, 0.0f, 1.0f);

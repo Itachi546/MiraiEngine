@@ -12,7 +12,7 @@ namespace mirai {
     };
 
     enum AlphaMode {
-        ALPHA_MODE_OPAQUE,
+        ALPHA_MODE_OPAQUE = 0,
         ALPHA_MODE_BLEND,
         ALPHA_MODE_MASK,
     };
