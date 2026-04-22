@@ -203,38 +203,25 @@ namespace mirai {
                     bindings->light_list_binding,
                 };
 
-                const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
-                for (const auto &batch : opaque_batches) {
-                    Shader *shader = is_custom_sort_key(batch.sort_key)
-                                         ? batch.custom_shader
-                                         : data.registry->find(batch.sort_key);
-                    ASSERT(shader != nullptr);
-                    DrawBatch(command_buffer, batch, {
-                                                         .shader = shader,
-                                                         .descriptor_infos = descriptors,
-                                                         .push_data = &push_data,
-                                                         .draw_data_descriptor_index = 3,
-                                                     });
-                }
-                const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
-                for (const auto &batch : alpha_mask_batches) {
-                    Shader *shader = is_custom_sort_key(batch.sort_key)
-                                         ? batch.custom_shader
-                                         : data.registry->find(batch.sort_key);
-                    ASSERT(shader != nullptr);
-                    DrawBatch(command_buffer, batch, {
-                                                         .shader = shader,
-                                                         .descriptor_infos = descriptors,
-                                                         .push_data = &push_data,
-                                                         .draw_data_descriptor_index = 3,
-                                                     });
-                }
+                auto draw_batch = [&](const std::vector<RenderBatch> &batches) {
+                    for (const auto &batch : batches) {
+                        Shader *shader = is_custom_sort_key(batch.sort_key)
+                                             ? batch.custom_shader
+                                             : data.registry->find(batch.sort_key);
+                        ASSERT(shader != nullptr);
+                        DrawBatch(command_buffer, batch, {
+                                                             .shader = shader,
+                                                             .descriptor_infos = descriptors,
+                                                             .push_data = &push_data,
+                                                             .draw_data_descriptor_index = 3,
+                                                         });
+                    }
+                };
+
+                draw_batch(renderer->main_opaque_batches);
+                draw_batch(renderer->main_alpha_mask_batches);
 
                 Camera *camera = scene->get_camera();
-
-                // DebugDraw line
-                LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
-
                 // Draw Skybox
                 glm::mat4 skybox_push_data[] = {
                     camera->get_inv_projection_transform(),
@@ -246,92 +233,13 @@ namespace mirai {
                 command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &bindings->cubemap_binding, cast_u32(sizeof(uint32_t)));
                 command_buffer->draw(3, 1, 0, 0);
 
+                // DebugDraw line
+                LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+
+                draw_batch(renderer->main_transparent_batches);
+
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();
             });
     }
 } // namespace mirai
-
-// #include "ForwardPass.hpp"
-// #include "Scene/ShaderHashMap.hpp"
-// #include "Scene/RenderBatch.hpp"
-// #include "Graphics/Vulkan/CommandBuffer.hpp"
-// #include "Engine/Profiler.hpp"
-// #include "Graphics/Renderer.hpp"
-
-// namespace mirai {
-//     ForwardPass::ForwardPass() : FrameGraphRenderer("forward_pass") {
-//     }
-
-//     void ForwardPass::render(CommandBuffer *command_buffer, FrameGraph *frame_graph, FrameGraphNode *node, Renderer *renderer) {
-//         ASSERT(node != nullptr);
-//         ScopedCpuProfiling("FrameGraph::ForwardPass");
-
-//         ScopedGpuProfiling(command_buffer, "Forward Pass");
-
-//         device->begin_debug_utils_label(command_buffer, "ForwardPass", nullptr);
-
-//         command_buffer->begin_render_pass(node, frame_graph);
-
-//         std::vector<RenderBatch> &render_batches = renderer->main_render_batches;
-
-//         float push_constant_data[] = {(float)debug_texture, split_percentage * node->width, 0, 0};
-//         PushConstant push_constant = {
-//             .data = push_constant_data,
-//             .offset = 0,
-//             .size = sizeof(float) * 4,
-//             .shader_stage = SHADER_STAGE_FRAGMENT,
-//         };
-
-//         auto draw_batch = [&](RenderBatchType render_batch_type, PipelineState &pipeline_state) {
-//             for (auto &batch : render_batches) {
-//                 if (batch.batch_type != render_batch_type)
-//                     continue;
-//                 pipeline_state.custom_shader_id = batch.shader_key.fields.custom_shader_id;
-//                 pipeline_state.render_state.fields.pass_mode = batch.shader_key.fields.shader_pass;
-//                 Shader *shader = ShaderHashMap::get()->get(pipeline_state.get_hash());
-
-//                 if (shader == nullptr) {
-//                     Log::Fatal("Failed to load forward pipeline shader");
-//                 }
-
-//                 shader->bind(command_buffer);
-
-//                 UniformSetID uniform_sets[] = {
-//                     renderer->per_frame_uniform_set,
-//                     renderer->transform_material_set,
-//                 };
-//                 command_buffer->set_uniform_sets(shader->pipeline_id, uniform_sets, cast_u32(std::size(uniform_sets)));
-//                 command_buffer->set_push_constants(shader->pipeline_id, &push_constant, 1);
-
-//                 for (auto &mesh_batch : batch.meshes) {
-//                     DrawBatch(command_buffer, &mesh_batch, shader);
-//                 }
-//             }
-//         };
-
-//         if (render_batches.size() > 0) {
-//             // Draw Opaque Object
-//             PipelineState pipeline_state = {};
-//             pipeline_state.render_state.fields.depth_test = true;
-//             pipeline_state.render_state.fields.depth_write = false;
-//             pipeline_state.render_state.fields.draw_mode = DRAWMODE_INDEXED_INDIRECT;
-//             draw_batch(RENDERBATCH_TYPE_OPAQUE, pipeline_state);
-//             /*
-//             // Draw Transparent Object
-//             pipeline_state.render_state.fields.cull_mode = CULL_MODE_NONE;
-//             pipeline_state.render_state.fields.blend_mode = true;
-//             pipeline_state.render_state.fields.depth_write = true;
-//             for (auto &batch : render_batches) {
-//                 draw_batch(RENDERBATCH_TYPE_TRANSPARENT, pipeline_state);
-//             }
-//             */
-//         }
-//         command_buffer->end_render_pass();
-
-//         device->end_debug_utils_label(command_buffer);
-//     }
-
-//     ForwardPass::~ForwardPass() {
-//     }
-// } // namespace mirai

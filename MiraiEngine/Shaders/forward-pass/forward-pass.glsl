@@ -195,7 +195,14 @@ void main() {
             Lo = get_tile_heatmap(tile_light_count, 50);
         };
     }
+
+    Lo += pbr_params.emissive;
+
+#ifdef ALPHA_MODE_TRANSPARENT
+    fragColor = vec4(Lo, albedo.a);
+#else
     fragColor = vec4(Lo, 1.0f);
+#endif
 }
 
 #endif

@@ -121,6 +121,18 @@ namespace mirai {
                                        .depth_write = true,
                                    },
                                    fwd_attachment);
+            create_shader_material("forward-pass-transparent-mode", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass-transparent.frag.spv"},
+                                   MaterialState{.cull_mode = CULL_MODE_BACK, .alpha_mode = ALPHA_MODE_BLEND},
+                                   PipelineState{
+                                       .cull_mode = CULL_MODE_BACK,
+                                       .depth_op = COMPARE_OP_LESS_OR_EQUAL,
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .alpha_mode = ALPHA_MODE_BLEND,
+                                       .depth_test = true,
+                                       .depth_write = false,
+                                   },
+                                   fwd_attachment);
         }
     }
 

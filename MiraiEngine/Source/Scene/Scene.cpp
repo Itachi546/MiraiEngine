@@ -19,8 +19,8 @@ namespace mirai {
         ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
                                                                           .light_type = LIGHT_TYPE_DIRECTIONAL,
                                                                           .color = glm::vec3(1.0f),
-                                                                          .intensity = 0.0f,
-                                                                          .cast_shadow = false,
+                                                                          .intensity = 5.0f,
+                                                                          .cast_shadow = true,
                                                                       });
         return entity;
     }
