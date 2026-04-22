@@ -17,9 +17,9 @@ namespace mirai {
 
         void create_from_matrix(const glm::mat4 &m);
 
-        bool intersect(const AABB &aabb) const;
+        bool intersect_aabb(const AABB &aabb) const;
 
-        bool intersect(glm::vec3 position, float radius) const;
+        bool intersect_sphere(glm::vec3 position, float radius) const;
 
         std::array<Plane, 6> planes;
     };

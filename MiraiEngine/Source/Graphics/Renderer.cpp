@@ -288,7 +288,7 @@ namespace mirai {
                 });
             } else if (light->light_type == LIGHT_TYPE_POINT) {
                 if (total_lights > LIGHT_CULLING_THRESHOLD) {
-                    if (!frustum.intersect(transform->position, light->radius)) {
+                    if (!frustum.intersect_sphere(transform->position, light->radius)) {
                         continue;
                     }
                 }
@@ -565,7 +565,7 @@ namespace mirai {
         if (show_aabbs) {
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
             for (const auto &renderable : scene->render_object_list) {
-                if (!frustum.intersect(renderable.transformed_aabb))
+                if (!frustum.intersect_aabb(renderable.transformed_aabb))
                     continue;
                 line_renderer->add_aabb(renderable.transformed_aabb, 0xf07314ff);
             }

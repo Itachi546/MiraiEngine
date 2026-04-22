@@ -101,7 +101,7 @@ namespace mirai {
                 continue;
 
             if (params.frustum != nullptr) {
-                if (!params.frustum->intersect(object.transformed_aabb))
+                if (!params.frustum->intersect_aabb(object.transformed_aabb))
                     continue;
             }
 

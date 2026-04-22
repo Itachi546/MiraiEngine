@@ -33,7 +33,7 @@ namespace mirai {
         */
     }
 
-    bool FrustumPlanes::intersect(const AABB &aabb) const {
+    bool FrustumPlanes::intersect_aabb(const AABB &aabb) const {
         const glm::vec3 &min = aabb.min;
         const glm::vec3 &max = aabb.max;
 
@@ -53,7 +53,7 @@ namespace mirai {
         return true;
     }
 
-    bool FrustumPlanes::intersect(glm::vec3 position, float radius) const {
+    bool FrustumPlanes::intersect_sphere(glm::vec3 position, float radius) const {
         for (int i = 0; i < 6; ++i) {
             float dist = planes[i].distance_to_point(position);
             if (dist < -radius)
