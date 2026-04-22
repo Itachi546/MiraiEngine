@@ -12,7 +12,7 @@ layout(location = 0) in FS_IN {
 }
 fs_in;
 
-layout(set = 0, binding = 4) readonly buffer Materials {
+layout(std430, set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
 };
 

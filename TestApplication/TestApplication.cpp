@@ -67,7 +67,7 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-#if 0
+#if 1
         auto &component_manager = scene->ecs->component_manager;
         const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");

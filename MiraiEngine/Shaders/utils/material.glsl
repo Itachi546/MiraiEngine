@@ -11,6 +11,7 @@
 
 struct PBRMaterial {
     vec4 albedo;
+
     vec3 emissive_factor;
     float metallic_factor;
 
@@ -23,6 +24,11 @@ struct PBRMaterial {
     uint normal_texture;
     uint metallic_roughness_texture;
     uint occlusion_texture;
+
+    float transmission;
+    float texture_scale_x;
+    float texture_scale_y;
+    float _reserved;
 };
 
 bool is_specular_glossiness_workflow(uint flags) {

@@ -9,16 +9,16 @@ layout(set = 0, binding = 0) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
 };
 
-layout(set = 0, binding = 1) readonly buffer VertexData {
+layout(std430, set = 0, binding = 1) readonly buffer VertexData {
     uint vertices[];
 };
 
 #include "../utils/vertexdata.glsl"
-layout(set = 0, binding = 2) readonly buffer DrawDataBinding {
+layout(std430, set = 0, binding = 2) readonly buffer DrawDataBinding {
     DrawData draw_datas[];
 };
 
-layout(set = 0, binding = 3) readonly buffer Transform {
+layout(std430, set = 0, binding = 3) readonly buffer Transform {
     mat4 transforms[];
 };
 

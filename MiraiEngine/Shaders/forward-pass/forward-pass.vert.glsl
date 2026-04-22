@@ -19,16 +19,16 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
-layout(set = 0, binding = 1) readonly buffer VertexBinding {
+layout(std430, set = 0, binding = 1) readonly buffer VertexBinding {
     uint vertices[];
 };
 
-layout(set = 0, binding = 2) readonly buffer TransformBinding {
+layout(std430, set = 0, binding = 2) readonly buffer TransformBinding {
     mat4 transforms[];
 };
 
 #include "../utils/vertexdata.glsl"
-layout(set = 0, binding = 3) readonly buffer DrawDataBindings {
+layout(std430, set = 0, binding = 3) readonly buffer DrawDataBindings {
     DrawData draw_datas[];
 };
 

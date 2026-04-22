@@ -12,11 +12,11 @@ layout(local_size_x = LIGHT_TILE_SIZE, local_size_y = LIGHT_TILE_SIZE, local_siz
 
 layout(set = 0, binding = 0) uniform sampler2D u_depth_texture;
 
-layout(set = 0, binding = 1) writeonly buffer LightList {
+layout(std430, set = 0, binding = 1) writeonly buffer LightList {
     uint light_lists[];
 };
 
-layout(set = 0, binding = 2) readonly buffer LightBuffer {
+layout(std430, set = 0, binding = 2) readonly buffer LightBuffer {
     Light lights[];
 };
 

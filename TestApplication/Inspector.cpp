@@ -69,22 +69,24 @@ void add_pbr_standard_material_ui(Material3D *material) {
     material->dirty |= ImGui::DragFloat("roughness", &material->properties.roughness_factor, 0.01f, 0.0f, 1.0f);
     material->dirty |= ImGui::DragFloat("metallic", &material->properties.metallic_factor, 0.01f, 0.0f, 1.0f);
     material->dirty |= ImGui::ColorEdit3("emissive", &material->properties.emissive_factor[0]);
-
+    material->dirty |= ImGui::DragFloat("texture scale (x)", &material->properties.texture_scale_x, 0.1f, 0.0f, 100.0f);
+    material->dirty |= ImGui::DragFloat("texture scale (y)", &material->properties.texture_scale_y, 0.1f, 0.0f, 100.0f);
+    material->dirty |= ImGui::DragFloat("transmission", &material->properties.transmission, 0.1f, 0.0f, 1.0f);
     ImGui::Text("%s(%u)", "albedo_texture", material->properties.albedo_texture);
-    add_selectable_image_button("albedo_texture", material->properties.albedo_texture, selected_texture_ptr);
+    // add_selectable_image_button("albedo_texture", material->properties.albedo_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "metallic_roughness_texture", material->properties.metallic_roughness_texture);
-    add_selectable_image_button("metallic_roughness_texture", material->properties.metallic_roughness_texture, selected_texture_ptr);
+    // add_selectable_image_button("metallic_roughness_texture", material->properties.metallic_roughness_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "occlusion_texture", material->properties.occlusion_texture);
-    add_selectable_image_button("occlusion_texture", material->properties.occlusion_texture, selected_texture_ptr);
+    // add_selectable_image_button("occlusion_texture", material->properties.occlusion_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "normal_texture", material->properties.normal_texture);
-    add_selectable_image_button("normal_texture", material->properties.normal_texture, selected_texture_ptr);
+    // add_selectable_image_button("normal_texture", material->properties.normal_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "emissive_texture", material->properties.emissive_texture);
-    add_selectable_image_button("emissive_texture", material->properties.emissive_texture, selected_texture_ptr);
-
+    // add_selectable_image_button("emissive_texture", material->properties.emissive_texture, selected_texture_ptr);
+    /*
     if (selected_texture_ptr == nullptr)
         return;
 
@@ -96,6 +98,7 @@ void add_pbr_standard_material_ui(Material3D *material) {
             material->dirty = true;
         }
     }
+    */
 }
 
 void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Entity entity) {

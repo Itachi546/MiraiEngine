@@ -359,10 +359,16 @@ namespace mirai {
 
             Material3D::Properties &properties = material->properties;
 
+            bool has_khr_transmission = false;
+            auto khr_transmission_ext = gltf_material->extensions.find("KHR_materials_transmission");
+            if (khr_transmission_ext != gltf_material->extensions.end()) {
+                properties.transmission = cast_float(khr_transmission_ext->second.Get("transmissionFactor").Get<double>());
+            }
+
             const std::string &alpha_mode = gltf_material->alphaMode;
             if (alpha_mode == "OPAQUE")
                 material->set_alpha_mode(ALPHA_MODE_OPAQUE);
-            else if (alpha_mode == "BLEND") {
+            else if (alpha_mode == "BLEND" || has_khr_transmission) {
                 material->set_alpha_mode(ALPHA_MODE_BLEND);
             } else if (alpha_mode == "MASK")
                 material->set_alpha_mode(ALPHA_MODE_MASK);
@@ -375,33 +381,25 @@ namespace mirai {
 
             properties.alpha_cutoff = cast_float(gltf_material->alphaCutoff);
 
-            if (gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness") != gltf_material->extensions.end()) {
-                auto ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
+            auto khr_specular_glossiness_ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
+            if (khr_specular_glossiness_ext != gltf_material->extensions.end()) {
                 // properties.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
-                if (ext->second.Has("diffuseTexture"))
-                    properties.albedo_texture = LoadTexture(ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
-                else
-                    properties.albedo_texture = K_INVALID_ID;
+                if (khr_specular_glossiness_ext->second.Has("diffuseTexture"))
+                    properties.albedo_texture = LoadTexture(khr_specular_glossiness_ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
 
-                if (ext->second.Has("specularGlossinessTexture"))
-                    properties.metallic_roughness_texture = LoadTexture(ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
-                else
-                    properties.metallic_roughness_texture = K_INVALID_ID;
+                if (khr_specular_glossiness_ext->second.Has("specularGlossinessTexture"))
+                    properties.metallic_roughness_texture = LoadTexture(khr_specular_glossiness_ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
 
-                if (ext->second.Has("glossinessFactor")) {
-                    properties.roughness_factor = cast_float(ext->second.Get("glossinessFactor").Get<double>());
-                } else {
-                    properties.roughness_factor = 0.5f;
+                if (khr_specular_glossiness_ext->second.Has("glossinessFactor")) {
+                    properties.roughness_factor = cast_float(khr_specular_glossiness_ext->second.Get("glossinessFactor").Get<double>());
                 }
 
-                if (ext->second.Has("specularFactor")) {
-                    properties.metallic_factor = cast_float(ext->second.Get("specularFactor").Get<double>());
-                } else {
-                    properties.metallic_factor = 0.01f;
+                if (khr_specular_glossiness_ext->second.Has("specularFactor")) {
+                    properties.metallic_factor = cast_float(khr_specular_glossiness_ext->second.Get("specularFactor").Get<double>());
                 }
 
-                if (ext->second.Has("diffuseFactor")) {
-                    auto factor = ext->second.Get("diffuseFactor");
+                if (khr_specular_glossiness_ext->second.Has("diffuseFactor")) {
+                    auto factor = khr_specular_glossiness_ext->second.Get("diffuseFactor");
                     for (uint32_t d = 0; d < factor.ArrayLen(); ++d) {
                         auto val = factor.Get(d);
                         properties.albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();

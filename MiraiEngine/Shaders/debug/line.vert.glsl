@@ -7,7 +7,7 @@ struct Vertex {
     uint color;
 };
 
-layout(set = 0, binding = 0) readonly buffer VertexBuffer {
+layout(std430, set = 0, binding = 0) readonly buffer VertexBuffer {
     Vertex vertices[];
 };
 

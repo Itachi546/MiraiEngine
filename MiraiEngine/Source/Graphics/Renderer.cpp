@@ -89,7 +89,7 @@ namespace mirai {
         buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         global_transform_buffer = device->create_buffer(&buffer_desc, "global_transform_buffer");
 
-        buffer_desc.size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        buffer_desc.size = K_MAX_ENTITIES * cast_u32(sizeof(Material3D::Properties));
         global_material_buffer = device->create_buffer(&buffer_desc, "global_material_buffer");
 
         // Allocate descriptor heap buffer
@@ -203,14 +203,15 @@ namespace mirai {
         }
 
         // Update material buffer
-        std::size_t material_size_bytes = scene->materials.size() * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+        uint32_t material_instance_size = cast_u32(sizeof(Material3D::Properties));
+        std::size_t material_size_bytes = scene->materials.size() * material_instance_size;
         if (material_size_bytes > 0) {
             uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
             uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
             for (auto &mat : scene->materials) {
-                std::memcpy(material_array, &mat->properties, K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
-                material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+                std::memcpy(material_array, &mat->properties, material_instance_size);
+                material_array += material_instance_size;
             }
 
             BufferCopyRegion copy_region = {
@@ -594,8 +595,8 @@ namespace mirai {
             uint32_t range = src_end_index - src_start_index;
 
             copy_regions.push_back({
-                .src_offset = src.offset + src_start_index * sizeof(glm::mat4),
-                .dst_offset = dst.offset + dst_start_index * sizeof(glm::mat4),
+                .src_offset = src.offset + src_start_index * data_element_size,
+                .dst_offset = dst.offset + dst_start_index * data_element_size,
                 .size = range * data_element_size,
             });
             src_start_index = i;
@@ -605,8 +606,8 @@ namespace mirai {
         uint32_t src_end_index = cast_u32(indices.size());
         uint32_t range = src_end_index - src_start_index;
         copy_regions.push_back({
-            .src_offset = src.offset + src_start_index * sizeof(glm::mat4),
-            .dst_offset = dst.offset + dst_start_index * sizeof(glm::mat4),
+            .src_offset = src.offset + src_start_index * data_element_size,
+            .dst_offset = dst.offset + dst_start_index * data_element_size,
             .size = range * data_element_size,
         });
         cb->copy_buffer(dst.buffer, src.buffer, copy_regions.data(), cast_u32(copy_regions.size()));
@@ -659,14 +660,15 @@ namespace mirai {
             auto &materials = scene->materials;
             auto &updated_materials = scene->updated_materials;
 
+            uint32_t material_instance_size = cast_u32(sizeof(Material3D::Properties));
             uint32_t material_count = cast_u32(updated_materials.size());
-            uint32_t material_size = material_count * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+            uint32_t material_size = material_count * material_instance_size;
             uint32_t material_buffer_offset = allocate_staging_buffer(material_size, current_frame);
             uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
 
             for (uint32_t index : updated_materials) {
-                std::memcpy(material_array, &materials[index]->properties, K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
-                material_array += K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
+                std::memcpy(material_array, &materials[index]->properties, material_instance_size);
+                material_array += material_instance_size;
             }
 
             copy_continuous_region(command_buffer, updated_materials,
@@ -678,9 +680,9 @@ namespace mirai {
                                    BufferView{
                                        global_material_buffer,
                                        0,
-                                       K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE,
+                                       K_MAX_ENTITIES * material_instance_size,
                                    },
-                                   K_MAX_MATERIAL_INSTANCE_DATA_SIZE);
+                                   material_instance_size);
         }
     }
 

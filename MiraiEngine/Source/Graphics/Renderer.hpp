@@ -130,8 +130,6 @@ namespace mirai {
         void upload_visible_lights();
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
-        const uint32_t k_transform_buffer_size = K_MAX_ENTITIES * 64;
-        const uint32_t k_material_buffer_size = K_MAX_ENTITIES * K_MAX_MATERIAL_INSTANCE_DATA_SIZE;
         uint32_t per_frame_staging_buffer_offset = 0;
         uint32_t bindless_texture_count = 0;
 

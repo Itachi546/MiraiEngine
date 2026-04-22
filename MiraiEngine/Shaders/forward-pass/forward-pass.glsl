@@ -26,7 +26,7 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
 #include "../utils/light.glsl"
 #include "../pbr/pbr-lighting.glsl"
 
-layout(set = 0, binding = 4) readonly buffer Materials {
+layout(std430, set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
 };
 
@@ -38,11 +38,11 @@ layout(set = 0, binding = 7) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
 };
 
-layout(set = 0, binding = 8) readonly buffer Lights {
+layout(std430, set = 0, binding = 8) readonly buffer Lights {
     Light lights[];
 };
 
-layout(set = 0, binding = 9) readonly buffer LightLists {
+layout(std430, set = 0, binding = 9) readonly buffer LightLists {
     uint light_lists[];
 };
 
@@ -67,9 +67,11 @@ bool is_valid(uint texture) {
 void main() {
     PBRMaterial material = materials[fs_in.mat_id];
 
+    vec2 texture_scale = vec2(material.texture_scale_x, material.texture_scale_y);
+
     vec4 albedo = material.albedo;
     if (is_valid(material.albedo_texture)) {
-        albedo *= sample_texture(material.albedo_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv);
+        albedo *= sample_texture(material.albedo_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale);
     }
 #ifdef ALPHA_MODE_MASK
     if (albedo.a <= material.alpha_cutoff)
@@ -77,7 +79,7 @@ void main() {
 #endif
     vec3 normal = vec3(0.0f, 0.0f, 1.0f);
     if (is_valid(material.normal_texture))
-        normal = sample_texture(material.normal_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv).rgb * 2.0f - 1.0f;
+        normal = sample_texture(material.normal_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).rgb * 2.0f - 1.0f;
     normal = normalize(normal.x * fs_in.tangent + normal.y * fs_in.bitangent + normal.z * fs_in.normal);
 
     PBRParameter pbr_params;
@@ -85,13 +87,13 @@ void main() {
     pbr_params.emissive = material.emissive_factor;
 
     if (is_valid(material.emissive_texture))
-        pbr_params.emissive *= sample_texture(material.emissive_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv).rgb;
+        pbr_params.emissive *= sample_texture(material.emissive_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).rgb;
 
     vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
     if (is_specular_glossiness_workflow(material.flags)) {
         vec4 specular_glossiness = metallic_roughness.rrrg;
         if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            specular_glossiness.rgb = sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv).rgb;
+            specular_glossiness.rgb = sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).rgb;
 
         metallic_roughness.y = 1.0f - specular_glossiness.a;
 
@@ -106,7 +108,7 @@ void main() {
         albedo = vec4(mix(base_color_diffuse, base_color_diffuse, metallic * metallic), albedo.a);
     } else {
         if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            metallic_roughness = sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv).bg;
+            metallic_roughness = sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).bg;
     }
 
     pbr_params.metallic = metallic_roughness.x;
@@ -199,6 +201,7 @@ void main() {
     Lo += pbr_params.emissive;
 
 #ifdef ALPHA_MODE_TRANSPARENT
+    // @TODO temp
     fragColor = vec4(Lo, albedo.a);
 #else
     fragColor = vec4(Lo, 1.0f);

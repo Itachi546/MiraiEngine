@@ -9,7 +9,6 @@
 
 namespace mirai {
 
-    constexpr const uint32_t K_MAX_MATERIAL_INSTANCE_DATA_SIZE = 64;
     struct Material {
       public:
         Material(const std::string_view name);
@@ -87,7 +86,23 @@ namespace mirai {
 
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
-            // Pipeline state is pass-controlled — nothing to set here.
+            properties.albedo = glm::vec4(1.0f);
+            properties.emissive_factor = glm::vec3(0.0f);
+            properties.metallic_factor = 0.01f;
+            properties.roughness_factor = 0.5f;
+            properties.alpha_cutoff = 0.9f;
+            properties.flags = 0;
+            properties.emissive_texture = K_INVALID_ID;
+
+            properties.albedo_texture = K_INVALID_ID;
+            properties.normal_texture = K_INVALID_ID;
+            properties.metallic_roughness_texture = K_INVALID_ID;
+            properties.occlusion_texture = K_INVALID_ID;
+
+            properties.transmission = 1.0f;
+            properties.texture_scale_x = 1.0f;
+            properties.texture_scale_y = 1.0f;
+            properties._reserved = 0.0f;
         }
 
         bool is_transparent() const {
@@ -113,7 +128,7 @@ namespace mirai {
 
             float roughness_factor;
             float alpha_cutoff;
-            uint32_t reserved = 0;
+            uint32_t flags = 0;
             uint32_t emissive_texture;
 
             uint32_t albedo_texture;
@@ -121,7 +136,14 @@ namespace mirai {
             uint32_t metallic_roughness_texture;
             uint32_t occlusion_texture;
 
+            float transmission;
+            float texture_scale_x;
+            float texture_scale_y;
+            float _reserved;
+
         } properties;
+
+        static_assert(sizeof(Properties) % 16 == 0);
     };
 
     class CommandBuffer;
