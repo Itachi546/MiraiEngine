@@ -75,10 +75,7 @@ namespace mirai {
         GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
 
         // Per frame Uniform Set
-        std::vector<RenderBatch> main_opaque_batches;
-        std::vector<RenderBatch> main_transparent_batches;
-        std::vector<RenderBatch> main_alpha_mask_batches;
-        std::vector<RenderBatch> main_skinned_batches;
+        std::vector<RenderBatch> main_render_batches;
 
         // TAA Options
         glm::mat4 prev_frame_VP;

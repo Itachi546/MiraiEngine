@@ -335,74 +335,24 @@ namespace mirai {
 
     void Renderer::create_batches() {
         ScopedCpuProfiling("Create Batch");
-        main_opaque_batches.clear();
-        main_transparent_batches.clear();
-        main_alpha_mask_batches.clear();
-        main_skinned_batches.clear();
+        main_render_batches.clear();
 
         Camera *camera = scene->get_camera();
         const FrustumPlanes &frustum_planes = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
-        std::vector<RenderBatch> batches;
         DrawBatchGenerator::BuildBatches(scene.get(), BatchBuildParams{
                                                           .filter_flags = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED,
                                                           .frustum = &frustum_planes,
                                                           .camera_position = &camera->position,
                                                       },
-                                         batches);
+                                         main_render_batches);
 
-        for (auto &batch : batches) {
-            switch (batch.batch_type) {
-            case RENDERBATCH_TYPE_OPAQUE: {
-                main_opaque_batches.push_back(batch);
-                break;
-            }
-            case RENDERBATCH_TYPE_TRANSPARENT: {
-                main_transparent_batches.push_back(batch);
-                break;
-            }
-            case RENDERBATCH_TYPE_ALPHA_MASK: {
-                main_alpha_mask_batches.push_back(batch);
-                break;
-            }
-            case RENDERBATCH_TYPE_SKINNED: {
-                main_skinned_batches.push_back(batch);
-                break;
-            }
-            }
+        for (auto &batch : main_render_batches) {
+            batch.sort();
         }
 
-        if (main_opaque_batches.size() > 0) {
-            jobsystem::Execute([this]() {
-                std::for_each(std::execution::par_unseq, main_opaque_batches.begin(), main_opaque_batches.end(), [](RenderBatch &batch) {
-                    batch.sort();
-                });
-            });
-        }
-
-        if (main_transparent_batches.size() > 0) {
-            jobsystem::Execute([this]() {
-                std::for_each(std::execution::par_unseq, main_transparent_batches.begin(), main_transparent_batches.end(), [](RenderBatch &batch) {
-                    batch.sort();
-                });
-            });
-        }
-
-        if (main_alpha_mask_batches.size() > 0) {
-            jobsystem::Execute([this]() {
-                std::for_each(std::execution::par_unseq, main_alpha_mask_batches.begin(), main_alpha_mask_batches.end(), [](RenderBatch &batch) {
-                    batch.sort();
-                });
-            });
-        }
-
-        if (main_skinned_batches.size() > 0) {
-            jobsystem::Execute([this]() {
-                std::for_each(std::execution::par_unseq, main_skinned_batches.begin(), main_skinned_batches.end(), [](RenderBatch &batch) {
-                    batch.sort();
-                });
-            });
-        }
-        jobsystem::Wait();
+        std::sort(main_render_batches.begin(), main_render_batches.end(), [](const RenderBatch &lhs, const RenderBatch &rhs) {
+            return lhs.batch_type < rhs.batch_type;
+        });
 
         if (!freeze_frustum) {
             freezed_frustum_planes = frustum_planes;
@@ -501,10 +451,7 @@ namespace mirai {
 
         // Populate per-frame batch data
         total_visible_entities = 0;
-        upload_batch_data(main_opaque_batches, current_frame);
-        upload_batch_data(main_alpha_mask_batches, current_frame);
-        upload_batch_data(main_skinned_batches, current_frame);
-        upload_batch_data(main_transparent_batches, current_frame);
+        upload_batch_data(main_render_batches, current_frame);
     }
 
     void Renderer::add_bindless_texture(TextureID texture) {

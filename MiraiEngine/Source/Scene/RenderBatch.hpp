@@ -20,8 +20,8 @@ namespace mirai {
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 1,
         RENDERBATCH_TYPE_ALPHA_MASK = 2,
-        RENDERBATCH_TYPE_TRANSPARENT = 4,
-        RENDERBATCH_TYPE_SKINNED = 8
+        RENDERBATCH_TYPE_SKINNED = 4,
+        RENDERBATCH_TYPE_TRANSPARENT = 8,
     };
 
     enum BatchFilterFlag {
@@ -111,11 +111,11 @@ namespace mirai {
     }
 
     struct BatchBuildParams {
-        uint32_t              filter_flags        = BATCH_FILTER_FLAG_OPAQUE;
-        const FrustumPlanes  *frustum             = nullptr;
-        const glm::vec3      *camera_position     = nullptr;
-        const MaterialState  *pass_state_override = nullptr;
-        bool                  shadow_pass         = false;
+        uint32_t filter_flags = BATCH_FILTER_FLAG_OPAQUE;
+        const FrustumPlanes *frustum = nullptr;
+        const glm::vec3 *camera_position = nullptr;
+        const MaterialState *pass_state_override = nullptr;
+        bool shadow_pass = false;
     };
 
     struct DrawBatchGenerator {

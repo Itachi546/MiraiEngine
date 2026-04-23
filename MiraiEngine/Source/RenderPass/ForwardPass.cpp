@@ -203,8 +203,10 @@ namespace mirai {
                     bindings->light_list_binding,
                 };
 
-                auto draw_batch = [&](const std::vector<RenderBatch> &batches) {
+                auto draw_batch = [&](const std::vector<RenderBatch> &batches, RenderBatchType batch_type) {
                     for (const auto &batch : batches) {
+                        if (batch.batch_type != batch_type)
+                            continue;
                         Shader *shader = is_custom_sort_key(batch.sort_key)
                                              ? batch.custom_shader
                                              : data.registry->find(batch.sort_key);
@@ -218,8 +220,8 @@ namespace mirai {
                     }
                 };
 
-                draw_batch(renderer->main_opaque_batches);
-                draw_batch(renderer->main_alpha_mask_batches);
+                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE);
+                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK);
 
                 Camera *camera = scene->get_camera();
                 // Draw Skybox
@@ -236,7 +238,7 @@ namespace mirai {
                 // DebugDraw line
                 LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
 
-                draw_batch(renderer->main_transparent_batches);
+                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_TRANSPARENT);
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

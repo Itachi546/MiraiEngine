@@ -71,8 +71,10 @@ namespace mirai {
 
                 // Draw Opaque object
                 std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor, 0};
-                const std::vector<RenderBatch> &opaque_batches = renderer->main_opaque_batches;
-                for (const auto &batch : opaque_batches) {
+                for (const auto &batch : renderer->main_render_batches) {
+                    if (batch.batch_type != RENDERBATCH_TYPE_OPAQUE)
+                        continue;
+
                     Shader *shader = data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
 
@@ -85,9 +87,10 @@ namespace mirai {
                                                      });
                 }
 
-                const std::vector<RenderBatch> &alpha_mask_batches = renderer->main_alpha_mask_batches;
                 descriptor_infos.push_back(renderer->material_descriptor);
-                for (const auto &batch : alpha_mask_batches) {
+                for (const auto &batch : renderer->main_render_batches) {
+                    if (batch.batch_type != RENDERBATCH_TYPE_ALPHA_MASK)
+                        continue;
                     Shader *shader = data.registry->find(batch.sort_key);
                     ASSERT(shader != nullptr);
                     DrawBatch(command_buffer, batch, {
