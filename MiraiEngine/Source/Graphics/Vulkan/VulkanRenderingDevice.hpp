@@ -6,6 +6,7 @@
 #include "Common/ResourcePool.hpp"
 #include "Common/HashMap.hpp"
 
+#include <deque>
 #include <vector>
 #include <memory>
 
@@ -135,6 +136,7 @@ namespace mirai {
         void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
         void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
         VkBuffer create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
+        void destroy_resources(bool force = false);
 
         std::vector<const char *> requested_instance_extensions;
         std::vector<const char *> requested_validation_layers;
@@ -146,7 +148,7 @@ namespace mirai {
         ResourcePool<VulkanQuery> resource_pool_queries;
 
         uint32_t current_frame = 0;
-
+        uint64_t frame_count = 0;
         bool vsync;
         bool has_rt_support = false;
 
@@ -169,5 +171,11 @@ namespace mirai {
         VkDebugReportCallbackEXT debug_report_callback;
 
         VulkanAccelerationStructure acceleration_structure;
+
+        // Keep track of destroyed resources
+        std::deque<std::pair<ID, uint64_t>> destroyed_buffers;
+        std::deque<std::pair<ID, uint64_t>> destroyed_textures;
+        std::deque<std::pair<ID, uint64_t>> destroyed_pipelines;
+        std::deque<std::pair<ID, uint64_t>> destroyed_queries;
     };
 } // namespace mirai

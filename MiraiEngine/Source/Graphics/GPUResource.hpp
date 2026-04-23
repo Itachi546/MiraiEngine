@@ -41,11 +41,13 @@ namespace mirai {
         BufferID buffer;
         uint32_t offset;
         uint32_t size;
+        void *ptr;
 
-        void init(BufferID buffer, uint32_t size, uint32_t offset = 0) {
+        void init(BufferID buffer, uint32_t size, uint32_t offset = 0, void *ptr = nullptr) {
             this->buffer = buffer;
             this->size = size;
             this->offset = offset;
+            this->ptr = ptr;
         }
 
         bool can_allocate(uint32_t required_size) {

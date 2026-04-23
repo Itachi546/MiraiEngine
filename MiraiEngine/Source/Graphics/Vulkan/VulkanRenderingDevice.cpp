@@ -1025,9 +1025,75 @@ namespace mirai {
         texture->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
 
+    void VulkanRenderingDevice::destroy_resources(bool force) {
+        uint32_t max_frame_in_flight = AppSettings::K_MAX_FRAME_IN_FLIGHTS;
+
+        const auto destroy = [&](std::deque<std::pair<ID, uint64_t>> &queue, std::function<void(ID)> free) {
+            while (!queue.empty()) {
+                auto [id, frame_index] = queue.front();
+                if (frame_index + max_frame_in_flight < frame_count || force) {
+                    free(id);
+                    queue.pop_front();
+                } else {
+                    break;
+                }
+            }
+        };
+
+        destroy(destroyed_buffers, [&](ID id) {
+            VulkanBuffer *buffer = resource_pool_buffers.access(id);
+            if (buffer->buffer_ptr)
+                vmaUnmapMemory(vma_allocator, buffer->allocation);
+            vmaDestroyBuffer(vma_allocator, buffer->buffer, buffer->allocation);
+            buffer->allocation = VK_NULL_HANDLE;
+            buffer->buffer = VK_NULL_HANDLE;
+            buffer->buffer_ptr = nullptr;
+            buffer->size = 0;
+            buffer->access_flags = 0;
+            buffer->stage_mask = 0;
+            buffer->device_address = 0;
+            resource_pool_buffers.release(id);
+        });
+
+        destroy(destroyed_textures, [&](ID id) {
+            VulkanTexture *texture = resource_pool_textures.access(id);
+
+            for (auto image_view : texture->image_views)
+                vkDestroyImageView(device, image_view, nullptr);
+
+            vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
+            texture->width = texture->height = texture->depth = 0;
+            texture->format = VK_FORMAT_UNDEFINED;
+            texture->image_views.clear();
+            texture->allocation = VK_NULL_HANDLE;
+            texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+            texture->mip_levels = 0;
+            texture->array_layers = 0;
+            texture->image = VK_NULL_HANDLE;
+            texture->access_flags = 0;
+            resource_pool_textures.release(id);
+        });
+
+        destroy(destroyed_queries, [&](ID id) {
+            VulkanQuery *query = resource_pool_queries.access(id);
+            vkDestroyQueryPool(device, query->query_pool, nullptr);
+            query->query_pool = VK_NULL_HANDLE;
+            resource_pool_queries.release(id);
+        });
+
+        destroy(destroyed_pipelines, [&](ID id) {
+            VulkanPipeline *pipeline = resource_pool_pipelines.access(id);
+            vkDestroyPipeline(device, pipeline->pipeline, nullptr);
+            resource_pool_pipelines.release(id);
+        });
+    }
+
     void VulkanRenderingDevice::new_frame() {
         VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
         vkResetFences(device, 1, &in_flight_fences[current_frame]);
+
+        // Start cleaning up deletion queue
+        destroy_resources();
 
         VkSurfaceCapabilitiesKHR surface_caps = {};
         VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &surface_caps));
@@ -1136,62 +1202,30 @@ namespace mirai {
 
         VK_CHECK(vkQueuePresentKHR(device_queues[QUEUE_TYPE_GRAPHICS], &present_info));
         current_frame = (current_frame + 1) % cast_u32(swapchain->images.size());
+        frame_count++;
     }
 
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
-            vkDestroyPipeline(device, pipeline->pipeline, nullptr);
-            resource_pool_pipelines.release(pipeline_ids[i]);
+            destroyed_pipelines.push_back(std::make_pair(pipeline_ids[i], frame_count));
         }
     }
 
     void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            BufferID bufferId = buffers[i];
-            VulkanBuffer *buffer = resource_pool_buffers.access(bufferId);
-            if (buffer->buffer_ptr)
-                vmaUnmapMemory(vma_allocator, buffer->allocation);
-
-            vmaDestroyBuffer(vma_allocator, buffer->buffer, buffer->allocation);
-            buffer->allocation = VK_NULL_HANDLE;
-            buffer->buffer = VK_NULL_HANDLE;
-            buffer->buffer_ptr = nullptr;
-            buffer->size = 0;
-            buffer->access_flags = 0;
-            buffer->stage_mask = 0;
-            buffer->device_address = 0;
-            resource_pool_buffers.release(buffers[i]);
+            destroyed_buffers.push_back(std::make_pair(buffers[i], frame_count));
         }
     }
 
     void VulkanRenderingDevice::destroy_queries(QueryID *queries, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            VulkanQuery *query = resource_pool_queries.access(queries[i]);
-            vkDestroyQueryPool(device, query->query_pool, nullptr);
-            query->query_pool = VK_NULL_HANDLE;
-            resource_pool_queries.release(queries[i]);
+            destroyed_queries.push_back(std::make_pair(queries[i], frame_count));
         }
     }
 
     void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            VulkanTexture *texture = resource_pool_textures.access(textures[i]);
-
-            for (auto image_view : texture->image_views)
-                vkDestroyImageView(device, image_view, nullptr);
-
-            vmaDestroyImage(vma_allocator, texture->image, texture->allocation);
-            texture->width = texture->height = texture->depth = 0;
-            texture->format = VK_FORMAT_UNDEFINED;
-            texture->image_views.clear();
-            texture->allocation = VK_NULL_HANDLE;
-            texture->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-            texture->mip_levels = 0;
-            texture->array_layers = 0;
-            texture->image = VK_NULL_HANDLE;
-            texture->access_flags = 0;
-            resource_pool_textures.release(textures[i]);
+            destroyed_textures.push_back(std::make_pair(textures[i], frame_count));
         }
     }
 
@@ -1543,6 +1577,8 @@ namespace mirai {
             if (acceleration_structure.tlas != VK_NULL_HANDLE)
                 vkDestroyAccelerationStructureKHR(device, acceleration_structure.tlas, nullptr);
         }
+
+        destroy_resources(true);
 
         for (auto &command_pool : command_pools)
             vkDestroyCommandPool(device, command_pool, nullptr);
