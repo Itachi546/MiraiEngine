@@ -4,6 +4,7 @@
 #include "Log.hpp"
 #include "Timer.hpp"
 #include "Device/InputDevice.hpp"
+#include "Common/JobSystem.hpp"
 #include "Profiler.hpp"
 
 #include <chrono>
@@ -23,6 +24,8 @@ namespace mirai {
         window = std::make_unique<Window>(options.width, options.height, "MiraiEngine");
 
         AppSettings::render_mode = options.render_mode;
+
+        jobsystem::Initialize();
 
         renderer = std::make_unique<Renderer>();
         renderer->initialize();
@@ -64,6 +67,7 @@ namespace mirai {
     }
 
     Engine::~Engine() {
+        jobsystem::Shutdown();
         RenderingDevice::get()->wait();
         app = nullptr;
         renderer = nullptr;

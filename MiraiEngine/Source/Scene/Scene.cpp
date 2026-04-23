@@ -3,7 +3,7 @@
 #include "Camera.hpp"
 #include "EnvironmentMap.hpp"
 #include "Animation.hpp"
-
+#include "Common/JobSystem.hpp"
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
@@ -25,7 +25,7 @@ namespace mirai {
         return entity;
     }
 
-    Scene::Scene(const std::string &name) : dirty(true), name(name) {
+    Scene::Scene(const std::string &name) : name(name) {
         ecs = std::make_unique<ECS>();
         ecs->component_manager->register_component<NameComponent>();
         ecs->component_manager->register_component<HierarchyComponent>();
@@ -70,11 +70,11 @@ namespace mirai {
             update_animator_components();
         }
 
-        update_transform_components();
+        dispatch_material_update();
+        dispatch_transform_update();
+        jobsystem::Wait();
 
         update_hierarchy_components();
-
-        update_materials();
 
         uint32_t width, height;
         Window::get()->get_size(&width, &height);
@@ -118,13 +118,18 @@ namespace mirai {
         ecs->destroy_entity(entity);
     }
 
-    void Scene::update_materials() {
-        for (uint32_t i = 0; i < materials.size(); ++i) {
-            if (!materials[i]->is_dirty())
-                continue;
-            updated_materials.push_back(i);
-            materials[i]->set_dirty(false);
-        }
+    void Scene::dispatch_material_update() {
+        uint32_t material_count = cast_u32(materials.size());
+        std::mutex mu;
+        jobsystem::Dispatch(material_count, 64, [&](jobsystem::JobDispatchArg arg) {
+            if (materials[arg.job_index]->is_dirty()) {
+                {
+                    std::lock_guard<std::mutex> lk(mu);
+                    updated_materials.push_back(arg.job_index);
+                }
+                materials[arg.job_index]->set_dirty(false);
+            }
+        });
     }
 
     void Scene::update_node_animator_components() {
@@ -209,13 +214,13 @@ namespace mirai {
         }
     }
 
-    void Scene::update_transform_components() {
-        auto transform_array_ptr = ecs->component_manager->get_component_array<TransformComponent>();
-        std::vector<TransformComponent> &transforms = transform_array_ptr->components;
-        std::for_each(std::execution::par_unseq,
-                      transforms.begin(),
-                      transforms.end(),
-                      [](TransformComponent &transform) { transform.update_local_transform(); });
+    void Scene::dispatch_transform_update() {
+        auto &components = ecs->component_manager->get_component_array<TransformComponent>()->components;
+        uint32_t transform_count = cast_u32(components.size());
+
+        jobsystem::Dispatch(transform_count, 64, [&components](jobsystem::JobDispatchArg arg) {
+            components[arg.job_index].update_local_transform();
+        });
     }
 
     void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
@@ -248,49 +253,28 @@ namespace mirai {
         ScopedCpuProfiling("Update Draw Data");
         // Even though the draw data hasn't changed, we must calculate the
         // transformed AABB every frame
-        if (!dirty) {
-
-#ifdef NDEBUG
-            std::for_each(std::execution::par_unseq,
-                          render_object_list.begin(),
-                          render_object_list.end(),
-                          [&](RenderableObjectData &object) {
-                              TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(object.entity);
-                              object.transformed_aabb = object.local_aabb;
-                              object.transformed_aabb.transform(transform->world_transform);
-                          });
-#else
-            for (auto &object : render_object_list) {
-                TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(object.entity);
-                object.transformed_aabb = object.local_aabb;
-                object.transformed_aabb.transform(transform->world_transform);
-            }
-#endif
-            return;
-        }
 
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
+        render_object_count.store(0u);
 
-        render_object_list.clear();
-        // Initially reserve some space
-        render_object_list.reserve(1000);
+        jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
+            MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
+            const Entity entity = mesh_component_ptr->entities[arg.job_index];
 
-        for (uint32_t i = 0; i < component_count; ++i) {
-            MeshComponent &mesh_component = mesh_component_ptr->components[i];
-            const Entity entity = mesh_component_ptr->entities[i];
-
-            TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
-
+            const TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
             BufferView vertex_buffer = mesh_component.vertex_buffer;
             BufferView index_buffer = mesh_component.index_buffer;
+
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
-                AABB aabb = mesh_component.aabbs[s];
-                AABB transformed_aabb = aabb;
+                AABB transformed_aabb = mesh_component.aabbs[s];
                 transformed_aabb.transform(transform->world_transform);
 
-                RenderableObjectData render_data = {
+                uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
+                ASSERT(index < K_MAX_ENTITIES);
+
+                render_object_list[index] = RenderableObjectData{
                     .entity = entity,
                     .material_index = subset.material_index,
                     .mesh_type = mesh_component.mesh_type,
@@ -300,19 +284,12 @@ namespace mirai {
                     .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
                     .index_count = subset.index_count,
                     .vertex_stride = subset.vertex_stride,
-                    .local_aabb = std::move(aabb),
-                    .transformed_aabb = std::move(aabb),
+                    .local_aabb = mesh_component.aabbs[s],
+                    .transformed_aabb = transformed_aabb,
                 };
-                render_object_list.push_back(std::move(render_data));
             }
-
-            // Sort by the buffer
-            std::sort(render_object_list.begin(), render_object_list.end(), [](const RenderableObjectData &lhs, const RenderableObjectData &rhs) {
-                return lhs.vertex_buffer < rhs.vertex_buffer;
-            });
-        }
-
-        dirty = false;
+        });
+        jobsystem::Wait();
     }
 
     void Scene::remove_entity(Entity entity) {
@@ -322,7 +299,6 @@ namespace mirai {
             return;
         }
 
-        dirty = true;
         remove_entity_tree(entity);
         entities.erase(found);
     }

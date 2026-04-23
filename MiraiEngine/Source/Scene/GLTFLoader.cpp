@@ -1033,7 +1033,6 @@ namespace mirai {
             // Log::Error("Failed to load file: ", filename);
             return K_INVALID_ENTITY;
         }
-        scene->dirty = true;
 
         // auto &comp_manager = scene->ecs->component_manager;
 

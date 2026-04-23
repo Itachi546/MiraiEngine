@@ -17,6 +17,7 @@
 #include "Math/Frustum.hpp"
 #include "PipelineLoader.hpp"
 #include "Common/Random.hpp"
+#include "Common/JobSystem.hpp"
 #include "RenderPass/TAAResolvePass.hpp"
 #include "LineRenderer.hpp"
 
@@ -134,11 +135,12 @@ namespace mirai {
 
         // Create acceleration structure for scene
         auto &render_list = scene->render_object_list;
+        uint32_t render_object_count = scene->render_object_count.load(std::memory_order_relaxed);
 
         auto &component_manager = scene->ecs->component_manager;
         std::vector<AccelerationStructureMeshInfo> mesh_infos;
-        mesh_infos.reserve(render_list.size());
-        for (uint32_t i = 0; i < render_list.size(); ++i) {
+        mesh_infos.reserve(render_object_count);
+        for (uint32_t i = 0; i < render_object_count; ++i) {
             RenderableObjectData &object = render_list[i];
             auto &material = scene->materials[object.material_index];
             if (material->is_transparent())
@@ -369,18 +371,38 @@ namespace mirai {
             }
         }
 
-        std::for_each(std::execution::par_unseq, main_opaque_batches.begin(), main_opaque_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
-        std::for_each(std::execution::par_unseq, main_alpha_mask_batches.begin(), main_alpha_mask_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
-        std::for_each(std::execution::par_unseq, main_transparent_batches.begin(), main_transparent_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
-        std::for_each(std::execution::par_unseq, main_skinned_batches.begin(), main_skinned_batches.end(), [](RenderBatch &batch) {
-            batch.sort();
-        });
+        if (main_opaque_batches.size() > 0) {
+            jobsystem::Execute([this]() {
+                std::for_each(std::execution::par_unseq, main_opaque_batches.begin(), main_opaque_batches.end(), [](RenderBatch &batch) {
+                    batch.sort();
+                });
+            });
+        }
+
+        if (main_transparent_batches.size() > 0) {
+            jobsystem::Execute([this]() {
+                std::for_each(std::execution::par_unseq, main_transparent_batches.begin(), main_transparent_batches.end(), [](RenderBatch &batch) {
+                    batch.sort();
+                });
+            });
+        }
+
+        if (main_alpha_mask_batches.size() > 0) {
+            jobsystem::Execute([this]() {
+                std::for_each(std::execution::par_unseq, main_alpha_mask_batches.begin(), main_alpha_mask_batches.end(), [](RenderBatch &batch) {
+                    batch.sort();
+                });
+            });
+        }
+
+        if (main_skinned_batches.size() > 0) {
+            jobsystem::Execute([this]() {
+                std::for_each(std::execution::par_unseq, main_skinned_batches.begin(), main_skinned_batches.end(), [](RenderBatch &batch) {
+                    batch.sort();
+                });
+            });
+        }
+        jobsystem::Wait();
 
         if (!freeze_frustum) {
             freezed_frustum_planes = frustum_planes;
@@ -560,7 +582,9 @@ namespace mirai {
 
         if (show_aabbs) {
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
-            for (const auto &renderable : scene->render_object_list) {
+            uint32_t render_object_count = scene->render_object_count.load();
+            for (uint32_t i = 0; i < render_object_count; ++i) {
+                const RenderableObjectData &renderable = scene->render_object_list[i];
                 if (!frustum.intersect_aabb(renderable.transformed_aabb))
                     continue;
                 line_renderer->add_aabb(renderable.transformed_aabb, 0xf07314ff);

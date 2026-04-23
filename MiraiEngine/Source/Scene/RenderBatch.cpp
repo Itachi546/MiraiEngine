@@ -42,36 +42,37 @@ namespace mirai {
     }
 
     static uint32_t compute_sort_key(const MaterialState *override_state,
-                                     const Material3D    *material,
-                                     MeshType             mesh_type) {
+                                     const Material3D *material,
+                                     MeshType mesh_type) {
         if (override_state == nullptr)
             return material->get_hash() | mesh_type;
 
         MaterialState s = *override_state;
         if (material->is_alpha_mask()) {
-            s.cull_mode  = CULL_MODE_NONE;
+            s.cull_mode = CULL_MODE_NONE;
             s.alpha_mode = ALPHA_MODE_MASK;
         }
         return s.get_hash() | mesh_type;
     }
 
-    void DrawBatchGenerator::BuildBatches(const Scene            *scene,
+    void DrawBatchGenerator::BuildBatches(const Scene *scene,
                                           const BatchBuildParams &params,
                                           std::vector<RenderBatch> &render_batches) {
-        const auto &render_object_list = scene->render_object_list;
 
         CachedBatchInfo cached_batch_info = {
-            .batch_type    = RENDERBATCH_TYPE_OPAQUE,
-            .sort_key      = 0,
+            .batch_type = RENDERBATCH_TYPE_OPAQUE,
+            .sort_key = 0,
             .vertex_buffer = BufferID{K_INVALID_ID},
         };
 
         uint32_t shader_batch = UINT32_MAX;
-        uint32_t mesh_batch   = UINT32_MAX;
+        uint32_t mesh_batch = UINT32_MAX;
 
         auto &component_manager = scene->ecs->component_manager;
 
-        for (auto &object : render_object_list) {
+        uint32_t render_object_count = scene->render_object_count.load(std::memory_order_relaxed);
+        for (uint32_t i = 0; i < render_object_count; ++i) {
+            const RenderableObjectData &object = scene->render_object_list[i];
             const Material3D *material = scene->materials[object.material_index].get();
 
             if (params.shadow_pass) {
@@ -82,19 +83,19 @@ namespace mirai {
             }
 
             RenderBatchType render_batch_type = RENDERBATCH_TYPE_OPAQUE;
-            uint32_t        filter_flag       = BATCH_FILTER_FLAG_OPAQUE;
+            uint32_t filter_flag = BATCH_FILTER_FLAG_OPAQUE;
 
             if (material->is_transparent()) {
                 render_batch_type = RENDERBATCH_TYPE_TRANSPARENT;
-                filter_flag       = BATCH_FILTER_FLAG_TRANSPARENT;
+                filter_flag = BATCH_FILTER_FLAG_TRANSPARENT;
             } else if (material->is_alpha_mask()) {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
-                filter_flag       = BATCH_FILTER_FLAG_ALPHA_MASK;
+                filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
 
             if (object.mesh_type == MESH_TYPE_SKINNED) {
                 render_batch_type = RENDERBATCH_TYPE_SKINNED;
-                filter_flag       = BATCH_FILTER_FLAG_SKINNED;
+                filter_flag = BATCH_FILTER_FLAG_SKINNED;
             }
 
             if ((params.filter_flags & filter_flag) != filter_flag)

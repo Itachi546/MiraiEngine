@@ -6,7 +6,6 @@
 #include "Material.hpp"
 #include "Animation.hpp"
 #include <string>
-#include <mutex>
 
 namespace mirai {
     struct ComponentManager;
@@ -130,8 +129,8 @@ namespace mirai {
         static_assert(sizeof(FrameData) % 16 == 0);
 
         std::vector<GpuMesh> gpu_meshes;
-        std::vector<RenderableObjectData> render_object_list;
-        bool dirty;
+        std::array<RenderableObjectData, K_MAX_ENTITIES> render_object_list;
+        std::atomic<uint32_t> render_object_count;
 
         bool pause_animation = false;
 
@@ -144,11 +143,10 @@ namespace mirai {
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
-        void update_light_data(Entity light);
-        void update_materials();
+        void dispatch_material_update();
         void update_node_animator_components();
         void update_animator_components();
-        void update_transform_components();
+        void dispatch_transform_update();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
 

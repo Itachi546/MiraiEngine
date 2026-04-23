@@ -81,7 +81,6 @@ namespace mirai {
     }
 
     void ShadowSystem::update(Scene *scene) {
-        ScopedCpuProfiling("CSM Update");
         update_directional_cascade(scene);
     }
 
