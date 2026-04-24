@@ -13,12 +13,6 @@
 #include "Scene/Camera.hpp"
 namespace mirai {
 
-    struct ForwardPassBindings {
-        DescriptorOffset ssao_binding;
-        DescriptorOffset csm_binding;
-        DescriptorOffset cubemap_binding;
-        DescriptorOffset light_list_binding;
-    };
 
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
 
@@ -107,45 +101,14 @@ namespace mirai {
                 const auto &resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
 
-                ForwardPassBindings *bindings = nullptr;
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 Scene *scene = renderer->get_scene();
+                EnvironmentMap *env_map = scene->get_environment_map();
 
-                if (!board->has<ForwardPassBindings>()) {
-                    EnvironmentMap *env_map = scene->get_environment_map();
-                    DescriptorInfo descriptor_infos[] = {
-                        {
-                            .type = DescriptorType::SampledImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.ssao_texture).id,
-                            .image_info = {0, ~0u, 0, ~0u},
-                        },
-                        {
-                            .type = DescriptorType::SampledImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.csm_texture).id,
-                            .image_info = {0, ~0u, 0, ~0u},
-                        },
-                        {
-                            .type = DescriptorType::SampledImage,
-                            .resource = env_map->get_cubemap(),
-                            .image_info = {0, ~0u, 0, ~0u},
-                        },
-                        {
-                            .type = DescriptorType::StorageBuffer,
-                            .resource = pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id,
-                            .buffer_info = {0, ~0u},
-                        },
-                    };
-                    DescriptorOffset descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-                    bindings = &board->add<ForwardPassBindings>(ForwardPassBindings{
-                        .ssao_binding = descriptor_offset,
-                        .csm_binding = descriptor_offset + 1,
-                        .cubemap_binding = descriptor_offset + 2,
-                        .light_list_binding = descriptor_offset + 3,
-                    });
-                } else {
-                    bindings = &board->get<ForwardPassBindings>();
-                }
-                ASSERT(bindings != nullptr);
+                DescriptorOffset ssao_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.ssao_texture).id, DescriptorType::SampledImage);
+                DescriptorOffset csm_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.csm_texture).id, DescriptorType::SampledImage);
+                DescriptorOffset cubemap_binding = renderer->get_or_create_descriptor(env_map->get_cubemap(), DescriptorType::SampledImage);
+                DescriptorOffset light_list_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer);
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
@@ -196,11 +159,11 @@ namespace mirai {
                     renderer->transform_descriptor,
                     0,
                     renderer->material_descriptor,
-                    bindings->ssao_binding,
-                    bindings->csm_binding,
+                    ssao_binding,
+                    csm_binding,
                     renderer->cascade_data_descriptor,
                     renderer->per_frame_light_descriptor,
-                    bindings->light_list_binding,
+                    light_list_binding,
                 };
 
                 auto draw_batch = [&](const std::vector<RenderBatch> &batches, RenderBatchType batch_type) {
@@ -232,7 +195,7 @@ namespace mirai {
 
                 data.skybox_shader->bind(command_buffer);
                 command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
-                command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &bindings->cubemap_binding, cast_u32(sizeof(uint32_t)));
+                command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &cubemap_binding, cast_u32(sizeof(uint32_t)));
                 command_buffer->draw(3, 1, 0, 0);
 
                 // DebugDraw line

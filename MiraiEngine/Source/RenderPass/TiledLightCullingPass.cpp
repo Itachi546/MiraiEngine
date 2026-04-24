@@ -9,9 +9,6 @@
 #include "Graphics/LineRenderer.hpp"
 
 namespace mirai {
-    struct TiledLightCullRenderData {
-        DescriptorOffset descriptors[3];
-    };
 
     glm::uvec2 get_light_tile_count(uint32_t width, uint32_t height) {
         return glm::uvec2{
@@ -69,34 +66,12 @@ namespace mirai {
                 command_buffer->prepare_resources(pass_resource_states);
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
-                TiledLightCullRenderData *render_data = nullptr;
-                if (!board->has<TiledLightCullRenderData>()) {
-                    DescriptorInfo descriptor_infos[] = {
-                        {
-                            .type = DescriptorType::SampledImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id,
-                            .image_info = {0, ~0u, 0, ~0u},
-                        },
-                        {
-                            .type = DescriptorType::StorageBuffer,
-                            .resource = pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id,
-                            .buffer_info = {0, ~0u},
-                        },
-                    };
-
-                    DescriptorOffset descriptors = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-
-                    render_data = &board->add<TiledLightCullRenderData>(TiledLightCullRenderData{
-                        .descriptors = {
-                            descriptors,
-                            descriptors + 1,
-                            0,
-                        },
-                    });
-                } else {
-                    render_data = &board->get<TiledLightCullRenderData>();
-                }
-                render_data->descriptors[2] = renderer->per_frame_light_descriptor;
+                
+                DescriptorOffset descriptors[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.depth_texture).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer),
+                    renderer->per_frame_light_descriptor,
+                };
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
                 glm::uvec2 tile_count = get_light_tile_count(width, height);
@@ -131,7 +106,7 @@ namespace mirai {
 
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_data, push_data_size);
-                command_buffer->set_push_data(push_data_size, render_data->descriptors, cast_u32(sizeof(render_data->descriptors)));
+                command_buffer->set_push_data(push_data_size, descriptors, cast_u32(sizeof(descriptors)));
 
                 uint32_t local_size_x = rendering_utils::get_workgroup_size(width, AppSettings::K_LIGHT_TILE_SIZE);
                 uint32_t local_size_y = rendering_utils::get_workgroup_size(height, AppSettings::K_LIGHT_TILE_SIZE);

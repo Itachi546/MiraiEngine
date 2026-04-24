@@ -8,9 +8,6 @@
 #include "Engine/AppSettings.hpp"
 
 namespace mirai {
-    struct FinalCompositeBindings {
-        DescriptorOffset descriptors[2];
-    };
 
     FinalCompositePass::FinalCompositePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<FinalCompositePassData>(
@@ -67,21 +64,10 @@ namespace mirai {
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
-                FinalCompositeBindings *bindings = nullptr;
-                if (!board->has<FinalCompositeBindings>()) {
-                    const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
-                    DescriptorInfo descriptors[] = {
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.input).id, .image_info = {0, ~0u, 0, ~0u}},
-                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id, .image_info = {0, ~0u, 0, ~0u}},
-                    };
-
-                    DescriptorOffset descriptor = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptors, cast_u32(std::size(descriptors)));
-                    bindings = &board->add<FinalCompositeBindings>(FinalCompositeBindings{
-                        .descriptors = {descriptor, descriptor + 1},
-                    });
-                } else {
-                    bindings = &board->get<FinalCompositeBindings>();
-                }
+                DescriptorOffset bindings[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.input).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
+                };
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
                 float push_data[] = {
@@ -96,7 +82,7 @@ namespace mirai {
 
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, push_data, cast_u32(sizeof(push_data)));
-                command_buffer->set_push_data(cast_u32(sizeof(push_data)), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
+                command_buffer->set_push_data(cast_u32(sizeof(push_data)), bindings, cast_u32(sizeof(bindings)));
 
                 uint32_t local_size_x = rendering_utils::get_workgroup_size(width, 32);
                 uint32_t local_size_y = rendering_utils::get_workgroup_size(height, 32);
