@@ -43,13 +43,7 @@ namespace mirai {
         void set_disable_resource_aliasing(bool value) {
             disable_resource_aliasing = value;
         }
-        /*
-        template <typename T>
-        T &get(FrameGraphResourceHandle resource) {
-            assert(resource < resources.size());
-            return std::get<T>(resources[resource].resource);
-        }
-        */
+
         void compile();
 
         void execute(void *context);

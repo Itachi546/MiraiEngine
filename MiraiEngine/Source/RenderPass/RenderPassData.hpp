@@ -12,6 +12,11 @@ namespace mirai {
         std::shared_ptr<ComputeShader> shader;
     };
 
+    struct SkinningComputePassData {
+        FrameGraphResourceHandle output_buffer;
+        std::shared_ptr<ComputeShader> shader;
+    };
+
     struct DepthPrePassData {
         FrameGraphResourceHandle output;
         ShaderRegistry *registry;

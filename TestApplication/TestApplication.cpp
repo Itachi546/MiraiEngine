@@ -386,7 +386,7 @@ class TestApplication : public App {
             add_pass_ui();
             add_entity_inspector_ui(scene);
             ImGui::End();
-            // add_skeleton_debug_ui(scene);
+            add_skeleton_debug_ui(scene);
         }
     }
 
