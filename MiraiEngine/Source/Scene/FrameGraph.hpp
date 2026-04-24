@@ -51,8 +51,8 @@ namespace mirai {
         FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
         FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
 
-        struct FrameGraphBuilder {
-            FrameGraphBuilder(FrameGraph *frame_graph, uint32_t pass_index) : frame_graph(frame_graph), pass_index(pass_index) {}
+        struct Builder {
+            Builder(FrameGraph *frame_graph, uint32_t pass_index) : frame_graph(frame_graph), pass_index(pass_index) {}
 
             FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
             FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
@@ -91,13 +91,13 @@ namespace mirai {
 
     template <typename Data, typename Setup, typename Execute>
     inline const Data &FrameGraph::add_callback_pass(const std::string_view name, Setup &&setup, Execute &&exec) {
-        static_assert(std::is_invocable_v<Setup, FrameGraphBuilder &, Data &>, "Invalid Callback setup");
+        static_assert(std::is_invocable_v<Setup, Builder &, Data &>, "Invalid Callback setup");
         static_assert(std::is_invocable_v<Execute, const Data &, FrameGraphPassResource &, void *>, "Invalid execute callback");
         static_assert(sizeof(Execute) < 2024, "Execute capture too much data");
 
         auto &pass_node = create_pass_node(name, std::make_unique<FrameGraphPass<Data, Execute>>(std::forward<Execute>(exec)));
 
-        FrameGraphBuilder builder{
+        Builder builder{
             this,
             static_cast<uint32_t>(passes.size() - 1),
         };

@@ -17,7 +17,7 @@ namespace mirai {
     DeferredOverlay3DPass::DeferredOverlay3DPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<DeferredOverlay3DPassData>(
             "Overlay3DPass",
-            [=](FrameGraph::FrameGraphBuilder &builder, DeferredOverlay3DPassData &data) {
+            [=](FrameGraph::Builder &builder, DeferredOverlay3DPassData &data) {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("Overlay3DPass", {

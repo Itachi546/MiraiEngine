@@ -15,7 +15,7 @@ namespace mirai {
     FinalCompositePass::FinalCompositePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<FinalCompositePassData>(
             "FinalCompositePass",
-            [board](FrameGraph::FrameGraphBuilder &builder, FinalCompositePassData &data) {
+            [board](FrameGraph::Builder &builder, FinalCompositePassData &data) {
                 // @TODO we can skip the creation of this texture by copying directly to swapchain
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();

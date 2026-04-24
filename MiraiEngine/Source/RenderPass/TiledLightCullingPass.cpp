@@ -23,7 +23,7 @@ namespace mirai {
     TiledLightCullingPass::TiledLightCullingPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<TiledLightCullPassData>(
             "TiledLightCullingPass",
-            [frame_graph, board](FrameGraph::FrameGraphBuilder &builder, TiledLightCullPassData &data) {
+            [frame_graph, board](FrameGraph::Builder &builder, TiledLightCullPassData &data) {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
 

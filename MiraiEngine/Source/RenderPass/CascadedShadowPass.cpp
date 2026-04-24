@@ -14,7 +14,7 @@ namespace mirai {
 
         frame_graph->add_callback_pass<CascadedShadowPassData>(
             "CascadedShadowPass",
-            [board](FrameGraph::FrameGraphBuilder &builder, CascadedShadowPassData &data) {
+            [board](FrameGraph::Builder &builder, CascadedShadowPassData &data) {
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const DirectionLightShadowParams &params = shadow_system->dir_light_params;
 

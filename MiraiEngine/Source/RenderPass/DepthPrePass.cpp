@@ -13,7 +13,7 @@ namespace mirai {
 
         frame_graph->add_callback_pass<DepthPrePassData>(
             "DepthPrePass",
-            [board](FrameGraph::FrameGraphBuilder &builder, DepthPrePassData &data) {
+            [board](FrameGraph::Builder &builder, DepthPrePassData &data) {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("DepthTexture", {

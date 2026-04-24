@@ -62,7 +62,7 @@ namespace mirai {
         // SSAO Pass
         frame_graph->add_callback_pass<SSAOPassData>(
             "SSAOPass",
-            [board](FrameGraph::FrameGraphBuilder &builder, SSAOPassData &data) {
+            [board](FrameGraph::Builder &builder, SSAOPassData &data) {
                 const uint32_t width = AppSettings::get_width();
                 const uint32_t height = AppSettings::get_height();
 
@@ -187,7 +187,7 @@ namespace mirai {
         // SSAO Horizontal Blur Pass
         frame_graph->add_callback_pass<SSAOBlurData>(
             "SSAOHorizontalBlurPass",
-            [board](FrameGraph::FrameGraphBuilder &builder, SSAOBlurData &data) {
+            [board](FrameGraph::Builder &builder, SSAOBlurData &data) {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("SSAOBlurTexture", {
@@ -288,7 +288,7 @@ namespace mirai {
         // SSAO Vertical Blur Pass
         frame_graph->add_callback_pass(
             "SSAOVerticalBlurPass",
-            [board](FrameGraph::FrameGraphBuilder &builder, FrameGraph::NoData &) {
+            [board](FrameGraph::Builder &builder, FrameGraph::NoData &) {
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const SSAOBlurData &hblur_data = board->get<SSAOBlurData>();
 

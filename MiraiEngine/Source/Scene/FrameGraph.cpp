@@ -189,15 +189,15 @@ namespace mirai {
         passes.clear();
     }
 
-    FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_texture(const std::string_view name, const TextureDescription &desc) {
+    FrameGraphResourceHandle FrameGraph::Builder::create_texture(const std::string_view name, const TextureDescription &desc) {
         return frame_graph->create_texture(name, desc);
     }
 
-    FrameGraphResourceHandle FrameGraph::FrameGraphBuilder::create_buffer(const std::string_view name, const BufferDescription &desc) {
+    FrameGraphResourceHandle FrameGraph::Builder::create_buffer(const std::string_view name, const BufferDescription &desc) {
         return frame_graph->create_buffer(name, desc);
     }
 
-    void FrameGraph::FrameGraphBuilder::read(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
+    void FrameGraph::Builder::read(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
         assert(resource < frame_graph->resources.size());
         ResourceNode *resource_node = &frame_graph->resources[resource];
 
@@ -209,7 +209,7 @@ namespace mirai {
         pass._read(resource, access);
     }
 
-    void FrameGraph::FrameGraphBuilder::write(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
+    void FrameGraph::Builder::write(FrameGraphResourceHandle resource, const AccessDeclaration &access) {
         assert(resource < frame_graph->resources.size());
         ResourceNode *resource_node = &frame_graph->resources[resource];
 
@@ -218,14 +218,14 @@ namespace mirai {
         pass._write(resource, access);
     }
 
-    void FrameGraph::FrameGraphBuilder::set_side_effect() {
+    void FrameGraph::Builder::set_side_effect() {
         frame_graph->passes[pass_index].has_side_effect = true;
     }
-    void FrameGraph::FrameGraphBuilder::set_compute_pass() {
+    void FrameGraph::Builder::set_compute_pass() {
         frame_graph->passes[pass_index].is_compute_pass = true;
     }
 
-    void FrameGraph::FrameGraphBuilder::present(FrameGraphResourceHandle resource) {
+    void FrameGraph::Builder::present(FrameGraphResourceHandle resource) {
         ASSERT_MSG(frame_graph->present_texture == UINT32_MAX, "Present texture is already assigned");
         frame_graph->present_texture = resource;
     }

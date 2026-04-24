@@ -8,7 +8,7 @@ namespace mirai {
     SkinningComputePass::SkinningComputePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<SkinningComputePassData>(
             "SkinningComputePass",
-            [board](FrameGraph::FrameGraphBuilder &builder, SkinningComputePassData &data) {
+            [board](FrameGraph::Builder &builder, SkinningComputePassData &data) {
                 data.output_buffer = builder.create_buffer("SkinnedOutputBuffer", {
                                                                                       .size = K_DEFAULT_SKINNED_BUFFER_SIZE,
                                                                                       .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
