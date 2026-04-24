@@ -43,15 +43,6 @@ namespace mirai {
         float _padding;
     };
 
-    struct SSAOBlurBindings {
-        uint32_t hblur_bindings[3];
-        uint32_t vblur_bindings[3];
-    };
-
-    struct HBAOBindings {
-        uint32_t descriptors[2];
-    };
-
     struct SSAOBlurData {
         FrameGraphResourceHandle output;
         std::shared_ptr<ComputeShader> shader;
@@ -89,7 +80,6 @@ namespace mirai {
                                                             .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                                             .layout = IMAGE_LAYOUT_GENERAL,
                                                         });
-                data.depth_texture = depth_prepass_data.output;
                 board->add<SSAOPassData>(data);
 
                 // Create Shader
@@ -145,30 +135,12 @@ namespace mirai {
                     .padding = 0,
                 };
 
-                HBAOBindings *bindings = nullptr;
-                if (!board->has<HBAOBindings>()) {
-                    DescriptorInfo descriptor_infos[] = {
-                        {
-                            .type = DescriptorType::StorageImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.output).id,
-                            .image_info = {0, 1, 0, 1},
-                        },
-                        {
-                            .type = DescriptorType::SampledImage,
-                            .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id,
-                            .image_info = {0, 1, 0, 1},
-                        },
-                    };
-                    DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-                    bindings = &board->add<HBAOBindings>(HBAOBindings{
-                        .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
-                    });
-                } else {
-                    bindings = &board->get<HBAOBindings>();
-                }
-                ASSERT(bindings != nullptr);
-
                 ScopedGpuProfiling(command_buffer, "SSAOPass");
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                DescriptorOffset descriptors[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
+                };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -176,7 +148,7 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("SSAOPass");
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(HBAOConstants));
-                command_buffer->set_push_data(sizeof(HBAOConstants), &bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
+                command_buffer->set_push_data(sizeof(HBAOConstants), descriptors, cast_u32(sizeof(descriptors)));
 
                 uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(screen_width * SSAO_RESOLUTION_SCALE), 32);
                 uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(screen_height * SSAO_RESOLUTION_SCALE), 32);
@@ -213,11 +185,13 @@ namespace mirai {
                                                         .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                                         .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                     });
-                builder.read(ssao_pass_data.depth_texture, {
-                                                               .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                               .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                           });
+
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                builder.read(depth_prepass_data.output, {
+                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                            .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        });
 
                 // Create Shader
                 data.shader = std::make_shared<ComputeShader>("SSAOBlur", "SPIRV/ssao-blur.comp.spv");
@@ -246,30 +220,14 @@ namespace mirai {
                     ._padding = 0,
                 };
 
-                SSAOBlurBindings *bindings = nullptr;
-                if (!board->has<SSAOBlurBindings>()) {
-                    // We initialize bindings for both direction in same pass
-                    DescriptorInfo descriptor_infos[] = {
-                        {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id, .image_info = {0, 1, 0, 1}},
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.depth_texture).id, .image_info = {0, 1, 0, 1}},
-                        {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, .image_info = {0, 1, 0, 1}},
-                    };
-                    DescriptorOffset hblur_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-
-                    descriptor_infos[0].resource = pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id;
-                    descriptor_infos[1].resource = pass_resource.get<FrameGraphTexture>(data.output).id;
-                    DescriptorOffset vblur_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)) - 1);
-
-                    bindings = &board->add<SSAOBlurBindings>(SSAOBlurBindings{
-                        .hblur_bindings = {hblur_descriptor_offset, hblur_descriptor_offset + 1, hblur_descriptor_offset + 2},
-                        .vblur_bindings = {vblur_descriptor_offset, hblur_descriptor_offset + 1, vblur_descriptor_offset + 1},
-                    });
-                } else {
-                    bindings = &board->get<SSAOBlurBindings>();
-                }
-                ASSERT(bindings != nullptr);
-
                 ScopedGpuProfiling(command_buffer, "SSAOHorizontalBlurPass");
+                const SSAOPassData &ssao_data = board->get<SSAOPassData>();
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                DescriptorOffset bindings[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_data.output).id, DescriptorType::SampledImage),
+                };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -277,7 +235,7 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("SSAOHorizontalBlurPass");
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
-                command_buffer->set_push_data(sizeof(BlurConstants), &bindings->hblur_bindings, cast_u32(sizeof(bindings->hblur_bindings)));
+                command_buffer->set_push_data(sizeof(BlurConstants), &bindings, cast_u32(sizeof(bindings)));
 
                 uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(width * SSAO_RESOLUTION_SCALE), 32);
                 uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(height * SSAO_RESOLUTION_SCALE), 32);
@@ -302,11 +260,12 @@ namespace mirai {
                                                     .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                                     .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                 });
-                builder.read(ssao_pass_data.depth_texture, {
-                                                               .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                               .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                           });
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                builder.read(depth_prepass_data.output, {
+                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                            .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        });
             },
             [](const FrameGraph::NoData &, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
@@ -330,12 +289,16 @@ namespace mirai {
                     ._padding = 0,
                 };
 
-                SSAOBlurBindings *bindings = &board->get<SSAOBlurBindings>();
-                ASSERT(bindings != nullptr);
-
-                const SSAOBlurData &data = board->get<SSAOBlurData>();
-
                 ScopedGpuProfiling(command_buffer, "SSAOVerticalBlurPass");
+
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                const SSAOBlurData &data = board->get<SSAOBlurData>();
+                DescriptorOffset bindings[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, DescriptorType::StorageImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::SampledImage),
+                };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -343,7 +306,7 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("SSAOVerticalPass");
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, &push_constants, sizeof(BlurConstants));
-                command_buffer->set_push_data(sizeof(BlurConstants), &bindings->vblur_bindings, cast_u32(sizeof(bindings->vblur_bindings)));
+                command_buffer->set_push_data(sizeof(BlurConstants), bindings, cast_u32(sizeof(bindings)));
 
                 uint32_t work_size_x = rendering_utils::get_workgroup_size(cast_u32(width * SSAO_RESOLUTION_SCALE), 32);
                 uint32_t work_size_y = rendering_utils::get_workgroup_size(cast_u32(height * SSAO_RESOLUTION_SCALE), 32);

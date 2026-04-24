@@ -16,7 +16,7 @@ namespace mirai {
     struct ID {
         uint32_t id = 0;
         inline ID() { id = K_INVALID_ID; };
-        ID(uint32_t _id) : id(_id) {}
+        explicit ID(uint32_t _id) : id(_id) {}
 
         bool is_valid() const { return id != K_INVALID_ID; }
 

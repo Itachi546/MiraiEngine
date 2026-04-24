@@ -53,6 +53,12 @@ namespace mirai {
         // Helper function to upload batch data to per frame staging buffer
         void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
 
+        // Used for resources with default descriptor parameter
+        DescriptorOffset get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type);
+
+        // For descriptor with custom parameter, we hash the string name and store it
+        DescriptorOffset get_or_create_descriptor(const std::string &name, const DescriptorInfo &descriptor_info);
+
         ~Renderer();
 
         GPUResourceDescriptorHeap resource_heap;
@@ -127,6 +133,7 @@ namespace mirai {
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         uint32_t bindless_texture_count = 0;
         GPUBufferLinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
+        HashMap<uint64_t, DescriptorOffset> descriptor_map;
 
         friend class Engine;
     };

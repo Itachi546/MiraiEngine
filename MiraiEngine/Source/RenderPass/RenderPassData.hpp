@@ -37,7 +37,6 @@ namespace mirai {
     };
 
     struct SSAOPassData {
-        FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
         std::shared_ptr<ComputeShader> shader;
     };

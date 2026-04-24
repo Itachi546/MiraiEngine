@@ -429,6 +429,45 @@ namespace mirai {
         total_visible_entities += total_entities;
     }
 
+    DescriptorOffset Renderer::get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type) {
+        uint64_t key = resource_id.id;
+        key = key << 32 | descriptor_type;
+        auto found = descriptor_map.find(key);
+        if (found != descriptor_map.end()) {
+            return found->second;
+        } else {
+            DescriptorInfo descriptor_info = {
+                .type = descriptor_type,
+                .resource = resource_id,
+            };
+
+            if (descriptor_type == DescriptorType::UniformBuffer || descriptor_type == DescriptorType::StorageBuffer) {
+                descriptor_info.buffer_info = {0, ~0u};
+            } else if (descriptor_type == DescriptorType::SampledImage || descriptor_type == DescriptorType::StorageImage) {
+                descriptor_info.image_info = {0, ~0u, 0, ~0u};
+            } else {
+                ASSERT_MSG(0, "Unknown descriptor type");
+            }
+            DescriptorOffset offset = resource_heap.push_descriptors(device.get(), &descriptor_info, 1);
+            descriptor_map.insert(std::make_pair(key, offset));
+            return offset;
+        }
+    }
+
+    DescriptorOffset Renderer::get_or_create_descriptor(const std::string &name, const DescriptorInfo &descriptor_info) {
+        uint64_t key = utils::djb2_hash_string(name);
+        // Don't need to do this
+        key = key << 32 | descriptor_info.type;
+        auto found = descriptor_map.find(key);
+        if (found != descriptor_map.end()) {
+            return found->second;
+        } else {
+            DescriptorOffset offset = resource_heap.push_descriptors(device.get(), &descriptor_info, 1);
+            descriptor_map.insert(std::make_pair(key, offset));
+            return offset;
+        }
+    }
+
     void Renderer::copy_buffers() {
         // Reset staging buffer offset
         uint32_t current_frame = device->get_current_frame();

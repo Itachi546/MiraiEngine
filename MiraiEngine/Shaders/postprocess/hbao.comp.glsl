@@ -81,8 +81,8 @@ float falloff(float dist_sqr) {
 
 float compute_ao(vec3 p, vec3 n, vec3 s) {
     vec3 v = s - p;
-    float vdotv = dot(v, v);
-    float ndotv = dot(n, v) / sqrt(vdotv);
+    float vdotv = max(dot(v, v), 0.0001f);
+    float ndotv = dot(n, v) * inversesqrt(vdotv);
     return clamp(ndotv - hbao.tangent_bias, 0.0, 1.0) * clamp(falloff(vdotv), 0.0, 1.0);
 }
 
@@ -104,7 +104,7 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
     float ao = 0.0f;
     for (float d = 0.0f; d < NUM_DIRECTIONS; ++d) {
         float ang = d * d_angle;
-        vec2 dir = rotate_direction(vec2(cos(ang), sin(ang)), rand.xy);
+        vec2 dir = rotate_direction(vec2(cos(ang), sin(ang)), rand.xy * 2.0 - 1.0);
         float ray_pixels = rand.z * step_size + 1.0;
         for (float s = 0.0f; s < NUM_STEPS; ++s) {
             ivec2 snapped_uv = ivec2(round(ray_pixels * dir)) + iuv;

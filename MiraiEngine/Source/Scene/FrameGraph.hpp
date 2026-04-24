@@ -2,7 +2,7 @@
 
 #include <string_view>
 #include "FrameGraphNode.hpp"
-
+#include "Common/HashMap.hpp"
 namespace mirai {
 
     class FrameGraph;
