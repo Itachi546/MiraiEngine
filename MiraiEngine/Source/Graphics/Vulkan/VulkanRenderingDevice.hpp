@@ -37,7 +37,7 @@ namespace mirai {
         VkQueue get_device_queue(QueueType queue_type) { return device_queues[queue_type]; }
         uint32_t get_queue_family_indices(QueueType queue_type) { return queue_family_indices[queue_type]; }
 
-        PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
+        PipelineID create_graphics_pipeline(const PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(const ShaderProgram &shader_file, const std::string &debug_name = "") override;
 
         void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) override;
@@ -49,8 +49,8 @@ namespace mirai {
         uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const override;
         uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const override;
 
-        BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) override;
-        void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) override;
+        BufferID create_buffer(const BufferDescription *buffer_description, const std::string &debug_name) override;
+        void resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
         void unmap_buffer(BufferID buffer) override;
 
@@ -61,7 +61,7 @@ namespace mirai {
 
         float get_timestamp_period() const override;
 
-        TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) override;
+        TextureID create_texture(const TextureDescription *texture_description, const std::string &debug_name) override;
 
         void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) override;
 
@@ -135,7 +135,7 @@ namespace mirai {
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
         void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
         void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
-        VkBuffer create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
+        VkBuffer create_vk_buffer(const BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
         void destroy_resources(bool force = false);
 
         std::vector<const char *> requested_instance_extensions;

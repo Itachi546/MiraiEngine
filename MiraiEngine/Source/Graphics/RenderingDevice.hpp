@@ -431,6 +431,9 @@ namespace mirai {
         BufferID buffer;
         uint32_t offset;
         uint32_t size;
+        // ptr is only valid for mapped buffer
+        // is already mapped at offset
+        uint8_t *ptr;
 
         bool operator==(const BufferView &other) const {
             return this->buffer == other.buffer && this->size == other.size && this->offset == other.offset;
@@ -562,7 +565,7 @@ namespace mirai {
 
         virtual void present() = 0;
 
-        virtual PipelineID create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
+        virtual PipelineID create_graphics_pipeline(const PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
 
         virtual PipelineID create_compute_pipeline(const ShaderProgram &shader, const std::string &debug_name) = 0;
 
@@ -575,8 +578,8 @@ namespace mirai {
         virtual uint32_t calculate_resource_descriptors_size(uint32_t descriptor_count) const = 0;
         virtual uint32_t calculate_sampler_descriptors_size(uint32_t descriptor_count) const = 0;
 
-        virtual BufferID create_buffer(BufferDescription *buffer_description, const std::string &debug_name) = 0;
-        virtual void resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;
+        virtual BufferID create_buffer(const BufferDescription *buffer_description, const std::string &debug_name) = 0;
+        virtual void resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
         virtual void unmap_buffer(BufferID buffer) = 0;
 
@@ -587,7 +590,7 @@ namespace mirai {
 
         virtual float get_timestamp_period() const = 0;
 
-        virtual TextureID create_texture(TextureDescription *texture_description, const std::string &debug_name) = 0;
+        virtual TextureID create_texture(const TextureDescription *texture_description, const std::string &debug_name) = 0;
         virtual void generate_mipmap(CommandBuffer *command_buffer, TextureID texture_id, PipelineStage src_pipeline_stage) = 0;
 
         virtual CommandBuffer *get_command_buffer(uint32_t thread_id = 0) = 0;

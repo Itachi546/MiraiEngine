@@ -289,7 +289,7 @@ namespace mirai {
         }
     }
 
-    PipelineID VulkanRenderingDevice::create_graphics_pipeline(PipelineDescription *pipeline_description, const std::string &debug_name) {
+    PipelineID VulkanRenderingDevice::create_graphics_pipeline(const PipelineDescription *pipeline_description, const std::string &debug_name) {
         uint32_t shader_count = cast_u32(pipeline_description->shader_programs.size());
         std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos(shader_count);
         std::vector<VulkanShader> shader_modules;
@@ -656,7 +656,7 @@ namespace mirai {
         return aligned_size;
     }
 
-    VkBuffer VulkanRenderingDevice::create_vk_buffer(BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name) {
+    VkBuffer VulkanRenderingDevice::create_vk_buffer(const BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name) {
         ASSERT_MSG(buffer_description->size > 0, "GPU Buffer cannot be empty");
         VkBufferCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -695,7 +695,7 @@ namespace mirai {
         return vk_buffer;
     }
 
-    BufferID VulkanRenderingDevice::create_buffer(BufferDescription *buffer_description, const std::string &debug_name) {
+    BufferID VulkanRenderingDevice::create_buffer(const BufferDescription *buffer_description, const std::string &debug_name) {
         VmaAllocation allocation = nullptr;
         VkBuffer vk_buffer = create_vk_buffer(buffer_description, allocation, debug_name);
 
@@ -720,7 +720,7 @@ namespace mirai {
         return BufferID{buffer_id};
     }
 
-    void VulkanRenderingDevice::resize_buffer(BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) {
+    void VulkanRenderingDevice::resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) {
         VulkanBuffer temp_buffer;
         VulkanBuffer *vk_buffer = resource_pool_buffers.access(resize_buffer);
         std::memcpy(&temp_buffer, vk_buffer, sizeof(VulkanBuffer));
@@ -807,7 +807,7 @@ namespace mirai {
             vkCmdCopyBuffer(_commandBuffers[commandBuffer.id], vkSrc->buffer, vkDst->buffer, 1, (const VkBufferCopy *)region);
         }
         */
-    TextureID VulkanRenderingDevice::create_texture(TextureDescription *texture_description, const std::string &debug_name) {
+    TextureID VulkanRenderingDevice::create_texture(const TextureDescription *texture_description, const std::string &debug_name) {
         VkImageViewType image_view_type = VK_IMAGE_VIEW_TYPE_2D;
         VkImageType image_type = VK_IMAGE_TYPE_2D;
 

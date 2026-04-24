@@ -59,34 +59,38 @@ namespace mirai {
     }
 
     void Renderer::initialize() {
+        // Allocate Geometry buffer
+        vertex_buffer_allocator.init({
+                                         .size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE,
+                                         .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                         .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+                                     },
+                                     "GlobalVertexBuffer");
+        index_buffer_allocator.init({
+                                        .size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE,
+                                        .usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT,
+                                        .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+                                    },
+                                    "GlobalIndexBuffer");
+
+        // Allocate per-frame-staging buffer
         // Per frame staging buffer
         uint32_t total_frames = device->get_swapchain_image_count();
         BufferDescription buffer_desc = {
-            .size = cast_u32(total_frames * k_staging_buffer_size_per_frame),
+            .size = k_staging_buffer_size_per_frame,
             .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
         Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size / total_frames), " mb");
 
-        // Allocate per-frame-staging buffer
-        per_frame_staging_buffer = device->create_buffer(&buffer_desc, "per_frame_staging_buffer");
-        per_frame_staging_buffer_ptr = device->map_buffer(per_frame_staging_buffer);
-
-        // Allocate global geometry buffer
-        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
-        buffer_desc.size = DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE;
-
-        buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        BufferID geometry_buffer = device->create_buffer(&buffer_desc, "global_vertex_buffer");
-        vertex_buffer_allocator.init(geometry_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE, 0);
-
-        buffer_desc.usage_flags = BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        BufferID index_buffer = device->create_buffer(&buffer_desc, "global_index_buffer");
-        index_buffer_allocator.init(index_buffer, DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE);
+        for (uint32_t i = 0; i < total_frames; ++i) {
+            per_frame_allocator[i].init(buffer_desc, "PerFrameAllocator" + std::to_string(i));
+        }
 
         // Allocate global transform/material buffer
         buffer_desc.size = K_MAX_ENTITIES * sizeof(glm::mat4);
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
         buffer_desc.usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         global_transform_buffer = device->create_buffer(&buffer_desc, "global_transform_buffer");
 
@@ -189,27 +193,28 @@ namespace mirai {
         std::size_t transform_size_bytes = transform_components_ptr->components.size() * sizeof(glm::mat4);
 
         if (transform_size_bytes > 0) {
-            uint32_t transform_buffer_offset = allocate_staging_buffer(cast_u32(transform_size_bytes), 1);
-            uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+            BufferView temp_buffer = per_frame_allocator[1].allocate(cast_u32(transform_size_bytes));
+            uint8_t *transform_array = temp_buffer.ptr;
+
             for (auto &component : transform_components_ptr->components) {
                 std::memcpy(transform_array, &component.world_transform[0][0], sizeof(glm::mat4));
                 transform_array += sizeof(glm::mat4);
             }
 
             BufferCopyRegion copy_region = {
-                .src_offset = transform_buffer_offset,
+                .src_offset = temp_buffer.offset,
                 .dst_offset = 0,
-                .size = transform_size_bytes,
+                .size = temp_buffer.size,
             };
-            command_buffer->copy_buffer(global_transform_buffer, per_frame_staging_buffer, &copy_region, 1);
+            command_buffer->copy_buffer(global_transform_buffer, temp_buffer.buffer, &copy_region, 1);
         }
 
         // Update material buffer
         uint32_t material_instance_size = cast_u32(sizeof(Material3D::Properties));
         std::size_t material_size_bytes = scene->materials.size() * material_instance_size;
         if (material_size_bytes > 0) {
-            uint32_t material_buffer_offset = allocate_staging_buffer(cast_u32(material_size_bytes), 1);
-            uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
+            BufferView temp_buffer = per_frame_allocator[1].allocate(cast_u32(material_size_bytes));
+            uint8_t *material_array = temp_buffer.ptr;
 
             for (auto &mat : scene->materials) {
                 std::memcpy(material_array, &mat->properties, material_instance_size);
@@ -217,11 +222,11 @@ namespace mirai {
             }
 
             BufferCopyRegion copy_region = {
-                .src_offset = material_buffer_offset,
+                .src_offset = temp_buffer.offset,
                 .dst_offset = 0,
-                .size = material_size_bytes,
+                .size = temp_buffer.size,
             };
-            command_buffer->copy_buffer(global_material_buffer, per_frame_staging_buffer, &copy_region, 1);
+            command_buffer->copy_buffer(global_material_buffer, temp_buffer.buffer, &copy_region, 1);
         }
 
         command_buffer->end_gpu_debug_label();
@@ -316,16 +321,16 @@ namespace mirai {
         total_visible_lights = cast_u32(visible_lights.size());
 
         uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(GPULightData));
-        uint32_t light_buffer_offset = allocate_staging_buffer(light_data_size, device->get_current_frame());
 
-        uint8_t *light_buffer_ptr = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + light_buffer_offset);
-        std::memcpy(light_buffer_ptr, visible_lights.data(), light_data_size);
+        uint32_t frame_index = device->get_current_frame();
+        BufferView light_buffer = per_frame_allocator[frame_index].allocate(light_data_size);
+        std::memcpy(light_buffer.ptr, visible_lights.data(), light_data_size);
 
         DescriptorInfo descriptor = {
             .type = DescriptorType::StorageBuffer,
-            .resource = per_frame_staging_buffer.id,
+            .resource = light_buffer.buffer,
             .buffer_info = {
-                .offset = light_buffer_offset,
+                .offset = light_buffer.offset,
                 .size = light_data_size,
             },
         };
@@ -380,22 +385,25 @@ namespace mirai {
 
         uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
         uint32_t draw_data_size_bytes = total_entities * draw_data_instance_size;
-        uint32_t draw_data_buffer_offset = allocate_staging_buffer(draw_data_size_bytes, current_frame);
-        uint8_t *draw_data_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_data_buffer_offset);
 
-        uint32_t draw_indirect_buffer_offset = allocate_staging_buffer(draw_indirect_size_bytes, current_frame);
-        uint8_t *draw_indirect_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + draw_indirect_buffer_offset);
+        BufferView draw_data_buffer = per_frame_allocator[current_frame].allocate(draw_data_size_bytes);
+        uint8_t *draw_data_array = draw_data_buffer.ptr;
 
+        BufferView draw_indirect_buffer = per_frame_allocator[current_frame].allocate(draw_indirect_size_bytes);
+        uint8_t *draw_indirect_array = draw_indirect_buffer.ptr;
+
+        uint32_t batch_draw_data_offset = draw_data_buffer.offset;
+        uint32_t batch_draw_indirect_data_offset = draw_indirect_buffer.offset;
         for (auto &render_batch : batches) {
             for (auto &batch : render_batch.meshes) {
                 uint32_t num_entity = cast_u32(batch.mesh_draw_infos.size());
 
-                batch.draw_data_buffer_view.buffer = per_frame_staging_buffer;
-                batch.draw_data_buffer_view.offset = draw_data_buffer_offset;
+                batch.draw_data_buffer_view.buffer = draw_data_buffer.buffer;
+                batch.draw_data_buffer_view.offset = batch_draw_data_offset;
                 batch.draw_data_buffer_view.size = num_entity * draw_data_instance_size;
 
-                batch.draw_indirect_buffer_view.buffer = per_frame_staging_buffer;
-                batch.draw_indirect_buffer_view.offset = draw_indirect_buffer_offset;
+                batch.draw_indirect_buffer_view.buffer = draw_indirect_buffer.buffer;
+                batch.draw_indirect_buffer_view.offset = batch_draw_indirect_data_offset;
                 batch.draw_indirect_buffer_view.size = sizeof(DrawIndexedIndirectCommand) * num_entity;
 
                 for (uint32_t e = 0; e < num_entity; ++e) {
@@ -413,8 +421,8 @@ namespace mirai {
                     std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                     draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
                 }
-                draw_indirect_buffer_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
-                draw_data_buffer_offset += draw_data_instance_size * num_entity;
+                batch_draw_indirect_data_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
+                batch_draw_data_offset += draw_data_instance_size * num_entity;
             }
         }
 
@@ -423,29 +431,30 @@ namespace mirai {
 
     void Renderer::copy_buffers() {
         // Reset staging buffer offset
-        per_frame_staging_buffer_offset = 0;
         uint32_t current_frame = device->get_current_frame();
+        ASSERT(current_frame < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
+
+        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame];
+        gpu_frame_allocator->reset();
 
         // Copy per frame uniform data
-        uint32_t per_frame_data_size = sizeof(Scene::FrameData);
-        uint32_t per_frame_data_offset = allocate_staging_buffer(per_frame_data_size, current_frame);
-        uint8_t *staging_buffer_ptr = per_frame_staging_buffer_ptr + per_frame_data_offset;
-        std::memcpy(staging_buffer_ptr, &scene->per_frame_data, per_frame_data_size);
+        uint32_t per_frame_data_size = align_memory(cast_u32(sizeof(Scene::FrameData)), 64);
+        BufferView per_frame_data_buffer = gpu_frame_allocator->allocate(per_frame_data_size);
+        std::memcpy(per_frame_data_buffer.ptr, &scene->per_frame_data, per_frame_data_size);
 
         // Update per frame data descriptor
         DescriptorInfo descriptor_info = {
             .type = DescriptorType::UniformBuffer,
-            .resource = per_frame_staging_buffer,
-            .buffer_info = {per_frame_data_offset, per_frame_data_size},
+            .resource = per_frame_data_buffer.buffer,
+            .buffer_info = {per_frame_data_buffer.offset, per_frame_data_buffer.size},
         };
         per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Update cascade data
-        uint32_t cascade_data_size = sizeof(shadow_system->cascade_info);
-        uint32_t cascade_data_offset = allocate_staging_buffer(cascade_data_size, current_frame);
-        uint8_t *cascade_buffer_ptr = per_frame_staging_buffer_ptr + cascade_data_offset;
-        std::memcpy(cascade_buffer_ptr, &shadow_system->cascade_info, cascade_data_size);
-        descriptor_info.buffer_info.offset = cascade_data_offset;
+        uint32_t cascade_data_size = align_memory(sizeof(shadow_system->cascade_info), 64);
+        BufferView cascade_data_buffer = gpu_frame_allocator->allocate(cascade_data_size);
+        std::memcpy(cascade_data_buffer.ptr, &shadow_system->cascade_info, cascade_data_size);
+        descriptor_info.buffer_info.offset = cascade_data_buffer.offset;
         descriptor_info.buffer_info.size = cascade_data_size;
         cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
@@ -466,22 +475,6 @@ namespace mirai {
 
         resource_heap.push_descriptor_at_index(device.get(), &descriptor_info, 1, texture.id);
         bindless_texture_count++;
-    }
-
-    uint32_t Renderer::allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t alignment) {
-        uint32_t per_frame_offset = current_frame * k_staging_buffer_size_per_frame;
-        uint32_t next_ptr = per_frame_offset + per_frame_staging_buffer_offset;
-
-        // Round to the multiple of 16
-        size = align_memory(size, alignment);
-        if (per_frame_staging_buffer_offset + size > k_staging_buffer_size_per_frame)
-            Log::Fatal("Not enough per frame staging buffer ");
-
-        per_frame_staging_buffer_offset += size;
-        return next_ptr;
-    }
-
-    void Renderer::compile_passes() {
     }
 
     void Renderer::update() {
@@ -597,6 +590,8 @@ namespace mirai {
         ScopedGpuProfiling(command_buffer, "Patch global buffers");
         uint32_t current_frame = device->get_current_frame();
 
+        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame];
+
         // Patch transforms
         auto &comp_manager = scene->ecs->component_manager;
         if (scene->updated_transforms.size() > 0) {
@@ -605,8 +600,8 @@ namespace mirai {
 
             uint32_t transform_count = cast_u32(updated_transforms.size());
             uint32_t transform_size = transform_count * sizeof(glm::mat4);
-            uint32_t transform_buffer_offset = allocate_staging_buffer(transform_size, current_frame);
-            uint8_t *transform_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + transform_buffer_offset);
+            BufferView temp_buffer = gpu_frame_allocator->allocate(transform_size);
+            uint8_t *transform_array = temp_buffer.ptr;
             for (uint32_t index : updated_transforms) {
                 std::memcpy(transform_array, &transform_components[index].world_transform[0][0], sizeof(glm::mat4));
                 transform_array += sizeof(glm::mat4);
@@ -614,8 +609,8 @@ namespace mirai {
 
             copy_continuous_region(command_buffer, updated_transforms,
                                    BufferView{
-                                       per_frame_staging_buffer,
-                                       transform_buffer_offset,
+                                       temp_buffer.buffer,
+                                       temp_buffer.offset,
                                        transform_size,
                                    },
                                    BufferView{
@@ -634,8 +629,8 @@ namespace mirai {
             uint32_t material_instance_size = cast_u32(sizeof(Material3D::Properties));
             uint32_t material_count = cast_u32(updated_materials.size());
             uint32_t material_size = material_count * material_instance_size;
-            uint32_t material_buffer_offset = allocate_staging_buffer(material_size, current_frame);
-            uint8_t *material_array = reinterpret_cast<uint8_t *>(per_frame_staging_buffer_ptr + material_buffer_offset);
+            BufferView temp_buffer = gpu_frame_allocator->allocate(material_size);
+            uint8_t *material_array = temp_buffer.ptr;
 
             for (uint32_t index : updated_materials) {
                 std::memcpy(material_array, &materials[index]->properties, material_instance_size);
@@ -644,8 +639,8 @@ namespace mirai {
 
             copy_continuous_region(command_buffer, updated_materials,
                                    BufferView{
-                                       per_frame_staging_buffer,
-                                       material_buffer_offset,
+                                       temp_buffer.buffer,
+                                       temp_buffer.offset,
                                        material_size,
                                    },
                                    BufferView{
@@ -695,10 +690,12 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
+        vertex_buffer_allocator.destroy();
+        index_buffer_allocator.destroy();
+        for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
+            per_frame_allocator[i].destroy();
+
         BufferID buffers[] = {
-            per_frame_staging_buffer,
-            vertex_buffer_allocator.buffer,
-            index_buffer_allocator.buffer,
             global_material_buffer,
             global_transform_buffer,
             resource_heap.buffer,

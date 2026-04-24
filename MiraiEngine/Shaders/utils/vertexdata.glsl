@@ -87,4 +87,14 @@ vec4 unpack_weights(uint address) {
         uintBitsToFloat(vertices[address + 12]));
 }
 
+uint pack_float_to_u8(float val) {
+    return uint(val * 127.0f + 127.5f);
+}
+
+uint pack_vec3_to_u32(vec3 p) {
+    return (pack_float_to_u8(p.x) << 24) |
+           (pack_float_to_u8(p.y) << 16) |
+           (pack_float_to_u8(p.z) << 8);
+}
+
 #endif

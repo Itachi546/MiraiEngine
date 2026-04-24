@@ -217,7 +217,7 @@ namespace mirai {
     void Scene::dispatch_transform_update() {
         auto &components = ecs->component_manager->get_component_array<TransformComponent>()->components;
         uint32_t transform_count = cast_u32(components.size());
-
+        Log::Info("Transform Count: ", transform_count);
         jobsystem::Dispatch(transform_count, 64, [&components](jobsystem::JobDispatchArg arg) {
             components[arg.job_index].update_local_transform();
         });

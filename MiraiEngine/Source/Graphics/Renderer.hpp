@@ -44,18 +44,16 @@ namespace mirai {
 
         void add_bindless_texture(TextureID texture);
 
-        // Offset aligment align the offset address to the multiple of given value
-        // E.g. minUniformBufferOffesetAlignment for uniform buffer
-        uint32_t allocate_staging_buffer(uint32_t size, uint32_t current_frame, uint32_t offset_alignment = 64);
+        GPUBufferLinearAllocator *get_per_frame_allocator() {
+            uint32_t frame_index = device->get_current_frame();
+            ASSERT(frame_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
+            return &per_frame_allocator[frame_index];
+        }
 
         // Helper function to upload batch data to per frame staging buffer
         void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
 
         ~Renderer();
-
-        // Uniform Buffer
-        BufferID global_transform_buffer;
-        BufferID global_material_buffer;
 
         GPUResourceDescriptorHeap resource_heap;
         GPUSamplerDescriptorHeap sampler_heap;
@@ -67,12 +65,14 @@ namespace mirai {
         DescriptorOffset global_geometry_descriptor;
         DescriptorOffset cascade_data_descriptor;
 
-        BufferID per_frame_staging_buffer;
-        uint8_t *per_frame_staging_buffer_ptr;
-
         // Global Geometry Buffer
         const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;
-        GpuBufferSubAllocation vertex_buffer_allocator, index_buffer_allocator;
+        GPUBufferAllocation vertex_buffer_allocator;
+        GPUBufferAllocation index_buffer_allocator;
+
+        // Uniform Buffer
+        BufferID global_transform_buffer;
+        BufferID global_material_buffer;
 
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;
@@ -114,8 +114,6 @@ namespace mirai {
             this->scene = std::move(scene);
         }
 
-        void compile_passes();
-
         void update();
 
         void render();
@@ -127,8 +125,8 @@ namespace mirai {
         void upload_visible_lights();
 
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
-        uint32_t per_frame_staging_buffer_offset = 0;
         uint32_t bindless_texture_count = 0;
+        GPUBufferLinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
 
         friend class Engine;
     };

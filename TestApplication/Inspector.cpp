@@ -75,6 +75,7 @@ void add_pbr_standard_material_ui(Material3D *material) {
     int current_mode = material->get_alpha_mode();
     if (ImGui::Combo("Alpha Mode", &current_mode, alpha_mode)) {
         material->set_alpha_mode(AlphaMode(current_mode));
+        material->dirty = true;
     }
 
     material->dirty |= ImGui::ColorEdit4("albedo", &material->properties.albedo[0]);

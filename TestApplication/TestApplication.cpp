@@ -107,8 +107,7 @@ class TestApplication : public App {
         controller->set_run_speed(20.0f);
     }
 
-    void
-    update() override {
+    void update() override {
         ImGuiService::NewFrame();
         if (Input::get()->is_down(KB_ESCAPE))
             Engine::get()->request_close();
