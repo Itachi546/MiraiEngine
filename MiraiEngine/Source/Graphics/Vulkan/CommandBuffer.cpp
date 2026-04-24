@@ -398,14 +398,16 @@ namespace mirai {
 
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
 
-        VkImageCopy region = {
+        VkImageBlit2 blit_region = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+            .pNext = nullptr,
             .srcSubresource = {
                 .aspectMask = src_texture->image_aspect,
                 .mipLevel = 0,
                 .baseArrayLayer = 0,
                 .layerCount = 1,
             },
-            .srcOffset = {0, 0, 0},
+            .srcOffsets = {{0, 0, 0}, {cast_int(src_texture->width), cast_int(src_texture->height), 1}},
             .dstSubresource = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .mipLevel = 0,
@@ -413,16 +415,23 @@ namespace mirai {
                 .layerCount = 1,
 
             },
-            .dstOffset = {0, 0, 0},
-            .extent = {
-                swapchain->width,
-                swapchain->height,
-                1,
-            },
+            .dstOffsets = {{0, 0, 0}, {cast_int(swapchain->width), cast_int(swapchain->height), 1}},
         };
 
-        vkCmdCopyImage(command_buffer, src_texture->image, src_texture->current_layout, swapchain->get_current_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-    }
+        VkBlitImageInfo2 blit_image_info = {
+            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .pNext = nullptr,
+            .srcImage = src_texture->image,
+            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .dstImage = swapchain->get_current_image(),
+            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount = 1,
+            .pRegions = &blit_region,
+            .filter = VK_FILTER_LINEAR,
+        };
+
+        vkCmdBlitImage2(command_buffer, &blit_image_info);
+    } // namespace mirai
 
     void CommandBuffer::prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count) {
         std::vector<VkImageMemoryBarrier2> image_barriers(barrier_count);

@@ -84,7 +84,7 @@ namespace mirai {
         });
 
         // Update Transforms
-        auto& transform_components = ecs->component_manager->get_component_array<TransformComponent>()->components;
+        auto &transform_components = ecs->component_manager->get_component_array<TransformComponent>()->components;
         uint32_t transform_count = cast_u32(transform_components.size());
         jobsystem::Dispatch(transform_count, 64, [&transform_components](jobsystem::JobDispatchArg arg) {
             transform_components[arg.job_index].update_local_transform();
