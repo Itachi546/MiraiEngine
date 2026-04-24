@@ -11,6 +11,7 @@
 using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+    SkinningComputePass skinning_pass{frame_graph, board};
     DepthPrePass depth_prepass{frame_graph, board};
     SSAOPass ssao_pass{frame_graph, board};
     CascadedShadowPass cascaded_shadow_pass{frame_graph, board};

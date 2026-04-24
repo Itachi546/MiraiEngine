@@ -603,6 +603,7 @@ namespace mirai {
 
                 MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
                 mesh_subset.vertex_offset_bytes = vertex_offset_bytes;
+                mesh_subset.vertex_count = num_position;
                 mesh_subset.index_offset_bytes = index_offset_bytes;
                 mesh_subset.vertex_stride = vertex_stride;
                 mesh_subset.index_count = index_count;
@@ -960,6 +961,7 @@ namespace mirai {
 
         // Either it is skeleton animation or it is a node animation
         if (node->skin >= 0) {
+            ASSERT(comp_manager->get_component<MeshComponent>(entity) != nullptr);
             uint32_t skeleton_index = load_state->skeleton_base_offset + node->skin;
             int default_animation_clip = -1;
             if (scene->skeletons[skeleton_index].supported_animations.size() > 0)

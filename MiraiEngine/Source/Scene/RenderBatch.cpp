@@ -73,6 +73,9 @@ namespace mirai {
         uint32_t render_object_count = scene->render_object_count.load(std::memory_order_relaxed);
         for (uint32_t i = 0; i < render_object_count; ++i) {
             const RenderableObjectData &object = scene->render_object_list[i];
+            if (object.mesh_type == MESH_TYPE_SKINNED) {
+                continue;
+            }
             const Material3D *material = scene->materials[object.material_index].get();
 
             if (params.shadow_pass) {
@@ -91,11 +94,6 @@ namespace mirai {
             } else if (material->is_alpha_mask()) {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
                 filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
-            }
-
-            if (object.mesh_type == MESH_TYPE_SKINNED) {
-                render_batch_type = RENDERBATCH_TYPE_SKINNED;
-                filter_flag = BATCH_FILTER_FLAG_SKINNED;
             }
 
             if ((params.filter_flags & filter_flag) != filter_flag)

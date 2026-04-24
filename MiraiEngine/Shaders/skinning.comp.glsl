@@ -3,15 +3,6 @@
 #extension GL_GOOGLE_include_directive : enable
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
-
-layout(set = 0, binding = 0) readonly buffer VertexBinding {
-    uint vertices[];
-};
-
-layout(set = 0, binding = 2) readonly buffer MatrixPallets {
-    mat4 matrix_palletes[];
-};
-
 struct Vertex {
     vec3 position;
     uint normal;
@@ -20,8 +11,15 @@ struct Vertex {
     uint bitangent;
     float tu, tv;
 };
-
 const uint OUTPUT_VERTEX_SIZE = 32;
+
+layout(set = 0, binding = 0) readonly buffer VertexBinding {
+    uint vertices[];
+};
+
+layout(set = 0, binding = 2) readonly buffer MatrixPallets {
+    mat4 matrix_palletes[];
+};
 
 layout(set = 0, binding = 2) buffer SkinnedVertexOutput {
     Vertex out_vertices[];
@@ -34,6 +32,9 @@ layout(push_constant) uniform PushConstants {
     uint vertex_stride;
     uint vertex_count;
     uint output_offset;
+
+    uint matrix_pallete_offset;
+    uint _padding[3];
 };
 
 void main() {

@@ -20,15 +20,13 @@ namespace mirai {
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 1,
         RENDERBATCH_TYPE_ALPHA_MASK = 2,
-        RENDERBATCH_TYPE_SKINNED = 4,
-        RENDERBATCH_TYPE_TRANSPARENT = 8,
+        RENDERBATCH_TYPE_TRANSPARENT = 4,
     };
 
     enum BatchFilterFlag {
         BATCH_FILTER_FLAG_OPAQUE = 1,
         BATCH_FILTER_FLAG_ALPHA_MASK = 2,
         BATCH_FILTER_FLAG_TRANSPARENT = 4,
-        BATCH_FILTER_FLAG_SKINNED = 8
     };
 
     struct MeshDrawInfo {

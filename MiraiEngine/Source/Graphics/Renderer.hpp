@@ -44,7 +44,7 @@ namespace mirai {
 
         void add_bindless_texture(TextureID texture);
 
-        GPUBufferLinearAllocator *get_per_frame_allocator() {
+        GPUBufferLinearAllocator *get_per_frame_gpu_allocator() {
             uint32_t frame_index = device->get_current_frame();
             ASSERT(frame_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
             return &per_frame_allocator[frame_index];
