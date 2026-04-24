@@ -8,7 +8,6 @@ namespace mirai {
 
     struct FinalCompositePassData {
         FrameGraphResourceHandle output;
-        FrameGraphResourceHandle input;
         std::shared_ptr<ComputeShader> shader;
     };
 
@@ -47,7 +46,6 @@ namespace mirai {
     };
 
     struct TiledLightCullPassData {
-        FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle light_list_buffer;
         uint32_t depth_texture_width;
         uint32_t depth_texture_height;
@@ -56,10 +54,6 @@ namespace mirai {
 
     struct ForwardPassData {
         FrameGraphResourceHandle output;
-        FrameGraphResourceHandle depth_texture;
-        FrameGraphResourceHandle ssao_texture;
-        FrameGraphResourceHandle csm_texture;
-        FrameGraphResourceHandle light_list_buffer;
         ShaderRegistry *registry;
         std::shared_ptr<EffectMaterial> skybox_shader;
     };

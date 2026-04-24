@@ -45,7 +45,6 @@ namespace mirai {
                                                             .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                                             .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                                         });
-                data.depth_texture = depth_prepass_data.output;
 
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 builder.read(ssao_pass_data.output, {
@@ -53,7 +52,6 @@ namespace mirai {
                                                         .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                         .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                     });
-                data.ssao_texture = ssao_pass_data.output;
 
                 const CascadedShadowPassData &csm_data = board->get<CascadedShadowPassData>();
                 builder.read(csm_data.output, {
@@ -61,14 +59,12 @@ namespace mirai {
                                                   .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                   .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                               });
-                data.csm_texture = csm_data.output;
 
                 const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
                 builder.read(light_cull_data.light_list_buffer, {
                                                                     .access_flags = ACCESS_FLAG_SHADER_READ,
                                                                     .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                                 });
-                data.light_list_buffer = light_cull_data.light_list_buffer;
 
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_FORWARD);
 
@@ -105,10 +101,15 @@ namespace mirai {
                 Scene *scene = renderer->get_scene();
                 EnvironmentMap *env_map = scene->get_environment_map();
 
-                DescriptorOffset ssao_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.ssao_texture).id, DescriptorType::SampledImage);
-                DescriptorOffset csm_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.csm_texture).id, DescriptorType::SampledImage);
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
+                const CascadedShadowPassData &csm_data = board->get<CascadedShadowPassData>();
+                const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
+
+                DescriptorOffset ssao_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, DescriptorType::SampledImage);
+                DescriptorOffset csm_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(csm_data.output).id, DescriptorType::SampledImage);
                 DescriptorOffset cubemap_binding = renderer->get_or_create_descriptor(env_map->get_cubemap(), DescriptorType::SampledImage);
-                DescriptorOffset light_list_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer);
+                DescriptorOffset light_list_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(light_cull_data.light_list_buffer).id, DescriptorType::StorageBuffer);
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
@@ -136,7 +137,7 @@ namespace mirai {
                                                       .clear_color = {0.0f, 0.0f, 0.0f, 0.0f},
                                                   }},
                                                   AttachmentInfo{
-                                                      .texture = pass_resource.get<FrameGraphTexture>(data.depth_texture).id,
+                                                      .texture = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id,
                                                       .load_op = LOAD_OP_LOAD,
                                                       .store_op = STORE_OP_STORE,
                                                       .clear_color = {1.0f, 0.0f, 0.0f, 0.0f},

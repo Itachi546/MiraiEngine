@@ -43,7 +43,6 @@ namespace mirai {
                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                                            .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                        });
-                data.input = forward_pass_data.output;
 
                 data.shader = std::make_shared<ComputeShader>("FinalCompositeShader", "SPIRV/final-composite.comp.spv");
                 ASSERT(data.shader != nullptr);
@@ -64,8 +63,9 @@ namespace mirai {
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
+                const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
                 DescriptorOffset bindings[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.input).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(forward_pass_data.output).id, DescriptorType::SampledImage),
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
                 };
 

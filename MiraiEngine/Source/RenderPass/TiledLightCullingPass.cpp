@@ -48,7 +48,6 @@ namespace mirai {
                                                        .layout = IMAGE_LAYOUT_GENERAL,
                                                    });
 
-                data.depth_texture = depth_prepass.output;
                 const TextureDescription &depth_texture_desc = frame_graph->get_texture_description(depth_prepass.output);
                 data.depth_texture_width = depth_texture_desc.width;
                 data.depth_texture_height = depth_texture_desc.height;
@@ -67,8 +66,9 @@ namespace mirai {
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 
+                const DepthPrePassData &depth_prepass = board->get<DepthPrePassData>();
                 DescriptorOffset descriptors[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.depth_texture).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass.output).id, DescriptorType::SampledImage),
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer),
                     renderer->per_frame_light_descriptor,
                 };
