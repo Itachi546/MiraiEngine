@@ -143,10 +143,8 @@ namespace mirai {
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
-        void dispatch_material_update();
         void update_node_animator_components();
         void update_animator_components();
-        void dispatch_transform_update();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
 

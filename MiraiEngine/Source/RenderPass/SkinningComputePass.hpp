@@ -2,11 +2,11 @@
 namespace mirai {
 
     class FrameGraph;
-    class FrameGraphBlackboard;
+    class FrameGraphBlackBoard;
 
     class SkinningComputePass {
       public:
-        SkinningComputePass(FrameGraph *frame_graph, FrameGraphBlackboard *board);
+        SkinningComputePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
         ~SkinningComputePass() = default;
     };
 

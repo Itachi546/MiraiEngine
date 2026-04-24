@@ -70,8 +70,25 @@ namespace mirai {
             update_animator_components();
         }
 
-        dispatch_material_update();
-        dispatch_transform_update();
+        // Update changed materials
+        uint32_t material_count = cast_u32(materials.size());
+        std::mutex mu;
+        jobsystem::Dispatch(material_count, 64, [&](jobsystem::JobDispatchArg arg) {
+            if (materials[arg.job_index]->is_dirty()) {
+                {
+                    std::lock_guard<std::mutex> lk(mu);
+                    updated_materials.push_back(arg.job_index);
+                }
+                materials[arg.job_index]->set_dirty(false);
+            }
+        });
+
+        // Update Transforms
+        auto& transform_components = ecs->component_manager->get_component_array<TransformComponent>()->components;
+        uint32_t transform_count = cast_u32(transform_components.size());
+        jobsystem::Dispatch(transform_count, 64, [&transform_components](jobsystem::JobDispatchArg arg) {
+            transform_components[arg.job_index].update_local_transform();
+        });
         jobsystem::Wait();
 
         update_hierarchy_components();
@@ -116,20 +133,6 @@ namespace mirai {
                 remove_entity_tree(child);
         }
         ecs->destroy_entity(entity);
-    }
-
-    void Scene::dispatch_material_update() {
-        uint32_t material_count = cast_u32(materials.size());
-        std::mutex mu;
-        jobsystem::Dispatch(material_count, 64, [&](jobsystem::JobDispatchArg arg) {
-            if (materials[arg.job_index]->is_dirty()) {
-                {
-                    std::lock_guard<std::mutex> lk(mu);
-                    updated_materials.push_back(arg.job_index);
-                }
-                materials[arg.job_index]->set_dirty(false);
-            }
-        });
     }
 
     void Scene::update_node_animator_components() {
@@ -212,15 +215,6 @@ namespace mirai {
                 pose.matrix_palletes[i] = pose.matrix_palletes[i] * skeleton.inv_bind_transforms[i];
             }
         }
-    }
-
-    void Scene::dispatch_transform_update() {
-        auto &components = ecs->component_manager->get_component_array<TransformComponent>()->components;
-        uint32_t transform_count = cast_u32(components.size());
-        Log::Info("Transform Count: ", transform_count);
-        jobsystem::Dispatch(transform_count, 64, [&components](jobsystem::JobDispatchArg arg) {
-            components[arg.job_index].update_local_transform();
-        });
     }
 
     void Scene::update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update) {
