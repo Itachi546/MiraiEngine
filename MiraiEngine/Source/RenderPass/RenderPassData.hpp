@@ -8,7 +8,7 @@ namespace mirai {
 
     struct FinalCompositePassData {
         FrameGraphResourceHandle output;
-        std::shared_ptr<ComputeShader> shader;
+        std::shared_ptr<EffectMaterial> shader;
     };
 
     struct SkinningComputePassData {

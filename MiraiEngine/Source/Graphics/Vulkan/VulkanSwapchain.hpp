@@ -15,7 +15,10 @@ namespace mirai {
         VkPresentModeKHR present_mode;
         VkCompositeAlphaFlagBitsKHR composite_mode;
         VkSurfaceTransformFlagBitsKHR current_transform;
-        std::vector<VkImageLayout> image_layouts;
+
+        std::vector<VkImageLayout> current_layouts;
+        std::vector<VkAccessFlags2> access_flags;
+        std::vector<VkPipelineStageFlags2> stage_mask;
 
         VkImageView get_current_image_view() {
             return image_views[current_image_index];
@@ -26,11 +29,11 @@ namespace mirai {
         }
 
         VkImageLayout get_current_image_layout() {
-            return image_layouts[current_image_index];
+            return current_layouts[current_image_index];
         }
 
         void set_current_image_layout(VkImageLayout layout) {
-            image_layouts[current_image_index] = layout;
+            current_layouts[current_image_index] = layout;
         }
     };
 

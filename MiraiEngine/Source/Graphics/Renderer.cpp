@@ -718,7 +718,8 @@ namespace mirai {
 
             frame_graph->execute(&context);
 
-            cb->copy_to_swapchain(frame_graph->get_present_texture());
+            if (frame_graph->get_present_texture() != K_SWAPCHAIN_TEXTURE_HANDLE)
+                cb->copy_to_swapchain(frame_graph->get_present_texture());
 
             device->queue_command_buffer(cb);
         }

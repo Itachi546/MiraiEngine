@@ -21,6 +21,7 @@ namespace mirai {
 
     struct FrameGraphTexture {
         ID id;
+        bool external;
         TextureDescription desc;
     };
 

@@ -127,9 +127,14 @@ namespace mirai {
             },
         };
 
-        swapchain->image_layouts.resize(swapchain->images.size());
-        for (uint32_t i = 0; i < swapchain->images.size(); ++i) {
-            swapchain->image_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+        uint32_t image_count = cast_u32(swapchain->images.size());
+        swapchain->current_layouts.resize(image_count);
+        swapchain->access_flags.resize(image_count);
+        swapchain->stage_mask.resize(image_count);
+        for (uint32_t i = 0; i < image_count; ++i) {
+            swapchain->current_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+            swapchain->access_flags[i] = 0;
+            swapchain->stage_mask[i] = 0;
             image_view_create_info.image = swapchain->images[i];
             VK_CHECK(vkCreateImageView(device, &image_view_create_info, nullptr, &swapchain->image_views[i]));
         }
@@ -178,7 +183,9 @@ namespace mirai {
             vkDestroyImageView(device, image_view, nullptr);
 
         swapchain->image_views.clear();
-        swapchain->image_layouts.clear();
+        swapchain->current_layouts.clear();
+        swapchain->access_flags.clear();
+        swapchain->stage_mask.clear();
 
         swapchain->surface_format = select_surface_format(physical_device, surface);
 

@@ -6,6 +6,7 @@
 #include "Engine/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/AppSettings.hpp"
+#include "Device/Window.hpp"
 
 namespace mirai {
 
@@ -17,34 +18,30 @@ namespace mirai {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
 
-                data.output = builder.create_texture(
-                    "FinalCompositeTexture",
-                    {
-                        .create_flags = 0,
-                        .width = width,
-                        .height = height,
-                        .depth = 1,
-                        .mip_levels = 1,
-                        .array_layers = 1,
-                        .texture_type = TEXTURE_TYPE_2D,
-                        .format = FORMAT_B8G8R8A8_UNORM,
-                        .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT | TEXTURE_USAGE_COLOR_ATTACHMENT_BIT,
-                    });
+                data.output = builder.add_texture(K_SWAPCHAIN_TEXTURE_HANDLE, "Swapchain");
 
                 builder.write(data.output, {
-                                               .access_flags = ACCESS_FLAG_SHADER_WRITE,
-                                               .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                               .layout = IMAGE_LAYOUT_GENERAL,
+                                               .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
+                                               .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                               .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            });
 
                 const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
                 builder.read(forward_pass_data.output, {
                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                           .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                           .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                            .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                        });
 
-                data.shader = std::make_shared<ComputeShader>("FinalCompositeShader", "SPIRV/final-composite.comp.spv");
+                data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
+                                                               std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/final-composite.frag.spv"},
+                                                               PipelineState{
+                                                                   .cull_mode = CULL_MODE_NONE,
+                                                                   .depth_test = false,
+                                                               },
+                                                               PipelineAttachmentInfo{
+                                                                   .color_attachments_format = {FORMAT_B8G8R8A8_UNORM},
+                                                               });
                 ASSERT(data.shader != nullptr);
 
                 board->add<FinalCompositePassData>(data);
@@ -66,7 +63,6 @@ namespace mirai {
                 const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
                 DescriptorOffset bindings[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(forward_pass_data.output).id, DescriptorType::SampledImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
                 };
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
@@ -80,13 +76,32 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");
 
+                uint32_t swapchain_width, swapchain_height;
+                Window::get()->get_size(&swapchain_width, &swapchain_height);
+                command_buffer->begin_render_pass({AttachmentInfo{
+                                                      .texture = pass_resource.get<FrameGraphTexture>(data.output).id,
+                                                      .load_op = LOAD_OP_CLEAR,
+                                                      .store_op = STORE_OP_STORE,
+                                                      .clear_color = {0.0f, 0.0f, 0.0f, 0.0f},
+                                                  }},
+                                                  {}, swapchain_width, swapchain_height);
+                command_buffer->set_viewport({
+                    .x = 0.0f,
+                    .y = 0.0f,
+                    .width = cast_float(swapchain_width),
+                    .height = cast_float(swapchain_height),
+                    .min_depth = 0.0f,
+                    .max_depth = 1.0f,
+                });
+                command_buffer->set_scissor(0, 0, swapchain_width, swapchain_height);
+
                 data.shader->bind(command_buffer);
                 command_buffer->set_push_data(0, push_data, cast_u32(sizeof(push_data)));
                 command_buffer->set_push_data(cast_u32(sizeof(push_data)), bindings, cast_u32(sizeof(bindings)));
 
-                uint32_t local_size_x = rendering_utils::get_workgroup_size(width, 32);
-                uint32_t local_size_y = rendering_utils::get_workgroup_size(height, 32);
-                command_buffer->dispatch(local_size_x, local_size_y, 1);
+                command_buffer->draw(3, 1, 0, 0);
+
+                command_buffer->end_render_pass();
 
                 command_buffer->end_gpu_debug_label();
             });

@@ -20,11 +20,26 @@ namespace mirai {
         std::vector<VkRenderingAttachmentInfo> vk_color_attachments;
         for (uint32_t i = 0; i < color_attachments.size(); ++i) {
             const AttachmentInfo &attachment = color_attachments[i];
-            VulkanTexture *texture = device->access_texture(attachment.texture);
+            VkImageView image_view = VK_NULL_HANDLE;
+            uint32_t width = 0;
+            uint32_t height = 0;
+
+            if (attachment.texture == K_SWAPCHAIN_TEXTURE_HANDLE) {
+                VulkanSwapchain *swapchain = device->get_swapchain();
+                image_view = swapchain->get_current_image_view();
+                width = swapchain->width;
+                height = swapchain->height;
+            } else {
+                VulkanTexture *texture = device->access_texture(attachment.texture);
+                image_view = texture->image_views[0];
+                width = texture->width;
+                height = texture->height;
+                layer_count = std::max(texture->array_layers, layer_count);
+            }
             vk_color_attachments.emplace_back(VkRenderingAttachmentInfo{
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                 .pNext = nullptr,
-                .imageView = texture->image_views[0],
+                .imageView = image_view,
                 .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .loadOp = VkAttachmentLoadOp(attachment.load_op),
                 .storeOp = VkAttachmentStoreOp(attachment.store_op),
@@ -39,8 +54,7 @@ namespace mirai {
                     },
                 },
             });
-            layer_count = std::max(texture->array_layers, layer_count);
-            ASSERT(render_area_width == texture->width && render_area_height == texture->height);
+            ASSERT(render_area_width == width && render_area_height == height);
         }
 
         rendering_info.layerCount = layer_count;
@@ -118,29 +132,48 @@ namespace mirai {
                 break;
             };
             case ResourceType::Texture: {
-                VulkanTexture *texture = device->access_texture(state.resource);
                 VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
                 VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
                 VkImageLayout dst_layout = VkImageLayout(state.declaration->layout);
 
-                bool is_depth_texture = is_depth_format(texture->format);
-                VkPipelineStageFlags2 src_stage_mask = texture->stage_mask;
+                // Special handling of swapchain as color attachment
+                if (state.resource.id == K_SWAPCHAIN_TEXTURE_HANDLE.id) {
+                    ASSERT(dst_stage = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+                    VulkanSwapchain *swapchain = device->get_swapchain();
+                    uint32_t current_index = swapchain->current_image_index;
+                    VkPipelineStageFlags2 src_stage_mask = swapchain->stage_mask[current_index];
+                    image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->images[current_index],
+                                                                       src_stage_mask,
+                                                                       swapchain->access_flags[current_index],
+                                                                       dst_stage,
+                                                                       dst_access_flag,
+                                                                       swapchain->current_layouts[current_index],
+                                                                       dst_layout,
+                                                                       VK_IMAGE_ASPECT_COLOR_BIT));
+                    swapchain->current_layouts[current_index] = dst_layout;
+                    swapchain->access_flags[current_index] = dst_access_flag;
+                    swapchain->stage_mask[current_index] = dst_stage;
+                } else {
+                    VulkanTexture *texture = device->access_texture(state.resource);
+                    bool is_depth_texture = is_depth_format(texture->format);
+                    VkPipelineStageFlags2 src_stage_mask = texture->stage_mask;
+                    // Special case for depth texture
+                    if (is_depth_texture && src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
+                        src_stage_mask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
-                // Special case for depth texture
-                if (is_depth_texture && src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
-                    src_stage_mask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
+                                                                       src_stage_mask,
+                                                                       texture->access_flags,
+                                                                       dst_stage,
+                                                                       dst_access_flag,
+                                                                       texture->current_layout,
+                                                                       dst_layout,
+                                                                       texture->image_aspect));
+                    texture->current_layout = dst_layout;
+                    texture->access_flags = dst_access_flag;
+                    texture->stage_mask = dst_stage;
+                }
 
-                image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
-                                                                   src_stage_mask,
-                                                                   texture->access_flags,
-                                                                   dst_stage,
-                                                                   dst_access_flag,
-                                                                   texture->current_layout,
-                                                                   dst_layout,
-                                                                   texture->image_aspect));
-                texture->current_layout = dst_layout;
-                texture->access_flags = dst_access_flag;
-                texture->stage_mask = dst_stage;
                 break;
             };
             default: {

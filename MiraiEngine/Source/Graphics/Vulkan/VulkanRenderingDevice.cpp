@@ -1148,9 +1148,10 @@ namespace mirai {
         VkImageLayout current_layout = swapchain->get_current_image_layout();
         if (current_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
 
-            VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->get_current_image(),
-                                                                              VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                                                                              VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            uint32_t current_index = swapchain->current_image_index;
+            VkImageMemoryBarrier2 present_barrier = CreateImageMemoryBarrier2(swapchain->images[current_index],
+                                                                              swapchain->stage_mask[current_index],
+                                                                              swapchain->access_flags[current_index],
                                                                               VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
                                                                               0,
                                                                               current_layout,
@@ -1167,6 +1168,8 @@ namespace mirai {
             };
             vkCmdPipelineBarrier2(queued_command_buffer[0]->command_buffer, &dependency_info);
             swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+            swapchain->access_flags[current_index] = 0;
+            swapchain->stage_mask[current_index] = 0;
         }
 
         std::vector<VkCommandBuffer> submit_command_buffers(queued_command_buffer.size());
