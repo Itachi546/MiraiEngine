@@ -179,9 +179,11 @@ namespace mirai {
                 continue;
 
             Skeleton &skeleton = skeletons[component.skeleton_index];
-            Pose &pose = skeleton.current_pose;
-
             uint32_t bone_count = cast_u32(skeleton.names.size());
+
+            Pose &pose = component.pose;
+            pose.resize(bone_count);
+
             const AnimationClip &clip = animation_clips[current_animation_clip];
 
             float duration = clip.get_duration();
@@ -192,11 +194,17 @@ namespace mirai {
             if (component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 
+            glm::vec3 min = glm::vec3(FLT_MAX);
+            glm::vec3 max = glm::vec3(-FLT_MAX);
+            const float K_BONE_RADIUS = 1.0f;
+
             for (uint32_t i = 0; i < bone_count; ++i) {
                 int parent = skeleton.parents[i];
                 ASSERT(parent < int(i));
 
-                glm::mat4 transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
+                const glm::mat4 &parent_transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
+                glm::mat4 transform = parent_transform;
+
                 // Some of the node in hierarchy doesn't have keyframes, for such we just
                 // apply parent transform with local transform
                 if (clip.has_animation(i)) {
@@ -209,7 +217,15 @@ namespace mirai {
                 }
                 // parent_transform * animation_transform * skeleton.inv_bind_transforms[i]
                 pose.matrix_palletes[i] = transform;
+
+                // World space AABB
+                glm::vec3 bone_pos = parent_transform * glm::vec4(pose.joints_position[i], 1.0f);
+                glm::vec3 bone_min = bone_pos - glm::vec3(K_BONE_RADIUS);
+                glm::vec3 bone_max = bone_pos + glm::vec3(K_BONE_RADIUS);
+                min = glm::min(bone_min, min);
+                max = glm::max(bone_max, max);
             }
+            component.aabb = {min, max};
 
             for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
                 pose.matrix_palletes[i] = pose.matrix_palletes[i] * skeleton.inv_bind_transforms[i];
@@ -261,6 +277,9 @@ namespace mirai {
             BufferView index_buffer = mesh_component.index_buffer;
 
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
+                if (mesh_component.mesh_type == MESH_TYPE_SKINNED)
+                    continue;
+
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
                 AABB transformed_aabb = mesh_component.aabbs[s];
                 transformed_aabb.transform(transform->world_transform);

@@ -3,6 +3,7 @@
 #include "ECS.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Math/Angles.hpp"
+#include "Animation.hpp"
 
 namespace mirai {
     struct NameComponent {
@@ -141,6 +142,8 @@ namespace mirai {
         int current_animation_clip;
         uint32_t skeleton_index;
         float current_time = 0.0f;
+        Pose pose;
+        AABB aabb;
     };
 
 }; // namespace mirai

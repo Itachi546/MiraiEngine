@@ -4,7 +4,7 @@
 #include "Math/Transformation.hpp"
 #include "Scene/Animation.hpp"
 
-void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root_transform, ImDrawList *draw_list, float width, float height) {
+void DrawSkeleton(const Skeleton &skeleton, const Pose &current_pose, glm::mat4 &VP, const glm::mat4 &root_transform, ImDrawList *draw_list, float width, float height) {
     static const uint32_t color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
     static const uint32_t color2 = ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
     std::vector<glm::mat4> cached_transforms(skeleton.parents.size());
@@ -17,7 +17,7 @@ void DrawSkeleton(const Skeleton &skeleton, glm::mat4 &VP, const glm::mat4 &root
         ASSERT(parent_node < int(i));
 
         glm::mat4 parent_transform = parent_node == -1 ? root_transform : parent_transforms[parent_node];
-        glm::mat4 bone_animation_transform = skeleton.current_pose.get_transform(i);
+        glm::mat4 bone_animation_transform = current_pose.get_transform(i);
 
         // Since bone is already relative to origin we consider it to be in bone space already
         // we don't need global inverse bind transform
@@ -47,7 +47,7 @@ void DrawPose(Scene *scene, Entity entity, ImDrawList *draw_list, float width, f
     TransformComponent *transform = comp_manager->get_component<TransformComponent>(entity);
 
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    DrawSkeleton(skeleton, VP, transform->world_transform, draw_list, width, height);
+    DrawSkeleton(skeleton, animator->pose, VP, transform->world_transform, draw_list, width, height);
 }
 
 void add_skeleton_debug_ui(Scene *scene, Entity entity) {
@@ -69,13 +69,10 @@ void add_skeleton_debug_ui(Scene *scene, Entity entity) {
 
     float width = io.DisplaySize.x;
     float height = io.DisplaySize.y;
-#if 1
+
     TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(entity);
     AnimatorComponent *animator_comp = scene->ecs->component_manager->get_component<AnimatorComponent>(entity);
     ASSERT(animator_comp != nullptr);
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    DrawSkeleton(scene->skeletons[animator_comp->skeleton_index], VP, transform->world_transform, draw_list, width, height);
-#else
     DrawPose(scene, entity, draw_list, width, height);
-#endif
 }

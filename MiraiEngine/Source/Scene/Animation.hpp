@@ -130,14 +130,12 @@ namespace mirai {
         std::vector<std::string> names;
 
         std::vector<uint32_t> supported_animations;
-        Pose current_pose;
 
         void resize(uint32_t joint_count) {
             parents.resize(joint_count);
             local_transforms.resize(joint_count);
             inv_bind_transforms.resize(joint_count);
             names.resize(joint_count);
-            current_pose.resize(joint_count);
         }
 
         void add_bone(int index, int parent, const std::string &name, const glm::mat4 &local_transform, const glm::mat4 &inv_bind_transform) {

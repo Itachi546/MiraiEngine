@@ -46,34 +46,10 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
                 ScopedCpuProfiling("ComputeSkinningSetup");
-
+                /*
                 std::vector<SkinnedMeshData> skinned_mesh_data;
                 auto &component_manager = scene->ecs->component_manager;
                 auto animator_component_ptr = component_manager->get_component_array<AnimatorComponent>();
-
-                uint32_t global_palletes_size = 0;
-                uint32_t global_palletes_offset = 0;
-                uint32_t vertex_output_offset = 0;
-
-                // Maps skeleton index to the pallete offset in staging buffer
-                // Staging buffer will be populated later
-                std::vector<uint32_t> skeleton_pallete_offset(scene->skeletons.size());
-                uint32_t skeleton_pallete_size = 0;
-                for (const auto &skeleton : scene->skeletons) {
-                    skeleton_pallete_offset[0] = skeleton_pallete_size;
-                    skeleton_pallete_size += cast_u32(skeleton.names.size());
-                }
-                skeleton_pallete_size *= cast_u32(sizeof(glm::mat4));
-
-                // Populate matrix pallete to staging buffer
-                GPUBufferLinearAllocator *allocator = renderer->get_per_frame_gpu_allocator();
-                BufferView matrix_pallete_buffer = allocator->allocate(skeleton_pallete_size);
-                uint8_t *ptr = matrix_pallete_buffer.ptr;
-                for (const auto &skeleton : scene->skeletons) {
-                    uint32_t pallete_size = cast_u32(skeleton.names.size() * sizeof(glm::mat4));
-                    std::memcpy(ptr, skeleton.current_pose.matrix_palletes.data(), pallete_size);
-                    ptr += pallete_size;
-                }
 
                 // Generate skeleton renderdata
                 uint32_t output_offset_bytes = 0;
@@ -125,6 +101,7 @@ namespace mirai {
                     command_buffer->dispatch(data.vertex_count, 1, 1);
                 }
                 command_buffer->end_gpu_debug_label();
+                */
             });
     }
 } // namespace mirai
