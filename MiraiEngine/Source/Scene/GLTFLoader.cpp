@@ -368,7 +368,7 @@ namespace mirai {
             const std::string &alpha_mode = gltf_material->alphaMode;
             if (alpha_mode == "OPAQUE")
                 material->set_alpha_mode(ALPHA_MODE_OPAQUE);
-            else if (alpha_mode == "BLEND" || has_khr_transmission) {
+            else if (alpha_mode == "BLEND") {
                 material->set_alpha_mode(ALPHA_MODE_BLEND);
             } else if (alpha_mode == "MASK")
                 material->set_alpha_mode(ALPHA_MODE_MASK);
@@ -636,9 +636,10 @@ namespace mirai {
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
                 mesh_subset.index_offset_bytes += index_buffer.offset;
-
-                BufferView skinned_mesh_output_buffer = renderer->vertex_buffer_allocator.allocate(mesh_subset.vertex_count * AppSettings::K_SKINNED_VERTEX_OUTPUT_SIZE);
-                mesh_subset.output_vertex_offset_bytes = skinned_mesh_output_buffer.offset;
+                if (mesh_subset.vertex_stride == VERTEX_DATA_SIZE_SKINNED) {
+                    BufferView skinned_mesh_output_buffer = renderer->vertex_buffer_allocator.allocate(mesh_subset.vertex_count * AppSettings::K_SKINNED_VERTEX_OUTPUT_SIZE);
+                    mesh_subset.output_vertex_offset_bytes = skinned_mesh_output_buffer.offset;
+                }
             }
         }
 

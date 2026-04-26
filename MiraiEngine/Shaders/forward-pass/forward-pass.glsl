@@ -108,7 +108,7 @@ void main() {
         albedo = vec4(mix(base_color_diffuse, base_color_diffuse, metallic * metallic), albedo.a);
     } else {
         if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            metallic_roughness = sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).bg;
+            metallic_roughness *= sample_texture(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale).bg;
     }
 
     pbr_params.metallic = metallic_roughness.x;
@@ -137,6 +137,11 @@ void main() {
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+
+                vec3 reflection = normalize(reflect(-view_dir, normal));
+                float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
+                vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
+                Lo += getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_intensity);
             } else if (light_type == LIGHT_TYPE_POINT) {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             } else if (light_type == LIGHT_TYPE_SPOT) {
@@ -160,6 +165,10 @@ void main() {
                     shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+                vec3 reflection = normalize(reflect(-view_dir, normal));
+                float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
+                vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
+                Lo += getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_intensity);
             } else if (light_type == LIGHT_TYPE_POINT) {
                 Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
             } else if (light_type == LIGHT_TYPE_SPOT) {

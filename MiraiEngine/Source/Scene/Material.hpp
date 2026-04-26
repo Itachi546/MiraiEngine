@@ -88,8 +88,8 @@ namespace mirai {
         Material3D(const std::string_view name) : Material(name) {
             properties.albedo = glm::vec4(1.0f);
             properties.emissive_factor = glm::vec3(0.0f);
-            properties.metallic_factor = 0.01f;
-            properties.roughness_factor = 0.5f;
+            properties.metallic_factor = 1.0f;
+            properties.roughness_factor = 1.0f;
             properties.alpha_cutoff = 0.9f;
             properties.flags = 0;
             properties.emissive_texture = K_INVALID_ID;

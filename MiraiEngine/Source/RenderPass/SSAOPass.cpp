@@ -96,7 +96,7 @@ namespace mirai {
                     .noise_texture = noise_texture,
                     .noise_texture_inv_dim = 1.0f / 128.0f,
                     .radius = 0.5f,
-                    .intensity = 2.0f,
+                    .intensity = 3.0f,
                     .num_directional_step = 4,
                     .num_step = 8,
                     .tangent_bias = 0.1f,

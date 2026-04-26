@@ -34,7 +34,7 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
 
     vec3 specular = prefilter_color * (specular_color * brdf.x + brdf.y);
 
-    return (diffuse + specular) * ibl_contribution;
+    return (diffuse + specular) * ibl_contribution * pbr_params.ao;
 }
 
 vec3 evaluateBRDF(vec3 light_direction, vec3 view_dir, vec3 normal, PBRParameter pbr_params) {

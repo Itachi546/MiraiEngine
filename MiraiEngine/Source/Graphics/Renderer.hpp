@@ -90,6 +90,7 @@ namespace mirai {
 
         bool freeze_frustum = false;
         bool show_aabbs = false;
+        bool disable_punctual_lights = true;
         FrustumPlanes freezed_frustum_planes;
         glm::mat4 freezed_inv_VP;
 

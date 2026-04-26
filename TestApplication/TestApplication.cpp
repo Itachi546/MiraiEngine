@@ -170,6 +170,7 @@ class TestApplication : public App {
             ImGui::Checkbox("Pause Animation", &scene->pause_animation);
             ImGui::Checkbox("Freeze frustum", &Renderer::get()->freeze_frustum);
             ImGui::Checkbox("Show AABB", &Renderer::get()->show_aabbs);
+            ImGui::Checkbox("Disable Punctual Lights", &Renderer::get()->disable_punctual_lights);
             if (ImGui::DragFloat("Global Scene Scale", &global_scene_scale, 0.01f)) {
                 TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(scene->entities[0]);
                 transform->scale = glm::vec3(global_scene_scale);

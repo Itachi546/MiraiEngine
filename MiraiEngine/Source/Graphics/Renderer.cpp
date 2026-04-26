@@ -282,8 +282,11 @@ namespace mirai {
         uint32_t total_lights = cast_u32(light_array->entities.size());
 
         for (auto entity : light_array->entities) {
-            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
             LightComponent *light = component_manager->get_component<LightComponent>(entity);
+            if (disable_punctual_lights && light->light_type != LIGHT_TYPE_DIRECTIONAL)
+                continue;
+
+            TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
             uint32_t flag = light->light_type | (uint32_t(light->cast_shadow) << 3);
             if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
                 visible_lights.push_back(GPULightData{
