@@ -270,18 +270,28 @@ namespace mirai {
 
         jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
             MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
-            const Entity entity = mesh_component_ptr->entities[arg.job_index];
+            bool is_skinned = mesh_component.mesh_type == MESH_TYPE_SKINNED;
 
+            const Entity entity = mesh_component_ptr->entities[arg.job_index];
             const TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+
+            AnimatorComponent *animator = nullptr;
+            if (is_skinned) {
+                animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
+                ASSERT(animator != nullptr);
+            }
+
             BufferView vertex_buffer = mesh_component.vertex_buffer;
             BufferView index_buffer = mesh_component.index_buffer;
 
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
-                if (mesh_component.mesh_type == MESH_TYPE_SKINNED)
-                    continue;
-
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
                 AABB transformed_aabb = mesh_component.aabbs[s];
+
+                // Create a combined AABB from animated pose and rest pose
+                if (is_skinned) {
+                    transformed_aabb.combine(animator->aabb);
+                }
                 transformed_aabb.transform(transform->world_transform);
 
                 uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
@@ -293,7 +303,7 @@ namespace mirai {
                     .mesh_type = mesh_component.mesh_type,
                     .vertex_buffer = vertex_buffer.buffer,
                     .index_buffer = index_buffer.buffer,
-                    .vertex_offset_bytes = subset.vertex_offset_bytes, // Manually calculating in shader
+                    .vertex_offset_bytes = is_skinned ? subset.output_vertex_offset_bytes : subset.vertex_offset_bytes, // Manually calculating in shader
                     .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
                     .index_count = subset.index_count,
                     .vertex_stride = subset.vertex_stride,

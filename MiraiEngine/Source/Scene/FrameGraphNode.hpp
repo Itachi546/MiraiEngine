@@ -21,7 +21,6 @@ namespace mirai {
 
     struct FrameGraphTexture {
         ID id;
-        bool external;
         TextureDescription desc;
     };
 
@@ -46,8 +45,9 @@ namespace mirai {
         std::variant<FrameGraphBuffer, FrameGraphTexture> resource;
         ResourceType resource_type;
         uint64_t access_flag;
+        bool external;
 
-        ResourceNode(const std::string_view name, std::variant<FrameGraphBuffer, FrameGraphTexture> resource, ResourceType resource_type) : GraphNode(name), resource(resource), resource_type(resource_type), access_flag(0) {
+        ResourceNode(const std::string_view name, std::variant<FrameGraphBuffer, FrameGraphTexture> resource, ResourceType resource_type, bool external = false) : GraphNode(name), resource(resource), resource_type(resource_type), access_flag(0), external(external) {
         }
 
         template <typename T>

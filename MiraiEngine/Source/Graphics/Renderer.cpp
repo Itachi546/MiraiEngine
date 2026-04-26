@@ -345,7 +345,7 @@ namespace mirai {
         Camera *camera = scene->get_camera();
         const FrustumPlanes &frustum_planes = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
         DrawBatchGenerator::BuildBatches(scene.get(), BatchBuildParams{
-                                                          .filter_flags = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_TRANSPARENT,
+                                                          .filter_flags = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK | BATCH_FILTER_FLAG_TRANSPARENT | BATCH_FILTER_FLAG_SKINNED,
                                                           .frustum = &frustum_planes,
                                                           .camera_position = &camera->position,
                                                       },
@@ -567,16 +567,6 @@ namespace mirai {
                 if (!frustum.intersect_aabb(renderable.transformed_aabb))
                     continue;
                 line_renderer->add_aabb(renderable.transformed_aabb, 0xf07314ff);
-            }
-
-            const auto &component_manager = scene->ecs->component_manager;
-            const auto &animator_component = component_manager->get_component_array<AnimatorComponent>();
-            for (auto entity : animator_component->entities) {
-                const TransformComponent *transform = component_manager->get_component<TransformComponent>(entity);
-                const AnimatorComponent *animator = component_manager->get_component<AnimatorComponent>(entity);
-                AABB aabb = animator->aabb;
-                aabb.transform(transform->world_transform);
-                line_renderer->add_aabb(aabb, 0xf07314ff);
             }
         }
     }

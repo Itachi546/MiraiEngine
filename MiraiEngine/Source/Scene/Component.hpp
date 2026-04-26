@@ -52,6 +52,10 @@ namespace mirai {
         struct MeshSubset {
             uint32_t vertex_offset_bytes;
             uint32_t vertex_count;
+
+            // Only  applicable for skinned mesh
+            uint32_t output_vertex_offset_bytes;
+
             uint32_t index_offset_bytes;
             uint32_t index_count;
             uint32_t vertex_stride;

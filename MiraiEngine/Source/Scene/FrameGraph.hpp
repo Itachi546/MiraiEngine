@@ -51,12 +51,14 @@ namespace mirai {
         FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
         FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
         FrameGraphResourceHandle add_texture(TextureID texture, const std::string_view name);
+        FrameGraphResourceHandle add_buffer(BufferID buffer, const std::string_view name);
 
         struct Builder {
             Builder(FrameGraph *frame_graph, uint32_t pass_index) : frame_graph(frame_graph), pass_index(pass_index) {}
 
             // Add external texture to framegraph, for swapchain
             FrameGraphResourceHandle add_texture(TextureID texture, const std::string& name);
+            FrameGraphResourceHandle add_buffer(BufferID buffer, const std::string& name);
             FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
             FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
             void read(FrameGraphResourceHandle resource, const AccessDeclaration &access);

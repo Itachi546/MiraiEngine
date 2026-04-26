@@ -3,6 +3,7 @@
 #include "Engine/Log.hpp"
 #include "Scene/Material.hpp"
 #include "Scene/Component.hpp"
+#include "Common/JobSystem.hpp"
 
 namespace mirai {
     // Register a shader under a material sort key for a given pass.

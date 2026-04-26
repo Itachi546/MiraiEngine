@@ -78,6 +78,11 @@ namespace mirai {
             min = vmin;
             max = vmax;
         }
+
+        void combine(const AABB &other) {
+            min = glm::min(min, other.min);
+            max = glm::max(max, other.max);
+        }
     };
 
 } // namespace mirai

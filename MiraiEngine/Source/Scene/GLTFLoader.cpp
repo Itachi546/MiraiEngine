@@ -581,11 +581,9 @@ namespace mirai {
                             weights[i * 4 + 2],
                             weights[i * 4 + 3],
                         };
-#ifdef _DEBUG
-                        if (vertex.weights.x + vertex.weights.y + vertex.weights.z + vertex.weights.w > 1.0001f) {
-                            Log::Error("Vertex weight is not normalized");
-                        }
-#endif
+
+                        // Never exactly 1.0f
+                        ASSERT(vertex.weights.x + vertex.weights.y + vertex.weights.z + vertex.weights.w <= 1.001f);
                     }
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
                     vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
@@ -617,12 +615,7 @@ namespace mirai {
         // Pushing to the vector may invalidates all the reference
         Renderer *renderer = Renderer::get();
         uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size());
-        std::optional<BufferView> vertex_buffer_view = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
-        if (!vertex_buffer_view.has_value()) {
-            Log::Fatal(0, "Failed to allocate goemetry buffer");
-        }
-
-        BufferView vertex_buffer = vertex_buffer_view.value();
+        BufferView vertex_buffer = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
         load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
                                         .data = BufferCopyTask{
                                             .dst = vertex_buffer.buffer,
@@ -632,12 +625,8 @@ namespace mirai {
                                         }});
 
         uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
-        std::optional<BufferView> index_buffer_view = renderer->index_buffer_allocator.allocate(index_buffer_size);
-        if (!index_buffer_view.has_value()) {
-            Log::Fatal("Failed to allocate goemetry buffer");
-        }
+        BufferView index_buffer = renderer->index_buffer_allocator.allocate(index_buffer_size);
 
-        BufferView index_buffer = index_buffer_view.value();
         load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
                                         .data = BufferCopyTask{
                                             .dst = index_buffer.buffer,
@@ -650,9 +639,19 @@ namespace mirai {
         for (auto &mesh_component : mesh_components) {
             mesh_component.vertex_buffer = vertex_buffer;
             mesh_component.index_buffer = index_buffer;
+
+            /**
+             * Skinned mesh are transformed using compute shader before rendering in the
+             * forward/deferred pass. The transformed vertices are stored alongside the
+             * main vertices. We allocate extra memory for transformed vertices as well.
+             */
+            bool is_skinned_mesh = mesh_component.mesh_type == MESH_TYPE_SKINNED;
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
                 mesh_subset.index_offset_bytes += index_buffer.offset;
+
+                BufferView skinned_mesh_output_buffer = renderer->vertex_buffer_allocator.allocate(mesh_subset.vertex_count * AppSettings::K_SKINNED_VERTEX_OUTPUT_SIZE);
+                mesh_subset.output_vertex_offset_bytes = skinned_mesh_output_buffer.offset;
             }
         }
 

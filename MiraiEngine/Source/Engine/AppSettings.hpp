@@ -21,6 +21,7 @@ namespace mirai {
 
         extern float ibl_contribution;
 
+        constexpr uint32_t K_SKINNED_VERTEX_OUTPUT_SIZE = 32;
         constexpr uint32_t K_LIGHT_TILE_SIZE = 16;
         constexpr uint32_t K_MAX_LIGHT_PER_TILE = 256;
 

@@ -136,16 +136,15 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         // Allocate actual resources
         for (auto &resource : resources) {
+            if (resource.external)
+                continue;
+
             if (resource.resource_type == ResourceType::Buffer) {
                 FrameGraphBuffer &buffer = resource.get<FrameGraphBuffer>();
                 ASSERT(!buffer.id.is_valid());
                 buffer.id = device->create_buffer(&buffer.desc, resource.name);
             } else if (resource.resource_type == ResourceType::Texture) {
                 FrameGraphTexture &texture = resource.get<FrameGraphTexture>();
-                if (texture.external) {
-                    ASSERT(texture.id.is_valid());
-                    continue;
-                }
                 ASSERT(!texture.id.is_valid());
                 texture.id = device->create_texture(&texture.desc, resource.name);
             }
@@ -163,17 +162,27 @@ namespace mirai {
 
     FrameGraphResourceHandle FrameGraph::add_texture(TextureID texture, const std::string_view name) {
         uint32_t resource_id = static_cast<uint32_t>(resources.size());
+        // These resources are marked as external, framgraph doesn't allocate or free these resources
         resources.emplace_back(name, FrameGraphTexture{
-                                         .id = TextureID{texture},
-                                         .external = true,
+                                         .id = texture,
                                      },
-                               ResourceType::Texture);
+                               ResourceType::Texture, true);
+        return resource_id;
+    }
+
+    FrameGraphResourceHandle FrameGraph::add_buffer(BufferID buffer, const std::string_view name) {
+        uint32_t resource_id = static_cast<uint32_t>(resources.size());
+        // These resources are marked as external, framgraph doesn't allocate or free these resources
+        resources.emplace_back(name, FrameGraphBuffer{
+                                         .id = buffer,
+                                     },
+                               ResourceType::Buffer, true);
         return resource_id;
     }
 
     FrameGraphResourceHandle FrameGraph::create_texture(const std::string_view name, const TextureDescription &desc) {
         uint32_t resource_id = static_cast<uint32_t>(resources.size());
-        resources.emplace_back(name, FrameGraphTexture{.id = TextureID{K_INVALID_ID}, .external = false, .desc = desc}, ResourceType::Texture);
+        resources.emplace_back(name, FrameGraphTexture{.id = TextureID{K_INVALID_ID}, .desc = desc}, ResourceType::Texture);
         return resource_id;
     }
 
@@ -187,14 +196,15 @@ namespace mirai {
         std::vector<BufferID> buffers;
         std::vector<TextureID> textures;
         for (auto &resource : resources) {
+            if (resource.external)
+                continue;
             ID id = std::visit([](const auto &d) { return d.id; }, resource.resource);
             if (resource.resource_type == ResourceType::Buffer) {
                 FrameGraphBuffer buffer = resource.get<FrameGraphBuffer>();
                 buffers.push_back(id);
             } else {
                 FrameGraphTexture texture = resource.get<FrameGraphTexture>();
-                if (!texture.external)
-                    textures.push_back(id);
+                textures.push_back(id);
             }
         }
 
@@ -208,6 +218,10 @@ namespace mirai {
 
     FrameGraphResourceHandle FrameGraph::Builder::add_texture(TextureID texture, const std::string &name) {
         return frame_graph->add_texture(texture, name);
+    }
+
+    FrameGraphResourceHandle FrameGraph::Builder::add_buffer(BufferID buffer, const std::string &name) {
+        return frame_graph->add_buffer(buffer, name);
     }
 
     FrameGraphResourceHandle FrameGraph::Builder::create_texture(const std::string_view name, const TextureDescription &desc) {
