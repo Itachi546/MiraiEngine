@@ -112,7 +112,7 @@ namespace mirai {
         if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
             Format color_format = FORMAT_R16G16B16A16_SFLOAT;
             PipelineAttachmentInfo fwd_attachment = {
-                .color_attachments_format = {color_format},
+                .color_attachments_format = {color_format, FORMAT_R16G16_SFLOAT},
                 .has_depth_attachment = true,
                 .depth_attachment_format = FORMAT_D32_SFLOAT,
             };

@@ -26,12 +26,12 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            });
 
-                const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
-                builder.read(forward_pass_data.output, {
-                                                           .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                           .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                                           .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                       });
+                const TAAResolvePassData &taa_resolve_data = board->get<TAAResolvePassData>();
+                builder.read(taa_resolve_data.output, {
+                                                          .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                          .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                          .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      });
 
                 data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
                                                                std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/final-composite.frag.spv"},
@@ -51,7 +51,12 @@ namespace mirai {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
-                const auto &resource_states = pass_resource.get_resource_access_states();
+                /**
+                 * The TAAOutput texture should be resolved for shader read in pipeline barrier,
+                 * however due to the fact that it is image_layout_general, it doesn't seem to throw
+                 * any validation error
+                 */
+                auto resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
 
                 uint32_t width = AppSettings::get_width();
@@ -60,9 +65,9 @@ namespace mirai {
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
-                const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
+                const TAAResolvePassData &taa_pass_data = board->get<TAAResolvePassData>();
                 DescriptorOffset bindings[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(forward_pass_data.output).id, DescriptorType::SampledImage),
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(taa_pass_data.output).id, DescriptorType::SampledImage),
                 };
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();

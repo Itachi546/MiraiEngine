@@ -21,22 +21,39 @@ namespace mirai {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
 
-                data.output = builder.create_texture("FinalTexture", {
-                                                                         .create_flags = 0,
-                                                                         .width = width,
-                                                                         .height = height,
-                                                                         .depth = 1,
-                                                                         .mip_levels = 1,
-                                                                         .array_layers = 1,
-                                                                         .texture_type = TEXTURE_TYPE_2D,
-                                                                         .format = FORMAT_R16G16B16A16_SFLOAT,
-                                                                         .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
-                                                                     });
-                builder.write(data.output, {
-                                               .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
-                                               .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                               .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                           });
+                data.color_texture = builder.create_texture("FinalTexture", {
+                                                                                .create_flags = 0,
+                                                                                .width = width,
+                                                                                .height = height,
+                                                                                .depth = 1,
+                                                                                .mip_levels = 1,
+                                                                                .array_layers = 1,
+                                                                                .texture_type = TEXTURE_TYPE_2D,
+                                                                                .format = FORMAT_R16G16B16A16_SFLOAT,
+                                                                                .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+                                                                            });
+                builder.write(data.color_texture, {
+                                                      .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
+                                                      .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                      .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                  });
+
+                data.velocity_buffer = builder.create_texture("VelocityBuffer", {
+                                                                                    .create_flags = 0,
+                                                                                    .width = width,
+                                                                                    .height = height,
+                                                                                    .depth = 1,
+                                                                                    .mip_levels = 1,
+                                                                                    .array_layers = 1,
+                                                                                    .texture_type = TEXTURE_TYPE_2D,
+                                                                                    .format = FORMAT_R16G16_SFLOAT,
+                                                                                    .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
+                                                                                });
+                builder.write(data.velocity_buffer, {
+                                                        .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
+                                                        .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                        .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                    });
 
                 const SkinningComputePassData &skinning_data = board->get<SkinningComputePassData>();
                 builder.read(skinning_data.output_buffer, {
@@ -46,7 +63,7 @@ namespace mirai {
 
                 const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 builder.read(depth_prepass_data.output, {
-                                                            .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ,
+                                                            .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ | ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE,
                                                             .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                                             .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                                         });
@@ -80,7 +97,7 @@ namespace mirai {
                                                                           .depth_test = true,
                                                                       },
                                                                       PipelineAttachmentInfo{
-                                                                          .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT},
+                                                                          .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT, FORMAT_R16G16_SFLOAT},
                                                                           .has_depth_attachment = true,
                                                                           .depth_attachment_format = FORMAT_D32_SFLOAT,
                                                                       });
@@ -136,11 +153,17 @@ namespace mirai {
                 };
 
                 command_buffer->begin_render_pass({AttachmentInfo{
-                                                      .texture = pass_resource.get<FrameGraphTexture>(data.output).id,
-                                                      .load_op = LOAD_OP_CLEAR,
-                                                      .store_op = STORE_OP_STORE,
-                                                      .clear_color = {0.0f, 0.0f, 0.0f, 0.0f},
-                                                  }},
+                                                       .texture = pass_resource.get<FrameGraphTexture>(data.color_texture).id,
+                                                       .load_op = LOAD_OP_CLEAR,
+                                                       .store_op = STORE_OP_STORE,
+                                                       .clear_color = {0.0f, 0.0f, 0.0f, 0.0f},
+                                                   },
+                                                   AttachmentInfo{
+                                                       .texture = pass_resource.get<FrameGraphTexture>(data.velocity_buffer).id,
+                                                       .load_op = LOAD_OP_CLEAR,
+                                                       .store_op = STORE_OP_STORE,
+                                                       .clear_color = {0.0f, 0.0f, 0.0f, 0.0f},
+                                                   }},
                                                   AttachmentInfo{
                                                       .texture = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id,
                                                       .load_op = LOAD_OP_LOAD,
@@ -192,20 +215,22 @@ namespace mirai {
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE);
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK);
 
-                Camera *camera = scene->get_camera();
-                // Draw Skybox
-                glm::mat4 skybox_push_data[] = {
-                    camera->get_inv_projection_transform(),
-                    camera->get_inv_view_transform(),
-                };
+                {
+                    Camera *camera = scene->get_camera();
+                    // Draw Skybox
+                    glm::mat4 skybox_push_data[] = {
+                        camera->get_inv_projection_transform(),
+                        camera->get_inv_view_transform(),
+                    };
 
-                data.skybox_shader->bind(command_buffer);
-                command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
-                command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &cubemap_binding, cast_u32(sizeof(uint32_t)));
-                command_buffer->draw(3, 1, 0, 0);
+                    data.skybox_shader->bind(command_buffer);
+                    command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
+                    command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &cubemap_binding, cast_u32(sizeof(uint32_t)));
+                    command_buffer->draw(3, 1, 0, 0);
 
-                // DebugDraw line
-                LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+                    // DebugDraw line
+                    LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+                }
 
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_TRANSPARENT);
 

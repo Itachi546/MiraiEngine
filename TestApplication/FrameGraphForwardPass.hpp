@@ -17,6 +17,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
     TiledLightCullingPass light_cull_pass{frame_graph, board};
     ForwardPass forward_pass{frame_graph, board};
+    TAAResolvePass taa_pass{frame_graph, board};
     FinalCompositePass composite_pass{frame_graph, board};
     //   DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
     /*

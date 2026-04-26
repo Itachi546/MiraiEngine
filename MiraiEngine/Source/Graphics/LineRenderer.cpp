@@ -33,7 +33,7 @@ namespace mirai {
                                                       .depth_write = true,
                                                   },
                                                   PipelineAttachmentInfo{
-                                                      .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT},
+                                                      .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT, FORMAT_R16G16_SFLOAT},
                                                       .has_depth_attachment = true,
                                                       .depth_attachment_format = FORMAT_D32_SFLOAT,
                                                   });
@@ -47,17 +47,20 @@ namespace mirai {
     void LineRenderer::render(CommandBuffer *command_buffer, const glm::mat4 &VP) {
         if (line_count == 0 || !AppSettings::enable_debug_draw)
             return;
-        shader->bind(command_buffer);
-        command_buffer->set_push_data(0, &VP[0][0], sizeof(glm::mat4));
 
+        shader->bind(command_buffer);
         DescriptorInfo descriptor_info = {.type = DescriptorType::StorageBuffer,
                                           .resource = buffer,
                                           .buffer_info = {
                                               .offset = cast_u32(per_frame_offset * sizeof(Line)),
                                               .size = cast_u32(line_count * sizeof(Line)),
                                           }};
-        DescriptorOffset descriptor = Renderer::get()->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &descriptor_info, 1);
-        command_buffer->set_push_data(cast_u32(sizeof(glm::mat4)), &descriptor, cast_u32(sizeof(uint32_t)));
+        Renderer *renderer = Renderer::get();
+        DescriptorOffset descriptors[] = {
+            renderer->per_frame_data_descriptor,
+            renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &descriptor_info, 1),
+        };
+        command_buffer->set_push_data(0, descriptors, cast_u32(sizeof(descriptors)));
         command_buffer->draw(line_count * 2, 1, 0, 0);
     }
 

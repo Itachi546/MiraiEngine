@@ -8,6 +8,7 @@
 #include "../utils/debug-options.glsl"
 
 layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec2 velocity_buffer;
 
 layout(location = 0) in FS_IN {
     vec3 normal;
@@ -16,6 +17,7 @@ layout(location = 0) in FS_IN {
     vec3 world_pos;
     vec2 uv;
     flat uint mat_id;
+    vec2 velocity;
 }
 fs_in;
 
@@ -204,6 +206,10 @@ void main() {
             break;
         case DEBUG_LIGHT_TILE:
             Lo = get_tile_heatmap(tile_light_count, 50);
+            break;
+        case DEBUG_VELOCITY:
+            Lo = vec3(fs_in.velocity, 0.0f) * 100.0f;
+            break;
         };
     }
 
@@ -214,6 +220,7 @@ void main() {
 #else
     fragColor = vec4(Lo, 1.0f);
 #endif
+    velocity_buffer = fs_in.velocity;
 }
 
 #endif

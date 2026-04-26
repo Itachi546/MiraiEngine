@@ -7,6 +7,7 @@
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
+#include "Common/Random.hpp"
 #include "Math/Math.hpp"
 #include <execution>
 
@@ -55,6 +56,7 @@ namespace mirai {
         per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
+        per_frame_data.current_frame_jitter = glm::vec2(0.0f);
     }
 
     void Scene::update() {
@@ -62,6 +64,24 @@ namespace mirai {
 
         updated_transforms.clear();
         updated_materials.clear();
+
+        // Update TAA
+        if (AppSettings::enable_taa) {
+            per_frame_data.prev_VP = camera->get_view_projection_transform();
+            per_frame_data.prev_frame_jitter = per_frame_data.current_frame_jitter;
+            uint32_t width = AppSettings::get_width();
+            uint32_t height = AppSettings::get_height();
+            glm::vec2 inv_resolution = 1.0f / glm::vec2{cast_float(width), cast_float(height)};
+
+            glm::vec2 current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
+            current_frame_jitter *= inv_resolution;
+            per_frame_data.current_frame_jitter = current_frame_jitter;
+
+            jitter_index = (jitter_index + 1) % jitter_period;
+            camera->set_jitter_factor(current_frame_jitter);
+        } else {
+            camera->set_jitter_factor(glm::vec2(0.0f));
+        }
 
         camera->update();
 

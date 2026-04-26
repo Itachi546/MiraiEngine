@@ -114,6 +114,10 @@ namespace mirai {
             glm::mat4 V;
             glm::mat4 VP;
             glm::mat4 invVP;
+            glm::mat4 prev_VP;
+
+            glm::vec2 current_frame_jitter;
+            glm::vec2 prev_frame_jitter;
 
             glm::vec3 camera_position;
             float elapsed_time;
@@ -133,6 +137,8 @@ namespace mirai {
         std::atomic<uint32_t> render_object_count;
 
         bool pause_animation = false;
+        int jitter_index = 0;
+        int jitter_period = 4;
 
       protected:
         std::string name;

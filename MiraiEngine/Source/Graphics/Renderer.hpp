@@ -83,19 +83,11 @@ namespace mirai {
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;
 
-        // TAA Options
-        glm::mat4 prev_frame_VP;
-        glm::vec2 prev_frame_jitter;
-        glm::vec2 current_frame_jitter;
-
         bool freeze_frustum = false;
         bool show_aabbs = false;
         bool disable_punctual_lights = true;
         FrustumPlanes freezed_frustum_planes;
         glm::mat4 freezed_inv_VP;
-
-        int jitter_index = 0;
-        int jitter_period = 4;
 
         uint32_t total_visible_lights = 0;
         uint32_t total_visible_entities = 0;

@@ -53,7 +53,8 @@ namespace mirai {
     };
 
     struct ForwardPassData {
-        FrameGraphResourceHandle output;
+        FrameGraphResourceHandle color_texture;
+        FrameGraphResourceHandle velocity_buffer;
         ShaderRegistry *registry;
         std::shared_ptr<EffectMaterial> skybox_shader;
     };
@@ -64,6 +65,21 @@ namespace mirai {
         bool show_debug_cascade_color;
         bool enable_gamma_correction;
         bool light_culling;
+    };
+
+    struct TAAOptions {
+        bool should_reset;
+        bool should_sample_motion_vector;
+        bool enable_temporal_filtering;
+        bool enable_taa_simple;
+        bool should_enable_min_depth;
+        bool should_enable_history_sampling;
+    };
+
+    struct TAAResolvePassData {
+        FrameGraphResourceHandle output;
+        TextureID history_textures[2];
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct DeferredOverlay3DPassData {

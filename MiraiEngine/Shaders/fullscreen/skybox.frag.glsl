@@ -6,7 +6,9 @@
 #include "../utils/bindless-sampler.glsl"
 
 layout(location = 0) in vec2 uv;
+
 layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec2 velocity;
 
 layout(push_constant) uniform PushConstants {
     mat4 invP;
@@ -20,4 +22,5 @@ void main() {
     rd.y = -rd.y;
     vec3 col = texture(samplerCube(u_cubemap, u_samplers[SAMPLER_LINEAR_CLAMP]), rd).rgb;
     fragColor = vec4(col, 1.0f);
+    velocity = vec2(0.0f);
 }

@@ -19,6 +19,7 @@ namespace AppSettings {
     /**************************************DEBUG SETTINGS **********************************************/
     bool enable_debug_draw = true;
     bool enable_debug_light_tile = true;
+    bool enable_taa = true;
 
     /**************************************RENDERPASS SETTINGS **********************************************/
 

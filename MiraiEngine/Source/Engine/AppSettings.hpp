@@ -18,6 +18,7 @@ namespace mirai {
         extern bool enable_rt_shadow;
         extern bool enable_debug_draw;
         extern bool enable_debug_light_tile;
+        extern bool enable_taa;
 
         extern float ibl_contribution;
 

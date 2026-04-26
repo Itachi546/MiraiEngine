@@ -16,7 +16,6 @@
 #include "Math/MathUtils.hpp"
 #include "Math/Frustum.hpp"
 #include "PipelineLoader.hpp"
-#include "Common/Random.hpp"
 #include "Common/JobSystem.hpp"
 #include "RenderPass/TAAResolvePass.hpp"
 #include "LineRenderer.hpp"
@@ -52,10 +51,6 @@ namespace mirai {
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
-
-        current_frame_jitter = glm::vec2(0.0f);
-        prev_frame_jitter = glm::vec2(0.0f);
-        prev_frame_VP = glm::mat4(1.0f);
     }
 
     void Renderer::initialize() {
@@ -122,9 +117,6 @@ namespace mirai {
 
         // Upload default sampler
         rendering_utils::upload_default_samplers(device.get(), sampler_heap.ptr);
-
-        prev_frame_VP = scene->get_camera()->get_view_projection_transform();
-        prev_frame_jitter = current_frame_jitter = glm::vec2(0.0f);
     }
 
     void Renderer::on_load_resources() {
@@ -133,7 +125,6 @@ namespace mirai {
         scene->update();
 
         Camera *camera = scene->get_camera();
-        prev_frame_VP = camera->get_view_projection_transform();
         freezed_inv_VP = camera->get_inv_view_projection_transform();
         freezed_frustum_planes = camera->get_frustum_planes();
 
@@ -525,29 +516,6 @@ namespace mirai {
         resource_heap.new_frame(current_frame_index);
         line_renderer->new_frame(current_frame_index);
 
-        Camera *camera = scene->get_camera();
-        prev_frame_VP = camera->get_view_projection_transform();
-        /*
-        // Update camera jitter
-        FrameGraphNode *node = frame_graph->get_node("deferred_pass");
-        if (node) {
-            ASSERT(node != nullptr);
-
-            prev_frame_jitter = current_frame_jitter;
-
-            glm::vec2 inv_resolution = 1.0f / glm::vec2{node->width, node->height};
-
-            current_frame_jitter = halton23_sequence(jitter_index) * 2.0f - 1.0f;
-            current_frame_jitter *= inv_resolution;
-            jitter_index = (jitter_index + 1) % jitter_period;
-
-            TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
-            if (taa && taa->enable_taa)
-                camera->set_jitter_factor(current_frame_jitter);
-            else
-                camera->set_jitter_factor(glm::vec2(0.0f));
-        }
-        */
         scene->update();
 
         // Generate and Upload visible lights
@@ -563,6 +531,7 @@ namespace mirai {
         }
 
         if (show_aabbs) {
+            Camera* camera = scene->get_camera();
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
             uint32_t render_object_count = scene->render_object_count.load();
             for (uint32_t i = 0; i < render_object_count; ++i) {

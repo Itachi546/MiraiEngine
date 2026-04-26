@@ -1,4 +1,15 @@
-// #pragma once
+#pragma once
+
+namespace mirai {
+
+    class FrameGraph;
+    class FrameGraphBlackBoard;
+    class TAAResolvePass {
+      public:
+        TAAResolvePass(FrameGraph *frame_graph, FrameGraphBlackBoard *board);
+        ~TAAResolvePass() = default;
+    };
+} // namespace mirai
 
 // #include "Graphics/RenderingDevice.hpp"
 // #include "Scene/FrameGraph.hpp"

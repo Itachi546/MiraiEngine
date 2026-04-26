@@ -152,7 +152,7 @@ namespace mirai {
     }
 
     void FrameGraph::execute(void *context) {
-        for (const auto &pass_node : passes) {
+        for (auto &pass_node : passes) {
             if (pass_node.can_execute()) {
                 FrameGraphPassResource resource{*this, pass_node};
                 std::invoke(*pass_node.pass, resource, context);

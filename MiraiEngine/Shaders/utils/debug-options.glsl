@@ -9,6 +9,7 @@
 #define DEBUG_SHADOW 5
 #define DEBUG_CSM_SPLIT 6
 #define DEBUG_LIGHT_TILE 7
+#define DEBUG_VELOCITY 8
 
 vec3 get_tile_heatmap(uint light_count, uint max_heat) {
     const vec3 map_tex[] = {
@@ -25,7 +26,7 @@ vec3 get_tile_heatmap(uint light_count, uint max_heat) {
     vec3 a = map_tex[int(floor(l))];
     vec3 b = map_tex[int(ceil(l))];
 
-#if 1 
+#if 1
     return mix(a, b, l - floor(l));
 #else
     return map_tex[light_count + 1];

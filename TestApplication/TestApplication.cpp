@@ -176,6 +176,7 @@ class TestApplication : public App {
                 transform->scale = glm::vec3(global_scene_scale);
                 transform->dirty = true;
             }
+            ImGui::Checkbox("TAA", &AppSettings::enable_taa);
 
             ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
             ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_visible_lights);
@@ -225,7 +226,7 @@ class TestApplication : public App {
         if (ImGui::CollapsingHeader("Render Debug Options") && board->has<RenderDebugData>()) {
             RenderDebugData &debug_data = board->get<RenderDebugData>();
             ImGui::SliderFloat("Split Percentage", &debug_data.split_percentage, 0.0f, 1.0f);
-            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0LightTile\0\0";
+            static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0LightTile\0Velocity\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
             ImGui::Checkbox("Light Culling", &debug_data.light_culling);
@@ -359,23 +360,19 @@ class TestApplication : public App {
                     ImGui::TreePop();
                 }
             }
-            /*
-            TAAResolvePass *taa = (TAAResolvePass *)frame_graph->get_renderer("taa_resolve_pass");
-            if (ImGui::TreeNodeEx("TAA") && taa != nullptr) {
-                bool should_reset_history_texture = false;
-                should_reset_history_texture |= ImGui::Checkbox("Enable TAA", &taa->enable_taa);
-                ImGui::Checkbox("Reset History Texture", &taa->should_reset_history_texture);
-                should_reset_history_texture |= ImGui::Checkbox("TAA Simple", &taa->enable_taa_simple);
-                should_reset_history_texture |= ImGui::Checkbox("Temporal filtering", &taa->enable_temporal_filtering);
-                should_reset_history_texture |= ImGui::Checkbox("Sample motion vector", &taa->should_sample_motion_vector);
-                if (taa->should_sample_motion_vector)
-                    should_reset_history_texture |= ImGui::Checkbox("Enable min depth", &taa->should_enable_min_depth);
-                should_reset_history_texture |= ImGui::Checkbox("Enable History Sampling", &taa->should_enable_history_sampling);
-                should_reset_history_texture |= ImGui::SliderInt("Jitter period", &Renderer::get()->jitter_period, 2, 16);
+
+            if (ImGui::TreeNodeEx("TAA") && board->has<TAAOptions>()) {
+                TAAOptions &taa_options = board->get<TAAOptions>();
+                taa_options.should_reset |= ImGui::Checkbox("Enable TAA", &AppSettings::enable_taa);
+                ImGui::Checkbox("Reset History Texture", &taa_options.should_reset);
+                taa_options.should_reset |= ImGui::Checkbox("Temporal filtering", &taa_options.enable_temporal_filtering);
+                taa_options.should_reset |= ImGui::Checkbox("Sample motion vector", &taa_options.should_sample_motion_vector);
+                if (taa_options.should_sample_motion_vector)
+                    taa_options.should_reset |= ImGui::Checkbox("Enable min depth", &taa_options.should_enable_min_depth);
+                taa_options.should_reset |= ImGui::Checkbox("Enable History Sampling", &taa_options.should_enable_history_sampling);
+                taa_options.should_reset |= ImGui::SliderInt("Jitter period", &scene->jitter_period, 2, 16);
                 ImGui::TreePop();
             }
-
-        */
         }
     }
     void add_debug_ui() {

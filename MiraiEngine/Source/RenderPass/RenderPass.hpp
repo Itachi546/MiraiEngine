@@ -9,3 +9,4 @@
 #include "DeferredOverlay3DPass.hpp"
 #include "ForwardPass.hpp"
 #include "SkinningComputePass.hpp"
+#include "TAAResolvePass.hpp"

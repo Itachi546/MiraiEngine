@@ -13,7 +13,7 @@ namespace mirai {
         FrameGraphPassResource &operator=(const FrameGraphPassResource &) = delete;
         FrameGraphPassResource &operator=(FrameGraphPassResource &&) = delete;
 
-        FrameGraphPassResource(const FrameGraph &frame_graph, const PassNode &pass_node) : frame_graph(frame_graph), pass_node(pass_node) {
+        FrameGraphPassResource(const FrameGraph &frame_graph, PassNode &pass_node) : frame_graph(frame_graph), pass_node(pass_node) {
         }
 
         template <typename T>
@@ -23,7 +23,7 @@ namespace mirai {
 
       private:
         const FrameGraph &frame_graph;
-        const PassNode &pass_node;
+        PassNode &pass_node;
     };
 
     class FrameGraph {
@@ -44,6 +44,9 @@ namespace mirai {
             disable_resource_aliasing = value;
         }
 
+        template <typename T>
+        inline T &get(FrameGraphResourceHandle handle);
+
         void compile();
 
         void execute(void *context);
@@ -57,8 +60,8 @@ namespace mirai {
             Builder(FrameGraph *frame_graph, uint32_t pass_index) : frame_graph(frame_graph), pass_index(pass_index) {}
 
             // Add external texture to framegraph, for swapchain
-            FrameGraphResourceHandle add_texture(TextureID texture, const std::string& name);
-            FrameGraphResourceHandle add_buffer(BufferID buffer, const std::string& name);
+            FrameGraphResourceHandle add_texture(TextureID texture, const std::string &name);
+            FrameGraphResourceHandle add_buffer(BufferID buffer, const std::string &name);
             FrameGraphResourceHandle create_texture(const std::string_view name, const TextureDescription &desc);
             FrameGraphResourceHandle create_buffer(const std::string_view name, const BufferDescription &desc);
             void read(FrameGraphResourceHandle resource, const AccessDeclaration &access);
@@ -110,6 +113,12 @@ namespace mirai {
         Data &data = static_cast<FrameGraphPass<Data, Execute> *>(pass_node.pass.get())->data;
         std::invoke(setup, builder, data);
         return data;
+    }
+
+    template <typename T>
+    inline T &FrameGraph::get(FrameGraphResourceHandle handle) {
+        ResourceNode *resource = &resources[handle];
+        return resource->get<T>();
     }
     template <typename T>
     inline const T &FrameGraphPassResource::get(FrameGraphResourceHandle handle) const {
