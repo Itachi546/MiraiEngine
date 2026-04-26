@@ -432,21 +432,6 @@ namespace mirai {
         return (uint8_t *)(model->buffers[buffer_view.buffer].data.data() + accessor.byteOffset + buffer_view.byteOffset);
     }
 
-    struct TempVertex {
-        glm::vec3 position;
-        uint32_t normal;
-
-        uint32_t tangent;
-        uint32_t bitangent;
-        glm::vec2 uv;
-
-        uint32_t joints;
-        glm::vec4 weights;
-    };
-
-    const uint32_t VERTEX_DATA_SIZE = 32;
-    const uint32_t VERTEX_DATA_SIZE_SKINNED = sizeof(TempVertex);
-
     void LoadMeshes(const tinygltf::Model *model, LoadState *load_state) {
         size_t mesh_count = model->meshes.size();
         std::vector<MeshComponent> &mesh_components = load_state->mesh_components;

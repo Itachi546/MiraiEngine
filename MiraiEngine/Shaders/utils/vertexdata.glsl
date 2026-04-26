@@ -1,30 +1,5 @@
 #ifndef VERTEX_DATA_GLSL
 #define VERTEX_DATA_GLSL
-/*
-struct Vertex {
-    float px, py, pz;
-    uint normal;
-
-    uint tangent;
-    uint bitangent;
-
-    float tu, tv;
-};
-
-struct SkinnedVertex {
-    float px, py, pz;
-    uint normal;
-
-    uint tangent;
-    uint bitangent;
-
-    float tu;
-    float tv;
-
-    uint joints;
-    float w0, w1, w2, w3;
-};
-*/
 
 struct DrawData {
     uint transform_index;
@@ -97,4 +72,4 @@ uint pack_vec3_to_u32(vec3 p) {
            (pack_float_to_u8(p.z) << 8);
 }
 
-endif
+#endif

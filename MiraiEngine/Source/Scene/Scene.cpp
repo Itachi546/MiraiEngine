@@ -304,7 +304,7 @@ namespace mirai {
                     .vertex_offset_bytes = is_skinned ? subset.output_vertex_offset_bytes : subset.vertex_offset_bytes, // Manually calculating in shader
                     .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
                     .index_count = subset.index_count,
-                    .vertex_stride = subset.vertex_stride,
+                    .vertex_stride = VERTEX_DATA_SIZE,
                     .local_aabb = mesh_component.aabbs[s],
                     .transformed_aabb = transformed_aabb,
                 };

@@ -47,7 +47,7 @@ namespace mirai {
                 ScopedCpuProfiling("ComputeSkinningSetup");
                 // Offset is in number of component as opposed to bytes
                 // All the skinned mesh are updated in this phase even if they are not visible
-                uint32_t matrix_pallete_offset = 0;
+                uint32_t matrix_pallete_count = 0;
                 for (auto entity : animator_component_ptr->entities) {
                     AnimatorComponent *animator_component = component_manager->get_component<AnimatorComponent>(entity);
                     MeshComponent *mesh_component = component_manager->get_component<MeshComponent>(entity);
@@ -56,19 +56,22 @@ namespace mirai {
                         uint32_t skeleton_index = animator_component->skeleton_index;
                         Skeleton *skeleton = &scene->skeletons[skeleton_index];
 
+                        // Vertices is access as uint in the shader, so the offset/stride should be
+                        // in the sizeof uint instead of bytes
                         skinned_mesh_data.emplace_back(SkinnedMeshData{
-                            .vertex_address = subset.vertex_offset_bytes,
-                            .vertex_stride = subset.vertex_stride,
+                            .vertex_address = subset.vertex_offset_bytes / 4,
+                            .vertex_stride = subset.vertex_stride / 4,
                             .vertex_count = subset.vertex_count,
-                            .output_offset = subset.output_vertex_offset_bytes,
-                            .matrix_palletes_offset = matrix_pallete_offset,
+                            .output_offset = subset.output_vertex_offset_bytes / 4,
+                            // Access as mat4 in shader, so we don't convert it to bytes
+                            .matrix_palletes_offset = matrix_pallete_count,
                         });
-                        matrix_pallete_offset += cast_u32(animator_component->pose.matrix_palletes.size());
+                        matrix_pallete_count += cast_u32(animator_component->pose.matrix_palletes.size());
                     }
                 }
 
                 GPUBufferLinearAllocator *allocator = renderer->get_per_frame_gpu_allocator();
-                BufferView matrix_pallete_buffer = allocator->allocate(matrix_pallete_offset);
+                BufferView matrix_pallete_buffer = allocator->allocate(cast_u32(matrix_pallete_count * sizeof(glm::mat4)));
                 uint8_t *ptr = matrix_pallete_buffer.ptr;
                 for (auto &entity : animator_component_ptr->entities) {
                     AnimatorComponent *animator_component = component_manager->get_component<AnimatorComponent>(entity);

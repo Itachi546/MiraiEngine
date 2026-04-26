@@ -11,7 +11,7 @@ struct Vertex {
     uint bitangent;
     float tu, tv;
 };
-const uint OUTPUT_VERTEX_SIZE = 32;
+const uint OUTPUT_VERTEX_SIZE = 8;
 
 layout(set = 0, binding = 0) buffer VertexBinding {
     uint vertices[];
@@ -44,20 +44,27 @@ void main() {
     uvec4 joints = unpack_joints(vertex_address);
     vec4 weights = unpack_weights(vertex_address);
 
-    mat4 skinned_matrix = matrix_palletes[joints.x] * weights.x;
-    skinned_matrix += matrix_palletes[joints.y] * weights.y;
-    skinned_matrix += matrix_palletes[joints.z] * weights.z;
-    skinned_matrix += matrix_palletes[joints.w] * weights.w;
+    mat4 skinning_matrix = matrix_palletes[matrix_pallete_offset + joints.x] * weights.x;
+    skinning_matrix += matrix_palletes[matrix_pallete_offset + joints.y] * weights.y;
+    skinning_matrix += matrix_palletes[matrix_pallete_offset + joints.z] * weights.z;
+    skinning_matrix += matrix_palletes[matrix_pallete_offset + joints.w] * weights.w;
 
     uint output_address = output_offset + id * OUTPUT_VERTEX_SIZE;
-    out_vertices[id].position = vec3(skinned_matrix * vec4(position, 1.0f));
+    uvec3 out_position = floatBitsToUint(vec3(skinning_matrix * vec4(position, 1.0f)));
 
-    mat3 normal_matrix = mat3(transpose(inverse(skinned_matrix)));
-    out_vertices[id].normal = pack_vec3_to_u32(normal_matrix * unpack_normal(vertex_address));
-    out_vertices[id].tangent = pack_vec3_to_u32(normal_matrix * unpack_tangent(vertex_address));
-    out_vertices[id].bitangent = pack_vec3_to_u32(normal_matrix * unpack_bitangent(vertex_address));
+    uint ptr = output_offset + id * OUTPUT_VERTEX_SIZE;
 
-    vec2 uv = unpack_uv(vertex_address);
-    out_vertices[id].tu = uv.x;
-    out_vertices[id].tv = uv.y;
+    vertices[ptr] = out_position.x;
+    vertices[ptr + 1] = out_position.y;
+    vertices[ptr + 2] = out_position.z;
+
+    mat3 normal_matrix = mat3(transpose(inverse(skinning_matrix)));
+    vertices[ptr + 3] = pack_vec3_to_u32(normalize(normal_matrix * unpack_normal(vertex_address)));
+    vertices[ptr + 4] = pack_vec3_to_u32(normalize(normal_matrix * unpack_tangent(vertex_address)));
+    vertices[ptr + 5] = pack_vec3_to_u32(normalize(normal_matrix * unpack_bitangent(vertex_address)));
+
+    uvec2 uv = floatBitsToUint(unpack_uv(vertex_address));
+
+    vertices[ptr + 6] = uv.x;
+    vertices[ptr + 7] = uv.y;
 }

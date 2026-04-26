@@ -416,8 +416,9 @@ namespace mirai {
                     };
                     std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
                     draw_data_array += draw_data_instance_size;
-
+                    // @TODO Fix this
                     draw_info.draw_info.vertex_offset_bytes = 0;
+
                     std::memcpy(draw_indirect_array, &draw_info.draw_info, sizeof(DrawIndexedIndirectCommand));
                     draw_indirect_array += sizeof(DrawIndexedIndirectCommand);
                 }
