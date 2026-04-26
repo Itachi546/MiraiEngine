@@ -201,7 +201,6 @@ void main() {
     Lo += pbr_params.emissive;
 
 #ifdef ALPHA_MODE_TRANSPARENT
-    // @TODO temp
     fragColor = vec4(Lo, albedo.a);
 #else
     fragColor = vec4(Lo, 1.0f);

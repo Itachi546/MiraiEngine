@@ -167,7 +167,6 @@ namespace mirai {
             });
 
             AccelerationStructureMeshInfo &mesh_info = mesh_infos.back();
-            // @TODO a very long function :D
             TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
             // The default representation of glm is column major while the VkTransformKHR uses row major
             // glm::mat4 transform = glm::transpose(transform_component.world_transform);

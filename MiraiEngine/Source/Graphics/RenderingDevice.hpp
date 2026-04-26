@@ -13,7 +13,7 @@ namespace mirai {
     constexpr const uint32_t K_INVALID_QUEUE_ID = UINT32_MAX;
     constexpr const uint32_t K_INVALID_ID = UINT32_MAX;
     // Reserved for swapchain
-    constexpr const uint32_t K_SWAPCHAIN_TEXTURE_ID = UINT32_MAX -1;
+    constexpr const uint32_t K_SWAPCHAIN_TEXTURE_ID = UINT32_MAX - 1;
 
     struct ID {
         uint32_t id = 0;
@@ -81,9 +81,6 @@ namespace mirai {
     struct AccelerationStructureMeshInfo {
         AccelerationStructureBufferInfo vertex_buffer;
         AccelerationStructureBufferInfo index_buffer;
-        // @TODO Copying a data at the moment, but a ptr might be sufficient
-        // Trying to avoid using pointer, because the transform matrix is a part
-        // of vector, in which pointer is not a best way to index to it
         float transform[3][4];
     };
 
