@@ -76,37 +76,31 @@ namespace mirai {
                 });
                 command_buffer->set_scissor(0, 0, width, height);
 
+                const auto draw_batch = [&](const std::vector<RenderBatch> &render_batches, RenderBatchType render_batch_type, const std::vector<DescriptorOffset> &descriptor_infos) {
+                    for (const auto &batch : render_batches) {
+                        if (batch.batch_type != render_batch_type)
+                            continue;
+
+                        Shader *shader = data.registry->find(batch.sort_key);
+                        ASSERT(shader != nullptr);
+
+                        DrawBatch(command_buffer, batch, {
+                                                             .shader = shader,
+                                                             .descriptor_infos = descriptor_infos,
+                                                             .push_data = nullptr,
+                                                             // Used to override descriptor info at given index
+                                                             .draw_data_descriptor_index = 3,
+                                                         });
+                    }
+                };
+
                 // Draw Opaque object
-                std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor, 0};
-                for (const auto &batch : renderer->main_render_batches) {
-                    if (batch.batch_type != RENDERBATCH_TYPE_OPAQUE)
-                        continue;
-
-                    Shader *shader = data.registry->find(batch.sort_key);
-                    ASSERT(shader != nullptr);
-
-                    DrawBatch(command_buffer, batch, {
-                                                         .shader = shader,
-                                                         .descriptor_infos = descriptor_infos,
-                                                         .push_data = nullptr,
-                                                         // Used to override descriptor info at given index
-                                                         .draw_data_descriptor_index = 3,
-                                                     });
-                }
+                std::vector<DescriptorOffset>
+                    descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor, 0};
+                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE, descriptor_infos);
 
                 descriptor_infos.push_back(renderer->material_descriptor);
-                for (const auto &batch : renderer->main_render_batches) {
-                    if (batch.batch_type != RENDERBATCH_TYPE_ALPHA_MASK)
-                        continue;
-                    Shader *shader = data.registry->find(batch.sort_key);
-                    ASSERT(shader != nullptr);
-                    DrawBatch(command_buffer, batch, {
-                                                         .shader = shader,
-                                                         .descriptor_infos = descriptor_infos,
-                                                         .push_data = nullptr,
-                                                         .draw_data_descriptor_index = 3,
-                                                     });
-                }
+                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK, descriptor_infos);
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

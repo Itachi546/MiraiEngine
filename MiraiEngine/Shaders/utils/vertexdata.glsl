@@ -97,4 +97,4 @@ uint pack_vec3_to_u32(vec3 p) {
            (pack_float_to_u8(p.z) << 8);
 }
 
-#endif
+endif

@@ -204,6 +204,7 @@ void add_entity_hierarchy(Entity parent, std::unique_ptr<ComponentManager> &comp
         ImGuiTreeNodeFlags flags = selected_entity == children ? ImGuiTreeNodeFlags_Selected : 0;
         flags |= ImGuiTreeNodeFlags_DrawLinesFull | ImGuiTreeNodeFlags_DrawLinesToNodes;
 
+        ImGui::PushID(children);
         if (child_comp->childrens.size() > 0) {
             flags |= ImGuiTreeNodeFlags_Framed;
             if (ImGui::TreeNodeEx(name.c_str(), flags)) {
@@ -220,6 +221,7 @@ void add_entity_hierarchy(Entity parent, std::unique_ptr<ComponentManager> &comp
                 ImGui::TreePop();
             }
         }
+        ImGui::PopID();
     }
 }
 

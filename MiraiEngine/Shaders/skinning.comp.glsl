@@ -13,16 +13,12 @@ struct Vertex {
 };
 const uint OUTPUT_VERTEX_SIZE = 32;
 
-layout(set = 0, binding = 0) readonly buffer VertexBinding {
+layout(set = 0, binding = 0) buffer VertexBinding {
     uint vertices[];
 };
 
 layout(set = 0, binding = 2) readonly buffer MatrixPallets {
     mat4 matrix_palletes[];
-};
-
-layout(set = 0, binding = 2) buffer SkinnedVertexOutput {
-    Vertex out_vertices[];
 };
 
 #include "utils/vertexdata.glsl"

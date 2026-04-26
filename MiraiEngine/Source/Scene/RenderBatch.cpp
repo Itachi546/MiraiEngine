@@ -7,6 +7,17 @@
 
 namespace mirai {
     // ── Internal helpers ─────────────────────────────────────────────────────
+    inline uint32_t compute_sort_key(const MaterialState *override_state,
+                                     const Material *material,
+                                     MeshType mesh_type) {
+        if (override_state == nullptr) {
+            uint32_t hash = material->get_hash();
+            return hash << 16 | mesh_type;
+        }
+
+        MaterialState s = *override_state;
+        return (uint32_t(s.get_hash()) << 16) | mesh_type;
+    }
 
     struct CachedBatchInfo {
         RenderBatchType batch_type;
@@ -39,20 +50,6 @@ namespace mirai {
             .index_buffer = index_buffer,
         });
         return cast_u32(mesh_batches.size() - 1);
-    }
-
-    static uint32_t compute_sort_key(const MaterialState *override_state,
-                                     const Material3D *material,
-                                     MeshType mesh_type) {
-        if (override_state == nullptr)
-            return material->get_hash() | mesh_type;
-
-        MaterialState s = *override_state;
-        if (material->is_alpha_mask()) {
-            s.cull_mode = CULL_MODE_NONE;
-            s.alpha_mode = ALPHA_MODE_MASK;
-        }
-        return s.get_hash() | mesh_type;
     }
 
     void DrawBatchGenerator::BuildBatches(const Scene *scene,
@@ -93,12 +90,12 @@ namespace mirai {
                 render_batch_type = RENDERBATCH_TYPE_ALPHA_MASK;
                 filter_flag = BATCH_FILTER_FLAG_ALPHA_MASK;
             }
-
+            /*
             if (object.mesh_type == MESH_TYPE_SKINNED) {
                 render_batch_type = RENDERBATCH_TYPE_SKINNED;
                 filter_flag = BATCH_FILTER_FLAG_SKINNED;
             }
-
+            */
             if ((params.filter_flags & filter_flag) != filter_flag)
                 continue;
 

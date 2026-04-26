@@ -38,11 +38,13 @@ namespace mirai {
                 Scene *scene = renderer->get_scene();
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
-                ScopedCpuProfiling("ComputeSkinningSetup");
                 std::vector<SkinnedMeshData> skinned_mesh_data;
                 auto &component_manager = scene->ecs->component_manager;
                 auto animator_component_ptr = component_manager->get_component_array<AnimatorComponent>();
+                if (animator_component_ptr->components.size() == 0)
+                    return;
 
+                ScopedCpuProfiling("ComputeSkinningSetup");
                 // Offset is in number of component as opposed to bytes
                 // All the skinned mesh are updated in this phase even if they are not visible
                 uint32_t matrix_pallete_offset = 0;
@@ -93,7 +95,6 @@ namespace mirai {
                 DescriptorOffset descriptors[] = {
                     renderer->global_geometry_descriptor,
                     renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &matrix_pallete_descriptor_info, 1),
-                    renderer->get_or_create_descriptor(pass_resources.get<FrameGraphBuffer>(data.output_buffer).id, DescriptorType::StorageBuffer),
                 };
 
                 data.shader->bind(command_buffer);

@@ -41,7 +41,6 @@ namespace mirai {
     enum MeshType {
         MESH_TYPE_STATIC = 0,
         MESH_TYPE_DYNAMIC = 1,
-        MESH_TYPE_SKINNED = 2,
     };
 
     struct MeshComponent {
@@ -85,6 +84,8 @@ namespace mirai {
         // @TODO: Create only one transform
         // Bake world_transform into position, rotation and scale as well as AABB
         glm::mat4 local_transform;
+
+        // Transformation of parent + local_transform
         glm::mat4 world_transform;
 
         void update_local_transform() {

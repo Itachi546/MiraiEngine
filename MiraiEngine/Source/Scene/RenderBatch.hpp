@@ -20,7 +20,7 @@ namespace mirai {
     enum RenderBatchType {
         RENDERBATCH_TYPE_OPAQUE = 1,
         RENDERBATCH_TYPE_ALPHA_MASK = 2,
-        RENDERBATCH_TYPE_SKINNED = 4,
+        // RENDERBATCH_TYPE_SKINNED = 4,
         RENDERBATCH_TYPE_TRANSPARENT = 8,
     };
 

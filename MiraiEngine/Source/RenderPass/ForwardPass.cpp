@@ -13,7 +13,6 @@
 #include "Scene/Camera.hpp"
 namespace mirai {
 
-
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
 
         frame_graph->add_callback_pass<ForwardPassData>(
@@ -38,6 +37,12 @@ namespace mirai {
                                                .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                                .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            });
+
+                const SkinningComputePassData &skinning_data = board->get<SkinningComputePassData>();
+                builder.read(skinning_data.output_buffer, {
+                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                          });
 
                 const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 builder.read(depth_prepass_data.output, {

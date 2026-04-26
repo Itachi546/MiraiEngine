@@ -460,6 +460,9 @@ namespace mirai {
 
         for (uint32_t m = 0; m < mesh_count; ++m) {
             MeshComponent &mesh_component = mesh_components[m];
+            mesh_component.mesh_type = MESH_TYPE_STATIC;
+
+            bool is_skinned_mesh = false;
             mesh_component.gpu_mesh_index = gpu_mesh_index;
             const tinygltf::Mesh &gltf_mesh = model->meshes[m];
 
@@ -507,7 +510,7 @@ namespace mirai {
                 std::vector<uint32_t> joints;
                 if (joint_attributes != primitive.attributes.end()) {
                     has_animation_data = true;
-                    mesh_component.mesh_type = MESH_TYPE_SKINNED;
+                    is_skinned_mesh = true;
 
                     const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
                     ASSERT(joint_accessor.type == TINYGLTF_TYPE_VEC4);
@@ -645,7 +648,6 @@ namespace mirai {
              * forward/deferred pass. The transformed vertices are stored alongside the
              * main vertices. We allocate extra memory for transformed vertices as well.
              */
-            bool is_skinned_mesh = mesh_component.mesh_type == MESH_TYPE_SKINNED;
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
                 mesh_subset.index_offset_bytes += index_buffer.offset;
@@ -920,9 +922,7 @@ namespace mirai {
             if (mesh_id >= 0) {
                 ASSERT(mesh_id < cast_int(load_state->mesh_components.size()));
                 MeshComponent &mesh_comp = comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
-                if (mesh_comp.mesh_type != MESH_TYPE_SKINNED)
-                    mesh_comp.mesh_type = mesh_type;
-
+                mesh_comp.mesh_type = mesh_type;
                 name = model->meshes[mesh_id].name;
             }
         }
@@ -960,7 +960,6 @@ namespace mirai {
 
         // Either it is skeleton animation or it is a node animation
         if (node->skin >= 0) {
-            ASSERT(comp_manager->get_component<MeshComponent>(entity) != nullptr);
             uint32_t skeleton_index = load_state->skeleton_base_offset + node->skin;
             int default_animation_clip = -1;
             if (scene->skeletons[skeleton_index].supported_animations.size() > 0)

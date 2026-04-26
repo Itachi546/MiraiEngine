@@ -19,23 +19,23 @@ namespace mirai {
 
     // Behavioral flags — not part of the sort key.
     enum RenderFlags : uint32_t {
-        RENDER_FLAG_NONE           = 0,
-        RENDER_FLAG_CAST_SHADOW    = 1 << 0,
+        RENDER_FLAG_NONE = 0,
+        RENDER_FLAG_CAST_SHADOW = 1 << 0,
         RENDER_FLAG_RECEIVE_SHADOW = 1 << 1,
-        RENDER_FLAG_DEFAULT        = RENDER_FLAG_CAST_SHADOW | RENDER_FLAG_RECEIVE_SHADOW,
+        RENDER_FLAG_DEFAULT = RENDER_FLAG_CAST_SHADOW | RENDER_FLAG_RECEIVE_SHADOW,
     };
 
     // Only material-facing variant bits are hashed.
     union MaterialKey {
         struct {
-            uint32_t cull_mode    : 2;  // affects pipeline variant
-            uint32_t front_face   : 1;  // affects pipeline variant
-            uint32_t polygon_mode : 2;  // affects pipeline variant (wireframe)
-            uint32_t alpha_mode   : 2;  // opaque / blend / mask
-            uint32_t padding      : 25;
+            uint16_t cull_mode : 2;    // affects pipeline variant
+            uint16_t front_face : 1;   // affects pipeline variant
+            uint16_t polygon_mode : 2; // affects pipeline variant (wireframe)
+            uint16_t alpha_mode : 2;   // opaque / blend / mask
+            uint16_t padding : 9;
         };
         struct {
-            uint32_t hash;
+            uint16_t hash;
         };
 
         bool operator==(const MaterialKey &other) const {
@@ -50,19 +50,19 @@ namespace mirai {
     // Material-facing properties — drives sort key and shader variant selection.
     // render_flags is behavioral and intentionally NOT part of the hash.
     struct MaterialState {
-        CullMode    cull_mode    = CULL_MODE_BACK;
-        FrontFace   front_face   = FRONT_FACE_COUNTER_CLOCKWISE;
+        CullMode cull_mode = CULL_MODE_BACK;
+        FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
         PolygonMode polygon_mode = POLYGON_MODE_FILL;
-        AlphaMode   alpha_mode   = ALPHA_MODE_OPAQUE;
-        uint32_t    render_flags = RENDER_FLAG_DEFAULT;
+        AlphaMode alpha_mode = ALPHA_MODE_OPAQUE;
+        uint32_t render_flags = RENDER_FLAG_DEFAULT;
 
-        uint32_t get_hash() const {
+        uint16_t get_hash() const {
             MaterialKey key = {};
-            key.cull_mode    = cull_mode;
-            key.front_face   = front_face;
+            key.cull_mode = cull_mode;
+            key.front_face = front_face;
             key.polygon_mode = polygon_mode;
-            key.alpha_mode   = alpha_mode;
-            key.padding      = 0;
+            key.alpha_mode = alpha_mode;
+            key.padding = 0;
             return key.hash;
         }
 

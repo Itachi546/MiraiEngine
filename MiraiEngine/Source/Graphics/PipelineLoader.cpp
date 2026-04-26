@@ -20,11 +20,15 @@ namespace mirai {
         }
 
         std::shared_ptr<Shader> shader = Shader::create_from_file(name, shaders, pipeline_state, attachment_info);
-        registry->add(material_state.get_hash() | mesh_type, shader);
+
+        uint32_t hash = material_state.get_hash();
+        hash = hash << 16 | mesh_type;
+        registry->add(hash, shader);
     }
 
     void preload_shaders() {
         // ── Depth Pre-Pass ─────────────────────────────────────────────────────
+        // Can run these shader generation in parallel right now, due to the fact that ID generation is not thread safe
         create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS,
                                {"SPIRV/depth-prepass.vert.spv"},
                                MaterialState{},
@@ -34,6 +38,17 @@ namespace mirai {
                                    .depth_write = true,
                                },
                                {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+
+        create_shader_material("depth_prepass", PASS_MODE_DEPTH_PREPASS,
+                               {"SPIRV/depth-prepass.vert.spv"},
+                               MaterialState{},
+                               PipelineState{
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                               },
+                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT}, MESH_TYPE_DYNAMIC);
+
         create_shader_material("depth_prepass_double_sided", PASS_MODE_DEPTH_PREPASS,
                                {"SPIRV/depth-prepass.vert.spv"},
                                MaterialState{.cull_mode = CULL_MODE_NONE},
@@ -68,6 +83,19 @@ namespace mirai {
                                    .depth_clamp = true,
                                },
                                {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+
+        create_shader_material("cascaded_shadow", PASS_MODE_DIRLIGHT_SHADOW,
+                               {"SPIRV/cascaded-shadow.vert.spv"},
+                               MaterialState{.cull_mode = CULL_MODE_FRONT},
+                               PipelineState{
+                                   .cull_mode = CULL_MODE_FRONT,
+                                   .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                   .depth_test = true,
+                                   .depth_write = true,
+                                   .depth_clamp = true,
+                               },
+                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT}, MESH_TYPE_DYNAMIC);
+
         create_shader_material("cascaded_shadow_alpha_mask", PASS_MODE_DIRLIGHT_SHADOW,
                                {"SPIRV/cascaded-shadow-alpha.vert.spv", "SPIRV/cascaded-shadow-alpha.frag.spv"},
                                MaterialState{.cull_mode = CULL_MODE_NONE, .alpha_mode = ALPHA_MODE_MASK},
@@ -80,6 +108,7 @@ namespace mirai {
                                    .depth_clamp = true,
                                },
                                {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+
         if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
             Format color_format = FORMAT_R16G16B16A16_SFLOAT;
             PipelineAttachmentInfo fwd_attachment = {
@@ -99,6 +128,16 @@ namespace mirai {
                                        .depth_write = true,
                                    },
                                    fwd_attachment);
+            create_shader_material("forward-pass", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
+                                   MaterialState{},
+                                   PipelineState{
+                                       .depth_op = COMPARE_OP_EQUAL,
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .depth_test = true,
+                                       .depth_write = true,
+                                   },
+                                   fwd_attachment, MESH_TYPE_DYNAMIC);
             create_shader_material("forward-pass-double-sided", PASS_MODE_FORWARD,
                                    {"SPIRV/forward-pass.vert.spv", "SPIRV/forward-pass.frag.spv"},
                                    MaterialState{.cull_mode = CULL_MODE_NONE},

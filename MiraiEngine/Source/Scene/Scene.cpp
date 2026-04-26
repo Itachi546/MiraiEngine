@@ -158,6 +158,7 @@ namespace mirai {
 
             Entity entity = component_array->entities[i];
             TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+
             // This doesn't handle existing local translation/rotation/scale, need to find a way to handle that as well
             clip.sample_TRS(0, component.current_time, transform->position, transform->rotation, transform->scale);
             transform->dirty = true;
@@ -270,16 +271,13 @@ namespace mirai {
 
         jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
             MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
-            bool is_skinned = mesh_component.mesh_type == MESH_TYPE_SKINNED;
+            bool is_skinned = false;
 
             const Entity entity = mesh_component_ptr->entities[arg.job_index];
             const TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
 
-            AnimatorComponent *animator = nullptr;
-            if (is_skinned) {
-                animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
-                ASSERT(animator != nullptr);
-            }
+            AnimatorComponent *animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
+            is_skinned = animator ? true : false;
 
             BufferView vertex_buffer = mesh_component.vertex_buffer;
             BufferView index_buffer = mesh_component.index_buffer;
