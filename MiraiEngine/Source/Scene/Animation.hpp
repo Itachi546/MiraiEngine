@@ -45,6 +45,7 @@ namespace mirai {
         float start_time;
         float end_time;
         float tick_per_seconds;
+        bool looping;
 
         // Track for all the bones/node present in animation
         std::vector<Vec3Track> positions;
@@ -158,6 +159,15 @@ namespace mirai {
                 inv_bind_transforms[i] = glm::inverse(global_transforms[i]);
             }
         }
+    };
+
+    struct AnimationPlayer {
+        uint32_t skeleton_index;
+        int current_animation_clip;
+        float current_time = 0.0f;
+        Pose pose;
+        AABB aabb;
+        bool paused;
     };
 
 } // namespace mirai

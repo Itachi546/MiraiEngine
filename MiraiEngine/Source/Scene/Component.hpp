@@ -155,16 +155,11 @@ namespace mirai {
         int current_animation_clip;
         float current_time = 0.0f;
         float playback_speed = 1.0f;
-        bool looping = true;
         bool should_update_children = true;
     };
 
     struct AnimatorComponent {
-        int current_animation_clip;
-        uint32_t skeleton_index;
-        float current_time = 0.0f;
-        Pose pose;
-        AABB aabb;
+        uint32_t animation_player_index;
     };
 
 }; // namespace mirai

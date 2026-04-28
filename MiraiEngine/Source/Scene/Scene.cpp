@@ -87,7 +87,7 @@ namespace mirai {
 
         if (!pause_animation) {
             update_node_animator_components();
-            update_animator_components();
+            update_animation_players();
         }
 
         // Update changed materials
@@ -173,7 +173,7 @@ namespace mirai {
             float start_time = clip.start_time;
             float end_time = clip.end_time;
             component.current_time += dt * animation_speed;
-            if (component.looping && component.current_time > end_time)
+            if (clip.looping && component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 
             Entity entity = component_array->entities[i];
@@ -185,24 +185,20 @@ namespace mirai {
         }
     }
 
-    void Scene::update_animator_components() {
-        //@TODO Should update the animation only if the object is visible
-        auto animator_component_ptr = ecs->component_manager->get_component_array<AnimatorComponent>();
-        std::vector<AnimatorComponent> &animator_components = animator_component_ptr->components;
-
-        if (animation_clips.size() == 0 || animator_components.size() == 0)
+    void Scene::update_animation_players() {
+        if (animation_players.size() == 0)
             return;
 
         float dt = Engine::get()->get_dt_seconds();
-        for (auto &component : animator_components) {
-            int current_animation_clip = component.current_animation_clip;
+        for (auto &animation_player : animation_players) {
+            int current_animation_clip = animation_player.current_animation_clip;
             if (current_animation_clip == K_INVALID_ANIMATION_CLIP)
                 continue;
 
-            Skeleton &skeleton = skeletons[component.skeleton_index];
+            Skeleton &skeleton = skeletons[animation_player.skeleton_index];
             uint32_t bone_count = cast_u32(skeleton.names.size());
 
-            Pose &pose = component.pose;
+            Pose &pose = animation_player.pose;
             pose.resize(bone_count);
 
             const AnimationClip &clip = animation_clips[current_animation_clip];
@@ -211,9 +207,15 @@ namespace mirai {
             float start_time = clip.start_time;
             float end_time = clip.end_time;
 
-            component.current_time += dt * animation_speed;
-            if (component.current_time > end_time)
-                component.current_time = fmod(component.current_time - start_time, duration) + start_time;
+            if (!animation_player.paused)
+                animation_player.current_time += dt * animation_speed;
+
+            if (animation_player.current_time > end_time) {
+                if (clip.looping)
+                    animation_player.current_time = fmod(animation_player.current_time - start_time, duration) + start_time;
+                else
+                    animation_player.current_time = end_time;
+            }
 
             glm::vec3 min = glm::vec3(FLT_MAX);
             glm::vec3 max = glm::vec3(-FLT_MAX);
@@ -229,7 +231,7 @@ namespace mirai {
                 // Some of the node in hierarchy doesn't have keyframes, for such we just
                 // apply parent transform with local transform
                 if (clip.has_animation(i)) {
-                    clip.sample_TRS(i, component.current_time, pose.joints_position[i], pose.joints_rotation[i], pose.joints_scaling[i]);
+                    clip.sample_TRS(i, animation_player.current_time, pose.joints_position[i], pose.joints_rotation[i], pose.joints_scaling[i]);
                     transform = transform * pose.get_transform(i);
                 } else {
                     pose.joints_position[i] = glm::vec3(0.0f);
@@ -246,7 +248,7 @@ namespace mirai {
                 min = glm::min(bone_min, min);
                 max = glm::max(bone_max, max);
             }
-            component.aabb = {min, max};
+            animation_player.aabb = {min, max};
 
             for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
                 pose.matrix_palletes[i] = pose.matrix_palletes[i] * skeleton.inv_bind_transforms[i];
@@ -308,7 +310,8 @@ namespace mirai {
 
                 // Create a combined AABB from animated pose and rest pose
                 if (is_skinned) {
-                    transformed_aabb.combine(animator->aabb);
+                    const AABB &animation_aabb = animation_players[animator->animation_player_index].aabb;
+                    transformed_aabb.combine(animation_aabb);
                 }
                 transformed_aabb.transform(transform->world_transform);
 

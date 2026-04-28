@@ -53,7 +53,7 @@ namespace mirai {
         Scene *scene;
         std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
-        uint32_t skeleton_base_offset;
+        uint32_t animation_player_base_offset;
         // Map of node and it's position in scene animation_clip vector
         std::vector<TempAnimation> animations;
         HashSet<int> global_joint_list;
@@ -795,9 +795,16 @@ namespace mirai {
             // We don't have skeleton information, need to reconstruct it manually
             // Lookup table between node and it's parent local index
             HashMap<int, int> joint_parent_lookup;
+
             Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
             skeleton.name = skin.name;
             skeleton.resize(joint_count);
+
+            AnimationPlayer &animation_player = load_state->scene->animation_players.emplace_back();
+            animation_player.skeleton_index = cast_u32(load_state->scene->skeletons.size() - 1);
+            animation_player.current_time = 0;
+            animation_player.current_animation_clip = 0;
+            animation_player.paused = false;
 
             // ASSERT(skin.inverseBindMatrices >= 0);
             glm::mat4 *inv_bind_matrix_ptr = nullptr;
@@ -852,7 +859,8 @@ namespace mirai {
                         .name = animation.name,
                         .start_time = animation.start_time,
                         .end_time = animation.end_time,
-                        .tick_per_seconds = 24,
+                        .tick_per_seconds = 60,
+                        .looping = false,
                     });
                     animation_clip.positions.resize(joint_count);
                     animation_clip.rotations.resize(joint_count);
@@ -946,14 +954,14 @@ namespace mirai {
 
         // Either it is skeleton animation or it is a node animation
         if (node->skin >= 0) {
-            uint32_t skeleton_index = load_state->skeleton_base_offset + node->skin;
+            uint32_t animation_player_index = load_state->animation_player_base_offset + node->skin;
             int default_animation_clip = -1;
-            if (scene->skeletons[skeleton_index].supported_animations.size() > 0)
-                default_animation_clip = cast_int(scene->skeletons[skeleton_index].supported_animations[0]);
+
+            AnimationPlayer &animation_player = scene->animation_players[animation_player_index];
+            if (scene->skeletons[animation_player.skeleton_index].supported_animations.size() > 0)
+                animation_player.current_animation_clip = 0;
             comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
-                                                                       .current_animation_clip = default_animation_clip,
-                                                                       .skeleton_index = skeleton_index,
-                                                                       .current_time = 0.0f,
+                                                                       .animation_player_index = animation_player_index,
                                                                    });
         }
 
@@ -1036,7 +1044,7 @@ namespace mirai {
         LoadState load_state = {
             .scene = scene,
             .material_base_offset = cast_u32(scene->materials.size()),
-            .skeleton_base_offset = cast_u32(scene->skeletons.size()),
+            .animation_player_base_offset = cast_u32(scene->animation_players.size()),
         };
 
         load_state.async_loader = &async_loader;

@@ -101,9 +101,11 @@ namespace mirai {
 
         std::unique_ptr<ECS> ecs;
         std::vector<std::unique_ptr<Material3D>> materials;
+        std::vector<Entity> entities;
+
         std::vector<AnimationClip> animation_clips;
         std::vector<Skeleton> skeletons;
-        std::vector<Entity> entities;
+        std::vector<AnimationPlayer> animation_players;
 
         // List of material/transforms that must be patched on gpu
         std::vector<uint32_t> updated_transforms;
@@ -151,7 +153,7 @@ namespace mirai {
 
         void remove_entity_tree(Entity entity);
         void update_node_animator_components();
-        void update_animator_components();
+        void update_animation_players();
         void update_hierarchy_components();
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
 

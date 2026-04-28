@@ -278,20 +278,21 @@ void add_skeleton_hierarchy(const Skeleton *skeleton, int node) {
 
 Entity last_selected_entity = K_INVALID_ENTITY;
 bool show_skeleton = false;
-void add_animator_component(AnimatorComponent *animator_component, Scene *scene, Entity entity) {
-    if (!animator_component)
+void add_animation_player(int animation_player_index, Scene *scene, Entity entity) {
+    if (animation_player_index >= scene->animation_players.size())
         return;
 
-    if (ImGui::CollapsingHeader("AnimatorComponent")) {
-        ImGui::Text("Current Time: %.2f", animator_component->current_time);
-        ImGui::Text("Skeleton Index: %d", animator_component->skeleton_index);
+    AnimationPlayer *animation_player = &scene->animation_players[animation_player_index];
+    if (ImGui::CollapsingHeader("AnimationPlayer")) {
+        ImGui::Text("Current Time: %.2f", animation_player->current_time);
+        ImGui::Text("Skeleton Index: %d", animation_player->skeleton_index);
 
-        Skeleton *skeleton = &scene->skeletons[animator_component->skeleton_index];
+        Skeleton *skeleton = &scene->skeletons[animation_player->skeleton_index];
 
         std::string name = skeleton->name.size() > 0 ? skeleton->name : "unnamed";
         ImGui::Text("Skeleton Name: %s", skeleton->name.c_str());
 
-        if (skeleton->supported_animations.size() > 0 && animator_component->current_animation_clip != K_INVALID_ANIMATION_CLIP) {
+        if (skeleton->supported_animations.size() > 0 && animation_player->current_animation_clip != K_INVALID_ANIMATION_CLIP) {
             std::stringstream ss;
             for (uint32_t animation_index : skeleton->supported_animations) {
                 AnimationClip *current_animation = &scene->animation_clips[animation_index];
@@ -301,12 +302,33 @@ void add_animator_component(AnimatorComponent *animator_component, Scene *scene,
 
             static int current_animation_clip = 0;
             if (ImGui::Combo("Target", &current_animation_clip, ss.str().c_str())) {
-                animator_component->current_animation_clip = skeleton->supported_animations[current_animation_clip];
+                animation_player->current_animation_clip = skeleton->supported_animations[current_animation_clip];
+                animation_player->current_time = scene->animation_clips[current_animation_clip].start_time;
             }
 
-            AnimationClip *current_animation = &scene->animation_clips[animator_component->current_animation_clip];
+            AnimationClip *current_animation = &scene->animation_clips[animation_player->current_animation_clip];
             ImGui::Text("Animation: %s\n", current_animation->name.c_str());
-            ImGui::Text("Duration: %.2fs", current_animation->get_duration());
+
+            ImGui::SliderFloat("##timeline", &animation_player->current_time, current_animation->start_time, current_animation->end_time);
+
+            const float frame_step = 1.0f / current_animation->tick_per_seconds;
+
+            if (ImGui::Button("<<")) {
+                animation_player->current_time = std::max(animation_player->current_time - frame_step, current_animation->start_time);
+            }
+            ImGui::SameLine();
+            const char *state = animation_player->paused ? "||" : ">";
+            if (ImGui::Button(state)) {
+                animation_player->paused = !animation_player->paused;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(">>")) {
+                animation_player->current_time = std::min(animation_player->current_time + frame_step, current_animation->end_time);
+            }
+            ImGui::SameLine();
+            ImGui::Checkbox("Looping", &current_animation->looping);
+
+            // ImGui::Text("Duration: %.2fs", current_animation->get_duration());
             ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
         }
 
@@ -331,7 +353,11 @@ void add_entity_components(Entity entity, Scene *scene) {
 
     add_transform_component(comp_manager->get_component<TransformComponent>(entity), entity);
     add_material_component_ui(comp_manager->get_component<MeshComponent>(entity), scene, entity);
-    add_animator_component(comp_manager->get_component<AnimatorComponent>(entity), scene, entity);
+
+    AnimatorComponent *animator_component = comp_manager->get_component<AnimatorComponent>(entity);
+    if (animator_component) {
+        add_animation_player(animator_component->animation_player_index, scene, entity);
+    }
     add_light_component_ui(comp_manager->get_component<LightComponent>(entity), entity);
 }
 
