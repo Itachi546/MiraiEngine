@@ -19,7 +19,8 @@ layout(push_constant) uniform PushConstant {
     int _paddding;
 };
 
-#define FLAG_SHOULD_SAMPLE_MOTION_VECTOR 0
+#define FLAG_SHOULD_ENABLE_TAA 1
+#define FLAG_SHOULD_SAMPLE_MOTION_VECTOR 2
 
 bool has_flag(int flags, int flag) {
     return (flags & flag) == flag;
@@ -72,6 +73,12 @@ void main() {
     if (id.x > width - 1 || id.y > height - 1)
         return;
 
-    vec3 final_color = taa(id);
-    imageStore(u_output_texture, id, vec4(final_color, 1.0f));
+    if (has_flag(flags, FLAG_SHOULD_ENABLE_TAA)) {
+        vec3 final_color = taa(id);
+        imageStore(u_output_texture, id, vec4(final_color, 1.0f));
+    } else {
+        vec2 uv = uv_nearest(id, vec2(width, height));
+        vec3 color = texture(sampler2D(u_color, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).rgb;
+        imageStore(u_output_texture, id, vec4(color, 1.0f));
+    }
 }

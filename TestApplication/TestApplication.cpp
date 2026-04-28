@@ -168,6 +168,7 @@ class TestApplication : public App {
 
             ImGui::Checkbox("Vsync", &AppSettings::enable_vsync);
             ImGui::Checkbox("Pause Animation", &scene->pause_animation);
+            ImGui::DragFloat("Animation Speed", &scene->animation_speed, 0.1f, 0.1f, 10.0f);
             ImGui::Checkbox("Freeze frustum", &Renderer::get()->freeze_frustum);
             ImGui::Checkbox("Show AABB", &Renderer::get()->show_aabbs);
             ImGui::Checkbox("Disable Punctual Lights", &Renderer::get()->disable_punctual_lights);
@@ -176,7 +177,6 @@ class TestApplication : public App {
                 transform->scale = glm::vec3(global_scene_scale);
                 transform->dirty = true;
             }
-            ImGui::Checkbox("TAA", &AppSettings::enable_taa);
 
             ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
             ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_visible_lights);
@@ -229,6 +229,7 @@ class TestApplication : public App {
             static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0CSMSplit\0LightTile\0Velocity\0\0";
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
+            ImGui::DragFloat("Exposure", &debug_data.exposure, 0.1f, 0.0f, 8.0f);
             ImGui::Checkbox("Light Culling", &debug_data.light_culling);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
         }
@@ -366,6 +367,8 @@ class TestApplication : public App {
                 taa_options.should_reset |= ImGui::Checkbox("Enable TAA", &AppSettings::enable_taa);
                 ImGui::Checkbox("Reset History Texture", &taa_options.should_reset);
                 taa_options.should_reset |= ImGui::Checkbox("Sample motion vector", &taa_options.should_sample_motion_vector);
+                RenderDebugData &debug_data = board->get<RenderDebugData>();
+                ImGui::DragFloat("Mip LOD Bias", &debug_data.mip_lod_bias, 0.1f, -5.0f, 5.0f);
                 ImGui::TreePop();
             }
         }

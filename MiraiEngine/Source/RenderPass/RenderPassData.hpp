@@ -65,6 +65,8 @@ namespace mirai {
         bool show_debug_cascade_color;
         bool enable_gamma_correction;
         bool light_culling;
+        float exposure;
+        float mip_lod_bias;
     };
 
     struct TAAOptions {

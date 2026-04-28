@@ -135,7 +135,7 @@ namespace mirai {
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
-                float push_constants[8] = {
+                float push_constants[12] = {
                     debug_data.split_percentage,
                     cast_float(debug_data.debug_param_index),
                     shadow_system->dir_light_params.pcf_radius,
@@ -144,6 +144,10 @@ namespace mirai {
                     cast_float(renderer->total_visible_lights),
                     cast_float(debug_data.light_culling),
                     cast_float(AppSettings::K_LIGHT_TILE_SIZE),
+                    AppSettings::enable_taa ? debug_data.mip_lod_bias : 0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
                 };
 
                 PushData push_data = {

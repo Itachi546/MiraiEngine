@@ -137,6 +137,7 @@ namespace mirai {
         std::atomic<uint32_t> render_object_count;
 
         bool pause_animation = false;
+        float animation_speed = 1.0f;
         int jitter_index = 0;
         int jitter_period = 4;
 

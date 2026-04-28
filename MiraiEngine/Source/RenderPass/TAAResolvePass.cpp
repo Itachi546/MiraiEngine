@@ -123,8 +123,8 @@ namespace mirai {
                         renderer->get_or_create_descriptor(data.history_textures[current_taa_texture], DescriptorType::StorageImage),
                     };
 
-                    int flags = 0;
-                    flags = (flags | int(options.should_sample_motion_vector));
+                    int flags = int(AppSettings::enable_taa);
+                    flags = (flags | int(options.should_sample_motion_vector) << 1);
 
                     int push_constant_data[] = {
                         cast_int(width),

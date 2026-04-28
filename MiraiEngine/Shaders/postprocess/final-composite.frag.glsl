@@ -10,7 +10,7 @@ layout(set = 0, binding = 0) uniform texture2D u_input_texture;
 layout(push_constant) uniform PushConstants {
     vec2 resolution;
     float enable_gamma_correction;
-    float _padding;
+    float exposure;
 };
 
 #include "../utils/color.glsl"
@@ -18,7 +18,9 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
     vec4 col = texture(sampler2D(u_input_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv);
+
     if (enable_gamma_correction > 0.5f) {
+        col.rgb *= pow(2.0, exposure);
         col.rgb = linear_to_srgb(ACESFilm(col.rgb));
     }
     fragColor = vec4(col.rgb, 1.0f);

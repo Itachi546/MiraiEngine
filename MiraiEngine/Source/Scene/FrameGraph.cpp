@@ -47,7 +47,18 @@ namespace mirai {
 
             uint32_t producer_index = resource->producer;
             PassNode *producer = &passes[producer_index];
-            if (producer_index == INVALID_PRODUCER || producer->has_side_effect) {
+
+            bool has_other_valid_resources = false;
+            for (uint32_t i = 0; i < producer->writes.size(); ++i) {
+                const FrameGraphAccessDeclaration &write = producer->writes[i];
+                if (resources[write.resource].ref_count > 0)
+                    has_other_valid_resources = true;
+            }
+
+            if (has_other_valid_resources) {
+                Log::Warn("Unused resources ", resource->name, " produced by ", producer->name);
+            }
+            if (producer_index == INVALID_PRODUCER || producer->has_side_effect || has_other_valid_resources) {
                 continue;
             }
 

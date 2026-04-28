@@ -26,13 +26,21 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                            });
 
+#if 1
                 const TAAResolvePassData &taa_resolve_data = board->get<TAAResolvePassData>();
                 builder.read(taa_resolve_data.output, {
                                                           .access_flags = ACCESS_FLAG_SHADER_READ,
                                                           .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                           .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                       });
-
+#else
+                const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
+                builder.read(forward_pass_data.color_texture, {
+                                                                  .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                  .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                                  .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                              });
+#endif
                 data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
                                                                std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/final-composite.frag.spv"},
                                                                PipelineState{
@@ -60,17 +68,24 @@ namespace mirai {
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
+#if 1
                 const TAAResolvePassData &taa_pass_data = board->get<TAAResolvePassData>();
                 DescriptorOffset bindings[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(taa_pass_data.output).id, DescriptorType::SampledImage),
                 };
+#else
+                const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
+                DescriptorOffset bindings[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(forward_pass_data.color_texture).id, DescriptorType::SampledImage),
+                };
+#endif
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
                 float push_data[] = {
                     cast_float(width),
                     cast_float(height),
                     cast_float(debug_data.enable_gamma_correction),
-                    0.0f,
+                    debug_data.exposure,
                 };
 
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");

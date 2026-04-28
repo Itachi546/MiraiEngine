@@ -172,7 +172,7 @@ namespace mirai {
             float duration = clip.get_duration();
             float start_time = clip.start_time;
             float end_time = clip.end_time;
-            component.current_time += dt;
+            component.current_time += dt * animation_speed;
             if (component.looping && component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 
@@ -211,7 +211,7 @@ namespace mirai {
             float start_time = clip.start_time;
             float end_time = clip.end_time;
 
-            component.current_time += dt;
+            component.current_time += dt * animation_speed;
             if (component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 

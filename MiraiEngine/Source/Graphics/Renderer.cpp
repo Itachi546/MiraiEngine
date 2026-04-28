@@ -48,6 +48,8 @@ namespace mirai {
             .show_debug_cascade_color = false,
             .enable_gamma_correction = true,
             .light_culling = true,
+            .exposure = 1.0f,
+            .mip_lod_bias = -0.5f,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
@@ -531,7 +533,7 @@ namespace mirai {
         }
 
         if (show_aabbs) {
-            Camera* camera = scene->get_camera();
+            Camera *camera = scene->get_camera();
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
             uint32_t render_object_count = scene->render_object_count.load();
             for (uint32_t i = 0; i < render_object_count; ++i) {
