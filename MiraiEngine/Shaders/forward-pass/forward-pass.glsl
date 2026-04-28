@@ -17,7 +17,8 @@ layout(location = 0) in FS_IN {
     vec3 world_pos;
     vec2 uv;
     flat uint mat_id;
-    vec2 velocity;
+    vec4 current_clip_pos;
+    vec4 prev_clip_pos;
 }
 fs_in;
 
@@ -178,7 +179,7 @@ void main() {
             }
         }
     }
-
+    vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     // Debug Params
     if (split_percentage >= screen_uv.x) {
         uint debug_index = uint(debug_texture_index);
@@ -208,7 +209,7 @@ void main() {
             Lo = get_tile_heatmap(tile_light_count, 50);
             break;
         case DEBUG_VELOCITY:
-            Lo = vec3(fs_in.velocity, 0.0f) * 100.0f;
+            Lo = vec3(velocity, 0.0f) * 100.0f;
             break;
         };
     }
@@ -220,7 +221,7 @@ void main() {
 #else
     fragColor = vec4(Lo, 1.0f);
 #endif
-    velocity_buffer = fs_in.velocity;
+    velocity_buffer = velocity;
 }
 
 #endif

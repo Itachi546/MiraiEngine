@@ -19,12 +19,7 @@ layout(push_constant) uniform PushConstant {
     int _paddding;
 };
 
-#define FLAG_ENABLE_TAA 1
-#define FLAG_SHOULD_SAMPLE_MOTION_VECTOR 2
-#define FLAG_ENABLE_TEMPORAL_FILTERING 4
-#define FLAG_TAA_SIMPLE 8
-#define FLAG_ENABLE_MIN_DEPTH 16
-#define FLAG_ENABLE_HISTORY_SAMPLING 32
+#define FLAG_SHOULD_SAMPLE_MOTION_VECTOR 0
 
 bool has_flag(int flags, int flag) {
     return (flags & flag) == flag;
@@ -34,7 +29,7 @@ vec2 uv_nearest(ivec2 pixel, vec2 texture_size) {
     return (vec2(pixel) + 0.5) / texture_size;
 }
 
-vec3 taa_simple(ivec2 id) {
+vec3 taa(ivec2 id) {
     vec2 image_size = vec2(width, height);
     vec2 pixel_size = 1.0f / image_size;
 
@@ -56,7 +51,7 @@ vec3 taa_simple(ivec2 id) {
 
             float depth = texture(sampler2D(u_depth, u_samplers[SAMPLER_POINT_CLAMP]), cuv).r;
             if (depth < closest_depth) {
-                depth = closest_depth;
+                closest_depth = depth;
                 closest_position = cuv;
             }
         }
@@ -77,13 +72,6 @@ void main() {
     if (id.x > width - 1 || id.y > height - 1)
         return;
 
-    if (has_flag(flags, FLAG_ENABLE_TAA)) {
-        vec3 final_color = taa_simple(id);
-        imageStore(u_output_texture, id, vec4(final_color, 1.0f));
-    } else {
-        vec2 image_size = vec2(width, height);
-        vec2 uv = uv_nearest(id, image_size);
-        vec3 current_sample = texture(sampler2D(u_color, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).rgb;
-        imageStore(u_output_texture, id, vec4(current_sample, 1.0f));
-    }
+    vec3 final_color = taa(id);
+    imageStore(u_output_texture, id, vec4(final_color, 1.0f));
 }

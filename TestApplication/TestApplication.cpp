@@ -365,12 +365,7 @@ class TestApplication : public App {
                 TAAOptions &taa_options = board->get<TAAOptions>();
                 taa_options.should_reset |= ImGui::Checkbox("Enable TAA", &AppSettings::enable_taa);
                 ImGui::Checkbox("Reset History Texture", &taa_options.should_reset);
-                taa_options.should_reset |= ImGui::Checkbox("Temporal filtering", &taa_options.enable_temporal_filtering);
                 taa_options.should_reset |= ImGui::Checkbox("Sample motion vector", &taa_options.should_sample_motion_vector);
-                if (taa_options.should_sample_motion_vector)
-                    taa_options.should_reset |= ImGui::Checkbox("Enable min depth", &taa_options.should_enable_min_depth);
-                taa_options.should_reset |= ImGui::Checkbox("Enable History Sampling", &taa_options.should_enable_history_sampling);
-                taa_options.should_reset |= ImGui::SliderInt("Jitter period", &scene->jitter_period, 2, 16);
                 ImGui::TreePop();
             }
         }

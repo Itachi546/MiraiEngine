@@ -51,11 +51,6 @@ namespace mirai {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
-                /**
-                 * The TAAOutput texture should be resolved for shader read in pipeline barrier,
-                 * however due to the fact that it is image_layout_general, it doesn't seem to throw
-                 * any validation error
-                 */
                 auto resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
 

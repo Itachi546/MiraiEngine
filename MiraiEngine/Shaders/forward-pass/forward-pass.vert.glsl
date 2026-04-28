@@ -7,7 +7,8 @@ layout(location = 0) out VS_OUT {
     vec3 world_pos;
     vec2 uv;
     flat uint mat_id;
-    vec2 velocity;
+    vec4 current_clip_pos;
+    vec4 prev_clip_pos;
 }
 vs_out;
 
@@ -42,11 +43,10 @@ void main() {
 
     vec4 world_pos = M * vec4(position, 1.0f);
 
-    vec4 current_clip_pos = per_frame_data.VP * world_pos;
-    vec4 prev_clip_pos = per_frame_data.prev_VP * world_pos;
-    vs_out.velocity = get_pixel_velocity(current_clip_pos, prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
+    vs_out.current_clip_pos = per_frame_data.VP * world_pos;
+    vs_out.prev_clip_pos = per_frame_data.prev_VP * world_pos;
 
-    gl_Position = current_clip_pos;
+    gl_Position = vs_out.current_clip_pos;
 
     mat3 normal_matrix = mat3(transpose(inverse(M)));
     vs_out.normal = normal_matrix * unpack_normal(vertex_address);

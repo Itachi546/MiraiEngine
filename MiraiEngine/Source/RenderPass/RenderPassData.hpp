@@ -70,10 +70,6 @@ namespace mirai {
     struct TAAOptions {
         bool should_reset;
         bool should_sample_motion_vector;
-        bool enable_temporal_filtering;
-        bool enable_taa_simple;
-        bool should_enable_min_depth;
-        bool should_enable_history_sampling;
     };
 
     struct TAAResolvePassData {

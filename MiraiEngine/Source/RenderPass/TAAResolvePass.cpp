@@ -67,10 +67,6 @@ namespace mirai {
                 board->add<TAAOptions>(TAAOptions{
                     .should_reset = true,
                     .should_sample_motion_vector = true,
-                    .enable_temporal_filtering = true,
-                    .enable_taa_simple = false,
-                    .should_enable_min_depth = true,
-                    .should_enable_history_sampling = true,
                 });
             },
             [](const TAAResolvePassData &data, const FrameGraphPassResource &pass_resources, void *context) {
@@ -128,12 +124,7 @@ namespace mirai {
                     };
 
                     int flags = 0;
-                    flags = (flags | int(AppSettings::enable_taa)) |
-                            ((int(options.should_sample_motion_vector) << 1)) |
-                            ((int(options.enable_temporal_filtering) << 2)) |
-                            ((int(options.enable_taa_simple) << 3)) |
-                            ((int(options.should_enable_min_depth) << 4)) |
-                            ((int(options.should_enable_history_sampling) << 5));
+                    flags = (flags | int(options.should_sample_motion_vector));
 
                     int push_constant_data[] = {
                         cast_int(width),
