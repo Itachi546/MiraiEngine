@@ -251,11 +251,11 @@ void add_transform_component(TransformComponent *transform_component, Entity ent
     }
 }
 
-void add_skeleton_hierarchy(const Skeleton *skeleton, int node) {
-    std::string name = skeleton->names[node];
+void add_skeleton_hierarchy(const Skeleton &skeleton, int node) {
+    std::string name = skeleton.names[node];
     std::vector<int> childrens;
-    for (uint32_t i = 0; i < skeleton->parents.size(); ++i) {
-        if (skeleton->parents[i] == node) {
+    for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
+        if (skeleton.parents[i] == node) {
             childrens.push_back(i);
         }
     }
@@ -282,30 +282,27 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
     if (animation_player_index >= scene->animation_players.size())
         return;
 
-    AnimationPlayer *animation_player = &scene->animation_players[animation_player_index];
+    const auto &animation_player = scene->animation_players[animation_player_index];
     if (ImGui::CollapsingHeader("AnimationPlayer")) {
-        ImGui::Text("Current Time: %.2f", animation_player->current_time);
-        ImGui::Text("Skeleton Index: %d", animation_player->skeleton_index);
+        const Skeleton &skeleton = animation_player->skeletal_asset->skeleton;
+        ImGui::Text("Skeleton Name: %s", animation_player->skeletal_asset->name.c_str());
 
-        Skeleton *skeleton = &scene->skeletons[animation_player->skeleton_index];
-
-        std::string name = skeleton->name.size() > 0 ? skeleton->name : "unnamed";
-        ImGui::Text("Skeleton Name: %s", skeleton->name.c_str());
-
-        if (skeleton->supported_animations.size() > 0 && animation_player->current_animation_clip != K_INVALID_ANIMATION_CLIP) {
+        const std::vector<AnimationClip> &animation_clips = animation_player->skeletal_asset->animation_clips;
+        if (animation_clips.size() > 0 && animation_player->is_valid()) {
             std::stringstream ss;
-            for (uint32_t animation_index : skeleton->supported_animations) {
-                AnimationClip *current_animation = &scene->animation_clips[animation_index];
-                ss << current_animation->name << '\0';
+            for (const auto &clip : animation_clips) {
+                ss << clip.name << '\0';
             }
             ss << '\0';
 
+            static float cross_fade_duration = 0.2f;
+            ImGui::SliderFloat("Cross Fade Duration", &cross_fade_duration, 0.1f, 4.0f);
+
             static int current_animation_clip = 0;
             if (ImGui::Combo("Target", &current_animation_clip, ss.str().c_str())) {
-                animation_player->current_animation_clip = skeleton->supported_animations[current_animation_clip];
-                animation_player->current_time = scene->animation_clips[current_animation_clip].start_time;
+                animation_player->crossFadeTo(current_animation_clip, cross_fade_duration);
             }
-
+            /*
             AnimationClip *current_animation = &scene->animation_clips[animation_player->current_animation_clip];
             ImGui::Text("Animation: %s\n", current_animation->name.c_str());
 
@@ -327,9 +324,9 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
             }
             ImGui::SameLine();
             ImGui::Checkbox("Looping", &current_animation->looping);
-
+            */
             // ImGui::Text("Duration: %.2fs", current_animation->get_duration());
-            ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
+            // ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
         }
 
         if (last_selected_entity != entity) {

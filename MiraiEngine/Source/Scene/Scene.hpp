@@ -103,9 +103,8 @@ namespace mirai {
         std::vector<std::unique_ptr<Material3D>> materials;
         std::vector<Entity> entities;
 
-        std::vector<AnimationClip> animation_clips;
-        std::vector<Skeleton> skeletons;
-        std::vector<AnimationPlayer> animation_players;
+        std::vector<std::unique_ptr<SkeletalAsset>> skeletal_assets;
+        std::vector<std::unique_ptr<AnimationPlayer>> animation_players;
 
         // List of material/transforms that must be patched on gpu
         std::vector<uint32_t> updated_transforms;

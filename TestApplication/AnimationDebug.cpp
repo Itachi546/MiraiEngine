@@ -43,12 +43,12 @@ void DrawSkeleton(const Skeleton &skeleton, const Pose &current_pose, glm::mat4 
 void DrawPose(Scene *scene, Entity entity, ImDrawList *draw_list, float width, float height) {
     auto &comp_manager = scene->ecs->component_manager;
     AnimatorComponent *animator = comp_manager->get_component<AnimatorComponent>(entity);
-    const AnimationPlayer &player = scene->animation_players[animator->animation_player_index];
-    Skeleton &skeleton = scene->skeletons[player.skeleton_index];
+    const auto &player = scene->animation_players[animator->animation_player_index];
+    const Skeleton &skeleton = player->skeletal_asset->skeleton;
     TransformComponent *transform = comp_manager->get_component<TransformComponent>(entity);
 
     glm::mat4 VP = scene->get_camera()->get_view_projection_transform();
-    DrawSkeleton(skeleton, player.pose, VP, transform->world_transform, draw_list, width, height);
+    DrawSkeleton(skeleton, player->current_pose, VP, transform->world_transform, draw_list, width, height);
 }
 
 void add_skeleton_debug_ui(Scene *scene, Entity entity) {

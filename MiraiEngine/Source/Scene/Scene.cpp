@@ -165,22 +165,25 @@ namespace mirai {
         for (uint32_t i = 0; i < animations.size(); ++i) {
             NodeAnimatorComponent &component = animations[i];
 
-            if (component.current_animation_clip == K_INVALID_ANIMATION_CLIP)
+            uint32_t current_animation_clip = component.current_animation_clip;
+            if (current_animation_clip == K_INVALID_ANIMATION_CLIP)
                 continue;
-            const AnimationClip &clip = animation_clips[component.current_animation_clip];
+            ASSERT(current_animation_clip < component.animation_clips.size());
+            const AnimationClip *clip = &component.animation_clips[current_animation_clip];
 
-            float duration = clip.get_duration();
-            float start_time = clip.start_time;
-            float end_time = clip.end_time;
+            float duration = clip->get_duration();
+            float start_time = clip->start_time;
+            float end_time = clip->end_time;
             component.current_time += dt * animation_speed;
-            if (clip.looping && component.current_time > end_time)
+
+            if (clip->looping && component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
 
             Entity entity = component_array->entities[i];
             TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
 
             // This doesn't handle existing local translation/rotation/scale, need to find a way to handle that as well
-            clip.sample_TRS(0, component.current_time, transform->position, transform->rotation, transform->scale);
+            clip->sample_TRS(0, component.current_time, transform->position, transform->rotation, transform->scale);
             transform->dirty = true;
         }
     }
@@ -191,55 +194,38 @@ namespace mirai {
 
         float dt = Engine::get()->get_dt_seconds();
         for (auto &animation_player : animation_players) {
-            int current_animation_clip = animation_player.current_animation_clip;
-            if (current_animation_clip == K_INVALID_ANIMATION_CLIP)
-                continue;
-
-            Skeleton &skeleton = skeletons[animation_player.skeleton_index];
-            uint32_t bone_count = cast_u32(skeleton.names.size());
-
-            Pose &pose = animation_player.pose;
-            pose.resize(bone_count);
-
-            const AnimationClip &clip = animation_clips[current_animation_clip];
-
-            float duration = clip.get_duration();
-            float start_time = clip.start_time;
-            float end_time = clip.end_time;
-
-            if (!animation_player.paused)
-                animation_player.current_time += dt * animation_speed;
-
-            if (animation_player.current_time > end_time) {
-                if (clip.looping)
-                    animation_player.current_time = fmod(animation_player.current_time - start_time, duration) + start_time;
-                else
-                    animation_player.current_time = end_time;
+            const Skeleton *skeleton = &animation_player->skeletal_asset->skeleton;
+            uint32_t bone_count = cast_u32(skeleton->names.size());
+            if (!animation_player->is_valid()) {
+                for (uint32_t i = 0; i < bone_count; ++i) {
+                    animation_player->matrix_palletes[i] = glm::mat4(1.0f);
+                }
+                return;
             }
+
+            animation_player->current_pose.resize(bone_count);
+
+            animation_player->blend_time = std::clamp(animation_player->blend_time + dt, 0.0f, animation_player->blend_duration);
+            float blend_factor = animation_player->blend_time / animation_player->blend_duration;
+
+            animation_player->sample_current_animation(dt * animation_speed);
+            animation_player->sample_target_animation(dt * animation_speed);
 
             glm::vec3 min = glm::vec3(FLT_MAX);
             glm::vec3 max = glm::vec3(-FLT_MAX);
             const float K_BONE_RADIUS = 1.0f;
 
+            std::vector<glm::mat4> &matrix_palletes = animation_player->matrix_palletes;
+            Pose &pose = animation_player->current_pose;
+
             for (uint32_t i = 0; i < bone_count; ++i) {
-                int parent = skeleton.parents[i];
+                int parent = skeleton->parents[i];
                 ASSERT(parent < int(i));
 
-                const glm::mat4 &parent_transform = parent == -1 ? glm::mat4(1.0f) : pose.matrix_palletes[parent];
-                glm::mat4 transform = parent_transform;
+                const glm::mat4 &parent_transform = parent == -1 ? glm::mat4(1.0f) : matrix_palletes[parent];
 
-                // Some of the node in hierarchy doesn't have keyframes, for such we just
-                // apply parent transform with local transform
-                if (clip.has_animation(i)) {
-                    clip.sample_TRS(i, animation_player.current_time, pose.joints_position[i], pose.joints_rotation[i], pose.joints_scaling[i]);
-                    transform = transform * pose.get_transform(i);
-                } else {
-                    pose.joints_position[i] = glm::vec3(0.0f);
-                    pose.joints_rotation[i] = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
-                    pose.joints_scaling[i] = glm::vec3(1.0f);
-                }
-                // parent_transform * animation_transform * skeleton.inv_bind_transforms[i]
-                pose.matrix_palletes[i] = transform;
+                animation_player->evaluate_pose_for_bone(pose, i, blend_factor);
+                matrix_palletes[i] = parent_transform * pose.get_transform(i);
 
                 // World space AABB
                 glm::vec3 bone_pos = parent_transform * glm::vec4(pose.joints_position[i], 1.0f);
@@ -248,10 +234,10 @@ namespace mirai {
                 min = glm::min(bone_min, min);
                 max = glm::max(bone_max, max);
             }
-            animation_player.aabb = {min, max};
+            animation_player->aabb = {min, max};
 
-            for (uint32_t i = 0; i < skeleton.parents.size(); ++i) {
-                pose.matrix_palletes[i] = pose.matrix_palletes[i] * skeleton.inv_bind_transforms[i];
+            for (uint32_t i = 0; i < skeleton->parents.size(); ++i) {
+                matrix_palletes[i] = matrix_palletes[i] * skeleton->inv_bind_transforms[i];
             }
         }
     }
@@ -310,8 +296,11 @@ namespace mirai {
 
                 // Create a combined AABB from animated pose and rest pose
                 if (is_skinned) {
-                    const AABB &animation_aabb = animation_players[animator->animation_player_index].aabb;
-                    transformed_aabb.combine(animation_aabb);
+                    const auto &animation_player = animation_players[animator->animation_player_index];
+                    if (animation_player->is_valid()) {
+                        const AABB &animation_aabb = animation_player->aabb;
+                        transformed_aabb.combine(animation_aabb);
+                    }
                 }
                 transformed_aabb.transform(transform->world_transform);
 

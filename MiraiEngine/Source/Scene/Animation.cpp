@@ -48,4 +48,16 @@ namespace mirai {
         }
     }
 
+    AnimationPlayer::AnimationPlayer(const SkeletalAsset *skeletal_asset) : skeletal_asset(skeletal_asset), blend_duration(0.2f), blend_time(0.2f), paused(false) {
+        uint32_t bone_count = cast_u32(skeletal_asset->skeleton.names.size());
+        matrix_palletes.resize(bone_count);
+        current_animation_state.clip_index = K_INVALID_ANIMATION_CLIP;
+        current_animation_state.time = 0.0f;
+        current_animation_state.pose.resize(bone_count);
+
+        target_animation_state.clip_index = 0;
+        target_animation_state.time = 0.0f;
+        target_animation_state.pose.resize(bone_count);
+    }
+
 } // namespace mirai

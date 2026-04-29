@@ -152,10 +152,11 @@ namespace mirai {
 
     struct NodeAnimatorComponent {
         // Index to the array of AnimationClip stored in scene
-        int current_animation_clip;
+        uint32_t current_animation_clip;
         float current_time = 0.0f;
         float playback_speed = 1.0f;
         bool should_update_children = true;
+        std::vector<AnimationClip> animation_clips;
     };
 
     struct AnimatorComponent {

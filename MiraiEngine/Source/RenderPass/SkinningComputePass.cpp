@@ -52,10 +52,9 @@ namespace mirai {
                 std::vector<uint32_t> skinned_matrix_offsets(scene->animation_players.size());
                 uint32_t skinned_matrix_size = 0;
                 for (uint32_t i = 0; i < scene->animation_players.size(); ++i) {
-                    if (scene->animation_players[i].current_animation_clip == K_INVALID_ANIMATION_CLIP)
-                        continue;
+                    std::unique_ptr<AnimationPlayer> &animation_player = scene->animation_players[i];
                     skinned_matrix_offsets[i] = skinned_matrix_size;
-                    skinned_matrix_size += cast_u32(scene->animation_players[i].pose.matrix_palletes.size());
+                    skinned_matrix_size += cast_u32(animation_player->matrix_palletes.size());
                 }
 
                 if (skinned_matrix_size == 0)
@@ -65,7 +64,7 @@ namespace mirai {
                 BufferView matrix_pallete_buffer = allocator->allocate(cast_u32(skinned_matrix_size * sizeof(glm::mat4)));
                 uint8_t *ptr = matrix_pallete_buffer.ptr;
                 for (const auto &animation_player : scene->animation_players) {
-                    const std::vector<glm::mat4> &matrix_pallete = animation_player.pose.matrix_palletes;
+                    const std::vector<glm::mat4> &matrix_pallete = animation_player->matrix_palletes;
                     uint32_t matrix_pallete_size = cast_u32(sizeof(glm::mat4) * matrix_pallete.size());
                     std::memcpy(ptr, matrix_pallete.data(), matrix_pallete_size);
                     ptr += matrix_pallete_size;
@@ -78,12 +77,7 @@ namespace mirai {
                     ASSERT(mesh_component != nullptr);
 
                     AnimatorComponent *animator_component = component_manager->get_component<AnimatorComponent>(entity);
-                    uint32_t animation_player_index = animator_component->animation_player_index;
-                    const AnimationPlayer &animation_player = scene->animation_players[animation_player_index];
-
                     for (auto &subset : mesh_component->mesh_subsets) {
-                        uint32_t skeleton_index = animation_player.skeleton_index;
-                        Skeleton *skeleton = &scene->skeletons[skeleton_index];
 
                         // Vertices is access as uint in the shader, so the offset/stride should be
                         // in the sizeof uint instead of bytes
@@ -93,7 +87,7 @@ namespace mirai {
                             .vertex_count = subset.vertex_count,
                             .output_offset = subset.output_vertex_offset_bytes / 4,
                             // Access as mat4 in shader, so we don't convert it to bytes
-                            .matrix_palletes_offset = skinned_matrix_offsets[animation_player_index],
+                            .matrix_palletes_offset = skinned_matrix_offsets[animator_component->animation_player_index],
                         });
                     }
                 }

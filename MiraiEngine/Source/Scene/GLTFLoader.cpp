@@ -712,7 +712,7 @@ namespace mirai {
             if (gltf_animation.channels.size() == 0)
                 continue;
 
-            const std::string &name = gltf_animation.name.size() > 0 ? gltf_animation.name : "unnamed" + std::to_string(load_state->scene->animation_clips.size() + i);
+            const std::string &name = gltf_animation.name.size() > 0 ? gltf_animation.name : "unnamed" + std::to_string(i);
             TempAnimation *animation = &load_state->animations.emplace_back(TempAnimation{.name = name});
 
             float start_time = std::numeric_limits<float>::max();
@@ -796,15 +796,11 @@ namespace mirai {
             // Lookup table between node and it's parent local index
             HashMap<int, int> joint_parent_lookup;
 
-            Skeleton &skeleton = load_state->scene->skeletons.emplace_back();
-            skeleton.name = skin.name;
-            skeleton.resize(joint_count);
+            std::unique_ptr<SkeletalAsset> skeletal_asset = std::make_unique<SkeletalAsset>();
+            skeletal_asset->name = skin.name;
 
-            AnimationPlayer &animation_player = load_state->scene->animation_players.emplace_back();
-            animation_player.skeleton_index = cast_u32(load_state->scene->skeletons.size() - 1);
-            animation_player.current_time = 0;
-            animation_player.current_animation_clip = 0;
-            animation_player.paused = false;
+            Skeleton &skeleton = skeletal_asset->skeleton;
+            skeleton.resize(joint_count);
 
             // ASSERT(skin.inverseBindMatrices >= 0);
             glm::mat4 *inv_bind_matrix_ptr = nullptr;
@@ -855,12 +851,12 @@ namespace mirai {
                 match_percent = match_percent / float(joint_count);
                 if (match_percent > 0.49f) {
                     Log::Info("Found animation clip: ", animation.name);
-                    AnimationClip &animation_clip = load_state->scene->animation_clips.emplace_back(AnimationClip{
+                    AnimationClip& animation_clip = skeletal_asset->animation_clips.emplace_back(AnimationClip{
                         .name = animation.name,
                         .start_time = animation.start_time,
                         .end_time = animation.end_time,
                         .tick_per_seconds = 60,
-                        .looping = false,
+                        .looping = true,
                     });
                     animation_clip.positions.resize(joint_count);
                     animation_clip.rotations.resize(joint_count);
@@ -876,7 +872,6 @@ namespace mirai {
                         animation_clip.rotations[j] = std::move(channel.rotations);
                         animation_clip.scalings[j] = std::move(channel.scalings);
                     }
-                    skeleton.supported_animations.push_back(cast_u32(load_state->scene->animation_clips.size() - 1));
                 }
             }
             /*
@@ -890,6 +885,9 @@ namespace mirai {
                         }
             #endif
             */
+            load_state->scene->animation_players.push_back(std::make_unique<AnimationPlayer>(skeletal_asset.get()));
+            // std::unique_ptr<AnimationPlayer> &animation_player = load_state->scene->animation_players.emplace_back(skeletal_asset.get()).get();
+            load_state->scene->skeletal_assets.push_back(std::move(skeletal_asset));
             Log::Info("Skin Name: ", skin.name);
         }
     }
@@ -957,29 +955,22 @@ namespace mirai {
             uint32_t animation_player_index = load_state->animation_player_base_offset + node->skin;
             int default_animation_clip = -1;
 
-            AnimationPlayer &animation_player = scene->animation_players[animation_player_index];
-            if (scene->skeletons[animation_player.skeleton_index].supported_animations.size() > 0)
-                animation_player.current_animation_clip = 0;
             comp_manager->add_component<AnimatorComponent>(entity, AnimatorComponent{
                                                                        .animation_player_index = animation_player_index,
                                                                    });
         }
 
+        // @TODO implement animation sharing
         int default_animation_clip = -1;
-        bool has_node_animation = false;
+        std::vector<AnimationClip> animation_clips;
         for (auto &animation : load_state->animations) {
             if (animation.has_node(node_index)) {
                 ASSERT(node->skin == -1);
-                has_node_animation = true;
-
-                default_animation_clip = cast_int(scene->animation_clips.size());
-                AnimationClip &animation_clip = scene->animation_clips.emplace_back(AnimationClip{
-                    .name = animation.name,
+                AnimationClip &animation_clip = animation_clips.emplace_back(AnimationClip{
                     .start_time = animation.start_time,
                     .end_time = animation.end_time,
                     .tick_per_seconds = 24,
                 });
-
                 TempAnimationChannel &channel = animation.channels.at(node_index);
                 animation_clip.positions.push_back(std::move(channel.positions));
                 animation_clip.rotations.push_back(std::move(channel.rotations));
@@ -987,10 +978,11 @@ namespace mirai {
             }
         }
 
-        if (has_node_animation) {
-            comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{
-                                                                           .current_animation_clip = default_animation_clip,
-                                                                       });
+        if (animation_clips.size() > 0) {
+            NodeAnimatorComponent &component = comp_manager->add_component<NodeAnimatorComponent>(entity, NodeAnimatorComponent{
+                                                                                                              .current_animation_clip = 0,
+                                                                                                              .animation_clips = std::move(animation_clips),
+                                                                                                          });
             mesh_type = MESH_TYPE_DYNAMIC;
         }
 
