@@ -160,7 +160,7 @@ namespace mirai {
         std::vector<NodeAnimatorComponent> &animations = component_array->components;
         if (animations.size() == 0)
             return;
-        float dt = Engine::get()->get_dt_seconds();
+        float dt = Engine::get()->get_dt_seconds() * animation_speed;
 
         for (uint32_t i = 0; i < animations.size(); ++i) {
             NodeAnimatorComponent &component = animations[i];
@@ -174,7 +174,7 @@ namespace mirai {
             float duration = clip->get_duration();
             float start_time = clip->start_time;
             float end_time = clip->end_time;
-            component.current_time += dt * animation_speed;
+            component.current_time += dt;
 
             if (clip->looping && component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
@@ -192,28 +192,32 @@ namespace mirai {
         if (animation_players.size() == 0)
             return;
 
-        float dt = Engine::get()->get_dt_seconds();
+        float dt = Engine::get()->get_dt_seconds() * animation_speed;
         for (auto &animation_player : animation_players) {
             const Skeleton *skeleton = &animation_player->skeletal_asset->skeleton;
             uint32_t bone_count = cast_u32(skeleton->names.size());
-            if (!animation_player->is_valid()) {
-                for (uint32_t i = 0; i < bone_count; ++i) {
-                    animation_player->matrix_palletes[i] = glm::mat4(1.0f);
-                }
-                return;
-            }
-
+            // Apply bind pose, normally you would set it to identity matrix, but
+            // some mesh have parent node used to set scaling with inv_bind_matrix taking that
+            // in account, so we have to negate. For e.g y-bot from mixamo have such case
+            // std::vector<glm::mat4> transforms(bone_count);
+            // for (uint32_t i = 0; i < bone_count; ++i) {
+            //     int parent = skeleton->parents[i];
+            //     const glm::mat4 &parent_transform = parent == -1 ? glm::mat4(1.0f) : transforms[parent];
+            //     transforms[i] = parent_transform * skeleton->local_transforms[i];
+            //     animation_player->matrix_palletes[i] = transforms[i] * skeleton->inv_bind_transforms[i];
+            // }
             animation_player->current_pose.resize(bone_count);
-
-            animation_player->blend_time = std::clamp(animation_player->blend_time + dt, 0.0f, animation_player->blend_duration);
-            float blend_factor = animation_player->blend_time / animation_player->blend_duration;
-
-            animation_player->sample_current_animation(dt * animation_speed);
-            animation_player->sample_target_animation(dt * animation_speed);
+            float blend_factor = 0.0f;
+            bool is_valid_animation = animation_player->is_valid();
+            if (is_valid_animation) {
+                animation_player->blend_time = std::clamp(animation_player->blend_time + dt, 0.0f, animation_player->blend_duration);
+                blend_factor = animation_player->blend_time / animation_player->blend_duration;
+                animation_player->sample_current_animation(dt);
+                animation_player->sample_target_animation(dt);
+            }
 
             glm::vec3 min = glm::vec3(FLT_MAX);
             glm::vec3 max = glm::vec3(-FLT_MAX);
-
             std::vector<glm::mat4> &matrix_palletes = animation_player->matrix_palletes;
             Pose &pose = animation_player->current_pose;
 
@@ -223,8 +227,12 @@ namespace mirai {
 
                 const glm::mat4 &parent_transform = parent == -1 ? glm::mat4(1.0f) : matrix_palletes[parent];
 
-                animation_player->evaluate_pose_for_bone(pose, i, blend_factor);
-                matrix_palletes[i] = parent_transform * pose.get_transform(i);
+                if (is_valid_animation) {
+                    animation_player->evaluate_pose_for_bone(pose, i, blend_factor);
+                    matrix_palletes[i] = parent_transform * pose.get_transform(i);
+                } else {
+                    matrix_palletes[i] = parent_transform * skeleton->local_transforms[i];
+                }
 
                 glm::vec3 bone_pos = glm::vec3(matrix_palletes[i][3]);
                 min = glm::min(bone_pos, min);

@@ -804,6 +804,7 @@ namespace mirai {
 
             // ASSERT(skin.inverseBindMatrices >= 0);
             glm::mat4 *inv_bind_matrix_ptr = nullptr;
+
             if (skin.inverseBindMatrices >= 0) {
                 const tinygltf::Accessor &bind_matrices_accessor = model->accessors[skin.inverseBindMatrices];
                 ASSERT(bind_matrices_accessor.count == joint_count);
@@ -851,7 +852,7 @@ namespace mirai {
                 match_percent = match_percent / float(joint_count);
                 if (match_percent > 0.49f) {
                     Log::Info("Found animation clip: ", animation.name);
-                    AnimationClip& animation_clip = skeletal_asset->animation_clips.emplace_back(AnimationClip{
+                    AnimationClip &animation_clip = skeletal_asset->animation_clips.emplace_back(AnimationClip{
                         .name = animation.name,
                         .start_time = animation.start_time,
                         .end_time = animation.end_time,

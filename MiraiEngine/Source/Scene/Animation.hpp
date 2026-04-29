@@ -169,7 +169,7 @@ namespace mirai {
     };
 
     struct AnimationPlayer {
-        const SkeletalAsset *skeletal_asset;
+        SkeletalAsset *skeletal_asset;
         AnimationState current_animation_state;
         AnimationState target_animation_state;
 
@@ -182,7 +182,7 @@ namespace mirai {
 
         std::vector<glm::mat4> matrix_palletes;
 
-        AnimationPlayer(const SkeletalAsset *skeletal_asset);
+        AnimationPlayer(SkeletalAsset *skeletal_asset);
 
         void _step_animation_state(AnimationState &animation_state, float dt) {
             const AnimationClip &clip = skeletal_asset->animation_clips[animation_state.clip_index];
@@ -260,6 +260,8 @@ namespace mirai {
             blend_duration = duration;
             blend_time = 0.0f;
         }
+
+        void reset();
 
         bool is_valid() const {
             return current_animation_state.clip_index != K_INVALID_ANIMATION_CLIP || target_animation_state.clip_index != K_INVALID_ANIMATION_CLIP;

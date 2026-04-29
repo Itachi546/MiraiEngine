@@ -282,13 +282,13 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
     if (animation_player_index >= scene->animation_players.size())
         return;
 
-    const auto &animation_player = scene->animation_players[animation_player_index];
+    auto &animation_player = scene->animation_players[animation_player_index];
     if (ImGui::CollapsingHeader("AnimationPlayer")) {
         const Skeleton &skeleton = animation_player->skeletal_asset->skeleton;
         ImGui::Text("Skeleton Name: %s", animation_player->skeletal_asset->name.c_str());
 
-        const std::vector<AnimationClip> &animation_clips = animation_player->skeletal_asset->animation_clips;
-        if (animation_clips.size() > 0 && animation_player->is_valid()) {
+        std::vector<AnimationClip> &animation_clips = animation_player->skeletal_asset->animation_clips;
+        if (animation_clips.size() > 0) {
             std::stringstream ss;
             for (const auto &clip : animation_clips) {
                 ss << clip.name << '\0';
@@ -299,32 +299,40 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
             ImGui::SliderFloat("Cross Fade Duration", &cross_fade_duration, 0.1f, 4.0f);
 
             static int current_animation_clip = 0;
-            if (ImGui::Combo("Target", &current_animation_clip, ss.str().c_str())) {
+            ImGui::Combo("Target", &current_animation_clip, ss.str().c_str());
+            ImGui::SameLine();
+            AnimationClip &clip = animation_clips[current_animation_clip];
+            ImGui::Checkbox("L", &clip.looping);
+            ImGui::SameLine();
+            if (ImGui::Button("P"))
                 animation_player->crossFadeTo(current_animation_clip, cross_fade_duration);
-            }
-            /*
-            AnimationClip *current_animation = &scene->animation_clips[animation_player->current_animation_clip];
-            ImGui::Text("Animation: %s\n", current_animation->name.c_str());
 
-            ImGui::SliderFloat("##timeline", &animation_player->current_time, current_animation->start_time, current_animation->end_time);
+            if (animation_player->is_valid()) {
+                AnimationState &current_state = animation_player->current_animation_state;
+                AnimationState &target_state = animation_player->target_animation_state;
+                AnimationClip &target_clip = animation_clips[target_state.clip_index];
 
-            const float frame_step = 1.0f / current_animation->tick_per_seconds;
+                ImGui::Text("Clip:%s", target_clip.name.c_str());
+                ImGui::SliderFloat("##timeline", &target_state.time, target_clip.start_time, target_clip.end_time);
 
-            if (ImGui::Button("<<")) {
-                animation_player->current_time = std::max(animation_player->current_time - frame_step, current_animation->start_time);
+                const float frame_step = 1.0f / target_clip.tick_per_seconds;
+
+                if (ImGui::Button("<<")) {
+                    target_state.time = std::max(target_state.time - frame_step, target_clip.start_time);
+                }
+                ImGui::SameLine();
+                const char *state = animation_player->paused ? "||" : ">";
+                if (ImGui::Button(state)) {
+                    animation_player->paused = !animation_player->paused;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(">>")) {
+                    target_state.time = std::min(target_state.time + frame_step, target_clip.end_time);
+                }
             }
-            ImGui::SameLine();
-            const char *state = animation_player->paused ? "||" : ">";
-            if (ImGui::Button(state)) {
-                animation_player->paused = !animation_player->paused;
+            if (ImGui::Button("Bind Pose")) {
+                animation_player->reset();
             }
-            ImGui::SameLine();
-            if (ImGui::Button(">>")) {
-                animation_player->current_time = std::min(animation_player->current_time + frame_step, current_animation->end_time);
-            }
-            ImGui::SameLine();
-            ImGui::Checkbox("Looping", &current_animation->looping);
-            */
             // ImGui::Text("Duration: %.2fs", current_animation->get_duration());
             // ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
         }
