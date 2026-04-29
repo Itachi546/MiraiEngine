@@ -213,7 +213,6 @@ namespace mirai {
 
             glm::vec3 min = glm::vec3(FLT_MAX);
             glm::vec3 max = glm::vec3(-FLT_MAX);
-            const float K_BONE_RADIUS = 1.0f;
 
             std::vector<glm::mat4> &matrix_palletes = animation_player->matrix_palletes;
             Pose &pose = animation_player->current_pose;
@@ -227,12 +226,9 @@ namespace mirai {
                 animation_player->evaluate_pose_for_bone(pose, i, blend_factor);
                 matrix_palletes[i] = parent_transform * pose.get_transform(i);
 
-                // World space AABB
-                glm::vec3 bone_pos = parent_transform * glm::vec4(pose.joints_position[i], 1.0f);
-                glm::vec3 bone_min = bone_pos - glm::vec3(K_BONE_RADIUS);
-                glm::vec3 bone_max = bone_pos + glm::vec3(K_BONE_RADIUS);
-                min = glm::min(bone_min, min);
-                max = glm::max(bone_max, max);
+                glm::vec3 bone_pos = glm::vec3(matrix_palletes[i][3]);
+                min = glm::min(bone_pos, min);
+                max = glm::max(bone_pos, max);
             }
             animation_player->aabb = {min, max};
 
@@ -290,6 +286,7 @@ namespace mirai {
             BufferView vertex_buffer = mesh_component.vertex_buffer;
             BufferView index_buffer = mesh_component.index_buffer;
 
+            const float K_BONE_RADIUS = 1.0f;
             for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
                 MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
                 AABB transformed_aabb = mesh_component.aabbs[s];
@@ -302,7 +299,12 @@ namespace mirai {
                         transformed_aabb.combine(animation_aabb);
                     }
                 }
+                // The K_BONE radius is added later because it is defined in world space
+                // When adding it in local space it get affected by scaling of mesh
+                // 0.01 scaling means only 0.01 bound size in world space which is not enough
                 transformed_aabb.transform(transform->world_transform);
+                transformed_aabb.min -= K_BONE_RADIUS;
+                transformed_aabb.max += K_BONE_RADIUS;
 
                 uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
                 ASSERT(index < K_MAX_ENTITIES);

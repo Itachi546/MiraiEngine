@@ -51,6 +51,7 @@ void main() {
 
     uint output_address = output_offset + id * OUTPUT_VERTEX_SIZE;
     uvec3 out_position = floatBitsToUint(vec3(skinning_matrix * vec4(position, 1.0f)));
+    // uvec3 out_position = floatBitsToUint(position);
 
     uint ptr = output_offset + id * OUTPUT_VERTEX_SIZE;
 
