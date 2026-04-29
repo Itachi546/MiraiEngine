@@ -52,9 +52,14 @@ namespace mirai {
                 std::vector<uint32_t> skinned_matrix_offsets(scene->animation_players.size());
                 uint32_t skinned_matrix_size = 0;
                 for (uint32_t i = 0; i < scene->animation_players.size(); ++i) {
+                    if (scene->animation_players[i].current_animation_clip == K_INVALID_ANIMATION_CLIP)
+                        continue;
                     skinned_matrix_offsets[i] = skinned_matrix_size;
                     skinned_matrix_size += cast_u32(scene->animation_players[i].pose.matrix_palletes.size());
                 }
+
+                if (skinned_matrix_size == 0)
+                    return;
 
                 GPUBufferLinearAllocator *allocator = renderer->get_per_frame_gpu_allocator();
                 BufferView matrix_pallete_buffer = allocator->allocate(cast_u32(skinned_matrix_size * sizeof(glm::mat4)));
