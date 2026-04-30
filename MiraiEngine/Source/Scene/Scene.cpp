@@ -212,8 +212,8 @@ namespace mirai {
             if (is_valid_animation) {
                 animation_player->blend_time = std::clamp(animation_player->blend_time + dt, 0.0f, animation_player->blend_duration);
                 blend_factor = animation_player->blend_time / animation_player->blend_duration;
-                animation_player->sample_current_animation(dt);
-                animation_player->sample_target_animation(dt);
+                animation_player->sample_current_animation(dt, blend_factor);
+                animation_player->sample_target_animation(dt, blend_factor);
             }
 
             glm::vec3 min = glm::vec3(FLT_MAX);

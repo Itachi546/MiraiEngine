@@ -210,18 +210,19 @@ namespace mirai {
                 clip.sample_TRS(i, time, pose.joints_position[i], pose.joints_rotation[i], pose.joints_scaling[i]);
         }
 
-        void sample_current_animation(float dt) {
+        void sample_current_animation(float dt, float blend_factor) {
             uint32_t clip_index = current_animation_state.clip_index;
             if (clip_index == K_INVALID_ANIMATION_CLIP)
                 return;
 
             ASSERT(clip_index < skeletal_asset->animation_clips.size());
-
             _step_animation_state(current_animation_state, dt);
-            _sample_pose(current_animation_state.pose, skeletal_asset->animation_clips[clip_index], current_animation_state.time);
+
+            if (blend_factor < 0.999f)
+                _sample_pose(current_animation_state.pose, skeletal_asset->animation_clips[clip_index], current_animation_state.time);
         }
 
-        void sample_target_animation(float dt) {
+        void sample_target_animation(float dt, float blend_factor) {
             uint32_t clip_index = target_animation_state.clip_index;
             if (clip_index == K_INVALID_ANIMATION_CLIP)
                 return;
@@ -229,13 +230,13 @@ namespace mirai {
             ASSERT(clip_index < skeletal_asset->animation_clips.size());
 
             _step_animation_state(target_animation_state, dt);
-            _sample_pose(target_animation_state.pose, skeletal_asset->animation_clips[clip_index], target_animation_state.time);
+            if (blend_factor > 0.001f)
+                _sample_pose(target_animation_state.pose, skeletal_asset->animation_clips[clip_index], target_animation_state.time);
         }
 
         void evaluate_pose_for_bone(Pose &pose, uint32_t bone_index, float blend_factor) const {
             const Pose &current = current_animation_state.pose;
             const Pose &target = target_animation_state.pose;
-            /*
             if (blend_factor > 0.999f) {
                 pose.joints_position[bone_index] = target.joints_position[bone_index];
                 pose.joints_scaling[bone_index] = target.joints_scaling[bone_index];
@@ -244,8 +245,7 @@ namespace mirai {
                 pose.joints_position[bone_index] = current.joints_position[bone_index];
                 pose.joints_scaling[bone_index] = current.joints_scaling[bone_index];
                 pose.joints_rotation[bone_index] = current.joints_rotation[bone_index];
-            } else*/
-            {
+            } else {
                 pose.joints_position[bone_index] = glm::mix(current.joints_position[bone_index], target.joints_position[bone_index], blend_factor);
                 pose.joints_scaling[bone_index] = glm::mix(current.joints_scaling[bone_index], target.joints_scaling[bone_index], blend_factor);
                 pose.joints_rotation[bone_index] = glm::slerp(current.joints_rotation[bone_index], target.joints_rotation[bone_index], blend_factor);
