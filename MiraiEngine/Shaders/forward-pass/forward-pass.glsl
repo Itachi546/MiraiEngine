@@ -70,7 +70,7 @@ bool is_valid(uint texture) {
     return texture != K_INVALID_TEXTURE;
 }
 
-const float K_MIP_LOD_BIAS = -1.0f;
+const float K_MIP_LOD_BIAS = -0.5f;
 
 void main() {
     PBRMaterial material = materials[fs_in.mat_id];

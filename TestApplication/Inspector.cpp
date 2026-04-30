@@ -276,6 +276,26 @@ void add_skeleton_hierarchy(const Skeleton &skeleton, int node) {
     }
 }
 
+void add_animation_clip_control(AnimationClip &clip, float &time, bool &paused) {
+    ImGui::Text("Clip:%s", clip.name.c_str());
+    ImGui::SliderFloat("##timeline", &time, clip.start_time, clip.end_time);
+
+    const float frame_step = 1.0f / clip.tick_per_seconds;
+
+    if (ImGui::Button("<<")) {
+        time = std::max(time - frame_step, clip.start_time);
+    }
+    ImGui::SameLine();
+    const char *state = paused ? "||" : ">";
+    if (ImGui::Button(state)) {
+        paused = !paused;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(">>")) {
+        time = std::min(time + frame_step, clip.end_time);
+    }
+}
+
 Entity last_selected_entity = K_INVALID_ENTITY;
 bool show_skeleton = false;
 void add_animation_player(int animation_player_index, Scene *scene, Entity entity) {
@@ -311,24 +331,7 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
                 AnimationState &current_state = animation_player->current_animation_state;
                 AnimationState &target_state = animation_player->target_animation_state;
                 AnimationClip &target_clip = animation_clips[target_state.clip_index];
-
-                ImGui::Text("Clip:%s", target_clip.name.c_str());
-                ImGui::SliderFloat("##timeline", &target_state.time, target_clip.start_time, target_clip.end_time);
-
-                const float frame_step = 1.0f / target_clip.tick_per_seconds;
-
-                if (ImGui::Button("<<")) {
-                    target_state.time = std::max(target_state.time - frame_step, target_clip.start_time);
-                }
-                ImGui::SameLine();
-                const char *state = animation_player->paused ? "||" : ">";
-                if (ImGui::Button(state)) {
-                    animation_player->paused = !animation_player->paused;
-                }
-                ImGui::SameLine();
-                if (ImGui::Button(">>")) {
-                    target_state.time = std::min(target_state.time + frame_step, target_clip.end_time);
-                }
+                add_animation_clip_control(target_clip, target_state.time, animation_player->paused);
             }
             if (ImGui::Button("Bind Pose")) {
                 animation_player->reset();
@@ -348,6 +351,35 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
     }
 }
 
+void add_node_animator_component(NodeAnimatorComponent *component, Scene *scene, Entity entity) {
+    if (!component)
+        return;
+    if (ImGui::CollapsingHeader("NodeAnimatorComponent")) {
+        std::vector<AnimationClip> &animation_clips = component->animation_clips;
+        if (animation_clips.size() > 0) {
+            std::stringstream ss;
+            for (const auto &clip : animation_clips) {
+                ss << clip.name << '\0';
+            }
+            ss << '\0';
+
+            static int current_animation_clip = 0;
+            ImGui::Combo("Clip", &current_animation_clip, ss.str().c_str());
+            ImGui::SameLine();
+            AnimationClip &clip = animation_clips[current_animation_clip];
+            ImGui::Checkbox("L", &clip.looping);
+            ImGui::SameLine();
+            if (ImGui::Button("P"))
+                component->current_animation_clip = current_animation_clip;
+
+            if (component->current_animation_clip != K_INVALID_ANIMATION_CLIP) {
+                AnimationClip &clip = animation_clips[component->current_animation_clip];
+                add_animation_clip_control(clip, component->current_time, component->paused);
+            }
+        }
+    }
+}
+
 void add_entity_components(Entity entity, Scene *scene) {
     auto &comp_manager = scene->ecs->component_manager;
     auto name_component = comp_manager->get_component<NameComponent>(entity);
@@ -363,6 +395,7 @@ void add_entity_components(Entity entity, Scene *scene) {
     if (animator_component) {
         add_animation_player(animator_component->animation_player_index, scene, entity);
     }
+    add_node_animator_component(comp_manager->get_component<NodeAnimatorComponent>(entity), scene, entity);
     add_light_component_ui(comp_manager->get_component<LightComponent>(entity), entity);
 }
 

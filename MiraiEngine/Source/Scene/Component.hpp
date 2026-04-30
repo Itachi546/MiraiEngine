@@ -157,6 +157,7 @@ namespace mirai {
         float playback_speed = 1.0f;
         bool should_update_children = true;
         std::vector<AnimationClip> animation_clips;
+        bool paused = false;
     };
 
     struct AnimatorComponent {

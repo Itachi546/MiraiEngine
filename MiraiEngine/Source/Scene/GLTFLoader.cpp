@@ -971,6 +971,7 @@ namespace mirai {
                     .start_time = animation.start_time,
                     .end_time = animation.end_time,
                     .tick_per_seconds = 24,
+                    .looping = true,
                 });
                 TempAnimationChannel &channel = animation.channels.at(node_index);
                 animation_clip.positions.push_back(std::move(channel.positions));

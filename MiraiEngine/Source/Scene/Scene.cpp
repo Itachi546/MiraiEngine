@@ -174,7 +174,8 @@ namespace mirai {
             float duration = clip->get_duration();
             float start_time = clip->start_time;
             float end_time = clip->end_time;
-            component.current_time += dt;
+            if (!component.paused)
+                component.current_time += dt;
 
             if (clip->looping && component.current_time > end_time)
                 component.current_time = fmod(component.current_time - start_time, duration) + start_time;
