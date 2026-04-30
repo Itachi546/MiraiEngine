@@ -120,5 +120,6 @@ namespace mirai {
         glm::vec2 jitter_factor;
 
         void update_projection_matrix();
+        void update_view_matrix();
     };
 } // namespace mirai

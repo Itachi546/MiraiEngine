@@ -12,19 +12,12 @@ namespace mirai {
                        near_plane(0.2f),
                        far_plane(100.0f),
                        jitter_factor(glm::vec2(0.0f)) {
-        view_projection_matrix = glm::mat4(1.0f);
+
+        update();
     }
 
     void Camera::update() {
-        glm::vec3 rotation_radians = glm::radians(rotation);
-        forward = rotation_to_direction(rotation_radians);
-        right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
-        up = glm::normalize(glm::cross(right, forward));
-
-        view_matrix = glm::lookAt(position, position + forward, up);
-
-        inv_view_matrix = glm::inverse(view_matrix);
-
+        update_view_matrix();
         update_projection_matrix();
 
         view_projection_matrix = projection_matrix * view_matrix;
@@ -76,6 +69,17 @@ namespace mirai {
         projection_matrix[2][1] += jitter_factor.y;
 
         inv_projection_matrix = glm::inverse(projection_matrix);
+    }
+
+    void Camera::update_view_matrix() {
+        glm::vec3 rotation_radians = glm::radians(rotation);
+        forward = rotation_to_direction(rotation_radians);
+        right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        up = glm::normalize(glm::cross(right, forward));
+
+        view_matrix = glm::lookAt(position, position + forward, up);
+
+        inv_view_matrix = glm::inverse(view_matrix);
     }
 
 } // namespace mirai

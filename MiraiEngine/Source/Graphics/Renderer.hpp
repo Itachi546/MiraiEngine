@@ -79,6 +79,7 @@ namespace mirai {
         // Uniform Buffer
         BufferID global_transform_buffer;
         BufferID global_material_buffer;
+        BufferID global_blas_buffer;
 
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;
@@ -120,6 +121,8 @@ namespace mirai {
         void patch_global_data(CommandBuffer *command_buffer);
 
         void create_batches();
+
+        void create_blas();
 
         void upload_visible_lights();
 

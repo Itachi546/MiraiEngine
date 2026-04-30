@@ -78,6 +78,11 @@ namespace mirai {
         uint32_t stride;
     };
 
+    struct BLASDescription {
+        AccelerationStructureBufferInfo vertex_buffer_info;
+        AccelerationStructureBufferInfo index_buffer_info;
+    };
+
     struct AccelerationStructureMeshInfo {
         AccelerationStructureBufferInfo vertex_buffer;
         AccelerationStructureBufferInfo index_buffer;
@@ -614,7 +619,8 @@ namespace mirai {
         }
 
         // Raytracing stuff
-        virtual void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) = 0;
+        virtual void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructureID *> &blases, BufferID &out_buffer) = 0;
+        virtual void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) = 0;
 
         virtual uint32_t get_current_frame() const = 0;
         virtual uint32_t get_swapchain_image_count() const = 0;

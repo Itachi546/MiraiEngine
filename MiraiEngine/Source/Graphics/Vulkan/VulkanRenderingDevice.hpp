@@ -16,7 +16,7 @@ VK_DEFINE_HANDLE(VmaAllocation)
 namespace mirai {
     struct VulkanSwapchain;
     class CommandBuffer;
-
+    /*
     struct VulkanAccelerationStructure {
         BufferID blas_buffer{K_INVALID_ID};
         BufferID tlas_buffer{K_INVALID_ID};
@@ -24,7 +24,7 @@ namespace mirai {
         std::vector<VkAccelerationStructureKHR> blas;
         VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
     };
-
+    */
     class VulkanRenderingDevice : public RenderingDevice {
       public:
         VulkanRenderingDevice();
@@ -100,7 +100,12 @@ namespace mirai {
         }
 
         // Raytracing utilities
-        void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) override;
+        // @NOTE when creating new blas, when mesh is added to scene (in editor), we should wait for device, destroy the blas buffer, blas and create new one
+        // since it takes alot of memory.
+        void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructureID *> &blases, BufferID &out_buffer) override;
+        void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) override;
+        // void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) override;
+
         bool supports_raytracing() const override {
             return has_rt_support;
         }
@@ -133,8 +138,8 @@ namespace mirai {
         VkFence create_fence(const std::string &name, bool signalled = false);
         void create_set_and_binding_mappings(const VulkanShader &shader, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings);
         void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
-        void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
-        void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
+        // void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
+        //  void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
         VkBuffer create_vk_buffer(const BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
         void destroy_resources(bool force = false);
 
@@ -146,6 +151,7 @@ namespace mirai {
         ResourcePool<VulkanTexture> resource_pool_textures;
         ResourcePool<VulkanBuffer> resource_pool_buffers;
         ResourcePool<VulkanQuery> resource_pool_queries;
+        ResourcePool<VkAccelerationStructureKHR> resource_pool_acceleration_structures;
 
         uint32_t current_frame = 0;
         uint64_t frame_count = 0;
@@ -153,8 +159,9 @@ namespace mirai {
         bool has_rt_support = false;
 
         VkPhysicalDeviceProperties2 physical_device_properties;
-
+        VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties;
         VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties;
+
         uint32_t resource_descriptor_size = 0;
 
         VmaAllocator vma_allocator;
@@ -170,7 +177,7 @@ namespace mirai {
         std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;
 
-        VulkanAccelerationStructure acceleration_structure;
+        // VulkanAccelerationStructure acceleration_structure;
 
         // Keep track of destroyed resources
         std::deque<std::pair<ID, uint64_t>> destroyed_buffers;

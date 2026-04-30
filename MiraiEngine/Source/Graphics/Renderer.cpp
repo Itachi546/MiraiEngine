@@ -124,62 +124,61 @@ namespace mirai {
     void Renderer::on_load_resources() {
         // Trigger scene update so that transforms are updated
         // @TODO Fix this
-        scene->update();
-
+        // scene->update();
         Camera *camera = scene->get_camera();
         freezed_inv_VP = camera->get_inv_view_projection_transform();
         freezed_frustum_planes = camera->get_frustum_planes();
 
-        // Create acceleration structure for scene
-        auto &render_list = scene->render_object_list;
-        uint32_t render_object_count = scene->render_object_count.load(std::memory_order_relaxed);
+        create_blas();
+        /*
+ // Create acceleration structure for scene
+ auto &render_list = scene->render_object_list;
+ uint32_t render_object_count = scene->render_object_count.load(std::memory_order_relaxed);
 
-        auto &component_manager = scene->ecs->component_manager;
-        std::vector<AccelerationStructureMeshInfo> mesh_infos;
-        mesh_infos.reserve(render_object_count);
-        for (uint32_t i = 0; i < render_object_count; ++i) {
-            RenderableObjectData &object = render_list[i];
-            auto &material = scene->materials[object.material_index];
-            if (material->is_transparent())
-                continue;
+ std::vector<AccelerationStructureMeshInfo> mesh_infos;
+ mesh_infos.reserve(render_object_count);
+ for (uint32_t i = 0; i < render_object_count; ++i) {
+     RenderableObjectData &object = render_list[i];
+     auto &material = scene->materials[object.material_index];
+     if (material->is_transparent())
+         continue;
 
-            mesh_infos.push_back(AccelerationStructureMeshInfo{
-                .vertex_buffer = {
-                    .buffer = object.vertex_buffer,
-                    .offset = object.vertex_offset_bytes,
-                    .count = object.index_count,
-                    .stride = object.vertex_stride,
-                },
-                .index_buffer = {
-                    .buffer = object.index_buffer,
-                    .offset = cast_u32(object.first_index * sizeof(uint32_t)),
-                    .count = object.index_count,
-                    .stride = sizeof(uint32_t),
-                },
-                .transform = {},
-            });
+     mesh_infos.push_back(AccelerationStructureMeshInfo{
+         .vertex_buffer = {
+             .buffer = object.vertex_buffer,
+             .offset = object.vertex_offset_bytes,
+             .count = object.index_count,
+             .stride = object.vertex_stride,
+         },
+         .index_buffer = {
+             .buffer = object.index_buffer,
+             .offset = cast_u32(object.first_index * sizeof(uint32_t)),
+             .count = object.index_count,
+             .stride = sizeof(uint32_t),
+         },
+         .transform = {},
+     });
 
-            AccelerationStructureMeshInfo &mesh_info = mesh_infos.back();
-            TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
-            // The default representation of glm is column major while the VkTransformKHR uses row major
-            // glm::mat4 transform = glm::transpose(transform_component.world_transform);
-            glm::mat4 transform = transform_component->world_transform;
-            for (int y = 0; y < 3; ++y) {
-                for (int x = 0; x < 4; ++x) {
-                    mesh_info.transform[y][x] = transform[x][y];
-                }
-            }
-        }
-        if (mesh_infos.size() > 0)
-            device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
-
-        // if (device->supports_raytracing())
-        //    AppSettings::enable_rt_shadow = true;
+     AccelerationStructureMeshInfo &mesh_info = mesh_infos.back();
+     TransformComponent *transform_component = component_manager->get_component<TransformComponent>(render_list[i].entity);
+     // The default representation of glm is column major while the VkTransformKHR uses row major
+     // glm::mat4 transform = glm::transpose(transform_component.world_transform);
+     glm::mat4 transform = transform_component->world_transform;
+     for (int y = 0; y < 3; ++y) {
+         for (int x = 0; x < 4; ++x) {
+             mesh_info.transform[y][x] = transform[x][y];
+         }
+     }
+ }
+ if (mesh_infos.size() > 0)
+     device->create_acceleration_structure(mesh_infos.data(), cast_u32(mesh_infos.size()));
+ */
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
         command_buffer->begin_gpu_debug_label("CopyGlobalBuffer", nullptr);
 
+        auto &component_manager = scene->ecs->component_manager;
         // Update global transform buffer
         auto transform_components_ptr = component_manager->get_component_array<TransformComponent>();
         std::size_t transform_size_bytes = transform_components_ptr->components.size() * sizeof(glm::mat4);
@@ -358,6 +357,42 @@ namespace mirai {
             freezed_frustum_planes = frustum_planes;
             freezed_inv_VP = camera->get_inv_view_projection_transform();
         }
+    }
+
+    void Renderer::create_blas() {
+        auto &component_manager = scene->ecs->component_manager;
+        auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
+
+        std::vector<AccelerationStructureID *> out_blas;
+        out_blas.reserve(1000);
+
+        std::vector<BLASDescription> blas_descriptions;
+        blas_descriptions.reserve(1000);
+
+        for (auto &component : mesh_component_ptr->components) {
+            component.blases.resize(component.mesh_subsets.size());
+            for (uint32_t i = 0; i < component.mesh_subsets.size(); ++i) {
+                // @NOTE that we create blas for skinned mesh as well, this act as a way to reserve memory for update
+                // in existing blas
+                MeshComponent::MeshSubset &subset = component.mesh_subsets[i];
+                out_blas.push_back(&component.blases[i]);
+                blas_descriptions.emplace_back(BLASDescription{
+                    .vertex_buffer_info = {
+                        component.vertex_buffer.buffer,
+                        subset.vertex_offset_bytes,
+                        subset.index_count,
+                        subset.vertex_stride,
+                    },
+                    .index_buffer_info = {
+                        component.index_buffer.buffer,
+                        subset.index_offset_bytes,
+                        subset.index_count,
+                        cast_u32(sizeof(uint32_t)),
+                    },
+                });
+            }
+        }
+        device->create_blas(blas_descriptions, out_blas, global_blas_buffer);
     }
 
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
@@ -704,12 +739,19 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
+        auto &comp_manager = scene->ecs->component_manager;
+        auto mesh_comp_ptr = comp_manager->get_component_array<MeshComponent>();
+        for (auto &mesh_component : mesh_comp_ptr->components) {
+            device->destroy_acceleration_structures(mesh_component.blases.data(), cast_u32(mesh_component.blases.size()));
+        }
+
         vertex_buffer_allocator.destroy();
         index_buffer_allocator.destroy();
         for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
             per_frame_allocator[i].destroy();
 
         BufferID buffers[] = {
+            global_blas_buffer,
             global_material_buffer,
             global_transform_buffer,
             resource_heap.buffer,
