@@ -25,8 +25,8 @@ namespace mirai {
         uint32_t first_index;
         uint32_t index_count;
         uint32_t vertex_stride;
+        uint64_t blas_buffer_device_address;
 
-        AABB local_aabb;
         AABB transformed_aabb;
     };
 

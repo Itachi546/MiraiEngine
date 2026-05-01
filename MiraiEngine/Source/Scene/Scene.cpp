@@ -328,7 +328,7 @@ namespace mirai {
                     .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
                     .index_count = subset.index_count,
                     .vertex_stride = VERTEX_DATA_SIZE,
-                    .local_aabb = mesh_component.aabbs[s],
+                    .blas_buffer_device_address = is_skinned ? 0 : mesh_component.blases[s].buffer_device_address,
                     .transformed_aabb = transformed_aabb,
                 };
             }

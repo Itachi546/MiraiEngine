@@ -87,6 +87,30 @@ namespace mirai {
         uint32_t vertex_stride;
         uint32_t vertex_count;
     };
+    enum GeometryInstanceFlags {
+        GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000001,
+        GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT = 0x00000002,
+        GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT = 0x00000004,
+        GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT = 0x00000008,
+        GEOMETRY_INSTANCE_FORCE_OPACITY_MICROMAP_2_STATE_BIT = 0x00000010,
+        GEOMETRY_INSTANCE_DISABLE_OPACITY_MICROMAPS_BIT = 0x00000020,
+        GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT,
+        GEOMETRY_INSTANCE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    struct AccelerationStructure {
+        AccelerationStructureID as;
+        uint64_t buffer_device_address;
+        uint64_t buffer_size;
+    };
+    struct AccelerationStructureInstanceData {
+        float matrix[3][4];
+        uint32_t instanceCustomIndex : 24;
+        uint32_t mask : 8;
+        uint32_t instanceShaderBindingTableRecordOffset : 24;
+        uint32_t flags : 8;
+        uint64_t accelerationStructureReference;
+    };
     /*
     struct AccelerationStructureMeshInfo {
         AccelerationStructureBufferInfo vertex_buffer;
@@ -591,6 +615,7 @@ namespace mirai {
         virtual void resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) = 0;
         virtual uint8_t *map_buffer(BufferID buffer) = 0;
         virtual void unmap_buffer(BufferID buffer) = 0;
+        virtual uint64_t get_buffer_device_address(BufferID buffer) = 0;
 
         virtual QueryID create_query(uint32_t query_count) = 0;
         virtual void query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) = 0;
@@ -623,8 +648,11 @@ namespace mirai {
             return false;
         }
 
-        // Raytracing stuff
-        virtual void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructureID *> &blases, BufferID &out_buffer) = 0;
+        // Buffer is created by the device and it's id my change
+        virtual void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, bool should_compact) = 0;
+        // Buffer is created by the device and it's id my change
+        virtual void create_tlas(CommandBuffer *command_buffer, uint32_t primitive_count, BufferView instance_buffer_view, BufferID &tlas_buffer_id, AccelerationStructure *out_tlas) = 0;
+
         virtual void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) = 0;
 
         virtual uint32_t get_current_frame() const = 0;

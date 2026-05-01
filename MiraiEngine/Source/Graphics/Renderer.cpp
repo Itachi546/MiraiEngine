@@ -53,6 +53,7 @@ namespace mirai {
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
+        current_frame_index = device->get_current_frame();
     }
 
     void Renderer::initialize() {
@@ -75,11 +76,11 @@ namespace mirai {
         uint32_t total_frames = device->get_swapchain_image_count();
         BufferDescription buffer_desc = {
             .size = k_staging_buffer_size_per_frame,
-            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            .usage_flags = BUFFER_USAGE_TRANSFER_SRC_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_INDIRECT_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };
         Log::Info("Total Staging Buffer Memory: ", utils::bytes_to_mb(buffer_desc.size), " mb");
-        Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size / total_frames), " mb");
+        Log::Info("Total Staging Buffer Memory/PerFrame: ", utils::bytes_to_mb(buffer_desc.size * total_frames), " mb");
 
         for (uint32_t i = 0; i < total_frames; ++i) {
             per_frame_allocator[i].init(buffer_desc, "PerFrameAllocator" + std::to_string(i));
@@ -105,7 +106,7 @@ namespace mirai {
         resource_heap.ptr = device->map_buffer(resource_heap.buffer);
         resource_heap.descriptor_size = device->get_resource_descriptor_size();
         resource_heap.size = buffer_desc.size;
-        resource_heap.new_frame(device->get_current_frame());
+        resource_heap.new_frame(current_frame_index);
         // We allocate first n location for bindless texture, so that
         // we don't have to deal with conversion of textureID to descriptorIndex
         resource_heap.allocate(AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT);
@@ -316,8 +317,7 @@ namespace mirai {
 
         uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(GPULightData));
 
-        uint32_t frame_index = device->get_current_frame();
-        BufferView light_buffer = per_frame_allocator[frame_index].allocate(light_data_size);
+        BufferView light_buffer = per_frame_allocator[current_frame_index].allocate(light_data_size);
         std::memcpy(light_buffer.ptr, visible_lights.data(), light_data_size);
 
         DescriptorInfo descriptor = {
@@ -360,36 +360,100 @@ namespace mirai {
     }
 
     void Renderer::create_blas() {
+        if (!device->supports_raytracing()) {
+            for (int i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
+                tlases[i].as = AccelerationStructureID{K_INVALID_ID};
+            tlas_buffer = BufferID{K_INVALID_ID};
+            return;
+        }
+
         auto &component_manager = scene->ecs->component_manager;
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
 
-        uint32_t total_mesh_count = 0;
+        uint32_t total_mesh_static = 0;
+        uint32_t total_mesh_skinned = 0;
         for (auto &component : mesh_component_ptr->components) {
-            total_mesh_count += cast_u32(component.mesh_subsets.size());
+            if (component.mesh_subsets[0].vertex_stride == VERTEX_DATA_SIZE_SKINNED)
+                total_mesh_skinned += cast_u32(component.mesh_subsets.size());
+            else
+                total_mesh_static += cast_u32(component.mesh_subsets.size());
         }
 
-        std::vector<AccelerationStructureID *> out_blas(total_mesh_count);
-        std::vector<BLASDescription> blas_descriptions(total_mesh_count);
-        total_mesh_count = 0;
+        std::vector<AccelerationStructure *> out_blas_static(total_mesh_static);
+        std::vector<BLASDescription> blas_descriptions_static(total_mesh_static);
+
+        std::vector<AccelerationStructure *> out_blas_dynamic(total_mesh_skinned);
+        std::vector<BLASDescription> blas_descriptions_dynamic(total_mesh_skinned);
+        total_mesh_static = 0;
+        total_mesh_skinned = 0;
 
         for (auto &component : mesh_component_ptr->components) {
+            // We only want to create BLAS for static object in this stage, dynamic object
+            // are handled every frame
             component.blases.resize(component.mesh_subsets.size());
+
             for (uint32_t i = 0; i < component.mesh_subsets.size(); ++i) {
-                // @NOTE that we create blas for skinned mesh as well, this act as a way to reserve memory for update
-                // in existing blas
                 MeshComponent::MeshSubset &subset = component.mesh_subsets[i];
-                out_blas[total_mesh_count] = &component.blases[i];
-                blas_descriptions[total_mesh_count++] = {
-                    .vertex_buffer = component.vertex_buffer.buffer,
-                    .index_buffer = component.index_buffer.buffer,
-                    .vertex_offset = subset.vertex_offset_bytes,
-                    .index_offset = subset.index_offset_bytes,
-                    .vertex_stride = subset.vertex_stride,
-                    .vertex_count = subset.vertex_count,
-                };
+
+                AccelerationStructure **blas = nullptr;
+                BLASDescription *blas_desc = nullptr;
+                if (component.mesh_subsets[0].vertex_stride == VERTEX_DATA_SIZE_SKINNED) {
+                    blas = &out_blas_dynamic[total_mesh_skinned];
+                    blas_desc = &blas_descriptions_dynamic[total_mesh_skinned++];
+                } else {
+                    blas = &out_blas_static[total_mesh_static];
+                    blas_desc = &blas_descriptions_static[total_mesh_static++];
+                }
+                *blas = &component.blases[i];
+                blas_desc->vertex_buffer = component.vertex_buffer.buffer;
+                blas_desc->index_buffer = component.index_buffer.buffer;
+                blas_desc->vertex_offset = subset.vertex_offset_bytes;
+                blas_desc->index_offset = subset.index_offset_bytes;
+                blas_desc->vertex_stride = subset.vertex_stride;
+                blas_desc->vertex_count = subset.vertex_count;
             }
         }
-        device->create_blas(blas_descriptions, out_blas, global_blas_buffer);
+        if (total_mesh_static > 0)
+            device->create_blas(blas_descriptions_static, out_blas_static, blas_buffer_static, true);
+        if (total_mesh_skinned > 0)
+            device->create_blas(blas_descriptions_dynamic, out_blas_dynamic, blas_buffer_dynamic, false);
+    }
+
+    void Renderer::create_tlas(CommandBuffer *command_buffer) {
+        if (device->supports_raytracing()) {
+            ScopedCpuProfiling("TLAS Build CPU");
+            ScopedGpuProfiling(command_buffer, "TLAS Build");
+            if (tlases[current_frame_index].as.is_valid())
+                device->destroy_acceleration_structures(&tlases[current_frame_index].as, 1);
+
+            uint32_t instance_count = scene->render_object_count.load();
+            uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
+            BufferView instance_buffer = per_frame_allocator[current_frame_index].allocate(instance_count * instance_data_size);
+            uint64_t blas_device_address = device->get_buffer_device_address(blas_buffer_static);
+
+            // Copy TLAS instance data
+            auto &component_manager = scene->ecs->component_manager;
+            jobsystem::Dispatch(instance_count, 64, [&](jobsystem::JobDispatchArg arg) {
+                AccelerationStructureInstanceData *instance = reinterpret_cast<AccelerationStructureInstanceData *>(instance_buffer.ptr + arg.job_index * instance_data_size);
+                TransformComponent *transform_component = component_manager->get_component<TransformComponent>(scene->render_object_list[arg.job_index].entity);
+                // The default representation of glm is column major while the VkTransformKHR uses row major
+                // glm::mat4 transform = glm::transpose(transform_component.world_transform);
+                glm::mat4 transform = transform_component->world_transform;
+                for (int y = 0; y < 3; ++y) {
+                    for (int x = 0; x < 4; ++x) {
+                        instance->matrix[y][x] = transform[x][y];
+                    }
+                }
+                instance->instanceCustomIndex = 0;
+                instance->mask = 0xFF;
+                instance->instanceShaderBindingTableRecordOffset = 0;
+                instance->flags = GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT;
+                instance->accelerationStructureReference = scene->render_object_list[arg.job_index].blas_buffer_device_address;
+            });
+            jobsystem::Wait();
+
+            device->create_tlas(command_buffer, instance_count, instance_buffer, tlas_buffer, &tlases[current_frame_index]);
+        }
     }
 
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
@@ -546,7 +610,8 @@ namespace mirai {
 
     void Renderer::update() {
         ScopedCpuProfiling("Update renderer");
-        uint32_t current_frame_index = device->get_current_frame();
+        current_frame_index = device->get_current_frame();
+
         resource_heap.new_frame(current_frame_index);
         line_renderer->new_frame(current_frame_index);
 
@@ -633,9 +698,8 @@ namespace mirai {
             return;
 
         ScopedGpuProfiling(command_buffer, "Patch global buffers");
-        uint32_t current_frame = device->get_current_frame();
 
-        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame];
+        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame_index];
 
         // Patch transforms
         auto &comp_manager = scene->ecs->component_manager;
@@ -720,6 +784,9 @@ namespace mirai {
             // Patch transform and Materials if it has changed
             patch_global_data(cb);
 
+            // create TLAS
+            create_tlas(cb);
+
             RenderContext context{this, cb};
 
             frame_graph->execute(&context);
@@ -736,19 +803,31 @@ namespace mirai {
     }
 
     Renderer::~Renderer() {
-        auto &comp_manager = scene->ecs->component_manager;
-        auto mesh_comp_ptr = comp_manager->get_component_array<MeshComponent>();
-        for (auto &mesh_component : mesh_comp_ptr->components) {
-            device->destroy_acceleration_structures(mesh_component.blases.data(), cast_u32(mesh_component.blases.size()));
-        }
-
         vertex_buffer_allocator.destroy();
         index_buffer_allocator.destroy();
         for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
             per_frame_allocator[i].destroy();
 
+        if (device->supports_raytracing()) {
+            auto &comp_manager = scene->ecs->component_manager;
+            auto mesh_comp_ptr = comp_manager->get_component_array<MeshComponent>();
+            for (auto &mesh_component : mesh_comp_ptr->components) {
+                for (auto &blas : mesh_component.blases)
+                    device->destroy_acceleration_structures(&blas.as, 1);
+            }
+
+            for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
+                device->destroy_acceleration_structures(&tlases[i].as, 1);
+
+            BufferID buffers[] = {
+                tlas_buffer,
+                blas_buffer_static,
+                blas_buffer_dynamic,
+            };
+            device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
+        }
+
         BufferID buffers[] = {
-            global_blas_buffer,
             global_material_buffer,
             global_transform_buffer,
             resource_heap.buffer,

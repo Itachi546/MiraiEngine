@@ -79,7 +79,13 @@ namespace mirai {
         // Uniform Buffer
         BufferID global_transform_buffer;
         BufferID global_material_buffer;
-        BufferID global_blas_buffer;
+
+        BufferID blas_buffer_static;
+        BufferID blas_buffer_dynamic;
+
+        // Acceleration Structure
+        BufferID tlas_buffer;
+        AccelerationStructure tlases[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
 
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;
@@ -124,8 +130,11 @@ namespace mirai {
 
         void create_blas();
 
+        void create_tlas(CommandBuffer *command_buffer);
+
         void upload_visible_lights();
 
+        uint32_t current_frame_index;
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         uint32_t bindless_texture_count = 0;
         GPUBufferLinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];

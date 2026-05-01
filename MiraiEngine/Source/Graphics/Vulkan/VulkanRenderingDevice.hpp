@@ -53,6 +53,7 @@ namespace mirai {
         void resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) override;
         uint8_t *map_buffer(BufferID buffer) override;
         void unmap_buffer(BufferID buffer) override;
+        uint64_t get_buffer_device_address(BufferID buffer) override;
 
         QueryID create_query(uint32_t query_count) override;
         void query(CommandBuffer *command_buffer, QueryID query, uint32_t query_index) override;
@@ -101,8 +102,10 @@ namespace mirai {
 
         // Raytracing utilities
         // @NOTE when creating new blas, when mesh is added to scene (in editor), we should wait for device, destroy the blas buffer, blas and create new one
-        // since it takes alot of memory.
-        void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructureID *> &blases, BufferID &out_buffer) override;
+        // since it takes alot of memory
+        void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, bool should_compact) override;
+        void create_tlas(CommandBuffer *command_buffer, uint32_t primitive_count, BufferView instance_buffer_view, BufferID &tlas_buffer_id, AccelerationStructure *out_tlas);
+
         void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) override;
         // void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) override;
 
@@ -135,11 +138,21 @@ namespace mirai {
 
         VmaAllocator create_allocator();
 
+        struct BlasTempInfo {
+            VkAccelerationStructureGeometryKHR geometry;
+            VkAccelerationStructureBuildRangeInfoKHR build_ranges;
+            VkDeviceSize blas_offset;
+            VkDeviceSize blas_size;
+            VkDeviceSize scratch_size;
+        };
+        void create_blas_internal(VulkanBuffer *scratch_buffer, VulkanBuffer *blas_buffer, const std::vector<BlasTempInfo> &blas_temp_infos,
+                                  std::vector<VkAccelerationStructureBuildGeometryInfoKHR> &build_infos,
+                                  std::vector<VkAccelerationStructureKHR> &blases,
+                                  bool should_compact = true, uint64_t *out_compacted_size_ptr = nullptr);
+
         VkFence create_fence(const std::string &name, bool signalled = false);
         void create_set_and_binding_mappings(const VulkanShader &shader, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings);
-        void create_acceleration_structure_geometry_info(const BLASDescription& blas_desc, VkAccelerationStructureGeometryKHR &geometry);
-        // void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
-        //  void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
+        void create_acceleration_structure_geometry_info(const BLASDescription &blas_desc, VkAccelerationStructureGeometryKHR &geometry);
         VkBuffer create_vk_buffer(const BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);
         void destroy_resources(bool force = false);
 
@@ -177,7 +190,9 @@ namespace mirai {
         std::vector<GpuVendorInfo> all_vendor_infos;
         VkDebugReportCallbackEXT debug_report_callback;
 
-        // VulkanAccelerationStructure acceleration_structure;
+        // Acceleration Structure buffers
+        BufferID tlas_scratch_buffer{K_INVALID_ID};
+        BufferID blas_scratch_buffer{K_INVALID_ID};
 
         // Keep track of destroyed resources
         std::deque<std::pair<ID, uint64_t>> destroyed_buffers;

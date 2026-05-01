@@ -79,7 +79,7 @@ namespace mirai {
 
         uint32_t gpu_mesh_index;
         std::vector<MeshSubset> mesh_subsets;
-        std::vector<AccelerationStructureID> blases;
+        std::vector<AccelerationStructure> blases;
         std::vector<AABB> aabbs;
     };
 
