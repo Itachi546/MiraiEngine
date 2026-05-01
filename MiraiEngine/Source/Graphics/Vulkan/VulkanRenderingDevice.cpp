@@ -576,9 +576,9 @@ namespace mirai {
                 image_info.sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT;
                 image_info.pNext = nullptr;
                 image_info.pView = &image_view_create_info;
-                image_info.layout = descriptor_info->type == SampledImage ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                image_info.layout = descriptor_info->type == DescriptorType::SampledImage ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
 
-                descriptor_resource_infos[i].type = descriptor_info->type == SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                descriptor_resource_infos[i].type = descriptor_info->type == DescriptorType::SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 descriptor_resource_infos[i].data.pImage = &image_info;
                 break;
             }
@@ -592,6 +592,21 @@ namespace mirai {
                 address_range.size = std::min(descriptor_info->buffer_info.size, size_t(buffer->size));
 
                 descriptor_resource_infos[i].type = descriptor_info->type == DescriptorType::StorageBuffer ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptor_resource_infos[i].data.pAddressRange = &address_range;
+                break;
+            }
+            case DescriptorType::AccelerationStructure: {
+                VkAccelerationStructureKHR *as = resource_pool_acceleration_structures.access(descriptor_info->resource);
+                VkAccelerationStructureDeviceAddressInfoKHR address_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR};
+                address_info.accelerationStructure = *as;
+                VkDeviceAddress address = vkGetAccelerationStructureDeviceAddressKHR(device, &address_info);
+
+                VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
+                ASSERT(address != 0);
+                address_range.address = address;
+                address_range.size = 0;
+
+                descriptor_resource_infos[i].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
                 descriptor_resource_infos[i].data.pAddressRange = &address_range;
                 break;
             }
@@ -1250,7 +1265,7 @@ namespace mirai {
                 .triangles = {
                     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
                     .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-                    .vertexData = {.deviceAddress = vb->device_address},
+                    .vertexData = {.deviceAddress = vb->device_address + blas_desc.vertex_offset},
                     .vertexStride = blas_desc.vertex_stride,
                     .maxVertex = blas_desc.vertex_count - 1,
                     .indexType = VK_INDEX_TYPE_UINT32,
@@ -1355,7 +1370,7 @@ namespace mirai {
                                                                                    VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .dependencyFlags = 0,
             .memoryBarrierCount = 0,
             .bufferMemoryBarrierCount = 1,
             .pBufferMemoryBarriers = &scratch_buffer_barrier,
@@ -1464,7 +1479,7 @@ namespace mirai {
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
             .pNext = nullptr,
-            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .dependencyFlags = 0,
             .memoryBarrierCount = 0,
             .bufferMemoryBarrierCount = 1,
             .pBufferMemoryBarriers = &buffer_barrier,
@@ -1599,7 +1614,7 @@ namespace mirai {
                                                                                    VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
         VkDependencyInfo dependency_info = {
             .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+            .dependencyFlags = 0,
             .memoryBarrierCount = 0,
             .bufferMemoryBarrierCount = 1,
             .pBufferMemoryBarriers = &scratch_buffer_barrier,
@@ -1660,7 +1675,7 @@ namespace mirai {
             build_infos[i].mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             build_infos[i].geometryCount = 1;
             build_infos[i].pGeometries = &blas_info.geometry;
-            uint32_t max_primitives = blas_descriptions[i].vertex_count / 3;
+            uint32_t max_primitives = blas_descriptions[i].index_count / 3;
 
             blas_info.build_ranges.primitiveCount = max_primitives;
 

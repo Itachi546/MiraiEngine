@@ -410,6 +410,7 @@ namespace mirai {
                 blas_desc->index_offset = subset.index_offset_bytes;
                 blas_desc->vertex_stride = subset.vertex_stride;
                 blas_desc->vertex_count = subset.vertex_count;
+                blas_desc->index_count = subset.index_count;
             }
         }
         if (total_mesh_static > 0)
@@ -520,7 +521,7 @@ namespace mirai {
 
     DescriptorOffset Renderer::get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type) {
         uint64_t key = resource_id.id;
-        key = key << 32 | descriptor_type;
+        key = key << 32 | uint32_t(descriptor_type);
         auto found = descriptor_map.find(key);
         if (found != descriptor_map.end()) {
             return found->second;
@@ -534,9 +535,8 @@ namespace mirai {
                 descriptor_info.buffer_info = {0, ~0u};
             } else if (descriptor_type == DescriptorType::SampledImage || descriptor_type == DescriptorType::StorageImage) {
                 descriptor_info.image_info = {0, ~0u, 0, ~0u};
-            } else {
-                ASSERT_MSG(0, "Unknown descriptor type");
             }
+
             DescriptorOffset offset = resource_heap.push_descriptors(device.get(), &descriptor_info, 1);
             descriptor_map.insert(std::make_pair(key, offset));
             return offset;
@@ -546,7 +546,7 @@ namespace mirai {
     DescriptorOffset Renderer::get_or_create_descriptor(const std::string &name, const DescriptorInfo &descriptor_info) {
         uint64_t key = utils::djb2_hash_string(name);
         // Don't need to do this
-        key = key << 32 | descriptor_info.type;
+        key = key << 32 | uint32_t(descriptor_info.type);
         auto found = descriptor_map.find(key);
         if (found != descriptor_map.end()) {
             return found->second;

@@ -11,15 +11,15 @@
 using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
-    SkinningComputePass skinning_pass{frame_graph, board};
-    DepthPrePass depth_prepass{frame_graph, board};
-    SSAOPass ssao_pass{frame_graph, board};
-    CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
-    TiledLightCullingPass light_cull_pass{frame_graph, board};
-    ForwardPass forward_pass{frame_graph, board};
-    TAAResolvePass taa_pass{frame_graph, board};
-    FinalCompositePass composite_pass{frame_graph, board};
-    //   DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
+    // SkinningComputePass skinning_pass{frame_graph, board};
+    // DepthPrePass depth_prepass{frame_graph, board};
+    // SSAOPass ssao_pass{frame_graph, board};
+    // CascadedShadowPass cascaded_shadow_pass{frame_graph, board};
+    // TiledLightCullingPass light_cull_pass{frame_graph, board};
+    // ForwardPass forward_pass{frame_graph, board};
+    // TAAResolvePass taa_pass{frame_graph, board};
+    // FinalCompositePass composite_pass{frame_graph, board};
+    //    DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
     /*
     struct CopyTexturePassData {
         FrameGraphResourceHandle ssao_texture;
@@ -97,7 +97,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             uint32_t work_group_y = rendering_utils::get_workgroup_size(height + 1, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
-
+    */
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
         FrameGraphResourceHandle output;
@@ -111,7 +111,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     // Linearize Depth Pass
     frame_graph->add_callback_pass<LinearizeDepthPassData>(
         "LinearizeDepthPass",
-        [=](FrameGraph::FrameGraphBuilder &builder, LinearizeDepthPassData &data) {
+        [=](FrameGraph::Builder &builder, LinearizeDepthPassData &data) {
             uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
             uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
             data.output = builder.create_texture("LinearDepthTexture", {
@@ -132,17 +132,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                               .layout = IMAGE_LAYOUT_GENERAL,
                           });
 
-            const CascadedShadowPassData &cascade_pass_data = board->get<CascadedShadowPassData>();
-            builder.read(cascade_pass_data.output,
-                         {
-                             .access_flags = ACCESS_FLAG_SHADER_READ,
-                             .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                             .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         });
-
-            data.depth_texture = cascade_pass_data.output;
-
-            data.shader = std::make_shared<ComputeShader>("LinearizeDepthShader", "SPIRV/linearize-depth.comp.spv");
+            data.shader = std::make_shared<ComputeShader>("LinearizeDepthShader", "SPIRV/rt-linearize-depth.comp.spv");
             board->add<LinearizeDepthPassData>(data);
         },
 
@@ -155,6 +145,9 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->prepare_resources(resource_states);
 
             struct PushConstantData {
+                glm::mat4 invP;
+                glm::mat4 invV;
+                glm::vec4 camera_position;
                 uint32_t width;
                 uint32_t height;
                 float znear;
@@ -162,36 +155,27 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             } push_constant_data;
 
             Camera *camera = ctx->renderer->get_scene()->get_camera();
+            push_constant_data.invP = camera->get_inv_projection_transform();
+            push_constant_data.invV = camera->get_inv_view_transform();
+            push_constant_data.camera_position = glm::vec4(camera->position, 1.0f);
             push_constant_data.width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
             push_constant_data.height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
             push_constant_data.znear = camera->get_near_plane();
             push_constant_data.zfar = camera->get_far_plane();
 
-            FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
-            LinearizeDepthPassBindings *bindings = nullptr;
-            if (!board->has<LinearizeDepthPassBindings>()) {
-                DescriptorInfo descriptor_infos[] = {
-                    {.type = DescriptorType::SampledImage, .resource = pass_resource.get<FrameGraphTexture>(data.depth_texture).id},
-                    {.type = DescriptorType::StorageImage, .resource = pass_resource.get<FrameGraphTexture>(data.output).id},
-                };
-                DescriptorOffset base_descriptor_offset = renderer->resource_heap.push_descriptors(RenderingDevice::get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-                bindings = &board->add<LinearizeDepthPassBindings>(LinearizeDepthPassBindings{
-                    .descriptors = {base_descriptor_offset, base_descriptor_offset + 1},
-                });
-            } else {
-                bindings = &board->get<LinearizeDepthPassBindings>();
-            }
-            ASSERT(bindings != nullptr);
+            DescriptorOffset bindings[] = {
+                renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
+                renderer->get_or_create_descriptor(renderer->tlas.as, DescriptorType::AccelerationStructure),
+            };
 
             data.shader->bind(command_buffer);
             command_buffer->set_push_data(0, &push_constant_data, sizeof(PushConstantData));
-            command_buffer->set_push_data(sizeof(PushConstantData), bindings->descriptors, cast_u32(sizeof(bindings->descriptors)));
+            command_buffer->set_push_data(sizeof(PushConstantData), bindings, cast_u32(sizeof(bindings)));
 
             uint32_t work_group_x = rendering_utils::get_workgroup_size(push_constant_data.width, 32);
             uint32_t work_group_y = rendering_utils::get_workgroup_size(push_constant_data.height, 32);
             command_buffer->dispatch(work_group_x, work_group_y, 1);
         });
-    */
 
     // ImGui Pass
     struct ImGuiPassData {
@@ -201,7 +185,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::Builder &builder, ImGuiPassData &data) {
-            const FinalCompositePassData &input_pass = board->get<FinalCompositePassData>();
+            const LinearizeDepthPassData &input_pass = board->get<LinearizeDepthPassData>();
             data.output = input_pass.output;
 
             builder.write(data.output, {
@@ -221,8 +205,10 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             const auto &resource_states = pass_resource.get_resource_access_states();
             command_buffer->prepare_resources(resource_states);
 
-            uint32_t width, height;
-            Window::get()->get_size(&width, &height);
+            // uint32_t width, height;
+            //  Window::get()->get_size(&width, &height);
+            uint32_t width = AppSettings::get_width();
+            uint32_t height = AppSettings::get_height();
 
             const FrameGraphTexture &texture = pass_resource.get<FrameGraphTexture>(data.output);
             command_buffer->begin_render_pass({

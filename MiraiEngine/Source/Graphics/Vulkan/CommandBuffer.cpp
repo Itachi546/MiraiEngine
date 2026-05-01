@@ -429,6 +429,10 @@ namespace mirai {
         src_texture->access_flags = VK_ACCESS_2_TRANSFER_READ_BIT;
         swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+        uint32_t image_index = swapchain->current_image_index;
+        swapchain->access_flags[image_index] = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        swapchain->stage_mask[image_index] = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
 
         VkImageBlit2 blit_region = {

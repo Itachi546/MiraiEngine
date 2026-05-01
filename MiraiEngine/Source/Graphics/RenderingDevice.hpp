@@ -86,6 +86,7 @@ namespace mirai {
         uint32_t index_offset;
         uint32_t vertex_stride;
         uint32_t vertex_count;
+        uint32_t index_count;
     };
     enum GeometryInstanceFlags {
         GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000001,
@@ -519,11 +520,12 @@ namespace mirai {
         SHADER_STAGE_ALL = 0x7FFFFFFF,
     };
 
-    enum DescriptorType {
-        SampledImage,
+    enum class DescriptorType {
+        SampledImage = 0,
         StorageImage,
         UniformBuffer,
-        StorageBuffer
+        StorageBuffer,
+        AccelerationStructure,
     };
 
     struct DescriptorInfo {
