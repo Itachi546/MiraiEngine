@@ -83,9 +83,9 @@ namespace mirai {
         BufferID blas_buffer_static;
         BufferID blas_buffer_dynamic;
 
-        // Acceleration Structure
+        // Acceleration Structure — single instance, GPU-only, safe to reuse each frame (fence wait guarantees GPU idle)
         BufferID tlas_buffer;
-        AccelerationStructure tlases[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
+        AccelerationStructure tlas;
 
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;

@@ -1222,6 +1222,7 @@ namespace mirai {
 
     void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
+            ASSERT(buffers[i].is_valid());
             destroyed_buffers.push_back(std::make_pair(buffers[i], frame_count));
         }
     }
@@ -1799,19 +1800,10 @@ namespace mirai {
             .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
 
-        std::vector<VkBufferMemoryBarrier2> buffer_barriers;
-
         VulkanBuffer *scratch_buffer = nullptr;
         if (tlas_scratch_buffer.is_valid()) {
             scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
             ASSERT(scratch_buffer->size >= size_info.buildScratchSize);
-            buffer_barriers.push_back(CreateBufferMemoryBarrier2(scratch_buffer->buffer,
-                                                                 scratch_buffer->stage_mask,
-                                                                 scratch_buffer->access_flags,
-                                                                 VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-                                                                 VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR));
-            scratch_buffer->stage_mask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-            scratch_buffer->access_flags = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
         } else {
             tlas_scratch_buffer = create_buffer(&buffer_desc, "ScratchBuffer");
             scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
@@ -1823,49 +1815,34 @@ namespace mirai {
         if (tlas_buffer_id.is_valid()) {
             tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
             ASSERT(tlas_buffer->size >= size_info.accelerationStructureSize);
-            buffer_barriers.push_back(CreateBufferMemoryBarrier2(tlas_buffer->buffer,
-                                                                 tlas_buffer->stage_mask,
-                                                                 tlas_buffer->access_flags,
-                                                                 VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-                                                                 VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR));
-
-            scratch_buffer->stage_mask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-            scratch_buffer->access_flags = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
         } else {
             tlas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
             tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
         }
 
-        if (buffer_barriers.size() > 0) {
-            VkDependencyInfo dependency_info = {
-                .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                .pNext = nullptr,
-                .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-                .memoryBarrierCount = 0,
-                .bufferMemoryBarrierCount = cast_u32(buffer_barriers.size()),
-                .pBufferMemoryBarriers = buffer_barriers.data(),
-                .imageMemoryBarrierCount = 0,
-            };
-            vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
-        }
-
         out_tlas->buffer_device_address = tlas_buffer->device_address;
         out_tlas->buffer_size = cast_u32(size_info.accelerationStructureSize);
 
-        uint32_t tlas_id = resource_pool_acceleration_structures.obtain();
-        out_tlas->as = AccelerationStructureID{tlas_id};
-        VkAccelerationStructureKHR *tlas = resource_pool_acceleration_structures.access(tlas_id);
+        // Only create a new AS handle the first time; reuse it on subsequent frames.
+        // The TLAS buffer and scratch buffer are both guaranteed idle (fence wait in Renderer).
+        if (!out_tlas->as.is_valid()) {
+            uint32_t tlas_id = resource_pool_acceleration_structures.obtain();
+            out_tlas->as = AccelerationStructureID{tlas_id};
+            VkAccelerationStructureKHR *tlas = resource_pool_acceleration_structures.access(tlas_id);
 
-        // Create Acceleration Structure
-        VkAccelerationStructureCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
-        create_info.buffer = tlas_buffer->buffer;
-        create_info.size = size_info.accelerationStructureSize;
-        create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        VK_CHECK(vkCreateAccelerationStructureKHR(device, &create_info, nullptr, tlas));
+            // Create Acceleration Structure
+            VkAccelerationStructureCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR};
+            create_info.buffer = tlas_buffer->buffer;
+            create_info.size = size_info.accelerationStructureSize;
+            create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+            VK_CHECK(vkCreateAccelerationStructureKHR(device, &create_info, nullptr, tlas));
+        }
+
+        VkAccelerationStructureKHR *tlas = resource_pool_acceleration_structures.access(out_tlas->as);
 
         // Build TLAS
         build_info.dstAccelerationStructure = *tlas;
-        build_info.srcAccelerationStructure = *tlas;
+        build_info.srcAccelerationStructure = VK_NULL_HANDLE;
         build_info.scratchData.deviceAddress = scratch_buffer->device_address;
 
         VkAccelerationStructureBuildRangeInfoKHR build_range = {};
@@ -1874,21 +1851,21 @@ namespace mirai {
 
         vkCmdBuildAccelerationStructuresKHR(command_buffer->command_buffer, 1, &build_info, &build_range_ptr);
 
-        /*
-        VkBufferMemoryBarrier2 buffer_barrier = CreateBufferMemoryBarrier2(tlas_buffer->buffer,
-                                                                           VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
-                                                                           VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
-        VkDependencyInfo dependency_info = {
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .pNext = nullptr,
-            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-            .memoryBarrierCount = 0,
-            .bufferMemoryBarrierCount = 1,
-            .pBufferMemoryBarriers = &buffer_barrier,
-            .imageMemoryBarrierCount = 0,
-        };
+        // Memory barrier covering two orderings:
+        //   1. AS build write -> compute shader read  (TLAS used via traceRayEXT in compute)
+        //   2. AS build write -> AS build write        (scratch buffer reused next frame)
+        // The fence wait is a host guarantee; Vulkan sync-val still requires an explicit
+        // Vk-level dependency to order WRITE->WRITE on the shared scratch buffer across submissions.
+        VkMemoryBarrier2 memory_barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+        memory_barrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        memory_barrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        memory_barrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        memory_barrier.dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+
+        VkDependencyInfo dependency_info = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+        dependency_info.memoryBarrierCount = 1;
+        dependency_info.pMemoryBarriers = &memory_barrier;
         vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
-        */
     }
 
     void VulkanRenderingDevice::destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) {

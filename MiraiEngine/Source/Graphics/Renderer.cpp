@@ -361,8 +361,7 @@ namespace mirai {
 
     void Renderer::create_blas() {
         if (!device->supports_raytracing()) {
-            for (int i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
-                tlases[i].as = AccelerationStructureID{K_INVALID_ID};
+            tlas.as = AccelerationStructureID{K_INVALID_ID};
             tlas_buffer = BufferID{K_INVALID_ID};
             return;
         }
@@ -423,8 +422,6 @@ namespace mirai {
         if (device->supports_raytracing()) {
             ScopedCpuProfiling("TLAS Build CPU");
             ScopedGpuProfiling(command_buffer, "TLAS Build");
-            if (tlases[current_frame_index].as.is_valid())
-                device->destroy_acceleration_structures(&tlases[current_frame_index].as, 1);
 
             uint32_t instance_count = scene->render_object_count.load();
             uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
@@ -452,7 +449,7 @@ namespace mirai {
             });
             jobsystem::Wait();
 
-            device->create_tlas(command_buffer, instance_count, instance_buffer, tlas_buffer, &tlases[current_frame_index]);
+            device->create_tlas(command_buffer, instance_count, instance_buffer, tlas_buffer, &tlas);
         }
     }
 
@@ -816,15 +813,13 @@ namespace mirai {
                     device->destroy_acceleration_structures(&blas.as, 1);
             }
 
-            for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
-                device->destroy_acceleration_structures(&tlases[i].as, 1);
-
-            BufferID buffers[] = {
-                tlas_buffer,
-                blas_buffer_static,
-                blas_buffer_dynamic,
-            };
-            device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
+            device->destroy_acceleration_structures(&tlas.as, 1);
+            if (blas_buffer_dynamic.is_valid())
+                device->destroy_buffers(&blas_buffer_dynamic, 1);
+            if (blas_buffer_static.is_valid())
+                device->destroy_buffers(&blas_buffer_static, 1);
+            if (tlas_buffer.is_valid())
+                device->destroy_buffers(&tlas_buffer, 1);
         }
 
         BufferID buffers[] = {
