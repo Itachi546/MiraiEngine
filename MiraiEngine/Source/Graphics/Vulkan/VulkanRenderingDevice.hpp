@@ -137,7 +137,7 @@ namespace mirai {
 
         VkFence create_fence(const std::string &name, bool signalled = false);
         void create_set_and_binding_mappings(const VulkanShader &shader, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings);
-        void create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry);
+        void create_acceleration_structure_geometry_info(const BLASDescription& blas_desc, VkAccelerationStructureGeometryKHR &geometry);
         // void create_blas(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count, std::vector<VkAccelerationStructureKHR> &out_blas, BufferID &blas_buffer_id, std::vector<VkDeviceSize> &out_blas_compacted_offset, std::vector<VkDeviceSize> &out_blas_compacted_size);
         //  void create_tlas(BufferID instance_buffer, uint32_t primitive_count, VkAccelerationStructureKHR &tlas, BufferID &tlas_buffer_id);
         VkBuffer create_vk_buffer(const BufferDescription *buffer_description, VmaAllocation &allocation, const std::string &debug_name);

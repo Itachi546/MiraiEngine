@@ -71,24 +71,29 @@ namespace mirai {
         Buffer = 1
     };
 
+    /*
     struct AccelerationStructureBufferInfo {
         BufferID buffer;
         uint32_t offset;
         uint32_t count;
         uint32_t stride;
     };
-
+    */
     struct BLASDescription {
-        AccelerationStructureBufferInfo vertex_buffer_info;
-        AccelerationStructureBufferInfo index_buffer_info;
+        BufferID vertex_buffer;
+        BufferID index_buffer;
+        uint32_t vertex_offset;
+        uint32_t index_offset;
+        uint32_t vertex_stride;
+        uint32_t vertex_count;
     };
-
+    /*
     struct AccelerationStructureMeshInfo {
         AccelerationStructureBufferInfo vertex_buffer;
         AccelerationStructureBufferInfo index_buffer;
         float transform[3][4];
     };
-
+    */
     struct GpuVendorInfo {
         std::string name;
         uint32_t vendor;

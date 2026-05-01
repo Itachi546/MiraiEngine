@@ -1232,11 +1232,9 @@ namespace mirai {
         }
     }
 
-    void VulkanRenderingDevice::create_acceleration_structure_geometry_info(const AccelerationStructureBufferInfo &vertex_buffer, const AccelerationStructureBufferInfo &index_buffer, VkAccelerationStructureGeometryKHR &geometry) {
-        VulkanBuffer *vb = resource_pool_buffers.access(vertex_buffer.buffer);
-        VulkanBuffer *ib = resource_pool_buffers.access(index_buffer.buffer);
-
-        uint32_t num_vertices = vertex_buffer.count;
+    void VulkanRenderingDevice::create_acceleration_structure_geometry_info(const BLASDescription &blas_desc, VkAccelerationStructureGeometryKHR &geometry) {
+        VulkanBuffer *vb = resource_pool_buffers.access(blas_desc.vertex_buffer);
+        VulkanBuffer *ib = resource_pool_buffers.access(blas_desc.index_buffer);
 
         geometry = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -1246,10 +1244,10 @@ namespace mirai {
                     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
                     .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
                     .vertexData = {.deviceAddress = vb->device_address},
-                    .vertexStride = vertex_buffer.stride,
-                    .maxVertex = num_vertices - 1,
+                    .vertexStride = blas_desc.vertex_stride,
+                    .maxVertex = blas_desc.vertex_count - 1,
                     .indexType = VK_INDEX_TYPE_UINT32,
-                    .indexData = {.deviceAddress = ib->device_address},
+                    .indexData = {.deviceAddress = ib->device_address + blas_desc.index_offset},
                     .transformData = {},
                 },
             },
@@ -1574,7 +1572,7 @@ namespace mirai {
 
         // Determine memory needed for scratch buffer and blas
         for (uint32_t i = 0; i < mesh_count; ++i) {
-            create_acceleration_structure_geometry_info(blas_descriptions[i].vertex_buffer_info, blas_descriptions[i].index_buffer_info, geometries[i]);
+            create_acceleration_structure_geometry_info(blas_descriptions[i], geometries[i]);
 
             build_infos[i].sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             build_infos[i].pNext = nullptr;
@@ -1583,7 +1581,7 @@ namespace mirai {
             build_infos[i].mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             build_infos[i].geometryCount = 1;
             build_infos[i].pGeometries = &geometries[i];
-            uint32_t max_primitives = blas_descriptions[i].index_buffer_info.count / 3;
+            uint32_t max_primitives = blas_descriptions[i].vertex_count / 3;
 
             build_ranges[i].primitiveCount = max_primitives;
 

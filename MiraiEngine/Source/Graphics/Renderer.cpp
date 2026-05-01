@@ -363,11 +363,14 @@ namespace mirai {
         auto &component_manager = scene->ecs->component_manager;
         auto mesh_component_ptr = component_manager->get_component_array<MeshComponent>();
 
-        std::vector<AccelerationStructureID *> out_blas;
-        out_blas.reserve(1000);
+        uint32_t total_mesh_count = 0;
+        for (auto &component : mesh_component_ptr->components) {
+            total_mesh_count += cast_u32(component.mesh_subsets.size());
+        }
 
-        std::vector<BLASDescription> blas_descriptions;
-        blas_descriptions.reserve(1000);
+        std::vector<AccelerationStructureID *> out_blas(total_mesh_count);
+        std::vector<BLASDescription> blas_descriptions(total_mesh_count);
+        total_mesh_count = 0;
 
         for (auto &component : mesh_component_ptr->components) {
             component.blases.resize(component.mesh_subsets.size());
@@ -375,21 +378,15 @@ namespace mirai {
                 // @NOTE that we create blas for skinned mesh as well, this act as a way to reserve memory for update
                 // in existing blas
                 MeshComponent::MeshSubset &subset = component.mesh_subsets[i];
-                out_blas.push_back(&component.blases[i]);
-                blas_descriptions.emplace_back(BLASDescription{
-                    .vertex_buffer_info = {
-                        component.vertex_buffer.buffer,
-                        subset.vertex_offset_bytes,
-                        subset.index_count,
-                        subset.vertex_stride,
-                    },
-                    .index_buffer_info = {
-                        component.index_buffer.buffer,
-                        subset.index_offset_bytes,
-                        subset.index_count,
-                        cast_u32(sizeof(uint32_t)),
-                    },
-                });
+                out_blas[total_mesh_count] = &component.blases[i];
+                blas_descriptions[total_mesh_count++] = {
+                    .vertex_buffer = component.vertex_buffer.buffer,
+                    .index_buffer = component.index_buffer.buffer,
+                    .vertex_offset = subset.vertex_offset_bytes,
+                    .index_offset = subset.index_offset_bytes,
+                    .vertex_stride = subset.vertex_stride,
+                    .vertex_count = subset.vertex_count,
+                };
             }
         }
         device->create_blas(blas_descriptions, out_blas, global_blas_buffer);
