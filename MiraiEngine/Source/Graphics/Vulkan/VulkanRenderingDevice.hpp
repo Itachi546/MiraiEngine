@@ -16,15 +16,6 @@ VK_DEFINE_HANDLE(VmaAllocation)
 namespace mirai {
     struct VulkanSwapchain;
     class CommandBuffer;
-    /*
-    struct VulkanAccelerationStructure {
-        BufferID blas_buffer{K_INVALID_ID};
-        BufferID tlas_buffer{K_INVALID_ID};
-        BufferID tlas_instance_buffer{K_INVALID_ID};
-        std::vector<VkAccelerationStructureKHR> blas;
-        VkAccelerationStructureKHR tlas = VK_NULL_HANDLE;
-    };
-    */
     class VulkanRenderingDevice : public RenderingDevice {
       public:
         VulkanRenderingDevice();
@@ -108,7 +99,6 @@ namespace mirai {
         void create_tlas(CommandBuffer *command_buffer, uint32_t primitive_count, BufferView instance_buffer_view, BufferID &tlas_buffer_id, AccelerationStructure *out_tlas);
 
         void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) override;
-        // void create_acceleration_structure(const AccelerationStructureMeshInfo *meshes, uint32_t mesh_count) override;
 
         bool supports_raytracing() const override {
             return has_rt_support;
