@@ -33,12 +33,6 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
 
-                const SkinningComputePassData &skinning_data = board->get<SkinningComputePassData>();
-                builder.read(skinning_data.output_buffer, {
-                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                          });
-
                 data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DEPTH_PREPASS);
                 ASSERT(data.registry != nullptr);
                 board->add<DepthPrePassData>(data);

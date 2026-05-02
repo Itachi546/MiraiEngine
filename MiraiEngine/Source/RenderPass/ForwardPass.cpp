@@ -55,12 +55,6 @@ namespace mirai {
                                                         .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                     });
 
-                const SkinningComputePassData &skinning_data = board->get<SkinningComputePassData>();
-                builder.read(skinning_data.output_buffer, {
-                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                          });
-
                 const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 builder.read(depth_prepass_data.output, {
                                                             .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ | ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE,

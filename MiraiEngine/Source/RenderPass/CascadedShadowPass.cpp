@@ -30,12 +30,6 @@ namespace mirai {
                                                                                 .usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
                                                                             });
 
-                const SkinningComputePassData &skinning_data = board->get<SkinningComputePassData>();
-                builder.read(skinning_data.output_buffer, {
-                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                          });
-
                 builder.write(data.output, {
                                                .access_flags = ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE,
                                                .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
