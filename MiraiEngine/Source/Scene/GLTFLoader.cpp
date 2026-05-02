@@ -520,7 +520,7 @@ namespace mirai {
                 }
 
                 // Copy local vertex data
-                uint32_t vertex_stride = has_animation_data ? VERTEX_DATA_SIZE_SKINNED : VERTEX_DATA_SIZE;
+                uint32_t vertex_stride = has_animation_data ? K_VERTEX_DATA_SIZE_SKINNED : K_VERTEX_DATA_SIZE;
                 for (uint32_t i = 0; i < num_position; ++i) {
                     TempVertex vertex;
                     vertex.position = glm::vec3{
@@ -636,7 +636,7 @@ namespace mirai {
             for (auto &mesh_subset : mesh_component.mesh_subsets) {
                 mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
                 mesh_subset.index_offset_bytes += index_buffer.offset;
-                if (mesh_subset.vertex_stride == VERTEX_DATA_SIZE_SKINNED) {
+                if (mesh_subset.vertex_stride == K_VERTEX_DATA_SIZE_SKINNED) {
                     BufferView skinned_mesh_output_buffer = renderer->vertex_buffer_allocator.allocate(mesh_subset.vertex_count * AppSettings::K_SKINNED_VERTEX_OUTPUT_SIZE);
                     mesh_subset.output_vertex_offset_bytes = skinned_mesh_output_buffer.offset;
                 }

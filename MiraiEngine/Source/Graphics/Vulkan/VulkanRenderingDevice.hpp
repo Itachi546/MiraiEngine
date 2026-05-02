@@ -101,9 +101,10 @@ namespace mirai {
         }
 
         // Raytracing utilities
+        void refit_blas(CommandBuffer *command_buffer, const std::vector<BLASDescription> &blas_descriptions, const std::vector<AccelerationStructureID> &blases, BufferID blas_buffer, uint32_t flags) override;
         // @NOTE when creating new blas, when mesh is added to scene (in editor), we should wait for device, destroy the blas buffer, blas and create new one
         // since it takes alot of memory
-        void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, bool should_compact) override;
+        void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, uint32_t creation_flag) override;
         void create_tlas(CommandBuffer *command_buffer, uint32_t primitive_count, BufferView instance_buffer_view, BufferID &tlas_buffer_id, AccelerationStructure *out_tlas);
 
         void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) override;

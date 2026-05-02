@@ -375,7 +375,7 @@ namespace mirai {
         uint32_t total_mesh_static = 0;
         uint32_t total_mesh_skinned = 0;
         for (auto &component : mesh_component_ptr->components) {
-            if (component.mesh_subsets[0].vertex_stride == VERTEX_DATA_SIZE_SKINNED)
+            if (component.mesh_subsets[0].vertex_stride == K_VERTEX_DATA_SIZE_SKINNED)
                 total_mesh_skinned += cast_u32(component.mesh_subsets.size());
             else
                 total_mesh_static += cast_u32(component.mesh_subsets.size());
@@ -399,7 +399,7 @@ namespace mirai {
 
                 AccelerationStructure **blas = nullptr;
                 BLASDescription *blas_desc = nullptr;
-                if (component.mesh_subsets[0].vertex_stride == VERTEX_DATA_SIZE_SKINNED) {
+                if (component.mesh_subsets[0].vertex_stride == K_VERTEX_DATA_SIZE_SKINNED) {
                     blas = &out_blas_dynamic[total_mesh_skinned];
                     blas_desc = &blas_descriptions_dynamic[total_mesh_skinned++];
                 } else {
@@ -417,9 +417,9 @@ namespace mirai {
             }
         }
         if (total_mesh_static > 0)
-            device->create_blas(blas_descriptions_static, out_blas_static, blas_buffer_static, true);
+            device->create_blas(blas_descriptions_static, out_blas_static, blas_buffer_static, ASC_ALLOW_COMPACTION_BIT_KHR | ASC_PREFER_FAST_TRACE_BIT_KHR);
         if (total_mesh_skinned > 0)
-            device->create_blas(blas_descriptions_dynamic, out_blas_dynamic, blas_buffer_dynamic, false);
+            device->create_blas(blas_descriptions_dynamic, out_blas_dynamic, blas_buffer_dynamic, ASC_ALLOW_UPDATE_BIT_KHR | ASC_PREFER_FAST_BUILD_BIT_KHR);
     }
 
     void Renderer::create_tlas(CommandBuffer *command_buffer) {
@@ -504,12 +504,16 @@ namespace mirai {
         };
 
         std::vector<SkinnedMeshPushData> skinned_mesh_data;
+        std::vector<BLASDescription> blas_descriptions;
+        std::vector<AccelerationStructureID> blases;
+
         for (auto entity : animator_component_ptr->entities) {
             MeshComponent *mesh_component = component_manager->get_component<MeshComponent>(entity);
             ASSERT(mesh_component != nullptr);
 
             AnimatorComponent *animator_component = component_manager->get_component<AnimatorComponent>(entity);
-            for (auto &subset : mesh_component->mesh_subsets) {
+            for (uint32_t s = 0; s < mesh_component->mesh_subsets.size(); ++s) {
+                const MeshComponent::MeshSubset &subset = mesh_component->mesh_subsets[s];
 
                 // Vertices is access as uint in the shader, so the offset/stride should be
                 // in the sizeof uint instead of bytes
@@ -521,46 +525,63 @@ namespace mirai {
                     // Access as mat4 in shader, so we don't convert it to bytes
                     .matrix_palletes_offset = skinned_matrix_offsets[animator_component->animation_player_index],
                 });
+
+                blas_descriptions.emplace_back(BLASDescription{
+                    .vertex_buffer = mesh_component->vertex_buffer.buffer,
+                    .index_buffer = mesh_component->index_buffer.buffer,
+                    .vertex_offset = subset.output_vertex_offset_bytes,
+                    .index_offset = subset.index_offset_bytes,
+                    .vertex_stride = K_VERTEX_DATA_SIZE,
+                    .vertex_count = subset.vertex_count,
+                    .index_count = subset.index_count,
+                });
+                blases.push_back(mesh_component->blases[s].as);
             }
         }
+        {
+            ScopedGpuProfiling(command_buffer, "SkinningCS");
 
-        ScopedGpuProfiling(command_buffer, "SkinningCS");
+            BufferBarrierInfo barrier_info = {
+                .buffer_id = vertex_buffer_allocator.buffer,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+            };
+            command_buffer->prepare_buffer(&barrier_info, 1);
 
-        BufferBarrierInfo barrier_info = {
-            .buffer_id = vertex_buffer_allocator.buffer,
-            .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
-        };
-        command_buffer->prepare_buffer(&barrier_info, 1);
+            command_buffer->begin_gpu_debug_label("SkinningCS");
 
-        command_buffer->begin_gpu_debug_label("SkinningCS");
+            DescriptorInfo matrix_pallete_descriptor_info = {
+                .type = DescriptorType::StorageBuffer,
+                .resource = matrix_pallete_buffer.buffer,
+                .buffer_info = {
+                    .offset = matrix_pallete_buffer.offset,
+                    .size = matrix_pallete_buffer.size,
+                },
+            };
 
-        DescriptorInfo matrix_pallete_descriptor_info = {
-            .type = DescriptorType::StorageBuffer,
-            .resource = matrix_pallete_buffer.buffer,
-            .buffer_info = {
-                .offset = matrix_pallete_buffer.offset,
-                .size = matrix_pallete_buffer.size,
-            },
-        };
+            DescriptorOffset descriptors[] = {
+                global_geometry_descriptor,
+                resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &matrix_pallete_descriptor_info, 1),
+            };
 
-        DescriptorOffset descriptors[] = {
-            global_geometry_descriptor,
-            resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &matrix_pallete_descriptor_info, 1),
-        };
+            skinning_shader->bind(command_buffer);
+            command_buffer->set_push_data(cast_u32(sizeof(uint32_t) * 8), descriptors, cast_u32(sizeof(descriptors)));
 
-        skinning_shader->bind(command_buffer);
-        command_buffer->set_push_data(cast_u32(sizeof(uint32_t) * 8), descriptors, cast_u32(sizeof(descriptors)));
+            for (auto &data : skinned_mesh_data) {
+                command_buffer->set_push_data(0, &data, cast_u32(sizeof(data)));
+                command_buffer->dispatch(data.vertex_count, 1, 1);
+            }
 
-        for (auto &data : skinned_mesh_data) {
-            command_buffer->set_push_data(0, &data, cast_u32(sizeof(data)));
-            command_buffer->dispatch(data.vertex_count, 1, 1);
+            barrier_info.dst_access_mask = ACCESS_FLAG_SHADER_READ;
+            barrier_info.dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+            command_buffer->end_gpu_debug_label();
         }
-
-        barrier_info.dst_access_mask = ACCESS_FLAG_SHADER_READ;
-        barrier_info.dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
-        command_buffer->end_gpu_debug_label();
+        // Update BLAS For skinning mesh
+        // We don't have any barrier related to this here, we put an aggregate memory barrier barrier after
+        // TLAS creation
+        ScopedGpuProfiling(command_buffer, "BLAS Build");
+        device->refit_blas(command_buffer, blas_descriptions, blases, blas_buffer_dynamic, ASC_ALLOW_UPDATE_BIT_KHR | ASC_PREFER_FAST_BUILD_BIT_KHR);
     }
 
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {

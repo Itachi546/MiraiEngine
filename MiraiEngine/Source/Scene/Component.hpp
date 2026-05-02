@@ -56,8 +56,8 @@ namespace mirai {
         glm::vec4 weights;
     };
 
-    const uint32_t VERTEX_DATA_SIZE = 32;
-    const uint32_t VERTEX_DATA_SIZE_SKINNED = sizeof(TempVertex);
+    const uint32_t K_VERTEX_DATA_SIZE = 32;
+    const uint32_t K_VERTEX_DATA_SIZE_SKINNED = sizeof(TempVertex);
 
     struct MeshComponent {
         MeshType mesh_type;

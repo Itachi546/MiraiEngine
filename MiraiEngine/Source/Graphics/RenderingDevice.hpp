@@ -99,6 +99,13 @@ namespace mirai {
         GEOMETRY_INSTANCE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
     };
 
+    enum AccelerationStructureCreationFlag {
+        ASC_ALLOW_UPDATE_BIT_KHR = 0x00000001,
+        ASC_ALLOW_COMPACTION_BIT_KHR = 0x00000002,
+        ASC_PREFER_FAST_TRACE_BIT_KHR = 0x00000004,
+        ASC_PREFER_FAST_BUILD_BIT_KHR = 0x00000008,
+    };
+
     struct AccelerationStructure {
         AccelerationStructureID as;
         uint64_t buffer_device_address;
@@ -651,7 +658,9 @@ namespace mirai {
         }
 
         // Buffer is created by the device and it's id my change
-        virtual void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, bool should_compact) = 0;
+        virtual void refit_blas(CommandBuffer *command_buffer, const std::vector<BLASDescription> &blas_descriptions, const std::vector<AccelerationStructureID> &blases, BufferID blas_buffer, uint32_t flags) = 0;
+
+        virtual void create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &blases, BufferID &out_buffer, uint32_t acceleration_structure_creation_flag) = 0;
         // Buffer is created by the device and it's id my change
         virtual void create_tlas(CommandBuffer *command_buffer, uint32_t primitive_count, BufferView instance_buffer_view, BufferID &tlas_buffer_id, AccelerationStructure *out_tlas) = 0;
 

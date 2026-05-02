@@ -1652,7 +1652,63 @@ namespace mirai {
         }
     }
 
-    void VulkanRenderingDevice::create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &out_blases, BufferID &out_buffer, bool should_compact) {
+    void VulkanRenderingDevice::refit_blas(CommandBuffer *command_buffer, const std::vector<BLASDescription> &blas_descriptions, const std::vector<AccelerationStructureID> &blases, BufferID blas_buffer, uint32_t flags  ) {
+        if (blas_descriptions.size() == 0)
+            return;
+        ASSERT(blas_buffer.is_valid());
+
+        uint32_t mesh_count = cast_u32(blas_descriptions.size());
+        std::vector<VkAccelerationStructureBuildGeometryInfoKHR> update_infos(mesh_count);
+        std::vector<VkAccelerationStructureGeometryKHR> geometries(mesh_count);
+        std::vector<VkAccelerationStructureBuildRangeInfoKHR> build_ranges(mesh_count);
+        std::vector<uint64_t> scratch_offsets(mesh_count);
+
+        uint64_t required_scratch_size = 0;
+        for (uint32_t i = 0; i < mesh_count; ++i) {
+            VkAccelerationStructureKHR *as = resource_pool_acceleration_structures.access(blases[i]);
+
+            create_acceleration_structure_geometry_info(blas_descriptions[i], geometries[i]);
+            update_infos[i].sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+            update_infos[i].pNext = nullptr;
+            update_infos[i].type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            update_infos[i].flags = flags;
+            update_infos[i].mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+            update_infos[i].geometryCount = 1;
+            update_infos[i].pGeometries = &geometries[i];
+            update_infos[i].srcAccelerationStructure = *as;
+            update_infos[i].dstAccelerationStructure = *as;
+
+            uint32_t max_primitives = blas_descriptions[i].index_count / 3;
+            build_ranges[i].primitiveCount = max_primitives;
+
+            VkAccelerationStructureBuildSizesInfoKHR size_info = {VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
+            vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &update_infos[i], &max_primitives, &size_info);
+
+            scratch_offsets[i] = required_scratch_size;
+            required_scratch_size += size_info.buildScratchSize;
+        }
+
+        if (!blas_scratch_buffer.is_valid()) {
+            BufferDescription buffer_desc = {
+                .size = cast_u32(required_scratch_size),
+                .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+            };
+            blas_scratch_buffer = create_buffer(&buffer_desc, "BLASScratchBuffer");
+        }
+        VulkanBuffer *scratch_buffer = resource_pool_buffers.access(blas_scratch_buffer);
+        ASSERT(scratch_buffer->size >= required_scratch_size);
+
+        VkDeviceSize scratch_buffer_device_address = scratch_buffer->device_address;
+        std::vector<VkAccelerationStructureBuildRangeInfoKHR *> build_ranges_ptr(mesh_count);
+        for (uint32_t i = 0; i < mesh_count; ++i) {
+            update_infos[i].scratchData.deviceAddress = scratch_buffer_device_address + scratch_offsets[i];
+            build_ranges_ptr[i] = &build_ranges[i];
+        }
+        vkCmdBuildAccelerationStructuresKHR(command_buffer->command_buffer, mesh_count, update_infos.data(), build_ranges_ptr.data());
+    }
+
+    void VulkanRenderingDevice::create_blas(const std::vector<BLASDescription> &blas_descriptions, std::vector<AccelerationStructure *> &out_blases, BufferID &out_buffer, uint32_t flags) {
 
         uint32_t mesh_count = cast_u32(blas_descriptions.size());
         std::vector<VkAccelerationStructureBuildGeometryInfoKHR> build_infos(mesh_count);
@@ -1671,7 +1727,7 @@ namespace mirai {
             build_infos[i].sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             build_infos[i].pNext = nullptr;
             build_infos[i].type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-            build_infos[i].flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+            build_infos[i].flags = flags;
             build_infos[i].mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             build_infos[i].geometryCount = 1;
             build_infos[i].pGeometries = &blas_info.geometry;
@@ -1712,6 +1768,7 @@ namespace mirai {
         std::vector<VkAccelerationStructureKHR> temp_blases(mesh_count);
         std::vector<uint64_t> compacted_sizes(mesh_count);
 
+        bool should_compact = HAS_FLAG(flags, ASC_ALLOW_COMPACTION_BIT_KHR);
         create_blas_internal(scratch_buffer, temp_blas_buffer, blas_temp_infos, build_infos, temp_blases, should_compact, compacted_sizes.data());
 
         destroy_buffers(&scratch_buffer_id, 1);
