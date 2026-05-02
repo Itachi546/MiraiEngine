@@ -525,13 +525,19 @@ namespace mirai {
         for (uint32_t i = 0; i < barrier_count; ++i) {
             const BufferBarrierInfo *barrier_info = barrier_infos + i;
             VulkanBuffer *buffer = device->access_buffer(barrier_info->buffer_id);
+
+            VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(barrier_info->dst_stage_mask);
+            VkAccessFlags2 dst_access = VkAccessFlags(barrier_info->dst_access_mask);
             buffer_barriers[i] = CreateBufferMemoryBarrier2(buffer->buffer,
-                                                            VkPipelineStageFlags2(barrier_info->src_stage_mask),
-                                                            VkAccessFlags(barrier_info->src_access_mask),
-                                                            VkPipelineStageFlags2(barrier_info->dst_stage_mask),
-                                                            VkAccessFlags(barrier_info->dst_access_mask),
+                                                            buffer->stage_mask,
+                                                            buffer->access_flags,
+                                                            dst_stage,
+                                                            dst_access,
                                                             barrier_info->offset,
                                                             barrier_info->size);
+
+            buffer->stage_mask = dst_stage;
+            buffer->access_flags = dst_access;
         }
         pipeline_barrier(nullptr, 0, buffer_barriers.data(), cast_u32(buffer_barriers.size()));
     }

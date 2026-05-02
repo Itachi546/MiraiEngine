@@ -110,6 +110,9 @@ namespace mirai {
         std::unique_ptr<ShadowSystem> shadow_system;
         std::unique_ptr<LineRenderer> line_renderer;
 
+        // Skinning
+        std::unique_ptr<ComputeShader> skinning_shader;
+
         void copy_buffers();
 
         void initialize();
@@ -131,6 +134,8 @@ namespace mirai {
         void create_blas();
 
         void create_tlas(CommandBuffer *command_buffer);
+
+        void update_skinned_mesh(CommandBuffer *command_buffer);
 
         void upload_visible_lights();
 

@@ -17,8 +17,6 @@ namespace mirai {
         BufferID buffer_id;
         uint64_t offset = 0;
         uint64_t size = UINT64_MAX;
-        uint64_t src_stage_mask;
-        uint64_t src_access_mask;
         uint64_t dst_stage_mask;
         uint64_t dst_access_mask;
     };

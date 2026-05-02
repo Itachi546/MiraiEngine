@@ -120,6 +120,9 @@ namespace mirai {
 
         // Upload default sampler
         rendering_utils::upload_default_samplers(device.get(), sampler_heap.ptr);
+
+        // Create skinning compute shader
+        skinning_shader = std::make_unique<ComputeShader>("SkinningCS", "SPIRV/skinning.comp.spv");
     }
 
     void Renderer::on_load_resources() {
@@ -454,6 +457,112 @@ namespace mirai {
         }
     }
 
+    void Renderer::update_skinned_mesh(CommandBuffer *command_buffer) {
+        /**
+         * This function is responsible for to
+         * 1. Updating each skinned mesh in compute shader and generate final animated vertices
+         * 2. Refit BLAS for all the skinned mesh
+         */
+        if (scene->animation_players.size() == 0)
+            return;
+
+        auto &component_manager = scene->ecs->component_manager;
+        auto animator_component_ptr = component_manager->get_component_array<AnimatorComponent>();
+        if (animator_component_ptr->components.size() == 0)
+            return;
+
+        ScopedCpuProfiling("ComputeSkinningSetup");
+
+        // Upload skinning matrix
+        std::vector<uint32_t> skinned_matrix_offsets(scene->animation_players.size());
+        uint32_t skinned_matrix_size = 0;
+        for (uint32_t i = 0; i < scene->animation_players.size(); ++i) {
+            std::unique_ptr<AnimationPlayer> &animation_player = scene->animation_players[i];
+            skinned_matrix_offsets[i] = skinned_matrix_size;
+            skinned_matrix_size += cast_u32(animation_player->matrix_palletes.size());
+        }
+        ASSERT(skinned_matrix_size > 0);
+
+        BufferView matrix_pallete_buffer = per_frame_allocator[current_frame_index].allocate(cast_u32(skinned_matrix_size * sizeof(glm::mat4)));
+        uint8_t *ptr = matrix_pallete_buffer.ptr;
+        for (const auto &animation_player : scene->animation_players) {
+            const std::vector<glm::mat4> &matrix_pallete = animation_player->matrix_palletes;
+            uint32_t matrix_pallete_size = cast_u32(sizeof(glm::mat4) * matrix_pallete.size());
+            std::memcpy(ptr, matrix_pallete.data(), matrix_pallete_size);
+            ptr += matrix_pallete_size;
+        }
+
+        // List all the animated mesh
+        struct SkinnedMeshPushData {
+            uint32_t vertex_address;
+            uint32_t vertex_stride;
+            uint32_t vertex_count;
+            uint32_t output_offset;
+
+            uint32_t matrix_palletes_offset;
+            uint32_t _padding[3];
+        };
+
+        std::vector<SkinnedMeshPushData> skinned_mesh_data;
+        for (auto entity : animator_component_ptr->entities) {
+            MeshComponent *mesh_component = component_manager->get_component<MeshComponent>(entity);
+            ASSERT(mesh_component != nullptr);
+
+            AnimatorComponent *animator_component = component_manager->get_component<AnimatorComponent>(entity);
+            for (auto &subset : mesh_component->mesh_subsets) {
+
+                // Vertices is access as uint in the shader, so the offset/stride should be
+                // in the sizeof uint instead of bytes
+                skinned_mesh_data.emplace_back(SkinnedMeshPushData{
+                    .vertex_address = subset.vertex_offset_bytes / 4,
+                    .vertex_stride = subset.vertex_stride / 4,
+                    .vertex_count = subset.vertex_count,
+                    .output_offset = subset.output_vertex_offset_bytes / 4,
+                    // Access as mat4 in shader, so we don't convert it to bytes
+                    .matrix_palletes_offset = skinned_matrix_offsets[animator_component->animation_player_index],
+                });
+            }
+        }
+
+        ScopedGpuProfiling(command_buffer, "SkinningCS");
+
+        BufferBarrierInfo barrier_info = {
+            .buffer_id = vertex_buffer_allocator.buffer,
+            .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            .dst_access_mask = ACCESS_FLAG_SHADER_READ | ACCESS_FLAG_SHADER_WRITE,
+        };
+        command_buffer->prepare_buffer(&barrier_info, 1);
+
+        command_buffer->begin_gpu_debug_label("SkinningCS");
+
+        DescriptorInfo matrix_pallete_descriptor_info = {
+            .type = DescriptorType::StorageBuffer,
+            .resource = matrix_pallete_buffer.buffer,
+            .buffer_info = {
+                .offset = matrix_pallete_buffer.offset,
+                .size = matrix_pallete_buffer.size,
+            },
+        };
+
+        DescriptorOffset descriptors[] = {
+            global_geometry_descriptor,
+            resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &matrix_pallete_descriptor_info, 1),
+        };
+
+        skinning_shader->bind(command_buffer);
+        command_buffer->set_push_data(cast_u32(sizeof(uint32_t) * 8), descriptors, cast_u32(sizeof(descriptors)));
+
+        for (auto &data : skinned_mesh_data) {
+            command_buffer->set_push_data(0, &data, cast_u32(sizeof(data)));
+            command_buffer->dispatch(data.vertex_count, 1, 1);
+        }
+
+        barrier_info.dst_access_mask = ACCESS_FLAG_SHADER_READ;
+        barrier_info.dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+        command_buffer->end_gpu_debug_label();
+    }
+
     void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
         if (batches.size() == 0)
             return;
@@ -645,8 +754,6 @@ namespace mirai {
                 .buffer_id = dst.buffer,
                 .offset = dst.offset,
                 .size = dst.size,
-                .src_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT,
-                .src_access_mask = ACCESS_FLAG_SHADER_READ,
                 .dst_stage_mask = PIPELINE_STAGE_COPY_BIT,
                 .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
             },
@@ -683,9 +790,7 @@ namespace mirai {
         });
         cb->copy_buffer(dst.buffer, src.buffer, copy_regions.data(), cast_u32(copy_regions.size()));
 
-        barrier_infos[0].src_access_mask = ACCESS_FLAG_TRANSFER_WRITE;
         barrier_infos[0].dst_access_mask = ACCESS_FLAG_SHADER_READ;
-        barrier_infos[0].src_stage_mask = PIPELINE_STAGE_COPY_BIT;
         barrier_infos[0].dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT;
         cb->prepare_buffer(barrier_infos, 1);
     }
@@ -780,6 +885,9 @@ namespace mirai {
 
             // Patch transform and Materials if it has changed
             patch_global_data(cb);
+
+            // Update skinned mesh
+            update_skinned_mesh(cb);
 
             // create TLAS
             create_tlas(cb);
