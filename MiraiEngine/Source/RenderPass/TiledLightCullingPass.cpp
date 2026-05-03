@@ -65,10 +65,9 @@ namespace mirai {
                 command_buffer->prepare_resources(pass_resource_states);
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
-                
+
                 const DepthPrePassData &depth_prepass = board->get<DepthPrePassData>();
                 DescriptorOffset descriptors[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass.output).id, DescriptorType::SampledImage),
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer),
                     renderer->per_frame_light_descriptor,
                 };
@@ -87,7 +86,8 @@ namespace mirai {
 
                     uint32_t depth_texture_height;
                     uint32_t tile_size;
-                    uint32_t _padding[2];
+                    uint32_t depth_texture_index;
+                    uint32_t padding;
                 } push_data;
                 push_data.invP = camera->get_inv_projection_transform();
                 push_data.V = camera->get_view_transform();
@@ -97,7 +97,7 @@ namespace mirai {
                 push_data.depth_texture_width = data.depth_texture_width;
                 push_data.depth_texture_height = data.depth_texture_height;
                 push_data.tile_size = AppSettings::K_LIGHT_TILE_SIZE;
-                push_data._padding[0] = push_data._padding[1] = 0;
+                push_data.depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass.output).id.id;
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
 

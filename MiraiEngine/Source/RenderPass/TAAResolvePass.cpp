@@ -31,6 +31,8 @@ namespace mirai {
                 RenderingDevice *device = RenderingDevice::get();
                 data.history_textures[0] = device->create_texture(&texture_desc, "taa_history_0");
                 data.history_textures[1] = device->create_texture(&texture_desc, "taa_history_1");
+                Renderer::get()->add_bindless_texture(data.history_textures[0]);
+                Renderer::get()->add_bindless_texture(data.history_textures[1]);
 
                 // We let cache manage the lifecycle of the texture
                 TextureCache::get()->add_texture("TAAHistory0", data.history_textures[0]);
@@ -116,20 +118,20 @@ namespace mirai {
 
                     const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                     DescriptorOffset descriptors[] = {
-                        renderer->get_or_create_descriptor(pass_resources.get<FrameGraphTexture>(forward_pass_data.color_texture).id, DescriptorType::SampledImage),
-                        renderer->get_or_create_descriptor(data.history_textures[1 - current_taa_texture], DescriptorType::SampledImage),
-                        renderer->get_or_create_descriptor(pass_resources.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
-                        renderer->get_or_create_descriptor(pass_resources.get<FrameGraphTexture>(forward_pass_data.velocity_buffer).id, DescriptorType::SampledImage),
                         renderer->get_or_create_descriptor(data.history_textures[current_taa_texture], DescriptorType::StorageImage),
                     };
 
-                    int flags = int(AppSettings::enable_taa);
-                    flags = (flags | int(options.should_sample_motion_vector) << 1);
+                    uint32_t flags = cast_u32(AppSettings::enable_taa);
+                    flags = (flags | cast_u32(options.should_sample_motion_vector) << 1);
 
-                    int push_constant_data[] = {
-                        cast_int(width),
-                        cast_int(height),
+                    uint32_t push_constant_data[] = {
+                        cast_u32(width),
+                        cast_u32(height),
                         flags,
+                        pass_resources.get<FrameGraphTexture>(forward_pass_data.color_texture).id.id,
+                        data.history_textures[1 - current_taa_texture].id,
+                        pass_resources.get<FrameGraphTexture>(depth_prepass_data.output).id.id,
+                        pass_resources.get<FrameGraphTexture>(forward_pass_data.velocity_buffer).id.id,
                         0,
                     };
 

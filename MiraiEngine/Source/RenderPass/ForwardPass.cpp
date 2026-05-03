@@ -12,6 +12,22 @@
 #include "Scene/EnvironmentMap.hpp"
 #include "Scene/Camera.hpp"
 namespace mirai {
+    struct PushConstants {
+        float split_percentage;
+        int debug_param_index;
+        float pcf_radius;
+        float pcf_sample_count;
+
+        float ibl_intensity;
+        uint32_t num_lights;
+        float light_culling;
+        uint32_t tile_size;
+
+        float mip_bias;
+        uint32_t ssao_texture;
+        uint32_t shadow_texture;
+        uint32_t padding;
+    };
 
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
 
@@ -122,32 +138,30 @@ namespace mirai {
                 const CascadedShadowPassData &csm_data = board->get<CascadedShadowPassData>();
                 const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
 
-                DescriptorOffset ssao_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, DescriptorType::SampledImage);
-                DescriptorOffset csm_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(csm_data.output).id, DescriptorType::SampledImage);
                 DescriptorOffset cubemap_binding = renderer->get_or_create_descriptor(env_map->get_cubemap(), DescriptorType::SampledImage);
                 DescriptorOffset light_list_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(light_cull_data.light_list_buffer).id, DescriptorType::StorageBuffer);
 
                 ShadowSystem *shadow_system = ShadowSystem::get();
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
-                float push_constants[12] = {
+
+                PushConstants push_constant_data = {
                     debug_data.split_percentage,
-                    cast_float(debug_data.debug_param_index),
+                    debug_data.debug_param_index,
                     shadow_system->dir_light_params.pcf_radius,
                     shadow_system->dir_light_params.pcf_sample_count,
                     AppSettings::ibl_contribution,
-                    cast_float(renderer->total_visible_lights),
+                    renderer->total_visible_lights,
                     cast_float(debug_data.light_culling),
-                    cast_float(AppSettings::K_LIGHT_TILE_SIZE),
+                    AppSettings::K_LIGHT_TILE_SIZE,
                     AppSettings::enable_taa ? debug_data.mip_lod_bias : 0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
+                    pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id.id,
+                    pass_resource.get<FrameGraphTexture>(csm_data.output).id.id,
                 };
 
                 PushData push_data = {
-                    .data = push_constants,
+                    .data = &push_constant_data,
                     .offset = 0,
-                    .size = cast_u32(sizeof(push_constants)),
+                    .size = cast_u32(sizeof(push_constant_data)),
                 };
 
                 command_buffer->begin_render_pass({AttachmentInfo{
@@ -186,8 +200,6 @@ namespace mirai {
                     renderer->transform_descriptor,
                     0,
                     renderer->material_descriptor,
-                    ssao_binding,
-                    csm_binding,
                     renderer->cascade_data_descriptor,
                     renderer->per_frame_light_descriptor,
                     light_list_binding,

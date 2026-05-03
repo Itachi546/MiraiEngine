@@ -7,10 +7,9 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 #include "../utils/transform.glsl"
 #include "../utils/bindless-sampler.glsl"
+#include "../utils/bindless-texture.glsl"
 
 layout(set = 0, binding = 0, r16f) uniform image2D u_output_blur_texture;
-layout(set = 0, binding = 1) uniform texture2D u_depth_texture;
-layout(set = 0, binding = 2) uniform texture2D u_ssao_texture;
 
 #define HALF_RES 0
 
@@ -23,7 +22,10 @@ layout(push_constant) uniform BlurPushConstants {
     float sharpness;
     float z_near;
     float z_far;
-    float _unused;
+    uint depth_texture_index;
+
+    uint ssao_texture_index;
+    uint _padding[3];
 };
 
 float guassian_weight(float x, float sigma2) {
@@ -36,7 +38,7 @@ ivec2 clamp_uv(ivec2 uv) {
 
 float sample_ssao(ivec2 uv) {
     // return texture(sampler2D(u_ssao_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).r;
-    return texelFetch(u_ssao_texture, clamp_uv(uv), 0).r;
+    return sample_texel(ssao_texture_index, clamp_uv(uv), 0).r;
 }
 
 float gaussian_blur(ivec2 coord) {
@@ -67,7 +69,7 @@ float get_linear_depth(ivec2 uv) {
     float d3 = texelFetch(u_depth_texture, full_res_uv - ivec2(0, 1), 0).r;
     return linearize_depth((d0 + d1 + d2 + d3) * 0.25, z_near, z_far);
 #else
-    float depth = texelFetch(u_depth_texture, uv, 0).r;
+    float depth = sample_texel(depth_texture_index, uv, 0).r;
     return linearize_depth(depth, z_near, z_far);
 #endif
 }

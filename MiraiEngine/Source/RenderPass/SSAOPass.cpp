@@ -27,7 +27,7 @@ namespace mirai {
         float intensity;
         float tangent_bias;
         uint32_t noise_texture_index;
-        uint32_t padding;
+        uint32_t depth_texture_index;
     };
     static_assert(sizeof(HBAOConstants) % 4 == 0);
 
@@ -40,7 +40,10 @@ namespace mirai {
         float sharpness;
         float znear;
         float zfar;
-        float _padding;
+        uint32_t depth_texture_index;
+
+        uint32_t ssao_texture_index;
+        uint32_t padding[3];
     };
 
     struct SSAOBlurData {
@@ -118,6 +121,8 @@ namespace mirai {
                 float projection_scale = float(screen_height) / (tanf(fov * 0.5f) * 2.0f);
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+
                 const HBAOParams &params = board->get<HBAOParams>();
                 HBAOConstants push_constants = {
                     .inv_projection_matrix = camera->get_inv_projection_transform(),
@@ -132,14 +137,12 @@ namespace mirai {
                     .intensity = params.intensity,
                     .tangent_bias = params.tangent_bias,
                     .noise_texture_index = params.noise_texture,
-                    .padding = 0,
+                    .depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id.id,
                 };
 
                 ScopedGpuProfiling(command_buffer, "SSAOPass");
-                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 DescriptorOffset descriptors[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
                 };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
@@ -206,9 +209,11 @@ namespace mirai {
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const HBAOParams &params = board->get<HBAOParams>();
+                const SSAOPassData &ssao_data = board->get<SSAOPassData>();
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
-
                 BlurConstants push_constants = {
                     .width = width * SSAO_RESOLUTION_SCALE,
                     .height = height * SSAO_RESOLUTION_SCALE,
@@ -217,16 +222,13 @@ namespace mirai {
                     .sharpness = params.blur_sharpness,
                     .znear = camera->get_near_plane(),
                     .zfar = camera->get_far_plane(),
-                    ._padding = 0,
+                    .depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id.id,
+                    .ssao_texture_index = pass_resource.get<FrameGraphTexture>(ssao_data.output).id.id,
                 };
 
                 ScopedGpuProfiling(command_buffer, "SSAOHorizontalBlurPass");
-                const SSAOPassData &ssao_data = board->get<SSAOPassData>();
-                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 DescriptorOffset bindings[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_data.output).id, DescriptorType::SampledImage),
                 };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();
@@ -278,6 +280,9 @@ namespace mirai {
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const HBAOParams &params = board->get<HBAOParams>();
+                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
+                const SSAOBlurData &data = board->get<SSAOBlurData>();
+
                 BlurConstants push_constants = {
                     .width = width * SSAO_RESOLUTION_SCALE,
                     .height = height * SSAO_RESOLUTION_SCALE,
@@ -286,18 +291,15 @@ namespace mirai {
                     .sharpness = params.blur_sharpness,
                     .znear = camera->get_near_plane(),
                     .zfar = camera->get_far_plane(),
-                    ._padding = 0,
+                    .depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id.id,
+                    .ssao_texture_index = pass_resource.get<FrameGraphTexture>(data.output).id.id,
                 };
 
                 ScopedGpuProfiling(command_buffer, "SSAOVerticalBlurPass");
 
-                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
-                const SSAOBlurData &data = board->get<SSAOBlurData>();
                 DescriptorOffset bindings[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id, DescriptorType::StorageImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id, DescriptorType::SampledImage),
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.output).id, DescriptorType::SampledImage),
                 };
 
                 std::vector<ResourceAccessDeclaration> resource_states = pass_resource.get_resource_access_states();

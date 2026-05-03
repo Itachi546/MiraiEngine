@@ -7,11 +7,11 @@
 #define ENABLE_SOFT_SHADOW 1
 #define ENABLE_CASCADE_BLEND 1
 
-float texture_proj(vec4 shadow_coord, vec2 offset, float bias) {
-    return texture(sampler2D(u_shadow_texture, u_samplers[SAMPLER_POINT_CLAMP]), shadow_coord.xy + offset).r + bias < shadow_coord.z ? 0.0f : 1.0f;
+float texture_proj(uint shadow_texture, vec4 shadow_coord, vec2 offset, float bias) {
+    return sample_texture(shadow_texture, u_samplers[SAMPLER_POINT_CLAMP], shadow_coord.xy + offset).r + bias < shadow_coord.z ? 0.0f : 1.0f;
 }
 
-float sample_shadow_disc_pcf(vec3 world_pos, int cascade_index, float pcf_radius, float pcf_sample_count) {
+float sample_shadow_disc_pcf(uint shadow_texture, vec3 world_pos, int cascade_index, float pcf_radius, float pcf_sample_count) {
     if (cascade_index >= NUM_DIRLIGHT_CASCADE)
         return 1.0f;
 
@@ -31,7 +31,7 @@ float sample_shadow_disc_pcf(vec3 world_pos, int cascade_index, float pcf_radius
     float shadow = 0.0f;
     for (int i = 0; i < int(pcf_sample_count); ++i) {
         vec2 offset = PoissonSamples[i] * filter_size;
-        shadow += texture_proj(shadow_uv, offset, 0.001f);
+        shadow += texture_proj(shadow_texture, shadow_uv, offset, 0.001f);
     }
     return shadow / pcf_sample_count;
 }
@@ -47,7 +47,7 @@ float compute_blend_factor(float cam_dist, float z_range, int cascade_index) {
     return 1.0f - blend_factor;
 }
 
-float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_index, float pcf_radius, float pcf_sample_count) {
+float calculate_shadow_factor(uint shadow_texture, vec3 world_pos, float cam_dist, out int cascade_index, float pcf_radius, float pcf_sample_count) {
     cascade_index = NUM_DIRLIGHT_CASCADE;
     float z_range = cascade_info.dims[0];
     for (int i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
@@ -60,14 +60,14 @@ float calculate_shadow_factor(vec3 world_pos, float cam_dist, out int cascade_in
     if (cascade_index == NUM_DIRLIGHT_CASCADE)
         return 1.0;
 
-    float s0 = sample_shadow_disc_pcf(world_pos, cascade_index, pcf_radius, pcf_sample_count);
+    float s0 = sample_shadow_disc_pcf(shadow_texture, world_pos, cascade_index, pcf_radius, pcf_sample_count);
     float blend_factor = compute_blend_factor(cam_dist, z_range, cascade_index);
     if (cascade_index == NUM_DIRLIGHT_CASCADE - 1) {
         return mix(s0, 1.0, blend_factor);
     }
 
 #if ENABLE_CASCADE_BLEND
-    float s1 = sample_shadow_disc_pcf(world_pos, cascade_index + 1, pcf_radius, pcf_sample_count);
+    float s1 = sample_shadow_disc_pcf(shadow_texture, world_pos, cascade_index + 1, pcf_radius, pcf_sample_count);
     return mix(s0, s1, blend_factor);
 #else
     return s0;

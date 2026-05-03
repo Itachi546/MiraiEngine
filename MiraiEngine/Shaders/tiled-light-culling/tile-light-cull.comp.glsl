@@ -3,20 +3,20 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 #include "../utils/frustum.glsl"
 #include "../utils/light.glsl"
 #include "../utils/transform.glsl"
+#include "../utils/bindless-texture.glsl"
 
 layout(local_size_x = LIGHT_TILE_SIZE, local_size_y = LIGHT_TILE_SIZE, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2D u_depth_texture;
-
-layout(std430, set = 0, binding = 1) writeonly buffer LightList {
+layout(std430, set = 0, binding = 0) writeonly buffer LightList {
     uint light_lists[];
 };
 
-layout(std430, set = 0, binding = 2) readonly buffer LightBuffer {
+layout(std430, set = 0, binding = 1) readonly buffer LightBuffer {
     Light lights[];
 };
 
@@ -30,7 +30,8 @@ layout(push_constant) uniform PushConstant {
 
     uint depth_texture_height;
     uint tile_size;
-    uint _padding[2];
+    uint depth_texture_index;
+    uint _padding;
 };
 
 shared uint s_tile_opaque_list[MAX_LIGHT_PER_TILE];
@@ -123,7 +124,7 @@ void main() {
     barrier();
 
     ivec2 depth_uv = clamp(id, ivec2(0), ivec2(depth_texture_width - 1, depth_texture_height - 1));
-    float depth = texelFetch(u_depth_texture, depth_uv, 0).r;
+    float depth = sample_texel(depth_texture_index, depth_uv, 0).r;
 
     // Wave min and max depth
     float wave_min_depth = subgroupMin(depth);

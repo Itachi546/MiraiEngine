@@ -15,4 +15,6 @@ layout(set = 2, binding = 10) uniform textureCube u_bindless_texture_cube[];
 #define sample_texture_cube(index, sampler, uv) texture(samplerCube(u_bindless_texture_cube[nonuniformEXT(index)], sampler), uv)
 #define sample_texture_cube_lod(index, sampler, uv, lod) textureLod(samplerCube(u_bindless_texture_cube[nonuniformEXT(index)], sampler), uv, lod)
 
+#define sample_texel(index, coord, lod) texelFetch(u_bindless_texture[nonuniformEXT(index)], coord, lod)
+
 #endif

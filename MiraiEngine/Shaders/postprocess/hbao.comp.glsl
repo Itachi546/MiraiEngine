@@ -9,7 +9,6 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #include "../utils/bindless-sampler.glsl"
 
 layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
-layout(set = 0, binding = 1) uniform texture2D u_depth_texture;
 
 #define HALF_RES 0
 
@@ -35,7 +34,7 @@ layout(push_constant) uniform HBAOPushConstants {
     float intensity;
     float tangent_bias;
     uint noise_texture_index;
-    uint _padding;
+    uint depth_texture_index;
 }
 hbao;
 
@@ -53,7 +52,7 @@ ivec2 uv_to_iuv(vec2 uv) {
 vec3 get_view_pos_from_uv(ivec2 iuv) {
     vec2 uv = uv_from_iuv(iuv);
     // float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
-    float depth = texelFetch(u_depth_texture, iuv, 0).r;
+    float depth = sample_texel(hbao.depth_texture_index, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
     return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
 }

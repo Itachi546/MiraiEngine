@@ -68,25 +68,32 @@ namespace mirai {
                 Renderer *renderer = Renderer::get();
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
+                TextureID input_color_texture = TextureID{K_INVALID_RESOURCE_HANDLE};
 #if 1
                 const TAAResolvePassData &taa_pass_data = board->get<TAAResolvePassData>();
-                DescriptorOffset bindings[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(taa_pass_data.output).id, DescriptorType::SampledImage),
-                };
+                input_color_texture = pass_resource.get<FrameGraphTexture>(taa_pass_data.output).id;
 #else
                 const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
-                DescriptorOffset bindings[] = {
-                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(forward_pass_data.color_texture).id, DescriptorType::SampledImage),
-                };
+                input_color_texture = pass_resource.get<FrameGraphTexture>(forward_pass_data.color_texture).id;
 #endif
+                ASSERT(input_color_texture.is_valid());
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
-                float push_data[] = {
-                    cast_float(width),
-                    cast_float(height),
-                    cast_float(debug_data.enable_gamma_correction),
-                    debug_data.exposure,
-                };
+
+                struct PushData {
+                    float width;
+                    float height;
+                    float enable_gamma_correction;
+                    float exposure;
+                    uint32_t input_color_texture;
+                    uint32_t _padding[3];
+                } push_data;
+
+                push_data.width = cast_float(width);
+                push_data.height = cast_float(height);
+                push_data.enable_gamma_correction = cast_float(debug_data.enable_gamma_correction);
+                push_data.exposure = debug_data.exposure;
+                push_data.input_color_texture = input_color_texture.id;
 
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");
@@ -111,8 +118,7 @@ namespace mirai {
                 command_buffer->set_scissor(0, 0, swapchain_width, swapchain_height);
 
                 data.shader->bind(command_buffer);
-                command_buffer->set_push_data(0, push_data, cast_u32(sizeof(push_data)));
-                command_buffer->set_push_data(cast_u32(sizeof(push_data)), bindings, cast_u32(sizeof(bindings)));
+                command_buffer->set_push_data(0, &push_data, cast_u32(sizeof(push_data)));
 
                 command_buffer->draw(3, 1, 0, 0);
 

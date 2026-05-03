@@ -33,44 +33,40 @@ layout(std430, set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
 };
 
-layout(set = 0, binding = 5) uniform texture2D u_ssao_texture;
-
-layout(set = 0, binding = 6) uniform texture2D u_shadow_texture;
-
-layout(set = 0, binding = 7) uniform CascadeInfoUniform {
+layout(set = 0, binding = 5) uniform CascadeInfoUniform {
     CascadeInfo cascade_info;
-};
-
-layout(std430, set = 0, binding = 8) readonly buffer Lights {
-    Light lights[];
-};
-
-layout(std430, set = 0, binding = 9) readonly buffer LightLists {
-    uint light_lists[];
 };
 
 #include "../shadow/directional-shadow.glsl"
 
+layout(std430, set = 0, binding = 6) readonly buffer Lights {
+    Light lights[];
+};
+
+layout(std430, set = 0, binding = 7) readonly buffer LightLists {
+    uint light_lists[];
+};
+
 layout(push_constant) uniform PushConstants {
     float split_percentage;
-    float debug_texture_index;
+    int debug_texture_index;
     float pcf_radius;
     float pcf_sample_count;
 
     float ibl_intensity;
-    float num_lights;
+    uint num_lights;
     float light_culling;
-    float tile_size;
+    uint tile_size;
 
     float mip_bias;
-    float _padding[3];
+    uint ssao_texture_index;
+    uint shadow_texture_index;
+    uint _padding;
 };
 
 bool is_valid(uint texture) {
     return texture != K_INVALID_TEXTURE;
 }
-
-const float K_MIP_LOD_BIAS = -0.5f;
 
 void main() {
     PBRMaterial material = materials[fs_in.mat_id];
@@ -123,7 +119,10 @@ void main() {
     pbr_params.roughness = metallic_roughness.y;
 
     vec2 screen_uv = gl_FragCoord.xy / vec2(per_frame_data.width, per_frame_data.height);
-    pbr_params.ao = texture(sampler2D(u_ssao_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), screen_uv).r;
+    if (is_valid(ssao_texture_index))
+        pbr_params.ao = sample_texture(ssao_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], screen_uv).r;
+    else
+        pbr_params.ao = 1.0f;
 
     vec3 view_dir = per_frame_data.camera_position.xyz - fs_in.world_pos;
     float cam_dist = length(view_dir);
@@ -136,13 +135,13 @@ void main() {
     uint tile_light_count = 0;
 
     if (light_culling < 0.5) {
-        for (int i = 0; i < int(num_lights); ++i) {
+        for (int i = 0; i < num_lights; ++i) {
             Light light = lights[i];
             uint light_type = get_light_type(light.flag);
             if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (cast_shadow(light.flag)) {
+                if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
                     dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                    shadow_factor = max(calculate_shadow_factor(shadow_texture_index, fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
 
@@ -168,9 +167,9 @@ void main() {
             Light light = lights[light_index];
             uint light_type = get_light_type(light.flag);
             if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (cast_shadow(light.flag)) {
+                if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
                     dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                    shadow_factor = max(calculate_shadow_factor(shadow_texture_index, fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
                 vec3 reflection = normalize(reflect(-view_dir, normal));
@@ -187,8 +186,7 @@ void main() {
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     // Debug Params
     if (split_percentage >= screen_uv.x) {
-        uint debug_index = uint(debug_texture_index);
-        switch (debug_index) {
+        switch (debug_texture_index) {
         case DEBUG_ALBEDO:
             Lo = pbr_params.albedo.xyz;
             break;

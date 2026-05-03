@@ -3,6 +3,7 @@
 #include "Engine/Log.hpp"
 #include <cassert>
 #include <stack>
+#include "Graphics/Renderer.hpp"
 
 #include <iostream>
 
@@ -158,6 +159,7 @@ namespace mirai {
                 FrameGraphTexture &texture = resource.get<FrameGraphTexture>();
                 ASSERT(!texture.id.is_valid());
                 texture.id = device->create_texture(&texture.desc, resource.name);
+                Renderer::get()->add_bindless_texture(texture.id);
             }
         }
     }
