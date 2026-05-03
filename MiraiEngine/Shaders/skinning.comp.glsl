@@ -30,7 +30,8 @@ layout(push_constant) uniform PushConstants {
     uint output_offset;
 
     uint matrix_pallete_offset;
-    uint _padding[3];
+    uint matrix_pallete_count;
+    uint _padding[2];
 };
 
 void main() {

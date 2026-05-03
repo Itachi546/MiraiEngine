@@ -474,12 +474,13 @@ namespace mirai {
         ScopedCpuProfiling("ComputeSkinningSetup");
 
         // Upload skinning matrix
-        std::vector<uint32_t> skinned_matrix_offsets(scene->animation_players.size());
+        std::vector<uint32_t> skinned_matrix_prefix_sum(scene->animation_players.size());
         uint32_t skinned_matrix_size = 0;
         for (uint32_t i = 0; i < scene->animation_players.size(); ++i) {
             std::unique_ptr<AnimationPlayer> &animation_player = scene->animation_players[i];
-            skinned_matrix_offsets[i] = skinned_matrix_size;
+
             skinned_matrix_size += cast_u32(animation_player->matrix_palletes.size());
+            skinned_matrix_prefix_sum[i] = skinned_matrix_size;
         }
         ASSERT(skinned_matrix_size > 0);
 
@@ -500,7 +501,8 @@ namespace mirai {
             uint32_t output_offset;
 
             uint32_t matrix_palletes_offset;
-            uint32_t _padding[3];
+            uint32_t matrix_pallete_count;
+            uint32_t _padding[2];
         };
 
         std::vector<SkinnedMeshPushData> skinned_mesh_data;
@@ -517,13 +519,17 @@ namespace mirai {
 
                 // Vertices is access as uint in the shader, so the offset/stride should be
                 // in the sizeof uint instead of bytes
+                uint32_t animation_player_index = animator_component->animation_player_index;
+                uint32_t pallete_offset = animation_player_index == 0 ? 0 : skinned_matrix_prefix_sum[animation_player_index - 1];
+                uint32_t pallete_count = skinned_matrix_prefix_sum[animation_player_index] - pallete_offset;
                 skinned_mesh_data.emplace_back(SkinnedMeshPushData{
                     .vertex_address = subset.vertex_offset_bytes / 4,
                     .vertex_stride = subset.vertex_stride / 4,
                     .vertex_count = subset.vertex_count,
                     .output_offset = subset.output_vertex_offset_bytes / 4,
                     // Access as mat4 in shader, so we don't convert it to bytes
-                    .matrix_palletes_offset = skinned_matrix_offsets[animator_component->animation_player_index],
+                    .matrix_palletes_offset = pallete_offset,
+                    .matrix_pallete_count = pallete_count,
                 });
 
                 blas_descriptions.emplace_back(BLASDescription{
