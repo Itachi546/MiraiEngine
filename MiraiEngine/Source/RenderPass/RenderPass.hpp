@@ -6,6 +6,5 @@
 #include "FinalCompositePass.hpp"
 #include "CascadedShadowPass.hpp"
 #include "TiledLightCullingPass.hpp"
-#include "DeferredOverlay3DPass.hpp"
 #include "ForwardPass.hpp"
 #include "TAAResolvePass.hpp"
