@@ -64,6 +64,21 @@ namespace mirai {
             auto found = std::find(read_by.begin(), read_by.end(), pass_id);
             return found != read_by.end();
         }
+
+        bool operator==(const ResourceNode &other) const {
+            return resource_type == other.resource_type;
+            if (resource_type == ResourceType::Buffer) {
+                // Skip buffer aliasing for now
+                return false;
+            } else if (resource_type == ResourceType::Texture) {
+                const FrameGraphTexture &a = get<FrameGraphTexture>();
+                const FrameGraphTexture &b = other.get<FrameGraphTexture>();
+                return a.desc == b.desc;
+            } else {
+                ASSERT_MSG(0, "Unknown resource type");
+            }
+            return false;
+        }
     };
 
     struct FrameGraphPassBase {

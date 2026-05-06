@@ -74,14 +74,13 @@ namespace mirai {
                 }
             }
         }
-
+#if 0
         // Calculate resource lifetime and state
         struct ResourceLifetime {
             uint32_t created_by;
             uint32_t last_used_by;
         };
 
-        /*
         HashMap<FrameGraphResourceHandle, ResourceLifetime> resources_lifetime;
         for (uint32_t i = 0; i < passes.size(); ++i) {
             PassNode &pass = passes[i];
@@ -91,6 +90,9 @@ namespace mirai {
 
             for (auto &write : pass.writes) {
                 FrameGraphResourceHandle resource = write.resource;
+                if (resources[resource].external)
+                    continue;
+
                 auto found = resources_lifetime.find(resource);
                 // If this is not the first write, then update only last_used_by field
                 if (found != resources_lifetime.end()) {
@@ -103,48 +105,54 @@ namespace mirai {
             }
 
             for (auto &read : pass.reads) {
+                if (resources[read.resource].external)
+                    continue;
                 auto found = resources_lifetime.find(read.resource);
                 assert(found != resources_lifetime.end());
                 resources_lifetime[read.resource].last_used_by = i;
             }
         }
 
-         // Skip resource aliasing if flag is set
-         if (!disable_resource_aliasing) {
-             // Create aliases
-             std::vector<FrameGraphResourceHandle> expired_resources;
-             for (uint32_t i = 1; i < passes.size(); ++i) {
-                 PassNode *pass = &passes[i];
-                 if (pass->has_side_effect)
-                     continue;
+        // Skip resource aliasing if flag is set
+        if (!disable_resource_aliasing) {
+            // Create aliases
+            std::vector<FrameGraphResourceHandle> expired_resources;
+            for (uint32_t i = 1; i < passes.size(); ++i) {
+                PassNode *pass = &passes[i];
+                if (!pass->can_execute())
+                    continue;
 
-                 for (auto &read : pass->reads) {
-                     auto found = resources_lifetime.find(read);
-                     assert(found != resources_lifetime.end());
-                     if (found->second.last_used_by == i)
-                         expired_resources.push_back(read);
-                 }
+                for (auto &read : pass->reads) {
+                    if (resources[read.resource].external)
+                        continue;
 
-                 for (auto &write : pass->writes) {
-                     ResourceNode *resource = &resources[write];
+                    auto found = resources_lifetime.find(read.resource);
+                    assert(found != resources_lifetime.end());
+                    if (found->second.last_used_by == i)
+                        expired_resources.push_back(read.resource);
+                }
 
-                     for (auto expired : expired_resources) {
-                         auto found = resources_lifetime.find(expired);
-                         assert(found != resources_lifetime.end());
-                         if (found->second.last_used_by >= i)
-                             continue;
+                for (auto &write : pass->writes) {
+                    ResourceNode *resource = &resources[write.resource];
+                    if (resource->external)
+                        continue;
 
-                         if (*resource == resources[expired]) {
-                             std::cout << "Resource Aliased: " << resource->name << " uses resource " << resources[expired].name << std::endl;
-                             expired_resources.erase(std::remove(expired_resources.begin(), expired_resources.end(), expired), expired_resources.end());
-                             break;
-                         }
-                     }
-                 }
-             }
-         }
-         */
+                    for (auto expired : expired_resources) {
+                        auto found = resources_lifetime.find(expired);
+                        assert(found != resources_lifetime.end());
+                        if (found->second.last_used_by >= i)
+                            continue;
 
+                        if (*resource == resources[expired]) {
+                            std::cout << "Resource Aliased: " << resource->name << " uses resource " << resources[expired].name << std::endl;
+                            expired_resources.erase(std::remove(expired_resources.begin(), expired_resources.end(), expired), expired_resources.end());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+#endif
         RenderingDevice *device = RenderingDevice::get();
         // Allocate actual resources
         for (auto &resource : resources) {

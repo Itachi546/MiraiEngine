@@ -64,6 +64,17 @@ namespace mirai {
         float mip_lod_bias;
     };
 
+    struct BloomOptions {
+        float threshold;
+    };
+
+    struct BloomPassData {
+        FrameGraphResourceHandle output;
+        std::shared_ptr<ComputeShader> bloom_gen_shader;
+        std::shared_ptr<ComputeShader> downsample_shader;
+        std::shared_ptr<ComputeShader> upsample_shader;
+    };
+
     struct TAAOptions {
         bool should_reset;
         bool should_sample_motion_vector;
@@ -75,8 +86,4 @@ namespace mirai {
         std::shared_ptr<ComputeShader> shader;
     };
 
-    struct DeferredOverlay3DPassData {
-        FrameGraphResourceHandle output;
-        std::shared_ptr<EffectMaterial> skybox_shader;
-    };
 } // namespace mirai

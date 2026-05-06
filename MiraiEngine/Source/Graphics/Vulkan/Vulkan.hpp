@@ -61,6 +61,7 @@ namespace mirai {
         VK_FORMAT_BC5_UNORM_BLOCK,
         VK_FORMAT_BC7_SRGB_BLOCK,
         VK_FORMAT_BC7_UNORM_BLOCK,
+        VK_FORMAT_B10G11R11_UFLOAT_PACK32,
         VK_FORMAT_UNDEFINED,
     };
 } // namespace mirai

@@ -82,7 +82,7 @@ namespace mirai {
                                    .depth_write = true,
                                    .depth_clamp = true,
                                },
-                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D16_UNORM});
 
         create_shader_material("cascaded_shadow", PASS_MODE_DIRLIGHT_SHADOW,
                                {"SPIRV/cascaded-shadow.vert.spv"},
@@ -94,7 +94,8 @@ namespace mirai {
                                    .depth_write = true,
                                    .depth_clamp = true,
                                },
-                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT}, MESH_TYPE_DYNAMIC);
+                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D16_UNORM},
+                               MESH_TYPE_DYNAMIC);
 
         create_shader_material("cascaded_shadow_alpha_mask", PASS_MODE_DIRLIGHT_SHADOW,
                                {"SPIRV/cascaded-shadow-alpha.vert.spv", "SPIRV/cascaded-shadow-alpha.frag.spv"},
@@ -107,7 +108,7 @@ namespace mirai {
                                    .depth_write = true,
                                    .depth_clamp = true,
                                },
-                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D32_SFLOAT});
+                               {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D16_UNORM});
 
         if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
             Format color_format = FORMAT_R16G16B16A16_SFLOAT;

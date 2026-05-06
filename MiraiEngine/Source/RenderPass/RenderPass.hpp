@@ -8,3 +8,4 @@
 #include "TiledLightCullingPass.hpp"
 #include "ForwardPass.hpp"
 #include "TAAResolvePass.hpp"
+#include "BloomPass.hpp"

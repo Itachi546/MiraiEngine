@@ -124,7 +124,7 @@ namespace mirai {
     };
 
     enum Format {
-        FORMAT_B8G8R8A8_UNORM = 0,
+        FORMAT_B8G8R8A8_UNORM,
         FORMAT_R8G8B8A8_UNORM,
         FORMAT_R8G8B8A8_SRGB,
         FORMAT_R8G8B8_UNORM,
@@ -149,6 +149,8 @@ namespace mirai {
         FORMAT_BC5_UNORM,
         FORMAT_BC7_SRGB_BLOCK,
         FORMAT_BC7_UNORM_BLOCK,
+        FORMAT_B10G11R11_UFLOAT_PACK32,
+        FORMAT_R11G11B10_FLOAT,
         FORMAT_UNDEFINED,
         FORMAT_MAX
     };
@@ -481,6 +483,17 @@ namespace mirai {
         TextureType texture_type;
         Format format;
         uint64_t usage_flags;
+
+        bool operator==(const TextureDescription &other) const {
+            return format == other.format &&
+                   ((usage_flags & other.usage_flags) == other.usage_flags) &&
+                   width == other.width &&
+                   height == other.height &&
+                   mip_levels == other.mip_levels &&
+                   depth == other.depth &&
+                   texture_type == other.texture_type &&
+                   create_flags == other.create_flags;
+        }
     };
 
     enum AttachmentLoadOp {

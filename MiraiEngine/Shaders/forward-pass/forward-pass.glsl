@@ -217,7 +217,7 @@ void main() {
         };
     }
 
-    Lo += pbr_params.emissive;
+    Lo += pbr_params.emissive * 5.0f;
 
 #ifdef ALPHA_MODE_TRANSPARENT
     fragColor = vec4(Lo, albedo.a);

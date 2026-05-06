@@ -11,7 +11,7 @@ layout(push_constant) uniform PushConstants {
     float exposure;
 
     uint color_texture_index;
-    uint padding[3];
+    uint bloom_texture_index;
 };
 
 #include "../utils/bindless-texture.glsl"
@@ -19,11 +19,14 @@ layout(push_constant) uniform PushConstants {
 #include "../utils/bindless-sampler.glsl"
 
 void main() {
+    /*
     vec4 col = sample_texture(color_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv);
 
     if (enable_gamma_correction > 0.5f) {
         col.rgb *= pow(2.0, exposure);
         col.rgb = linear_to_srgb(ACESFilm(col.rgb));
     }
+    */
+    vec4 col = sample_texture_lod(bloom_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv, 2);
     fragColor = vec4(col.rgb, 1.0f);
 }

@@ -220,33 +220,7 @@ namespace mirai {
         };
         vkCmdBindSamplerHeapEXT(command_buffer, &bind_info);
     }
-    /*
-    void CommandBuffer::set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count) {
-        if (uniform_set_count == 0)
-            return;
-        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
-        for (uint32_t i = 0; i < uniform_set_count; ++i) {
-            VulkanUniformSet *uniform_set = device->access_uniform_set(uniform_sets[i]);
-            vkCmdBindDescriptorSets(command_buffer,
-                                    pipeline->bind_point, pipeline->pipeline_layout,
-                                    uniform_set->set_id,
-                                    1, &uniform_set->descriptor_set,
-                                    0, nullptr);
-        }
-    }
 
-    void CommandBuffer::set_push_constants(PipelineID pipeline_id, const PushConstant *push_constants, uint32_t push_constant_count) {
-        if (push_constant_count == 0)
-            return;
-        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
-        for (uint32_t i = 0; i < push_constant_count; ++i) {
-            const PushConstant *push_constant = &push_constants[i];
-            vkCmdPushConstants(command_buffer, pipeline->pipeline_layout,
-                               VkShaderStageFlags(push_constant->shader_stage),
-                               push_constant->offset, push_constant->size, push_constant->data);
-        }
-    }
-    */
     void CommandBuffer::set_push_data(uint32_t offset, const void *push_data, uint32_t push_data_size) {
         VkPushDataInfoEXT push_data_info = {
             .sType = VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT,
@@ -492,6 +466,31 @@ namespace mirai {
         pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
     }
 
+    void CommandBuffer::prepare_image_mip(const TextureMipBarrierInfo *barrier_infos, uint32_t barrier_count) {
+        std::vector<VkImageMemoryBarrier2> image_barriers(barrier_count);
+
+        for (uint32_t i = 0; i < barrier_count; ++i) {
+            const TextureMipBarrierInfo *barrier_info = barrier_infos + i;
+            VulkanTexture *texture = device->access_texture(barrier_info->texture_id);
+            image_barriers[i] = CreateImageMemoryBarrier2(texture->image,
+                                                          texture->stage_mask,
+                                                          texture->access_flags,
+                                                          VkPipelineStageFlags2(barrier_info->stage_mask),
+                                                          VkAccessFlags(barrier_info->access_mask),
+                                                          texture->current_layout,
+                                                          VkImageLayout(barrier_info->layout),
+                                                          texture->image_aspect,
+                                                          ~0u,
+                                                          ~0u,
+                                                          barrier_info->mip_level,
+                                                          barrier_info->array_level,
+                                                          barrier_info->mip_count,
+                                                          barrier_info->array_count);
+        }
+
+        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
+    }
+
     void CommandBuffer::prepare_image_for_shader_read(TextureID texture) {
         VulkanTexture *vk_image = device->access_texture(texture);
         VkImageMemoryBarrier2 shader_read_barrier = {
@@ -591,57 +590,7 @@ namespace mirai {
         vkCmdEndDebugUtilsLabelEXT(command_buffer);
 #endif
     }
-    /*
-    void CommandBuffer::prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node) {
-        const std::vector<FrameGraphResourceState> &resources_state = node->resources_state;
-        std::vector<VkImageMemoryBarrier2> image_barriers;
-        for (auto &state : resources_state) {
 
-            FrameGraphResource *resource = frame_graph->get_resource(state.resource_handle);
-            if (resource->handle == K_SWAPCHAIN_TEXTURE_HANDLE) {
-                prepare_swapchain_image(&state, image_barriers);
-            } else {
-                VulkanTexture *texture = device->access_texture(resource->handle);
-
-                // If by some mean it has changed the layout to required layout we skip it
-                if (texture->current_layout == state.layout &&
-                    texture->access_flags == state.access_flags &&
-                    texture->stage_mask == state.access_flags)
-                    continue;
-
-                VkPipelineStageFlags2 src_stage_mask = VkPipelineStageFlags2(texture->stage_mask);
-
-                // This is the special case for depth when the last stage is not same as current previous stage
-                if (src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
-                    src_stage_mask = VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-
-                image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
-                                                                   src_stage_mask, texture->access_flags,
-                                                                   VkPipelineStageFlags2(state.stage_mask), VkAccessFlags2(state.access_flags),
-                                                                   texture->current_layout, VkImageLayout(state.layout),
-                                                                   texture->image_aspect));
-                texture->current_layout = VkImageLayout(state.layout);
-                texture->access_flags = VkAccessFlags2(state.access_flags);
-                texture->stage_mask = VkPipelineStageFlags2(state.stage_mask);
-            }
-        }
-        pipeline_barrier(image_barriers.data(), cast_u32(image_barriers.size()), nullptr, 0);
-    }
-
-    void CommandBuffer::prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers) {
-        VulkanSwapchain *swapchain = device->get_swapchain();
-        VkImageLayout current_layout = swapchain->get_current_image_layout();
-        if (current_layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-            image_barriers.push_back(CreateImageMemoryBarrier2(swapchain->get_current_image(),
-                                                               VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-                                                               VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, state->access_flags,
-                                                               current_layout,
-                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                               VK_IMAGE_ASPECT_COLOR_BIT));
-            swapchain->set_current_image_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        }
-    }
-    */
     void CommandBuffer::pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count) {
         if (image_memory_barrier_count == 0 && buffer_memory_barrier_count == 0)
             return;

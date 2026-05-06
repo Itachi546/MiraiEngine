@@ -391,7 +391,7 @@ class TestApplication : public App {
     }
 
   private:
-    bool show_debug_ui = true;
+    bool show_debug_ui = false;
     bool fullscreen = false;
 
     float global_scene_scale = 1.0f;

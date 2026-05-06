@@ -225,7 +225,7 @@ namespace mirai {
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE);
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK);
 
-                {
+                /*{
                     Camera *camera = scene->get_camera();
                     // Draw Skybox
                     glm::mat4 skybox_push_data[] = {
@@ -241,7 +241,7 @@ namespace mirai {
                     // DebugDraw line
                     LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
                 }
-
+                */
                 draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_TRANSPARENT);
 
                 command_buffer->end_render_pass();

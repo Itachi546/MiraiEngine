@@ -26,7 +26,7 @@ namespace mirai {
                                                                                 .mip_levels = 1,
                                                                                 .array_layers = 1,
                                                                                 .texture_type = TEXTURE_TYPE_2D,
-                                                                                .format = FORMAT_D32_SFLOAT,
+                                                                                .format = FORMAT_D16_UNORM,
                                                                                 .usage_flags = TEXTURE_USAGE_DEPTH_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT,
                                                                             });
 

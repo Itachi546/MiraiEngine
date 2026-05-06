@@ -41,6 +41,14 @@ namespace mirai {
                                                                   .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                               });
 #endif
+                const BloomPassData &bloom_pass_data = board->get<BloomPassData>();
+                builder.read(bloom_pass_data.output, {
+                                                         .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                         .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                         .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+
+                                                     });
+
                 data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
                                                                std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/final-composite.frag.spv"},
                                                                PipelineState{
@@ -76,6 +84,8 @@ namespace mirai {
                 const ForwardPassData &forward_pass_data = board->get<ForwardPassData>();
                 input_color_texture = pass_resource.get<FrameGraphTexture>(forward_pass_data.color_texture).id;
 #endif
+                const BloomPassData &bloom_pass_data = board->get<BloomPassData>();
+
                 ASSERT(input_color_texture.is_valid());
 
                 const RenderDebugData &debug_data = board->get<RenderDebugData>();
@@ -86,7 +96,8 @@ namespace mirai {
                     float enable_gamma_correction;
                     float exposure;
                     uint32_t input_color_texture;
-                    uint32_t _padding[3];
+                    uint32_t bloom_texture;
+                    uint32_t _padding[2];
                 } push_data;
 
                 push_data.width = cast_float(width);
@@ -94,6 +105,7 @@ namespace mirai {
                 push_data.enable_gamma_correction = cast_float(debug_data.enable_gamma_correction);
                 push_data.exposure = debug_data.exposure;
                 push_data.input_color_texture = input_color_texture.id;
+                push_data.bloom_texture = pass_resource.get<FrameGraphTexture>(bloom_pass_data.output).id.id;
 
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");

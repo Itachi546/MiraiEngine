@@ -13,6 +13,19 @@ namespace mirai {
         ImageLayout layout;
     };
 
+    // Doesn't update underlying texture state, should be tracked externally
+    struct TextureMipBarrierInfo {
+        TextureID texture_id;
+        uint32_t stage_mask;
+        uint64_t access_mask;
+        ImageLayout layout;
+
+        uint32_t mip_level;
+        uint32_t mip_count;
+        uint32_t array_level;
+        uint32_t array_count;
+    };
+
     struct BufferBarrierInfo {
         BufferID buffer_id;
         uint64_t offset = 0;
@@ -39,10 +52,6 @@ namespace mirai {
         void bind_resource_heap(BufferID buffer);
 
         void bind_sampler_heap(BufferID buffer);
-
-        // void set_uniform_sets(PipelineID pipeline_id, const UniformSetID *uniform_sets, uint32_t uniform_set_count);
-
-        // void set_push_constants(PipelineID pipeline, const PushConstant *push_constants, uint32_t push_constant_count);
 
         // Push data offset is the offset that should be added to base offset, rather than offset inside push data
         void set_push_data(uint32_t offset, const void *push_data, uint32_t push_data_size);
@@ -71,8 +80,8 @@ namespace mirai {
 
         void copy_to_swapchain(TextureID texture);
 
-        // Uses VkImageMemoryBarrier2
         void prepare_image(const TextureBarrierInfo *barrier_infos, uint32_t barrier_count);
+        void prepare_image_mip(const TextureMipBarrierInfo *barrier_infos, uint32_t barrier_count);
 
         // Uses VkImageMemoryBarrier2
         void prepare_image_for_shader_read(TextureID texture);
@@ -96,8 +105,6 @@ namespace mirai {
         void end_gpu_debug_label();
 
       private:
-        // void prepare_swapchain_image(const FrameGraphResourceState *state, std::vector<VkImageMemoryBarrier2> &image_barriers);
-        // void prepare_pass_resources(FrameGraph *frame_graph, const FrameGraphNode *node);
         void pipeline_barrier(VkImageMemoryBarrier2 *image_memory_barriers, uint32_t image_memory_barrier_count, VkBufferMemoryBarrier2 *buffer_memory_barriers, uint32_t buffer_memory_barrier_count);
 
         friend class VulkanRenderingDevice;
