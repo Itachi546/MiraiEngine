@@ -58,12 +58,14 @@ vec3 taa(ivec2 id) {
             }
         }
     }
-
     vec2 velocity = vec2(0.0f);
     if (has_flag(flags, FLAG_SHOULD_SAMPLE_MOTION_VECTOR)) {
         velocity = sample_texture(velocity_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], closest_position).rg;
     }
     vec2 reprojected_uv = uv - velocity;
+    if (any(lessThan(reprojected_uv, vec2(0.0f))) || any(greaterThan(reprojected_uv, vec2(1.0f)))) {
+        return current_sample;
+    }
     vec3 history_sample = sample_texture(history_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], reprojected_uv).rgb;
     history_sample = clamp(history_sample, min_color, max_color);
     return current_sample * 0.1 + history_sample * 0.9;
@@ -71,14 +73,15 @@ vec3 taa(ivec2 id) {
 
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    if (id.x > width - 1 || id.y > height - 1)
+    vec2 resolution = vec2(width, height);
+    if (any(greaterThanEqual(id, resolution)))
         return;
 
     if (has_flag(flags, FLAG_SHOULD_ENABLE_TAA)) {
         vec3 final_color = taa(id);
         imageStore(u_output_texture, id, vec4(final_color, 1.0f));
     } else {
-        vec2 uv = uv_nearest(id, vec2(width, height));
+        vec2 uv = uv_nearest(id, resolution);
         vec3 color = sample_texture(color_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv).rgb;
         imageStore(u_output_texture, id, vec4(color, 1.0f));
     }

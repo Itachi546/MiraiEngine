@@ -38,7 +38,7 @@ void main() {
     vec2 uv = (id + 0.5) * texel_size;
 
     // Texel size for mip above this
-    vec2 d1 = texel_size * 0.5f;
+    vec2 d1 = mip_level == 0 ? texel_size : texel_size * 0.5f;
 
     // Inner sample
     vec3 a = get_sample(uv + vec2(-d1.x, -d1.y));

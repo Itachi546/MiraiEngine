@@ -7,12 +7,12 @@
 namespace mirai {
     enum SamplerTypeID {
         SAMPLER_LINEAR_REPEAT = 0,
-        SAMPLER_LINEAR_CLAMP,
-        SAMPLER_LINEAR_REPEAT_ANISO16,
+        SAMPLER_LINEAR_CLAMP = 1,
+        SAMPLER_LINEAR_REPEAT_ANISO16 = 2,
 
-        SAMPLER_POINT_REPEAT,
-        SAMPLER_POINT_CLAMP,
-        SAMPLER_POINT_REPEAT_ANISO16,
+        SAMPLER_POINT_REPEAT = 3,
+        SAMPLER_POINT_CLAMP = 4,
+        SAMPLER_POINT_REPEAT_ANISO16 = 5,
     };
 
     void *descriptor_address(void *ptr, uint32_t descriptor_index, uint32_t descriptor_size) {

@@ -267,11 +267,12 @@ namespace mirai {
                     mapping.bindingCount = AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT;
                     mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
                     mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
-                    mapping.sourceData.constantOffset.samplerHeapOffset = 0;
-                    mapping.sourceData.constantOffset.samplerHeapArrayStride = cast_u32(descriptor_heap_properties.samplerDescriptorSize);
+                    mapping.sourceData.constantOffset.heapOffset = 0;
+                    mapping.sourceData.constantOffset.heapArrayStride= cast_u32(descriptor_heap_properties.samplerDescriptorSize);
                 } else if (is_bindless_texture_resource) {
                     mapping.bindingCount = AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT;
                     mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+                    mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
                     mapping.sourceData.constantOffset.heapOffset = 0;
                     mapping.sourceData.constantOffset.heapArrayStride = resource_descriptor_size;
                 } else {
