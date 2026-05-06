@@ -362,12 +362,18 @@ class TestApplication : public App {
                 }
             }
 
+            RenderDebugData &debug_data = board->get<RenderDebugData>();
+            if (ImGui::TreeNodeEx("Bloom") && board->has<BloomPassData>()) {
+                ImGui::SliderFloat("Bloom Strength", &debug_data.bloom_strength, 0.0f, 0.2f);
+                ImGui::SliderFloat("Bloom Radius", &debug_data.bloom_radius, 0.1f, 40.0f);
+                ImGui::TreePop();
+            }
+
             if (ImGui::TreeNodeEx("TAA") && board->has<TAAOptions>()) {
                 TAAOptions &taa_options = board->get<TAAOptions>();
                 taa_options.should_reset |= ImGui::Checkbox("Enable TAA", &AppSettings::enable_taa);
                 ImGui::Checkbox("Reset History Texture", &taa_options.should_reset);
                 taa_options.should_reset |= ImGui::Checkbox("Sample motion vector", &taa_options.should_sample_motion_vector);
-                RenderDebugData &debug_data = board->get<RenderDebugData>();
                 ImGui::DragFloat("Mip LOD Bias", &debug_data.mip_lod_bias, 0.1f, -5.0f, 5.0f);
                 ImGui::TreePop();
             }

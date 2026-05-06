@@ -97,7 +97,8 @@ namespace mirai {
                     float exposure;
                     uint32_t input_color_texture;
                     uint32_t bloom_texture;
-                    uint32_t _padding[2];
+                    float bloom_strength;
+                    float _padding;
                 } push_data;
 
                 push_data.width = cast_float(width);
@@ -106,6 +107,7 @@ namespace mirai {
                 push_data.exposure = debug_data.exposure;
                 push_data.input_color_texture = input_color_texture.id;
                 push_data.bloom_texture = pass_resource.get<FrameGraphTexture>(bloom_pass_data.output).id.id;
+                push_data.bloom_strength = debug_data.bloom_strength;
 
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");

@@ -62,10 +62,9 @@ namespace mirai {
         bool light_culling;
         float exposure;
         float mip_lod_bias;
-    };
 
-    struct BloomOptions {
-        float threshold;
+        float bloom_strength;
+        float bloom_radius;
     };
 
     struct BloomPassData {

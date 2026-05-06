@@ -44,12 +44,9 @@ namespace mirai {
                                                               });
 
                 data.downsample_shader = std::make_shared<ComputeShader>("BloomDownsample", "SPIRV/bloom-downsample.comp.spv");
+                data.upsample_shader = std::make_shared<ComputeShader>("BloomDownsample", "SPIRV/bloom-upsample.comp.spv");
 
                 board->add<BloomPassData>(data);
-
-                board->add<BloomOptions>(BloomOptions{
-                    .threshold = 0.8f,
-                });
             },
             [](const BloomPassData &data, const FrameGraphPassResource &pass_resources, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
@@ -62,14 +59,14 @@ namespace mirai {
                 ScopedGpuProfiling(command_buffer, "Bloom");
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
-                const BloomOptions &bloom_options = board->get<BloomOptions>();
                 TextureID bloom_texture = pass_resources.get<FrameGraphTexture>(data.output).id;
-
                 struct PushData {
                     uint32_t input_texture_index;
                     uint32_t input_mip_level;
                     uint32_t width;
                     uint32_t height;
+                    float radius;
+                    float _padding[3];
                 } push_data;
 
                 // Generate mip 0, bloom texture
@@ -112,12 +109,13 @@ namespace mirai {
                         .array_count = ~0u,
                     },
                 };
+                uint32_t mip_width = width / 2;
+                uint32_t mip_height = height / 2;
+
                 {
-                    uint32_t mip_width = width / 2;
-                    uint32_t mip_height = height / 2;
-
+                    // Radius is unused in downsample pass, so we ignore it
+                    push_data.input_texture_index = bloom_texture.id;
                     data.downsample_shader->bind(command_buffer);
-
                     for (uint32_t i = 1; i < K_MAX_BLOOM_MIP_LEVELS; ++i) {
                         command_buffer->prepare_image_mip(barriers, cast_u32(std::size(barriers)));
 
@@ -129,7 +127,9 @@ namespace mirai {
                                                                                                           }),
                         };
 
-                        push_data = {bloom_texture.id, i - 1, mip_width, mip_height};
+                        push_data.input_mip_level = cast_u32(i - 1);
+                        push_data.width = mip_width;
+                        push_data.height = mip_height;
 
                         uint32_t push_data_size = cast_u32(sizeof(push_data));
                         command_buffer->set_push_data(0, &push_data, push_data_size);
@@ -142,8 +142,56 @@ namespace mirai {
 
                         barriers[0].mip_level = i;
 
-                        mip_width /= 2;
-                        mip_height /= 2;
+                        mip_width = mip_width >> 1;
+                        mip_height = mip_height >> 1;
+                    }
+
+                    // Prepare last mip for shader read
+                    command_buffer->prepare_image_mip(barriers, cast_u32(std::size(barriers)));
+                }
+                {
+                    const RenderDebugData &debug_data = board->get<RenderDebugData>();
+                    barriers[0].access_mask = ACCESS_FLAG_SHADER_WRITE | ACCESS_FLAG_SHADER_READ;
+                    push_data.radius = debug_data.bloom_radius;
+                    push_data.input_texture_index = bloom_texture.id;
+                    /**
+                     * 1920, 1080 => 0
+                     * 960, 540 => 1
+                     * 480, 270 => 2
+                     * 240, 135 => 3
+                     * 120, 67 => 4
+                     * 60, 33 => 5
+                     */
+                    data.upsample_shader->bind(command_buffer);
+                    for (int i = K_MAX_BLOOM_MIP_LEVELS - 2; i >= 0; --i) {
+                        // Bloom upsample
+                        mip_width = width >> i;
+                        mip_height = height >> i;
+
+                        // Prepare mip level for writing from shader
+                        barriers[0].mip_level = i;
+                        command_buffer->prepare_image_mip(barriers, cast_u32(std::size(barriers)));
+
+                        DescriptorOffset descriptors[] = {
+                            renderer->get_or_create_descriptor("bloom_storage_image" + std::to_string(i), DescriptorInfo{
+                                                                                                              .type = DescriptorType::StorageImage,
+                                                                                                              .resource = bloom_texture,
+                                                                                                              .image_info = {cast_u32(i), 1, 0, ~0u},
+                                                                                                          }),
+                        };
+
+                        push_data.input_mip_level = cast_u32(i + 1);
+                        push_data.width = mip_width;
+                        push_data.height = mip_height;
+
+                        uint32_t push_data_size = cast_u32(sizeof(push_data));
+                        command_buffer->set_push_data(0, &push_data, push_data_size);
+                        command_buffer->set_push_data(push_data_size, &descriptors, cast_u32(sizeof(descriptors)));
+
+                        uint32_t work_size_x = rendering_utils::get_workgroup_size(mip_width, 32);
+                        uint32_t work_size_y = rendering_utils::get_workgroup_size(mip_height, 32);
+
+                        command_buffer->dispatch(work_size_x, work_size_y, 1);
                     }
                 }
             });

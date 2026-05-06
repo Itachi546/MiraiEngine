@@ -9,13 +9,16 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #include "../utils/bindless-sampler.glsl"
 #include "../utils/color.glsl"
 
-layout(set = 0, binding = 0) writeonly uniform image2D u_output_texture;
+layout(set = 0, binding = 0, r11f_g11f_b10f) writeonly uniform image2D u_output_texture;
 
 layout(push_constant) uniform PushConstants {
     uint input_texture_index;
     uint mip_level;
+    // Current output mip width and height
     uint width;
     uint height;
+
+    float _padding[4];
 };
 
 vec3 get_sample(vec2 uv) {
@@ -62,27 +65,20 @@ void main() {
 
     vec3 col = vec3(0.0f);
     if (mip_level == 0) {
-        vec3 g0 = a + b + c + d;
-        vec3 g1 = e + f + h + o;
-        vec3 g2 = f + g + o + i;
-        vec3 g3 = h + o + j + k;
-        vec3 g4 = o + i + k + l;
+        vec3 g0 = (a + b + c + d) * (0.5f / 4.0f);
+        vec3 g1 = (e + f + h + o) * (0.125f / 4.0f);
+        vec3 g2 = (f + g + o + i) * (0.125f / 4.0f);
+        vec3 g3 = (h + o + j + k) * (0.125f / 4.0f);
+        vec3 g4 = (o + i + k + l) * (0.125f / 4.0f);
 
-        float w0 = karis_weight(g0);
-        float w1 = karis_weight(g1);
-        float w2 = karis_weight(g2);
-        float w3 = karis_weight(g3);
-        float w4 = karis_weight(g4);
+        g0 *= karis_weight(g0);
+        g1 *= karis_weight(g1);
+        g2 *= karis_weight(g2);
+        g3 *= karis_weight(g3);
+        g4 *= karis_weight(g4);
 
-        col = g0 * w0 * 0.5f;
-        col += g1 * w1 * 0.125f;
-        col += g2 * w2 * 0.125f;
-        col += g3 * w3 * 0.125f;
-        col += g4 * w4 * 0.125f;
-
-        // Renormalize to preserve energy
-        float total = w0 * 0.5f + (w1 + w2 + w3 + w4) * 0.125f;
-        col /= total;
+        col = g0 + g1 + g2 + g3 + g4;
+        col = max(col, 0.0001f);
 
     } else {
         col = (a + b + c + d) * 0.125f;
