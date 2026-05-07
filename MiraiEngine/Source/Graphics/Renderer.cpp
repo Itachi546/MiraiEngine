@@ -50,7 +50,7 @@ namespace mirai {
             .light_culling = true,
             .exposure = 1.0f,
             .mip_lod_bias = -0.5f,
-            .bloom_strength = 0.08f,
+            .bloom_strength = 0.04f,
             .bloom_radius = 1.0f,
         });
 

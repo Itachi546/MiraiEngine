@@ -323,6 +323,7 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
             ImGui::SameLine();
             AnimationClip &clip = animation_clips[current_animation_clip];
             ImGui::Checkbox("L", &clip.looping);
+
             ImGui::SameLine();
             if (ImGui::Button("P"))
                 animation_player->crossFadeTo(current_animation_clip, cross_fade_duration);

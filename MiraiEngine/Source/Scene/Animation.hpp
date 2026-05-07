@@ -261,6 +261,10 @@ namespace mirai {
             blend_time = 0.0f;
         }
 
+        glm::vec3 get_root_position() {
+            return current_pose.joints_position[0];
+        }
+
         void reset();
 
         bool is_valid() const {
