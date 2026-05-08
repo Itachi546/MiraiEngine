@@ -27,7 +27,6 @@ class TestApplication : public App {
     TestApplication(const std::vector<std::string> &model_paths) : App("TestApplication"), model_paths(model_paths) {
         Window::get()->set_title("TestApplication");
         Window::get()->set_fullscreen(fullscreen);
-        frame_graph = nullptr;
         scene = nullptr;
     }
 
@@ -135,7 +134,7 @@ class TestApplication : public App {
         std::vector<miProfiler::ProfilerOutput> cpu, gpu;
         miProfiler::GetProfilerOutput(cpu, gpu);
 
-        if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Profiler")) {
             if (cpu.size() > 0) {
                 ImGui::Text("CPU Time");
                 ImGui::Separator();
@@ -154,15 +153,26 @@ class TestApplication : public App {
         }
     }
 
+    void show_render_target_textures(const std::vector<std::pair<std::string, uint32_t>> &debug_textures, bool *popup_state) {
+        std::stringstream ss;
+        for (auto &[name, texture] : debug_textures) {
+            ss << name << '\0';
+        }
+
+        ss << '\0';
+        if (ImGui::BeginPopupModal("RenderPassDebugPopup", popup_state)) {
+            static int selected = 0;
+            ImGui::Combo("Debug RenderPass", &selected, ss.str().c_str());
+
+            const auto &[name, texture] = debug_textures[selected];
+            ImVec2 available_size = ImGui::GetContentRegionAvail();
+            ImGuiService::AddImage(texture, available_size);
+            ImGui::EndPopup();
+        }
+    }
+
     void add_scene_ui() {
         if (ImGui::CollapsingHeader("Scene")) {
-            /*
-            auto *final_pass = (SwapchainCopyPass *)frame_graph->get_renderer("swapchain_copy");
-            if (final_pass) {
-                ImGui::Checkbox("FXAA", &final_pass->enable_aa);
-                ImGui::Checkbox("Gamma Correction", &final_pass->enable_gamma_correction);
-            }
-            */
             uint64_t memory_usage = RenderingDevice::get()->get_memory_usage();
             ImGui::Text("GPU Memory Usage: %.2f MB", utils::bytes_to_mb(memory_usage));
 
@@ -223,6 +233,10 @@ class TestApplication : public App {
         }
 
         FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
+        std::vector<std::pair<std::string, uint32_t>> render_pass_textures;
+        render_pass_textures.reserve(32);
+        static bool show_render_pass_debug_popup = false;
+
         if (ImGui::CollapsingHeader("Render Debug Options") && board->has<RenderDebugData>()) {
             RenderDebugData &debug_data = board->get<RenderDebugData>();
             ImGui::SliderFloat("Split Percentage", &debug_data.split_percentage, 0.0f, 1.0f);
@@ -232,17 +246,38 @@ class TestApplication : public App {
             ImGui::DragFloat("Exposure", &debug_data.exposure, 0.1f, 0.0f, 8.0f);
             ImGui::Checkbox("Light Culling", &debug_data.light_culling);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
+            ImGui::Spacing();
+            if (ImGui::Button("Show RenderPass Textures")) {
+                ImGui::OpenPopup("RenderPassDebugPopup");
+                show_render_pass_debug_popup = true;
+            }
+        }
+
+        if (show_render_pass_debug_popup) {
+            FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
+            for (auto &resource : frame_graph->resources) {
+                if (resource.resource_type == ResourceType::Buffer)
+                    continue;
+
+                const FrameGraphTexture &texture = resource.get<FrameGraphTexture>();
+                if (texture.id.id == K_SWAPCHAIN_TEXTURE_HANDLE.id)
+                    continue;
+
+                render_pass_textures.push_back(std::make_pair(resource.name, texture.id.id));
+            }
+            show_render_target_textures(render_pass_textures, &show_render_pass_debug_popup);
         }
     }
     /*
     bool show_render_pass_debug_popup = false;
-    bool add_rendertarget_texture_debug_ui(const char *id, FrameGraphResource *resource, const ImVec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f}) {
-        ImGuiService::AddImage(resource->handle.id, ImVec2{128, 64}, tint_color);
+    bool add_rendertarget_texture_debug_ui(const char *id, FrameGraphResourceHandle resource, const ImVec4 &tint_color = {1.0f, 1.0f, 1.0f, 1.0f}) {
+        FrameGraphTexture texture = frame_graph->get<FrameGraphTexture>(resource);
+        ImGuiService::AddImage(texture.id.id, ImVec2{128, 64}, tint_color);
         ImGui::SameLine();
         std::string formatted_id = std::string("Maximize##") + id;
         ImGui::Text(id);
         if (ImGui::Button(formatted_id.c_str())) {
-            selected_renderpass_debug_resource = resource;
+            selected_renderpass_debug_resource = texture;
             ImGui::OpenPopup("render_pass_debug_popup");
             show_render_pass_debug_popup = true;
             return true;
@@ -264,41 +299,6 @@ class TestApplication : public App {
     void add_pass_ui() {
         if (ImGui::CollapsingHeader("Passes")) {
             FrameGraphBlackBoard *board = Renderer::get()->get_frame_graph_blackboard();
-            /*
-                DeferredLightingPass *deferred_pass = (DeferredLightingPass *)frame_graph->get_renderer("deferred_lighting_pass");
-                if (deferred_pass != nullptr && ImGui::TreeNodeEx("Deferred Pass")) {
-                    ImGui::SliderFloat("Split Percentage", &deferred_pass->split_percentage, 0.0f, 1.0f);
-                    static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
-                    ImGui::Combo("Target", &deferred_pass->debug_texture, options);
-
-                    FrameGraphResource *color_texture = frame_graph->get_resource("gbuffer_color");
-                    add_rendertarget_texture_debug_ui("gbuffer-color", color_texture);
-
-                    FrameGraphResource *normal_texture = frame_graph->get_resource("gbuffer_normal");
-                    add_rendertarget_texture_debug_ui("normal_metallic_roughness", normal_texture);
-
-                    FrameGraphResource *emissive_texture = frame_graph->get_resource("gbuffer_emissive");
-                    add_rendertarget_texture_debug_ui("gbuffer-emissive", emissive_texture);
-
-                    FrameGraphResource *velocity_texture = frame_graph->get_resource("gbuffer_velocity");
-
-                    add_rendertarget_texture_debug_ui("velocity texture", velocity_texture);
-
-                    FrameGraphResource *taa_output = frame_graph->get_resource("taa_output");
-                    add_rendertarget_texture_debug_ui("taa_output", taa_output);
-
-                    show_popup();
-                    ImGui::TreePop();
-                }
-
-                ForwardPass *forward_pass = (ForwardPass *)frame_graph->get_renderer("forward_pass");
-                if (forward_pass && ImGui::TreeNodeEx("Forward Pass")) {
-                    ImGui::SliderFloat("Split Percentage", &forward_pass->split_percentage, 0.0f, 1.0f);
-                    static const char *options = "Albedo\0Normal\0Metallic\0Roughness\0AO\0Shadow\0\0";
-                    ImGui::Combo("Target", &forward_pass->debug_texture, options);
-                    ImGui::TreePop();
-                }
-            */
             bool supports_raytracing = RenderingDevice::get()->supports_raytracing();
             if (ImGui::TreeNodeEx("Shadow Pass")) {
                 ShadowSystem *shadow_system = ShadowSystem::get();
@@ -330,9 +330,6 @@ class TestApplication : public App {
 
                     ImGui::DragFloat("PCF Radius", &shadow_params.pcf_radius, 0.1f, 0.0f, 20.0f);
                     ImGui::DragFloat("PCF Sample Count", &shadow_params.pcf_sample_count, 1.0f, 0.0f, 64.0f);
-                    // FrameGraphResource *resource = frame_graph->get_resource("cascaded_shadow_map");
-                    //  add_rendertarget_texture_debug_ui("csm_shadow", resource);
-                    // show_popup();
                 }
                 ImGui::TreePop();
             }
@@ -352,12 +349,6 @@ class TestApplication : public App {
                     ImGui::Text("SSAO Blur");
                     ImGui::DragFloat("Blur radius", &ssao_pass.blur_radius, 0.01f, 0.0f, 10.0f);
                     ImGui::DragFloat("Blur Sharpness", &ssao_pass.blur_sharpness, 0.01f, 0.0f, 100.0f);
-                    /*
-                    FrameGraphResource *resource = frame_graph->get_resource("ssao_texture");
-                    add_rendertarget_texture_debug_ui("ssao_texture", resource);
-
-                    show_popup();
-                    */
                     ImGui::TreePop();
                 }
             }
@@ -402,7 +393,6 @@ class TestApplication : public App {
 
     float global_scene_scale = 1.0f;
     Scene *scene;
-    FrameGraph *frame_graph = nullptr;
     const std::vector<std::string> &model_paths;
     std::unique_ptr<FirstPersonController> controller;
     Entity point_light;

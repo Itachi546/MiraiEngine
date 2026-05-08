@@ -88,11 +88,12 @@ namespace mirai {
 
         ~FrameGraph();
 
+        std::vector<ResourceNode> resources;
+
       private:
         friend struct FrameGraphPassResource;
         friend class CommandBuffer;
         bool disable_resource_aliasing = false;
-        std::vector<ResourceNode> resources;
         std::vector<PassNode> passes;
         FrameGraphResourceHandle present_texture = UINT32_MAX;
     };

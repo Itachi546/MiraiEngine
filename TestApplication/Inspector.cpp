@@ -86,20 +86,20 @@ void add_pbr_standard_material_ui(Material3D *material) {
     material->dirty |= ImGui::DragFloat("texture scale (y)", &material->properties.texture_scale_y, 0.1f, 0.0f, 100.0f);
     material->dirty |= ImGui::DragFloat("transmission", &material->properties.transmission, 0.1f, 0.0f, 1.0f);
     ImGui::Text("%s(%u)", "albedo_texture", material->properties.albedo_texture);
-    // add_selectable_image_button("albedo_texture", material->properties.albedo_texture, selected_texture_ptr);
+    add_selectable_image_button("albedo_texture", material->properties.albedo_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "metallic_roughness_texture", material->properties.metallic_roughness_texture);
-    // add_selectable_image_button("metallic_roughness_texture", material->properties.metallic_roughness_texture, selected_texture_ptr);
+    add_selectable_image_button("metallic_roughness_texture", material->properties.metallic_roughness_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "occlusion_texture", material->properties.occlusion_texture);
-    // add_selectable_image_button("occlusion_texture", material->properties.occlusion_texture, selected_texture_ptr);
+    add_selectable_image_button("occlusion_texture", material->properties.occlusion_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "normal_texture", material->properties.normal_texture);
-    // add_selectable_image_button("normal_texture", material->properties.normal_texture, selected_texture_ptr);
+    add_selectable_image_button("normal_texture", material->properties.normal_texture, selected_texture_ptr);
 
     ImGui::Text("%s(%u)", "emissive_texture", material->properties.emissive_texture);
-    // add_selectable_image_button("emissive_texture", material->properties.emissive_texture, selected_texture_ptr);
-    /*
+    add_selectable_image_button("emissive_texture", material->properties.emissive_texture, selected_texture_ptr);
+
     if (selected_texture_ptr == nullptr)
         return;
 
@@ -111,7 +111,6 @@ void add_pbr_standard_material_ui(Material3D *material) {
             material->dirty = true;
         }
     }
-    */
 }
 
 void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Entity entity) {
@@ -337,8 +336,6 @@ void add_animation_player(int animation_player_index, Scene *scene, Entity entit
             if (ImGui::Button("Bind Pose")) {
                 animation_player->reset();
             }
-            // ImGui::Text("Duration: %.2fs", current_animation->get_duration());
-            // ImGui::Text("Tick per seconds: %d", cast_int(current_animation->tick_per_seconds));
         }
 
         if (last_selected_entity != entity) {
