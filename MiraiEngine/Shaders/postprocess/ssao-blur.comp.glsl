@@ -32,13 +32,9 @@ float guassian_weight(float x, float sigma2) {
     return exp(-x * x * 0.5 / sigma2);
 }
 
-ivec2 clamp_uv(ivec2 uv) {
-    return clamp(uv, ivec2(0), ivec2(width - 1, height - 1));
-}
-
 float sample_ssao(ivec2 uv) {
     // return texture(sampler2D(u_ssao_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).r;
-    return sample_texel(ssao_texture_index, clamp_uv(uv), 0).r;
+    return sample_texel(ssao_texture_index, uv, 0).r;
 }
 
 float gaussian_blur(ivec2 coord) {

@@ -10,8 +10,6 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
 
-#define HALF_RES 0
-
 /*
  * We do everything in integer coordinate instead of normalized uv coordinate
  * because of the issue in the normal reconstruction. While reconstructing the
@@ -21,37 +19,30 @@ layout(push_constant) uniform HBAOPushConstants {
     mat4 projection_matrix;
 
     vec2 ssao_texture_res;
-    vec2 depth_texture_res;
+    vec2 inv_ssao_texture_res;
 
-    vec2 inv_depth_texture_res;
     vec2 inv_noise_texture_res;
-
     float radius_to_screen;
     float neg_inv_r2;
+
     float num_step;
     float direction_step;
-
     float intensity;
     float tangent_bias;
-    uint noise_texture_index;
-    uint depth_texture_index;
 
+    uint noise_texture_index;
     uint view_normal_depth_texture_index;
-    uint _padding[3];
+    uint _padding[2];
 }
 hbao;
 
 #define PI 3.14159265359
 
-vec2 uv_from_iuv(ivec2 p) {
-    return (vec2(p) + 0.5) * hbao.inv_depth_texture_res;
-}
-
+/*
 ivec2 uv_to_iuv(vec2 uv) {
     uv = clamp(uv, 0.0, 1.0);
     return ivec2(uv * hbao.depth_texture_res);
 }
-/*
 vec3 get_view_pos_from_uv(ivec2 iuv) {
     vec2 uv = uv_from_iuv(iuv);
     // float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
@@ -64,23 +55,6 @@ vec3 min_diff(vec3 p, vec3 pl, vec3 pr) {
     vec3 v2 = pr - p;
     return dot(v1, v1) < dot(v2, v2) ? v1 : v2;
 }
-*/
-
-vec3 get_view_pos_from_uv(ivec2 iuv) {
-    vec2 packed_depth = sample_texel(hbao.view_normal_depth_texture_index, iuv, 0).rg;
-    float depth = -unpack_float(packed_depth);
-
-    vec2 uv = uv_from_iuv(iuv);
-    uv = vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y);
-
-    vec3 ray = vec3(uv.x / hbao.projection_matrix[0][0],
-                    uv.y / hbao.projection_matrix[1][1],
-                    -1.0);
-
-    return ray * depth;
-}
-
-/*
 vec3 get_view_space_normal(ivec2 iuv, vec3 P) {
     vec3 Pr = get_view_pos_from_uv(iuv + ivec2(1, 0));
     vec3 Pl = get_view_pos_from_uv(iuv + ivec2(-1, 0));
@@ -92,6 +66,24 @@ vec3 get_view_space_normal(ivec2 iuv, vec3 P) {
     return normalize(cross(U, R));
 }
 */
+
+float get_depth(vec2 uv) {
+    vec2 packed_depth = sample_texture(hbao.view_normal_depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).rg;
+    return -unpack_float(packed_depth);
+}
+
+vec3 get_view_pos_from_uv_depth(vec2 uv, float depth) {
+    uv = vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y);
+    vec3 ray = vec3(uv.x / hbao.projection_matrix[0][0],
+                    uv.y / hbao.projection_matrix[1][1],
+                    -1.0);
+
+    return ray * depth;
+}
+
+vec3 get_view_pos_from_uv(vec2 uv) {
+    return get_view_pos_from_uv_depth(uv, get_depth(uv));
+}
 
 float falloff(float dist_sqr) {
     return dist_sqr * hbao.neg_inv_r2 + 1.0;
@@ -109,7 +101,7 @@ vec2 rotate_direction(vec2 dir, vec2 cos_sin) {
                 dir.x * cos_sin.y + dir.y * cos_sin.x);
 }
 
-float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
+float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     const float NUM_DIRECTIONS = hbao.direction_step;
     const float NUM_STEPS = hbao.num_step;
 
@@ -125,7 +117,7 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
         vec2 dir = rotate_direction(vec2(cos(ang), sin(ang)), rand.xy * 2.0 - 1.0);
         float ray_pixels = rand.z * step_size + 1.0;
         for (float s = 0.0f; s < NUM_STEPS; ++s) {
-            ivec2 snapped_uv = ivec2(round(ray_pixels * dir)) + iuv;
+            vec2 snapped_uv = round(ray_pixels * dir) * hbao.inv_ssao_texture_res + uv;
             vec3 S = get_view_pos_from_uv(snapped_uv);
             ao += compute_ao(V, N, S);
             ray_pixels += step_size;
@@ -137,22 +129,17 @@ float calculate_ao(ivec2 iuv, vec2 noise_uv, vec3 V, vec3 N) {
 
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    if (id.x > hbao.ssao_texture_res.x || id.y > hbao.ssao_texture_res.y)
+    if (any(greaterThanEqual(id, hbao.ssao_texture_res)))
         return;
 
-#if HALF_RES
-    ivec2 iuv = id.xy * 2 + 1;
-#else
-    ivec2 iuv = id.xy;
-#endif
-    vec3 V = get_view_pos_from_uv(iuv);
+    vec2 uv = (id + 0.5) * hbao.inv_ssao_texture_res;
+    vec4 view_normal_depth = sample_texel(hbao.view_normal_depth_texture_index, id, 0);
+    float depth = -unpack_float(view_normal_depth.xy);
+    vec3 V = get_view_pos_from_uv_depth(uv, depth);
 
-    vec4 view_normal_depth = sample_texel(hbao.view_normal_depth_texture_index, iuv, 0);
     vec3 N = octahedral_decode(view_normal_depth.zw);
-    float view_distance = unpack_float(view_normal_depth.xy);
-
     vec2 noise_uv = vec2(id + 0.5) * hbao.inv_noise_texture_res;
-    float ao = calculate_ao(iuv, noise_uv, V, N);
+    float ao = calculate_ao(uv, noise_uv, V, N);
 
     imageStore(u_ssao_texture, id.xy, vec4(vec3(ao), 1.0f));
 }
