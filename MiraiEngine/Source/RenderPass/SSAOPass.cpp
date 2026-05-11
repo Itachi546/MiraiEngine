@@ -11,7 +11,7 @@
 #include "Scene/TextureCache.hpp"
 namespace mirai {
     struct HBAOConstants {
-        glm::mat4 inv_projection_matrix;
+        glm::mat4 projection_matrix;
 
         glm::vec2 ssao_texture_resolution;
         glm::vec2 depth_texture_resolution;
@@ -28,6 +28,9 @@ namespace mirai {
         float tangent_bias;
         uint32_t noise_texture_index;
         uint32_t depth_texture_index;
+
+        uint32_t view_normal_depth_texture_index;
+        uint32_t _padding[3];
     };
     static_assert(sizeof(HBAOConstants) % 4 == 0);
 
@@ -131,9 +134,10 @@ namespace mirai {
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
 
+                const ViewNormalDepthPassData &view_normal_pass_data = board->get<ViewNormalDepthPassData>();
                 const HBAOParams &params = board->get<HBAOParams>();
                 HBAOConstants push_constants = {
-                    .inv_projection_matrix = camera->get_inv_projection_transform(),
+                    .projection_matrix = camera->get_projection_transform(),
                     .ssao_texture_resolution = {screen_width * SSAO_RESOLUTION_SCALE, screen_height * SSAO_RESOLUTION_SCALE},
                     .depth_texture_resolution = {screen_width, screen_height},
                     .inv_depth_texture_resolution = {1.0f / screen_width, 1.0f / screen_height},
@@ -146,6 +150,7 @@ namespace mirai {
                     .tangent_bias = params.tangent_bias,
                     .noise_texture_index = params.noise_texture,
                     .depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id.id,
+                    .view_normal_depth_texture_index = pass_resource.get<FrameGraphTexture>(view_normal_pass_data.output).id.id,
                 };
 
                 ScopedGpuProfiling(command_buffer, "SSAOPass");
