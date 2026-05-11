@@ -54,7 +54,7 @@ vec3 get_view_pos_from_uv(ivec2 iuv) {
     // float depth = texture(sampler2D(u_depth_texture, u_samplers[SAMPLER_POINT_CLAMP]), uv).r;
     float depth = sample_texel(hbao.depth_texture_index, iuv, 0).r;
     uv = vec2(uv.x * 2.0f - 1.0f, 1.0 - 2.0f * uv.y);
-    return clip_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
+    return ndc_pos_to_view_pos(vec3(uv, depth), hbao.inv_projection_matrix);
 }
 
 vec3 min_diff(vec3 p, vec3 pl, vec3 pr) {

@@ -9,3 +9,4 @@
 #include "ForwardPass.hpp"
 #include "TAAResolvePass.hpp"
 #include "BloomPass.hpp"
+#include "ViewNormalDepthPass.hpp"

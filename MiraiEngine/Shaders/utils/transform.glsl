@@ -3,12 +3,12 @@
 
 // @TODO Decompose the component instead of doing all the multiplication
 // https://gamedev.stackexchange.com/questions/108856/fast-position-reconstruction-from-depth
-vec3 clip_pos_to_world_pos(vec3 clip_pos, mat4 invVP) {
+vec3 ndc_pos_to_world_pos(vec3 clip_pos, mat4 invVP) {
     vec4 world_pos = invVP * vec4(clip_pos, 1.0f);
     return world_pos.xyz / world_pos.w;
 }
 
-vec3 clip_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
+vec3 ndc_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
     vec4 view_pos = invP * vec4(clip_pos, 1.0f);
     return view_pos.xyz / view_pos.w;
 }
@@ -44,4 +44,17 @@ vec3 octahedral_decode(vec2 f) {
     n.y += n.y >= 0.0f ? -t : t;
     return normalize(n);
 }
+
+vec2 pack_float(float v) {
+    uint bits = floatBitsToUint(v);
+    uint high = (bits >> 16u) & 0xffffu;
+    uint low = bits & 0xffffu;
+    return unpackHalf2x16(high << 16 | low);
+}
+
+float unpack_float(vec2 packed) {
+    uint bits = packHalf2x16(packed);
+    return uintBitsToFloat(bits);
+}
+
 #endif

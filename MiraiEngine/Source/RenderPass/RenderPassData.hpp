@@ -16,6 +16,11 @@ namespace mirai {
         ShaderRegistry *registry;
     };
 
+    struct ViewNormalDepthPassData {
+        FrameGraphResourceHandle output;
+        std::shared_ptr<ComputeShader> shader;
+    };
+
     struct HBAOParams {
         TextureID noise_texture;
         float noise_texture_inv_dim;

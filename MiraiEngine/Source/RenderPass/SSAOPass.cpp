@@ -83,6 +83,14 @@ namespace mirai {
                                                             .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                                             .layout = IMAGE_LAYOUT_GENERAL,
                                                         });
+
+                const ViewNormalDepthPassData &view_pass_data = board->get<ViewNormalDepthPassData>();
+                builder.read(view_pass_data.output, {
+                                                        .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                        .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                        .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    });
+
                 board->add<SSAOPassData>(data);
 
                 // Create Shader

@@ -78,10 +78,10 @@ void calculate_tile_frustum(ivec2 id, out TileFrustum frustum) {
     vec2 br_ndc = to_ndc(origin + tile_size, dim_rcp);
 
     // Compute view space position of frustum far plane
-    vec3 tl = clip_pos_to_view_pos(vec3(tl_ndc, 1), invP);
-    vec3 tr = clip_pos_to_view_pos(vec3(tr_ndc, 1), invP);
-    vec3 bl = clip_pos_to_view_pos(vec3(bl_ndc, 1), invP);
-    vec3 br = clip_pos_to_view_pos(vec3(br_ndc, 1), invP);
+    vec3 tl = ndc_pos_to_view_pos(vec3(tl_ndc, 1), invP);
+    vec3 tr = ndc_pos_to_view_pos(vec3(tr_ndc, 1), invP);
+    vec3 bl = ndc_pos_to_view_pos(vec3(bl_ndc, 1), invP);
+    vec3 br = ndc_pos_to_view_pos(vec3(br_ndc, 1), invP);
 
     // Camera position is at origin in view space
     vec3 p0 = vec3(0.0);
@@ -143,9 +143,9 @@ void main() {
     float fmax_depth = uintBitsToFloat(s_tile_max_depth);
 
     // Calculate min/max depth in view space for frustum culling
-    float min_depth_vs = clip_pos_to_view_pos(vec3(0.0, 0.0, fmin_depth), invP).z;
-    float max_depth_vs = clip_pos_to_view_pos(vec3(0.0, 0.0, fmax_depth), invP).z;
-    float near_clip_vs = clip_pos_to_view_pos(vec3(0.0, 0.0, 0.0), invP).z;
+    float min_depth_vs = ndc_pos_to_view_pos(vec3(0.0, 0.0, fmin_depth), invP).z;
+    float max_depth_vs = ndc_pos_to_view_pos(vec3(0.0, 0.0, fmax_depth), invP).z;
+    float near_clip_vs = ndc_pos_to_view_pos(vec3(0.0, 0.0, 0.0), invP).z;
     // The near and far plane is simple in view space
     vec4 min_plane = vec4(0.0f, 0.0f, -1.0f, min_depth_vs);
 
