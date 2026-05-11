@@ -10,3 +10,4 @@
 #include "TAAResolvePass.hpp"
 #include "BloomPass.hpp"
 #include "ViewNormalDepthPass.hpp"
+#include "RTShadowPass.hpp"
