@@ -105,7 +105,8 @@ float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     const float NUM_DIRECTIONS = hbao.direction_step;
     const float NUM_STEPS = hbao.num_step;
 
-    float radius_pixels = -hbao.radius_to_screen / V.z;
+    // When V.z approaches zero, the radius pixel is so big that it starts thrashing the cache
+    float radius_pixels = min(-hbao.radius_to_screen / (V.z + 0.0001f), 50.0f);
     const float step_size = radius_pixels / NUM_STEPS;
 
     vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_POINT_REPEAT], noise_uv).rgb;
@@ -133,7 +134,7 @@ void main() {
         return;
 
     vec2 uv = (id + 0.5) * hbao.inv_ssao_texture_res;
-    vec4 view_normal_depth = sample_texel(hbao.view_normal_depth_texture_index, id, 0);
+    vec4 view_normal_depth = sample_texture(hbao.view_normal_depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv);
     float depth = -unpack_float(view_normal_depth.xy);
     vec3 V = get_view_pos_from_uv_depth(uv, depth);
 

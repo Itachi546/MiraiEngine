@@ -32,11 +32,11 @@ float guassian_weight(float x, float sigma2) {
     return exp(-x * x * 0.5 / sigma2);
 }
 
-float sample_ssao(ivec2 uv) {
-    // return texture(sampler2D(u_ssao_texture, u_samplers[SAMPLER_LINEAR_CLAMP]), uv).r;
-    return sample_texel(ssao_texture_index, uv, 0).r;
+float sample_ssao(vec2 uv) {
+    return sample_texture(ssao_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv).r;
 }
 
+/*
 float gaussian_blur(ivec2 coord) {
     ivec2 direction = blur_direction > 0.5 ? ivec2(0, 1) : ivec2(1, 0);
     float sigma = 3.0f;
@@ -55,8 +55,8 @@ float gaussian_blur(ivec2 coord) {
     }
     return total /= weight_sum;
 }
-
-float get_linear_depth(ivec2 uv) {
+*/
+float get_linear_depth(vec2 uv) {
 #if HALF_RES
     ivec2 full_res_uv = uv * 2;
     float d0 = texelFetch(u_depth_texture, full_res_uv + ivec2(1, 0), 0).r;
@@ -65,14 +65,14 @@ float get_linear_depth(ivec2 uv) {
     float d3 = texelFetch(u_depth_texture, full_res_uv - ivec2(0, 1), 0).r;
     return linearize_depth((d0 + d1 + d2 + d3) * 0.25, z_near, z_far);
 #else
-    float depth = sample_texel(depth_texture_index, uv, 0).r;
+    float depth = sample_texture(depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).r;
     return linearize_depth(depth, z_near, z_far);
 #endif
 }
 
 float sigma = blur_radius * 0.5;
 float falloff = 1.0f / (2.0 * sigma * sigma);
-float blur_function(ivec2 uv, float r, float center_depth, inout float w_total) {
+float blur_function(vec2 uv, float r, float center_depth, inout float w_total) {
 
     float current_depth = get_linear_depth(uv);
     float current_ao = sample_ssao(uv);
@@ -84,17 +84,17 @@ float blur_function(ivec2 uv, float r, float center_depth, inout float w_total) 
     return current_ao * w;
 }
 
-float bilateral_blur(ivec2 coord) {
-    float current_ao = sample_ssao(coord);
-    float current_depth = get_linear_depth(coord);
+float bilateral_blur(vec2 uv, vec2 texel_size) {
+    float current_ao = sample_ssao(uv);
+    float current_depth = get_linear_depth(uv);
 
     float c_total = current_ao;
     float w_total = 1.0;
-    ivec2 direction = blur_direction > 0.5 ? ivec2(0, 1) : ivec2(1, 0);
+    vec2 direction = blur_direction > 0.5 ? vec2(0, texel_size.y) : vec2(texel_size.x, 0);
     for (int r = 1; r <= blur_radius; ++r) {
-        ivec2 delta = int(r) * direction;
-        c_total += blur_function(coord + delta, r, current_depth, w_total);
-        c_total += blur_function(coord - delta, r, current_depth, w_total);
+        vec2 delta = int(r) * direction;
+        c_total += blur_function(uv + delta, r, current_depth, w_total);
+        c_total += blur_function(uv - delta, r, current_depth, w_total);
     }
 
     return c_total / w_total;
@@ -105,6 +105,8 @@ void main() {
     if (any(greaterThanEqual(coord, vec2(width, height))))
         return;
 
-    float result = bilateral_blur(coord);
+    vec2 texel_size = 1.0f / vec2(width, height);
+    vec2 uv = (coord + 0.5) * texel_size;
+    float result = bilateral_blur(uv, texel_size);
     imageStore(u_output_blur_texture, coord, vec4(result));
 }
