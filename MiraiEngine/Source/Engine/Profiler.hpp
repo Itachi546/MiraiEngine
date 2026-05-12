@@ -3,9 +3,10 @@
 #include <string>
 #include <vector>
 
-#define ScopedCpuProfiling(name) mirai::miProfiler::ScopeRangeCPU MI_PROFILER_CONCAT(_wi_profiler_cpu_range, __LINE__)(name)
-#define ScopedGpuProfiling(command_buffer, name) mirai::miProfiler::ScopeRangeGPU MI_PROFILER_CONCAT(_wi_profiler_gpu_range, __LINE__)(command_buffer, name)
 #define MI_PROFILER_CONCAT(x, y) x##y
+#define MI_PROFILER_CONCAT_INNER(x, y) MI_PROFILER_CONCAT(x, y)
+#define ScopedCpuProfiling(name) mirai::miProfiler::ScopeRangeCPU MI_PROFILER_CONCAT_INNER(_wi_profiler_cpu_range, __LINE__)(name)
+#define ScopedGpuProfiling(command_buffer, name) mirai::miProfiler::ScopeRangeGPU MI_PROFILER_CONCAT_INNER(_wi_profiler_gpu_range, __LINE__)(command_buffer, name)
 
 namespace mirai {
     class CommandBuffer;

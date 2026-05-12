@@ -193,6 +193,6 @@ namespace mirai::miProfiler {
     void Destroy() {
         if (!enabled)
             return;
-        RenderingDevice::get()->destroy_queries(gpu_query_pools, 2);
+        RenderingDevice::get()->destroy_queries(gpu_query_pools, k_total_frames);
     }
 } // namespace mirai::miProfiler

@@ -26,7 +26,6 @@ namespace mirai {
     };
 #define DEFINE_ID(m_name)                                                                    \
     struct m_name##ID : public ID {                                                          \
-        inline operator bool() const { return id != 0; }                                     \
         inline m_name##ID &operator=(m_name##ID p_other) {                                   \
             id = p_other.id;                                                                 \
             return *this;                                                                    \

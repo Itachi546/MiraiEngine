@@ -22,7 +22,6 @@ namespace mirai {
     };
 
     struct HBAOParams {
-        TextureID noise_texture;
         float noise_texture_inv_dim;
         // SSAO Shader params
         float radius;

@@ -99,6 +99,8 @@ namespace mirai {
         uint32_t total_visible_lights = 0;
         uint32_t total_visible_entities = 0;
 
+        TextureID blue_noise_texture128;
+
       private:
         static Renderer *Instance;
         std::unique_ptr<Scene> scene;

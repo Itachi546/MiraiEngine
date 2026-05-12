@@ -90,17 +90,11 @@ namespace mirai {
                 data.shader = std::make_shared<ComputeShader>("SSAOPass", "SPIRV/hbao.comp.spv");
 
                 // Load Noise texture
-                TextureID noise_texture = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
-                // Pass the lifetime management to texture cache
-                TextureCache::get()->add_texture("noise-texture-128", noise_texture);
-                Renderer::get()->add_bindless_texture(noise_texture);
-
                 // SSAO Params
                 HBAOParams params = {
-                    .noise_texture = noise_texture,
                     .noise_texture_inv_dim = 1.0f / 128.0f,
                     .radius = 0.5f,
-                    .intensity = 3.0f,
+                    .intensity = 2.0f,
                     .num_directional_step = 4,
                     .num_step = 8,
                     .tangent_bias = 0.1f,
@@ -137,7 +131,7 @@ namespace mirai {
                     .direction_step = cast_float(params.num_directional_step),
                     .intensity = params.intensity,
                     .tangent_bias = params.tangent_bias,
-                    .noise_texture_index = params.noise_texture,
+                    .noise_texture_index = renderer->blue_noise_texture128.id,
                     .view_normal_depth_texture_index = pass_resource.get<FrameGraphTexture>(view_normal_pass_data.output).id.id,
                 };
 

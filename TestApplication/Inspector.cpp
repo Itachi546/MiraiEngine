@@ -43,7 +43,7 @@ uint32_t add_image_selection_popup(uint32_t current_texture) {
         uint32_t count = 0;
         for (auto [key, val] : textures) {
             count++;
-            std::string id = std::to_string(key) + "_" + std::to_string(val);
+            std::string id = std::to_string(key) + "_" + std::to_string(val.id);
             if (ImGuiService::AddImageButton(id.c_str(), val.id, UI_TEXTURE_SIZE)) {
                 selection = val.id;
             }

@@ -125,6 +125,11 @@ namespace mirai {
 
         // Create skinning compute shader
         skinning_shader = std::make_unique<ComputeShader>("SkinningCS", "SPIRV/skinning.comp.spv");
+
+        // Upload default texture
+        blue_noise_texture128 = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
+        texture_cache->add_texture("noise-texture-128", blue_noise_texture128);
+        add_bindless_texture(blue_noise_texture128);
     }
 
     void Renderer::on_load_resources() {

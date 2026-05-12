@@ -3,12 +3,19 @@ set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 set(SPIRV_OUTPUT_DIR "${CMAKE_BINARY_DIR}/SPIRV")
 set(DEP_OUTPUT_DIR "${SPIRV_OUTPUT_DIR}/deps")
 
+option(ENABLE_SHADER_DEBUG "Embed shader debug information in the SPIRV" OFF)
+
 file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
     "*.frag.glsl"
     "*.vert.glsl"
     "*.comp.glsl"
     "*.geom.glsl"
 )
+
+set(GLSL_FLAGS -V --target-env vulkan1.4)
+if (ENABLE_SHADER_DEBUG)
+list(APPEND GLSL_FLAGS -gVS)
+endif()
 
 foreach(GLSL ${GLSL_SOURCE_FILES})
     # 1. Get the filename (e.g., "main.vert.glsl")
@@ -23,7 +30,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
     add_custom_command(
         OUTPUT ${SPIRV}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${SPIRV_OUTPUT_DIR}" "${DEP_OUTPUT_DIR}"
-        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.4 ${GLSL} 
+        COMMAND ${GLSL_VALIDATOR} ${GLSL_FLAGS} ${GLSL} 
                 -o ${SPIRV} 
                 -g0 
                 --depfile ${DEP_FILE}

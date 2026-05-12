@@ -108,7 +108,7 @@ float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     float radius_pixels = -hbao.radius_to_screen / V.z;
     const float step_size = radius_pixels / NUM_STEPS;
 
-    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], noise_uv * 2.0).rgb;
+    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_POINT_REPEAT], noise_uv).rgb;
 
     float d_angle = (2.0 * PI) / NUM_DIRECTIONS;
     float ao = 0.0f;
