@@ -810,7 +810,7 @@ namespace mirai {
 
     void VulkanRenderingDevice::resolve_query(QueryID query, uint64_t *resolve_output, uint32_t start, uint32_t count) {
         VulkanQuery *vk_query = resource_pool_queries.access(query);
-        VK_CHECK(vkGetQueryPoolResults(device, vk_query->query_pool, start, count, sizeof(uint64_t) * count, resolve_output, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+        VK_CHECK(vkGetQueryPoolResults(device, vk_query->query_pool, start, count, sizeof(uint64_t) * count, resolve_output, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
     }
 
     void VulkanRenderingDevice::reset_query(CommandBuffer *command_buffer, QueryID query, uint32_t start, uint32_t count) {

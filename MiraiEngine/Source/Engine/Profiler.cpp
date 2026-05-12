@@ -5,6 +5,7 @@
 #include "Common/HashMap.hpp"
 #include "Graphics/TextRenderManager.hpp"
 #include "Math/Math.hpp"
+#include "Engine/AppSettings.hpp"
 
 #include <iomanip>
 #include <sstream>
@@ -34,10 +35,11 @@ namespace mirai::miProfiler {
         }
     };
 
-    uint32_t query_indices[2] = {0, 0};
+    const uint32_t k_total_frames = AppSettings::K_MAX_FRAME_IN_FLIGHTS;
+    uint32_t query_indices[k_total_frames] = {};
     uint32_t frame_id = 1;
 
-    QueryID gpu_query_pools[2];
+    QueryID gpu_query_pools[k_total_frames];
 
     bool enabled = true;
     uint32_t range_sort_id = 0;
@@ -46,9 +48,13 @@ namespace mirai::miProfiler {
     void Initialize() {
         if (!enabled)
             return;
+
         RenderingDevice *device = RenderingDevice::get();
-        gpu_query_pools[0] = device->create_query(K_MAX_QUERY_COUNT);
-        gpu_query_pools[1] = device->create_query(K_MAX_QUERY_COUNT);
+        for (int i = 0; i < k_total_frames; ++i) {
+            gpu_query_pools[i] = device->create_query(K_MAX_QUERY_COUNT);
+            query_indices[i] = 0;
+        }
+
         std::memset(query_results, 0, sizeof(uint64_t) * K_MAX_QUERY_COUNT);
         gpu_timestamp_period = device->get_timestamp_period();
     }
@@ -57,7 +63,15 @@ namespace mirai::miProfiler {
         if (!enabled)
             return;
 
-        frame_id = 1 - frame_id;
+        frame_id = (frame_id + 1) % k_total_frames;
+
+        // Get query result
+        std::memset(query_results, 0, sizeof(uint64_t) * K_MAX_QUERY_COUNT);
+        uint32_t query_count = query_indices[frame_id];
+        if (query_count > 0) {
+            RenderingDevice::get()->resolve_query(gpu_query_pools[frame_id], query_results, 0, query_count);
+        }
+
         RenderingDevice::get()->reset_query(command_buffer, gpu_query_pools[frame_id], 0, K_MAX_QUERY_COUNT);
 
         query_indices[frame_id] = 0;
@@ -121,18 +135,9 @@ namespace mirai::miProfiler {
         }
     }
 
-    void EndFrame() {
+    void GetProfilerOutput(std::vector<ProfilerOutput> &cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
         if (!enabled)
             return;
-
-        std::memset(query_results, 0, sizeof(uint64_t) * K_MAX_QUERY_COUNT);
-        uint32_t prev_frame = 1 - frame_id;
-        uint32_t query_count = query_indices[prev_frame];
-        if (query_count > 0)
-            RenderingDevice::get()->resolve_query(gpu_query_pools[prev_frame], query_results, 0, query_count);
-    }
-
-    void GetProfilerOutput(std::vector<ProfilerOutput> &cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output) {
         for (auto &[key, val] : ranges) {
             // Skip for first frame
             if (val.avg_counter == 1 || !val.updated_last_frame)

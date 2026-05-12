@@ -25,9 +25,7 @@ namespace mirai::miProfiler {
 
     bool IsEnabled();
 
-    void EndFrame();
-
-    void GetProfilerOutput(std::vector<ProfilerOutput>& cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output);
+    void GetProfilerOutput(std::vector<ProfilerOutput> &cpu_profiler_output, std::vector<ProfilerOutput> &gpu_profiler_output);
 
     void Destroy();
 

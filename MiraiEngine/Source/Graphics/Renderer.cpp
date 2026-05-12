@@ -931,8 +931,6 @@ namespace mirai {
             device->queue_command_buffer(cb);
         }
 
-        miProfiler::EndFrame();
-
         device->present();
     }
 
