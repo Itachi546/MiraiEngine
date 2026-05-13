@@ -80,7 +80,7 @@ namespace mirai {
                     glm::vec2 inv_resolution;
 
                     glm::vec3 direction_or_position;
-                    float radius;
+                    float cos_angular_radius;
 
                     uint32_t depth_texture_index;
                     uint32_t light_type;
@@ -104,7 +104,7 @@ namespace mirai {
                 push_data.noise_texture_index = renderer->blue_noise_texture128.id;
 
                 // Angular radius of sun
-                push_data.radius = light->radius;
+                push_data.cos_angular_radius = cos(light->radius);
                 push_data.direction_or_position = quat_to_direction(transform->rotation);
                 push_data.frame_index = frame_index++;
 
@@ -120,8 +120,8 @@ namespace mirai {
                 command_buffer->set_push_data(0, &push_data, push_data_size);
                 command_buffer->set_push_data(push_data_size, descriptors, cast_u32(sizeof(descriptors)));
 
-                uint32_t local_size_x = rendering_utils::get_workgroup_size(width, 32);
-                uint32_t local_size_y = rendering_utils::get_workgroup_size(height, 32);
+                uint32_t local_size_x = rendering_utils::get_workgroup_size(width, 8);
+                uint32_t local_size_y = rendering_utils::get_workgroup_size(height, 8);
                 command_buffer->dispatch(local_size_x, local_size_y, 1);
 
                 // @TODO temp

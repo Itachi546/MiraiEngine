@@ -9,7 +9,7 @@
 #include "../utils/light.glsl"
 #include "../utils/noise.glsl"
 
-layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(binding = 0, r8) uniform writeonly image2D u_visibility_texture;
 layout(binding = 1) uniform accelerationStructureEXT tlas;
@@ -22,7 +22,7 @@ layout(push_constant) uniform PushConstantData {
 
     // Only support point and directional light for now
     vec3 direction_or_position;
-    float radius;
+    float cos_angular_radius; // cos_max_theta
 
     uint depth_texture_index;
     uint light_type;
@@ -68,31 +68,30 @@ void main() {
         return;
 
     float depth = sample_texel(depth_texture_index, id, 0).r;
-
-    vec2 uv = (id + 0.5) * inv_resolution;
-
-    vec3 current_ndc_pos = vec3(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth);
-    vec3 world_pos = ndc_pos_to_world_pos(current_ndc_pos, inv_VP);
-
     float visibility = 1.0f;
-    uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
+    if (depth < 1.0f) {
+        vec2 uv = (id + 0.5) * inv_resolution;
+        vec3 current_ndc_pos = vec3(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth);
+        vec3 world_pos = ndc_pos_to_world_pos(current_ndc_pos, inv_VP);
 
-    vec3 ray_dir;
-    float range = 1000.0f;
-    if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-        ray_dir = direction_or_position;
-    } else {
-        vec3 dir = direction_or_position - world_pos;
-        range = length(dir);
-        ray_dir = dir / range;
+        uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
+
+        vec3 ray_dir;
+        float range = 1000.0f;
+        if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+            ray_dir = direction_or_position;
+        } else {
+            vec3 dir = direction_or_position - world_pos;
+            range = length(dir);
+            ray_dir = dir / range;
+        }
+
+        rayQueryEXT ray_query;
+        float tmin = 0.05f;
+        rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, tmin, get_cone_sample(id, ray_dir, cos_angular_radius), range);
+        rayQueryProceedEXT(ray_query);
+        if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+            visibility = 0.0f;
     }
-
-    rayQueryEXT ray_query;
-    float tmin = max(1.0f, length(world_pos)) * 0.05f;
-    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, tmin, get_cone_sample(id, ray_dir, cos(radius)), range);
-    rayQueryProceedEXT(ray_query);
-    if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
-        visibility = 0.0f;
-
     imageStore(u_visibility_texture, id, vec4(visibility, 0.0f, 0.0f, 0.0f));
 }
