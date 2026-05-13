@@ -47,19 +47,19 @@ vec3 get_perpendicular_vector(vec3 u) {
 }
 
 #define PI 3.14159265359
-vec3 get_cone_sample(ivec2 id, vec3 lightDir, float cosThetaMax) {
+vec3 get_cone_sample(ivec2 id, vec3 light_dir, float cos_theta_max) {
     vec2 rand = sample_noise_texture(id);
 
-    vec3 bitangent = get_perpendicular_vector(lightDir);
-    vec3 tangent = cross(bitangent, lightDir);
+    vec3 bitangent = get_perpendicular_vector(light_dir);
+    vec3 tangent = cross(bitangent, light_dir);
 
-    float cosTheta = mix(cosThetaMax, 1.0, rand.x);
+    float cos_theta = mix(cos_theta_max, 1.0, rand.x);
 
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
     float phi = rand.y * 2.0 * PI;
 
-    return tangent * (sinTheta * cos(phi)) + bitangent * (sinTheta * sin(phi)) + lightDir * cosTheta;
+    return tangent * (sin_theta * cos(phi)) + bitangent * (sin_theta * sin(phi)) + light_dir * cos_theta;
 }
 
 void main() {
@@ -89,7 +89,7 @@ void main() {
 
     rayQueryEXT ray_query;
     float tmin = max(1.0f, length(world_pos)) * 0.05f;
-    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, tmin, get_cone_sample(id, ray_dir, 0.995), range);
+    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, tmin, get_cone_sample(id, ray_dir, cos(radius)), range);
     rayQueryProceedEXT(ray_query);
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
         visibility = 0.0f;

@@ -91,6 +91,7 @@ namespace mirai {
 
                 Entity sun = scene->get_default_directional_light();
                 TransformComponent *transform = scene->ecs->component_manager->get_component<TransformComponent>(sun);
+                LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(sun);
 
                 glm::vec2 resolution = glm::vec2(cast_float(width), cast_float(height));
                 push_data.inv_VP = camera->get_inv_view_projection_transform();
@@ -102,8 +103,8 @@ namespace mirai {
                 push_data.light_type = cast_u32(LIGHT_TYPE_DIRECTIONAL);
                 push_data.noise_texture_index = renderer->blue_noise_texture128.id;
 
-                // Ignore it now for directional light
-                push_data.radius = 0.0f;
+                // Angular radius of sun
+                push_data.radius = light->radius;
                 push_data.direction_or_position = quat_to_direction(transform->rotation);
                 push_data.frame_index = frame_index++;
 

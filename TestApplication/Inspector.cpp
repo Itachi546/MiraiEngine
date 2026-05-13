@@ -157,6 +157,7 @@ void add_light_component_ui(LightComponent *light, Entity entity) {
         ImGui::ColorPicker3("Color", &light->color[0]);
         if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
             ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+            ImGui::DragFloat("Angular Radius", &light->radius, 0.001f, 0.0f, 1.0f);
         } else if (light->light_type == LIGHT_TYPE_POINT) {
             ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
         } else if (light->light_type == LIGHT_TYPE_SPOT) {

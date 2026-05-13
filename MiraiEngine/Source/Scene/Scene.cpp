@@ -21,6 +21,7 @@ namespace mirai {
                                                                           .light_type = LIGHT_TYPE_DIRECTIONAL,
                                                                           .color = glm::vec3(1.0f),
                                                                           .intensity = 1.0f,
+                                                                          .radius = glm::radians(5.0f),
                                                                           .cast_shadow = true,
                                                                       });
         return entity;

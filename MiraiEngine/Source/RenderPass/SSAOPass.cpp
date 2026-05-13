@@ -51,7 +51,7 @@ namespace mirai {
         std::shared_ptr<ComputeShader> shader;
     };
 
-    const float SSAO_RESOLUTION_SCALE = 0.5f;
+    const float SSAO_RESOLUTION_SCALE = 1.0f;
     SSAOPass::SSAOPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         // SSAO Pass
         frame_graph->add_callback_pass<SSAOPassData>(
