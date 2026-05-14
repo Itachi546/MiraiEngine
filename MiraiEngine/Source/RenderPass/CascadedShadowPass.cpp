@@ -84,6 +84,8 @@ namespace mirai {
                     };
 
                     uint32_t current_frame = RenderingDevice::get()->get_current_frame_in_flight_index();
+                    MaterialOverrides pass_state_override;
+                    pass_state_override.set_cull_mode(CULL_MODE_FRONT);
 
                     for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
                         std::string split = "Split" + std::to_string(i);
@@ -94,13 +96,12 @@ namespace mirai {
 
                         // Shadow pass: front-cull opaque geometry to prevent shadow acne.
                         // Alpha-mask objects get CULL_NONE applied automatically in BuildBatches.
-                        static const MaterialState shadow_state{.cull_mode = CULL_MODE_FRONT};
                         DrawBatchGenerator::BuildBatches(
                             renderer->get_scene(),
                             BatchBuildParams{
                                 .filter_flags = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK,
                                 .frustum = &frustum_planes,
-                                .pass_state_override = &shadow_state,
+                                .pass_state_override = &pass_state_override,
                                 .shadow_pass = true,
                             },
                             render_batches);
@@ -142,7 +143,9 @@ namespace mirai {
                         descriptors.push_back(renderer->material_descriptor);
                         for (const auto &batch : render_batches) {
                             if (batch.batch_type == RENDERBATCH_TYPE_ALPHA_MASK && batch.meshes.size() > 0) {
-                                Shader *shader = data.registry->find(batch.sort_key);
+                                // Set the cull mode to none for alpha mask, instead of front
+                                uint32_t sort_key = (batch.sort_key & ~(3 << 16));
+                                Shader *shader = data.registry->find(sort_key);
                                 ASSERT(shader != nullptr);
                                 DrawBatch(command_buffer, batch, {
                                                                      .shader = shader,

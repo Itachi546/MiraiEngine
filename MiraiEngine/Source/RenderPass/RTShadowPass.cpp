@@ -113,7 +113,7 @@ namespace mirai {
 
                 float znear = camera->get_near_plane();
                 float zfar = camera->get_far_plane();
-                float inv_zrange = 1.0 / (zfar - znear);
+                float inv_zrange = 1.0f / (zfar - znear);
                 push_data.a = zfar * inv_zrange;
                 push_data.b = (zfar * znear) * inv_zrange;
                 push_data.tanh_fov = tan(glm::radians(camera->get_fov() * 0.5f));

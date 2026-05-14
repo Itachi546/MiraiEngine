@@ -15,6 +15,7 @@ namespace mirai {
         ALPHA_MODE_OPAQUE = 0,
         ALPHA_MODE_BLEND,
         ALPHA_MODE_MASK,
+        ALPHA_MODE_MAX,
     };
 
     // Behavioral flags — not part of the sort key.
@@ -44,6 +45,31 @@ namespace mirai {
 
         bool operator<=(const MaterialKey &other) const {
             return hash <= other.hash;
+        }
+    };
+
+    struct MaterialOverrides {
+        uint16_t override_flag = 0;
+        uint16_t override_value = 0;
+
+        void set_cull_mode(CullMode cull_mode) {
+            override_flag |= 3;
+            override_value |= uint16_t(cull_mode);
+        }
+
+        void set_front_face(FrontFace front_face) {
+            override_flag |= 4;
+            override_value |= uint16_t(front_face);
+        }
+
+        void set_polygon_mode(PolygonMode polygon_mode) {
+            override_flag |= 24;
+            override_value |= uint16_t(polygon_mode);
+        }
+
+        void set_alpha_mode(AlphaMode alpha_mode) {
+            override_flag |= 96;
+            override_value |= uint16_t(alpha_mode);
         }
     };
 

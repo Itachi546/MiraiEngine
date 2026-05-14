@@ -31,11 +31,7 @@ vec2 uv_nearest(ivec2 pixel, vec2 texture_size) {
     return (vec2(pixel) + 0.5) / texture_size;
 }
 
-vec3 taa(ivec2 id) {
-    vec2 image_size = vec2(width, height);
-    vec2 pixel_size = 1.0f / image_size;
-
-    vec2 uv = uv_nearest(id, image_size);
+vec3 taa(vec2 uv, vec2 texel_size) {
     vec3 current_sample = sample_texture(color_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv).rgb;
 
     // Clamp color
@@ -45,7 +41,7 @@ vec3 taa(ivec2 id) {
     vec2 closest_position = vec2(0);
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
-            vec2 cuv = uv + vec2(x, y) * pixel_size;
+            vec2 cuv = uv + vec2(x, y) * texel_size;
 
             vec3 color = sample_texture(color_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], cuv).rgb;
             min_color = min(min_color, color);
@@ -77,11 +73,12 @@ void main() {
     if (any(greaterThanEqual(id, resolution)))
         return;
 
+    vec2 texel_size = 1.0f / resolution;
+    vec2 uv = vec2(id + 0.5) * texel_size;
     if (has_flag(flags, FLAG_SHOULD_ENABLE_TAA)) {
-        vec3 final_color = taa(id);
+        vec3 final_color = taa(uv, texel_size);
         imageStore(u_output_texture, id, vec4(final_color, 1.0f));
     } else {
-        vec2 uv = uv_nearest(id, resolution);
         vec3 color = sample_texture(color_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], uv).rgb;
         imageStore(u_output_texture, id, vec4(color, 1.0f));
     }

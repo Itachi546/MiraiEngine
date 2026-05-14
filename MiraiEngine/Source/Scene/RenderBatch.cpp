@@ -7,7 +7,7 @@
 
 namespace mirai {
     // ── Internal helpers ─────────────────────────────────────────────────────
-    inline uint32_t compute_sort_key(const MaterialState *override_state,
+    inline uint32_t compute_sort_key(const MaterialOverrides *override_state,
                                      const Material *material,
                                      MeshType mesh_type) {
         if (override_state == nullptr) {
@@ -15,8 +15,9 @@ namespace mirai {
             return hash << 16 | mesh_type;
         }
 
-        MaterialState s = *override_state;
-        return (uint32_t(s.get_hash()) << 16) | mesh_type;
+        uint32_t hash = material->get_hash();
+        hash = (hash & ~override_state->override_flag) | override_state->override_value;
+        return (hash << 16) | mesh_type;
     }
 
     struct CachedBatchInfo {

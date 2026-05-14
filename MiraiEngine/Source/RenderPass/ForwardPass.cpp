@@ -37,7 +37,7 @@ namespace mirai {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
 
-                data.color_texture = builder.create_texture("FinalTexture", {
+                data.color_texture = builder.create_texture("ForwardPassTexture", {
                                                                                 .create_flags = 0,
                                                                                 .width = width,
                                                                                 .height = height,

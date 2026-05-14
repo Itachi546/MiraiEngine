@@ -114,7 +114,7 @@ namespace mirai {
         uint32_t filter_flags = BATCH_FILTER_FLAG_OPAQUE;
         const FrustumPlanes *frustum = nullptr;
         const glm::vec3 *camera_position = nullptr;
-        const MaterialState *pass_state_override = nullptr;
+        const MaterialOverrides *pass_state_override = nullptr;
         bool shadow_pass = false;
     };
 
