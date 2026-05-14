@@ -6,6 +6,7 @@
 
 #include "../utils/transform.glsl"
 #include "../utils/bindless-texture.glsl"
+#include "../utils/bindless-sampler.glsl"
 #include "../utils/light.glsl"
 #include "../utils/noise.glsl"
 
@@ -67,10 +68,10 @@ void main() {
     if (any(greaterThanEqual(id, resolution)))
         return;
 
-    float depth = sample_texel(depth_texture_index, id, 0).r;
+    vec2 uv = (id + 0.5) * inv_resolution;
+    float depth = sample_texture(depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).r;
     float visibility = 1.0f;
     if (depth < 1.0f) {
-        vec2 uv = (id + 0.5) * inv_resolution;
         vec3 current_ndc_pos = vec3(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth);
         vec3 world_pos = ndc_pos_to_world_pos(current_ndc_pos, inv_VP);
 

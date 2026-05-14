@@ -18,14 +18,12 @@ namespace mirai {
         std::shared_ptr<ComputeShader> shader;
     };
 
-    uint32_t frame_index = 0;
-
     RTShadowPass::RTShadowPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<RTShadowVisibilityPassData>(
             "RTVisibilityPass",
             [board](FrameGraph::Builder &builder, RTShadowVisibilityPassData &data) {
-                uint32_t width = AppSettings::get_width();
-                uint32_t height = AppSettings::get_height();
+                uint32_t width = AppSettings::get_width() / 2;
+                uint32_t height = AppSettings::get_height() / 2;
 
                 // @TODO if we store only bit value for a texture, we can further optimize it
                 data.output = builder.create_texture("RTVisibilityTexture", {
@@ -68,8 +66,8 @@ namespace mirai {
                 const auto &resource_states = pass_resource.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
 
-                uint32_t width = AppSettings::get_width();
-                uint32_t height = AppSettings::get_height();
+                uint32_t width = AppSettings::get_width() / 2;
+                uint32_t height = AppSettings::get_height() / 2;
 
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
@@ -106,7 +104,7 @@ namespace mirai {
                 // Angular radius of sun
                 push_data.cos_angular_radius = cos(light->radius);
                 push_data.direction_or_position = quat_to_direction(transform->rotation);
-                push_data.frame_index = frame_index++;
+                push_data.frame_index = cast_u32(renderer->frame_id & UINT32_MAX);
 
                 TextureID visibility_texture = pass_resource.get<FrameGraphTexture>(data.output).id;
                 DescriptorOffset descriptors[] = {

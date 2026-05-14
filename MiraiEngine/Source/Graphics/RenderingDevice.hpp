@@ -663,7 +663,7 @@ namespace mirai {
 
         virtual void destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) = 0;
 
-        virtual uint32_t get_current_frame() const = 0;
+        virtual uint32_t get_current_frame_in_flight_index() const = 0;
         virtual uint32_t get_swapchain_image_count() const = 0;
 
         virtual ~RenderingDevice() = default;

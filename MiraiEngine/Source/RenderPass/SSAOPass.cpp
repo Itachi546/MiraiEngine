@@ -27,7 +27,8 @@ namespace mirai {
 
         uint32_t noise_texture_index;
         uint32_t view_normal_depth_texture_index;
-        uint32_t _padding[2];
+        uint32_t frame_id;
+        uint32_t _padding;
     };
     static_assert(sizeof(HBAOConstants) % 4 == 0);
 
@@ -133,6 +134,7 @@ namespace mirai {
                     .tangent_bias = params.tangent_bias,
                     .noise_texture_index = renderer->blue_noise_texture128.id,
                     .view_normal_depth_texture_index = pass_resource.get<FrameGraphTexture>(view_normal_pass_data.output).id.id,
+                    .frame_id = cast_u32(renderer->frame_id & UINT32_MAX),
                 };
 
                 ScopedGpuProfiling(command_buffer, "SSAOPass");

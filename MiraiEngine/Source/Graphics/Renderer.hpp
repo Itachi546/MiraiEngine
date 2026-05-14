@@ -45,9 +45,8 @@ namespace mirai {
         void add_bindless_texture(TextureID texture);
 
         GPUBufferLinearAllocator *get_per_frame_gpu_allocator() {
-            uint32_t frame_index = device->get_current_frame();
-            ASSERT(frame_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
-            return &per_frame_allocator[frame_index];
+            ASSERT(frame_flight_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
+            return &per_frame_allocator[frame_flight_index];
         }
 
         // Helper function to upload batch data to per frame staging buffer
@@ -100,6 +99,7 @@ namespace mirai {
         uint32_t total_visible_entities = 0;
 
         TextureID blue_noise_texture128;
+        uint64_t frame_id;
 
       private:
         static Renderer *Instance;
@@ -141,7 +141,7 @@ namespace mirai {
 
         void upload_visible_lights();
 
-        uint32_t current_frame_index;
+        uint32_t frame_flight_index;
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         uint32_t bindless_texture_count = 0;
         GPUBufferLinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];

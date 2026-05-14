@@ -55,7 +55,8 @@ namespace mirai {
         });
 
         shadow_system = std::make_unique<ShadowSystem>();
-        current_frame_index = device->get_current_frame();
+        frame_flight_index = device->get_current_frame_in_flight_index();
+        frame_id = 0;
     }
 
     void Renderer::initialize() {
@@ -108,7 +109,7 @@ namespace mirai {
         resource_heap.ptr = device->map_buffer(resource_heap.buffer);
         resource_heap.descriptor_size = device->get_resource_descriptor_size();
         resource_heap.size = buffer_desc.size;
-        resource_heap.new_frame(current_frame_index);
+        resource_heap.new_frame(frame_flight_index);
         // We allocate first n location for bindless texture, so that
         // we don't have to deal with conversion of textureID to descriptorIndex
         resource_heap.allocate(AppSettings::K_MAX_BINDLESS_TEXTURE_COUNT);
@@ -327,7 +328,7 @@ namespace mirai {
 
         uint32_t light_data_size = cast_u32(total_visible_lights * sizeof(GPULightData));
 
-        BufferView light_buffer = per_frame_allocator[current_frame_index].allocate(light_data_size);
+        BufferView light_buffer = per_frame_allocator[frame_flight_index].allocate(light_data_size);
         std::memcpy(light_buffer.ptr, visible_lights.data(), light_data_size);
 
         DescriptorInfo descriptor = {
@@ -436,7 +437,7 @@ namespace mirai {
 
             uint32_t instance_count = scene->render_object_count.load();
             uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
-            BufferView instance_buffer = per_frame_allocator[current_frame_index].allocate(instance_count * instance_data_size);
+            BufferView instance_buffer = per_frame_allocator[frame_flight_index].allocate(instance_count * instance_data_size);
             uint64_t blas_device_address = device->get_buffer_device_address(blas_buffer_static);
 
             // Copy TLAS instance data
@@ -491,7 +492,7 @@ namespace mirai {
         }
         ASSERT(skinned_matrix_size > 0);
 
-        BufferView matrix_pallete_buffer = per_frame_allocator[current_frame_index].allocate(cast_u32(skinned_matrix_size * sizeof(glm::mat4)));
+        BufferView matrix_pallete_buffer = per_frame_allocator[frame_flight_index].allocate(cast_u32(skinned_matrix_size * sizeof(glm::mat4)));
         uint8_t *ptr = matrix_pallete_buffer.ptr;
         for (const auto &animation_player : scene->animation_players) {
             const std::vector<glm::mat4> &matrix_pallete = animation_player->matrix_palletes;
@@ -702,10 +703,9 @@ namespace mirai {
 
     void Renderer::copy_buffers() {
         // Reset staging buffer offset
-        uint32_t current_frame = device->get_current_frame();
-        ASSERT(current_frame < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
+        ASSERT(frame_flight_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
 
-        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame];
+        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[frame_flight_index];
         gpu_frame_allocator->reset();
 
         // Copy per frame uniform data
@@ -731,7 +731,7 @@ namespace mirai {
 
         // Populate per-frame batch data
         total_visible_entities = 0;
-        upload_batch_data(main_render_batches, current_frame);
+        upload_batch_data(main_render_batches, frame_flight_index);
     }
 
     void Renderer::add_bindless_texture(TextureID texture) {
@@ -750,10 +750,10 @@ namespace mirai {
 
     void Renderer::update() {
         ScopedCpuProfiling("Update renderer");
-        current_frame_index = device->get_current_frame();
+        frame_flight_index = device->get_current_frame_in_flight_index();
 
-        resource_heap.new_frame(current_frame_index);
-        line_renderer->new_frame(current_frame_index);
+        resource_heap.new_frame(frame_flight_index);
+        line_renderer->new_frame(frame_flight_index);
 
         scene->update();
 
@@ -835,7 +835,7 @@ namespace mirai {
 
         ScopedGpuProfiling(command_buffer, "Patch global buffers");
 
-        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[current_frame_index];
+        GPUBufferLinearAllocator *gpu_frame_allocator = &per_frame_allocator[frame_flight_index];
 
         // Patch transforms
         auto &comp_manager = scene->ecs->component_manager;
@@ -935,7 +935,7 @@ namespace mirai {
 
             device->queue_command_buffer(cb);
         }
-
+        frame_id++;
         device->present();
     }
 

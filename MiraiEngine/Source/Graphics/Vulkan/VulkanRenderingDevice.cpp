@@ -1055,7 +1055,7 @@ namespace mirai {
         const auto destroy = [&](std::deque<std::pair<ID, uint64_t>> &queue, std::function<void(ID)> free) {
             while (!queue.empty()) {
                 auto [id, frame_index] = queue.front();
-                if (frame_index + max_frame_in_flight < frame_count || force) {
+                if (frame_index + max_frame_in_flight < frame_index || force) {
                     free(id);
                     queue.pop_front();
                 } else {
@@ -1113,8 +1113,8 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::new_frame() {
-        VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
-        vkResetFences(device, 1, &in_flight_fences[current_frame]);
+        VK_CHECK(vkWaitForFences(device, 1, &in_flight_fences[current_frame_flight_index], VK_TRUE, UINT64_MAX));
+        vkResetFences(device, 1, &in_flight_fences[current_frame_flight_index]);
 
         // Start cleaning up deletion queue
         destroy_resources();
@@ -1132,16 +1132,16 @@ namespace mirai {
             swapchain->height = surface_caps.currentExtent.height;
             ResizeSwapchain(swapchain.get(), physical_device, device, surface, surface_caps, AppSettings::K_MAX_FRAME_IN_FLIGHTS, vsync);
         }
-        VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame], VK_NULL_HANDLE, &swapchain->current_image_index));
+        VK_CHECK(vkAcquireNextImageKHR(device, swapchain->swapchain, UINT64_MAX, image_acquire_semaphore[current_frame_flight_index], VK_NULL_HANDLE, &swapchain->current_image_index));
         // Reset command pool
-        uint32_t command_pool_begin = current_frame * AppSettings::K_NUM_THREAD;
+        uint32_t command_pool_begin = current_frame_flight_index * AppSettings::K_NUM_THREAD;
         for (uint32_t i = command_pool_begin; i < AppSettings::K_NUM_THREAD; ++i)
             vkResetCommandPool(device, command_pools[i], 0);
     }
 
     CommandBuffer *VulkanRenderingDevice::get_command_buffer(uint32_t thread_id) {
         ASSERT_MSG(thread_id < AppSettings::K_NUM_THREAD, "ThreadID exceed the number of threads");
-        uint32_t index = current_frame * AppSettings::K_NUM_THREAD * AppSettings::K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
+        uint32_t index = current_frame_flight_index * AppSettings::K_NUM_THREAD * AppSettings::K_NUM_COMMAND_BUFFER_PER_THREAD + thread_id;
         return command_buffers[index].get();
     }
 
@@ -1208,7 +1208,7 @@ namespace mirai {
         VkSubmitInfo submit_info = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &image_acquire_semaphore[current_frame],
+            .pWaitSemaphores = &image_acquire_semaphore[current_frame_flight_index],
             .pWaitDstStageMask = wait_stages,
             .commandBufferCount = static_cast<uint32_t>(submit_command_buffers.size()),
             .pCommandBuffers = submit_command_buffers.data(),
@@ -1216,7 +1216,7 @@ namespace mirai {
             .pSignalSemaphores = &render_finished_semaphore[swapchain->current_image_index],
         };
 
-        VK_CHECK(vkQueueSubmit(device_queues[QUEUE_TYPE_GRAPHICS], 1, &submit_info, in_flight_fences[current_frame]));
+        VK_CHECK(vkQueueSubmit(device_queues[QUEUE_TYPE_GRAPHICS], 1, &submit_info, in_flight_fences[current_frame_flight_index]));
 
         VkPresentInfoKHR present_info = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1228,32 +1228,32 @@ namespace mirai {
         };
 
         VK_CHECK(vkQueuePresentKHR(device_queues[QUEUE_TYPE_GRAPHICS], &present_info));
-        current_frame = (current_frame + 1) % cast_u32(swapchain->images.size());
-        frame_count++;
+        current_frame_flight_index = (current_frame_flight_index + 1) % cast_u32(swapchain->images.size());
+        frame_index++;
     }
 
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            destroyed_pipelines.push_back(std::make_pair(pipeline_ids[i], frame_count));
+            destroyed_pipelines.push_back(std::make_pair(pipeline_ids[i], frame_index));
         }
     }
 
     void VulkanRenderingDevice::destroy_buffers(BufferID *buffers, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             ASSERT(buffers[i].is_valid());
-            destroyed_buffers.push_back(std::make_pair(buffers[i], frame_count));
+            destroyed_buffers.push_back(std::make_pair(buffers[i], frame_index));
         }
     }
 
     void VulkanRenderingDevice::destroy_queries(QueryID *queries, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            destroyed_queries.push_back(std::make_pair(queries[i], frame_count));
+            destroyed_queries.push_back(std::make_pair(queries[i], frame_index));
         }
     }
 
     void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
-            destroyed_textures.push_back(std::make_pair(textures[i], frame_count));
+            destroyed_textures.push_back(std::make_pair(textures[i], frame_index));
         }
     }
 
@@ -1670,9 +1670,9 @@ namespace mirai {
         }
 
         if (tlas_scratch_buffer.is_valid())
-            destroyed_buffers.push_back(std::make_pair(tlas_scratch_buffer, frame_count));
+            destroyed_buffers.push_back(std::make_pair(tlas_scratch_buffer, frame_index));
         if (blas_scratch_buffer.is_valid())
-            destroyed_buffers.push_back(std::make_pair(blas_scratch_buffer, frame_count));
+            destroyed_buffers.push_back(std::make_pair(blas_scratch_buffer, frame_index));
         /*
         if (has_rt_support && acceleration_structure.blas_buffer) {
             BufferID buffers[] = {acceleration_structure.blas_buffer, acceleration_structure.tlas_buffer, acceleration_structure.tlas_instance_buffer};

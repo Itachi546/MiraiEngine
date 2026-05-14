@@ -83,7 +83,7 @@ namespace mirai {
                         renderer->transform_descriptor,
                     };
 
-                    uint32_t current_frame = RenderingDevice::get()->get_current_frame();
+                    uint32_t current_frame = RenderingDevice::get()->get_current_frame_in_flight_index();
 
                     for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
                         std::string split = "Split" + std::to_string(i);

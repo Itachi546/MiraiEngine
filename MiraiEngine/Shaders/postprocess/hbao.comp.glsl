@@ -32,7 +32,8 @@ layout(push_constant) uniform HBAOPushConstants {
 
     uint noise_texture_index;
     uint view_normal_depth_texture_index;
-    uint _padding[2];
+    uint frame_id;
+    uint padding;
 }
 hbao;
 
@@ -101,6 +102,11 @@ vec2 rotate_direction(vec2 dir, vec2 cos_sin) {
                 dir.x * cos_sin.y + dir.y * cos_sin.x);
 }
 
+vec3 sample_noise_texture(vec2 uv) {
+    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_POINT_REPEAT], uv).rgb;
+    return fract(rand + 0.618033 * hbao.frame_id);
+}
+
 float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     const float NUM_DIRECTIONS = hbao.direction_step;
     const float NUM_STEPS = hbao.num_step;
@@ -109,7 +115,7 @@ float calculate_ao(vec2 uv, vec2 noise_uv, vec3 V, vec3 N) {
     float radius_pixels = min(-hbao.radius_to_screen / (V.z + 0.0001f), 50.0f);
     const float step_size = radius_pixels / NUM_STEPS;
 
-    vec3 rand = sample_texture(hbao.noise_texture_index, u_samplers[SAMPLER_POINT_REPEAT], noise_uv).rgb;
+    vec3 rand = sample_noise_texture(noise_uv);
 
     float d_angle = (2.0 * PI) / NUM_DIRECTIONS;
     float ao = 0.0f;

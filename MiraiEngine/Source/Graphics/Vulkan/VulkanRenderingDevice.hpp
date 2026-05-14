@@ -104,8 +104,8 @@ namespace mirai {
             return has_rt_support;
         }
 
-        uint32_t get_current_frame() const override {
-            return current_frame;
+        uint32_t get_current_frame_in_flight_index() const override {
+            return current_frame_flight_index;
         }
 
         uint32_t get_swapchain_image_count() const override;
@@ -157,8 +157,8 @@ namespace mirai {
         ResourcePool<VulkanQuery> resource_pool_queries;
         ResourcePool<VkAccelerationStructureKHR> resource_pool_acceleration_structures;
 
-        uint32_t current_frame = 0;
-        uint64_t frame_count = 0;
+        uint32_t current_frame_flight_index = 0;
+        uint64_t frame_index = 0;
         bool vsync;
         bool has_rt_support = false;
 
