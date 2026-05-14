@@ -16,24 +16,25 @@ layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
  * view normal vector for uv coordinate, we get discontinuity.
  */
 layout(push_constant) uniform HBAOPushConstants {
-    mat4 projection_matrix;
-
     vec2 ssao_texture_res;
     vec2 inv_ssao_texture_res;
 
     vec2 inv_noise_texture_res;
+    float tanh_fov;
+    float aspect_ratio;
+
     float radius_to_screen;
     float neg_inv_r2;
-
     float num_step;
     float direction_step;
+
     float intensity;
     float tangent_bias;
-
     uint noise_texture_index;
     uint view_normal_depth_texture_index;
+
     uint frame_id;
-    uint padding;
+    uint padding[3];
 }
 hbao;
 
@@ -73,17 +74,8 @@ float get_depth(vec2 uv) {
     return -unpack_float(packed_depth);
 }
 
-vec3 get_view_pos_from_uv_depth(vec2 uv, float depth) {
-    uv = vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y);
-    vec3 ray = vec3(uv.x / hbao.projection_matrix[0][0],
-                    uv.y / hbao.projection_matrix[1][1],
-                    -1.0);
-
-    return ray * depth;
-}
-
 vec3 get_view_pos_from_uv(vec2 uv) {
-    return get_view_pos_from_uv_depth(uv, get_depth(uv));
+    return get_view_pos_from_uv_depth(uv, get_depth(uv), hbao.tanh_fov, hbao.aspect_ratio);
 }
 
 float falloff(float dist_sqr) {
@@ -142,7 +134,7 @@ void main() {
     vec2 uv = (id + 0.5) * hbao.inv_ssao_texture_res;
     vec4 view_normal_depth = sample_texture(hbao.view_normal_depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv);
     float depth = -unpack_float(view_normal_depth.xy);
-    vec3 V = get_view_pos_from_uv_depth(uv, depth);
+    vec3 V = get_view_pos_from_uv_depth(uv, depth, hbao.tanh_fov, hbao.aspect_ratio);
 
     vec3 N = octahedral_decode(view_normal_depth.zw);
     vec2 noise_uv = vec2(id + 0.5) * hbao.inv_noise_texture_res;

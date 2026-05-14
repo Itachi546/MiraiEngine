@@ -11,24 +11,25 @@
 #include "Scene/TextureCache.hpp"
 namespace mirai {
     struct HBAOConstants {
-        glm::mat4 projection_matrix;
-
         glm::vec2 ssao_texture_resolution;
         glm::vec2 inv_ssao_texture_resolution;
 
         glm::vec2 inv_noise_texture_resolution;
+        float tanh_fov;
+        float aspect_ratio;
+
         float radius_to_screen;
         float neg_inv_r2;
-
         float num_step;
         float direction_step;
+
         float intensity;
         float tangent_bias;
-
         uint32_t noise_texture_index;
         uint32_t view_normal_depth_texture_index;
+
         uint32_t frame_id;
-        uint32_t _padding;
+        uint32_t _padding[3];
     };
     static_assert(sizeof(HBAOConstants) % 4 == 0);
 
@@ -122,10 +123,11 @@ namespace mirai {
                 const ViewNormalDepthPassData &view_normal_pass_data = board->get<ViewNormalDepthPassData>();
                 const HBAOParams &params = board->get<HBAOParams>();
                 HBAOConstants push_constants = {
-                    .projection_matrix = camera->get_projection_transform(),
                     .ssao_texture_resolution = ssao_resolution,
                     .inv_ssao_texture_resolution = 1.0f / ssao_resolution,
                     .inv_noise_texture_resolution = glm::vec2{params.noise_texture_inv_dim},
+                    .tanh_fov = tan(glm::radians(camera->get_fov() * 0.5f)),
+                    .aspect_ratio = camera->get_aspect_ratio(),
                     .radius_to_screen = params.radius * projection_scale,
                     .neg_inv_r2 = -1.0f / (params.radius * params.radius),
                     .num_step = cast_float(params.num_step),

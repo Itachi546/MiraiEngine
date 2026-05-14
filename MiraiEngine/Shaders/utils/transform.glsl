@@ -17,6 +17,18 @@ float linearize_depth(float d, float near, float far) {
     return (near * far) / (far - d * (far - near));
 }
 
+/*
+    Reconstruct view position from view space depth and uv (0-1)
+*/
+vec3 get_view_pos_from_uv_depth(vec2 uv, float depth, float tanh_fov, float aspect_ratio) {
+    uv = vec2(uv.x * 2.0f - 1.0f, 1.0f - 2.0f * uv.y);
+    vec3 ray = vec3(uv.x * (aspect_ratio * tanh_fov),
+                    uv.y * tanh_fov,
+                    -1.0);
+
+    return ray * depth;
+}
+
 vec2 octwarp(vec2 v) {
     vec2 w = 1.0 - abs(v.yx);
     if (v.x < 0.0)
