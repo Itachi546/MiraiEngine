@@ -183,6 +183,8 @@ void main() {
             }
         }
     }
+    Lo += pbr_params.emissive * 5.0f;
+
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     // Debug Params
     if (split_percentage >= screen_uv.x) {
@@ -216,8 +218,6 @@ void main() {
             break;
         };
     }
-
-    Lo += pbr_params.emissive * 5.0f;
 
 #ifdef ALPHA_MODE_TRANSPARENT
     fragColor = vec4(Lo, albedo.a);
