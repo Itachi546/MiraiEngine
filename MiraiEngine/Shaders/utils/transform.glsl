@@ -13,8 +13,22 @@ vec3 ndc_pos_to_view_pos(vec3 clip_pos, mat4 invP) {
     return view_pos.xyz / view_pos.w;
 }
 
+vec3 view_pos_to_world_pos(vec3 view_pos, mat4 invV) {
+    vec4 world_pos = invV * vec4(view_pos, 1.0);
+    return world_pos.xyz / world_pos.w;
+}
+
 float linearize_depth(float d, float near, float far) {
-    return (near * far) / (far - d * (far - near));
+    return -(near * far) / (far - d * (far - near));
+}
+/*
+Convert view depth to ndc depth
+where
+    a = f / (f - n),
+    b = (n * f) / (f - n)
+*/
+float view_depth_to_ndc(float d, float a, float b) {
+    return a + b / d;
 }
 
 /*

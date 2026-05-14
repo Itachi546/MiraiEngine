@@ -16,7 +16,7 @@ layout(binding = 0, r8) uniform writeonly image2D u_visibility_texture;
 layout(binding = 1) uniform accelerationStructureEXT tlas;
 
 layout(push_constant) uniform PushConstantData {
-    mat4 inv_VP;
+    mat4 inv_V;
 
     vec2 resolution;
     vec2 inv_resolution;
@@ -25,10 +25,15 @@ layout(push_constant) uniform PushConstantData {
     vec3 direction_or_position;
     float cos_angular_radius; // cos_max_theta
 
-    uint depth_texture_index;
+    float a; //  f / (f - n)
+    float b; // (f * n) / (f - n)
+    uint view_normal_depth_texture_index;
     uint light_type;
+
     uint noise_texture_index;
-    int frame_index;
+    uint frame_index;
+    float tanh_fov;
+    float aspect_ratio;
 };
 
 vec2 sample_noise_texture(ivec2 id) {
@@ -69,30 +74,33 @@ void main() {
         return;
 
     vec2 uv = (id + 0.5) * inv_resolution;
-    float depth = sample_texture(depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).r;
+    vec4 view_normal_depth = sample_texture(view_normal_depth_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv);
+
+    vec3 view_normal = octahedral_decode(view_normal_depth.zw);
+    float depth = -unpack_float(view_normal_depth.xy);
+
+    vec3 view_pos = get_view_pos_from_uv_depth(uv, depth, tanh_fov, aspect_ratio);
+    // Adding offset in view space, not a good idea
     float visibility = 1.0f;
-    if (depth < 1.0f) {
-        vec3 current_ndc_pos = vec3(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth);
-        vec3 world_pos = ndc_pos_to_world_pos(current_ndc_pos, inv_VP);
+    float tmin = max(1.0, view_pos.z) * 0.05;
+    vec3 world_pos = view_pos_to_world_pos(view_pos + tmin * view_normal, inv_V);
 
-        uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
+    uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
 
-        vec3 ray_dir;
-        float range = 1000.0f;
-        if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-            ray_dir = direction_or_position;
-        } else {
-            vec3 dir = direction_or_position - world_pos;
-            range = length(dir);
-            ray_dir = dir / range;
-        }
-
-        rayQueryEXT ray_query;
-        float tmin = 0.05f;
-        rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, tmin, get_cone_sample(id, ray_dir, cos_angular_radius), range);
-        rayQueryProceedEXT(ray_query);
-        if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
-            visibility = 0.0f;
+    vec3 ray_dir;
+    float range = 1000.0f;
+    if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+        ray_dir = direction_or_position;
+    } else {
+        vec3 dir = direction_or_position - world_pos;
+        range = length(dir);
+        ray_dir = dir / range;
     }
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, 0.0f, get_cone_sample(id, ray_dir, cos_angular_radius), range);
+    rayQueryProceedEXT(ray_query);
+
+    if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+        visibility = 0.0f;
     imageStore(u_visibility_texture, id, vec4(visibility, 0.0f, 0.0f, 0.0f));
 }

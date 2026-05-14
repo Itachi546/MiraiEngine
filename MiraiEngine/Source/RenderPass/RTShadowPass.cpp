@@ -44,12 +44,12 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_GENERAL,
                                            });
 
-                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
-                builder.read(depth_prepass_data.output, {
-                                                            .access_flags = ACCESS_FLAG_SHADER_READ,
-                                                            .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                            .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        });
+                const ViewNormalDepthPassData &view_normal_depth_pass = board->get<ViewNormalDepthPassData>();
+                builder.read(view_normal_depth_pass.output, {
+                                                                .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            });
 
                 data.shader = std::make_shared<ComputeShader>("RTVelocityGenShader", "SPIRV/rt-shadow-visibility.comp.spv");
                 builder.set_side_effect();
@@ -72,7 +72,7 @@ namespace mirai {
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
 
                 struct PushData {
-                    glm::mat4 inv_VP;
+                    glm::mat4 inv_V;
 
                     glm::vec2 resolution;
                     glm::vec2 inv_resolution;
@@ -80,10 +80,15 @@ namespace mirai {
                     glm::vec3 direction_or_position;
                     float cos_angular_radius;
 
-                    uint32_t depth_texture_index;
+                    float a; // f / (f - n)
+                    float b; // (f * n) / (f - n)
+                    uint32_t view_normal_depth_texture;
                     uint32_t light_type;
+
                     uint32_t noise_texture_index;
                     uint32_t frame_index;
+                    float tanh_fov;
+                    float aspect_ratio;
 
                 } push_data;
 
@@ -92,12 +97,12 @@ namespace mirai {
                 LightComponent *light = scene->ecs->component_manager->get_component<LightComponent>(sun);
 
                 glm::vec2 resolution = glm::vec2(cast_float(width), cast_float(height));
-                push_data.inv_VP = camera->get_inv_view_projection_transform();
+                push_data.inv_V = camera->get_inv_view_transform();
                 push_data.resolution = resolution;
                 push_data.inv_resolution = 1.0f / resolution;
 
-                const DepthPrePassData &depth_prepass_data = board->get<DepthPrePassData>();
-                push_data.depth_texture_index = pass_resource.get<FrameGraphTexture>(depth_prepass_data.output).id.id;
+                const ViewNormalDepthPassData &view_normal_pass = board->get<ViewNormalDepthPassData>();
+                push_data.view_normal_depth_texture = pass_resource.get<FrameGraphTexture>(view_normal_pass.output).id.id;
                 push_data.light_type = cast_u32(LIGHT_TYPE_DIRECTIONAL);
                 push_data.noise_texture_index = renderer->blue_noise_texture128.id;
 
@@ -105,6 +110,14 @@ namespace mirai {
                 push_data.cos_angular_radius = cos(light->radius);
                 push_data.direction_or_position = quat_to_direction(transform->rotation);
                 push_data.frame_index = cast_u32(renderer->frame_id & UINT32_MAX);
+
+                float znear = camera->get_near_plane();
+                float zfar = camera->get_far_plane();
+                float inv_zrange = 1.0 / (zfar - znear);
+                push_data.a = zfar * inv_zrange;
+                push_data.b = (zfar * znear) * inv_zrange;
+                push_data.tanh_fov = tan(glm::radians(camera->get_fov() * 0.5f));
+                push_data.aspect_ratio = camera->get_aspect_ratio();
 
                 TextureID visibility_texture = pass_resource.get<FrameGraphTexture>(data.output).id;
                 DescriptorOffset descriptors[] = {
