@@ -6,33 +6,22 @@
 #include "../utils/color.glsl"
 
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params, float ibl_contribution) {
-    /*
-    vec3 Ks = F_SchlickRoughness(ndotv, F0, pbr_params.roughness);
-    vec3 Kd = (1.0 - Ks) * (1.0 - pbr_params.metallic);
-    vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, normal).rgb;
-    vec3 diffuse = irradiance * pbr_params.albedo.rgb / PI;
-    vec3 R = normalize(reflect(-view_dir, normal));
-    vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, R, pbr_params.roughness * (MAX_REFLECTION_LOD - 1)).rgb;
-    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, vec2(ndotv, pbr_params.roughness)).rg;
-    vec3 specular = prefilter_color * (Ks * brdf.x + brdf.y);
-
-    vec3 ambient = (Kd * diffuse + specular) * pbr_params.ao;
-    return ambient;
-    */
     vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, pbr_params.roughness)).rg;
     vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
 
-    float lod = pbr_params.roughness * MAX_REFLECTION_LOD;
+    float lod = pbr_params.roughness * (MAX_REFLECTION_LOD - 1.0);
     vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
-    vec3 f0 = vec3(0.04f);
 
-    vec3 diffuse_color = pbr_params.albedo.rgb * (vec3(1.0f) - f0);
-    diffuse_color *= (1.0f - pbr_params.metallic);
-    vec3 diffuse = diffuse_light * diffuse_color;
+    // FssEss is the integrated Fresnel term for indirect specular
+    vec3 FssEss = F0 * brdf.x + brdf.y;
 
-    vec3 specular_color = mix(f0, pbr_params.albedo.rgb, pbr_params.metallic);
+    // Specular contribution
+    vec3 specular = prefilter_color * FssEss;
 
-    vec3 specular = prefilter_color * (specular_color * brdf.x + brdf.y);
+    // Diffuse contribution: balanced with specular to preserve energy
+    // The amount of light not reflected is available for diffuse
+    vec3 kD = (vec3(1.0) - FssEss) * (1.0 - pbr_params.metallic);
+    vec3 diffuse = kD * pbr_params.albedo.rgb * diffuse_light;
 
     return (diffuse + specular) * ibl_contribution * pbr_params.ao;
 }
