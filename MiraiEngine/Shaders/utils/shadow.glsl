@@ -6,7 +6,10 @@
 struct CascadeInfo {
     mat4 VP[NUM_DIRLIGHT_CASCADE];
     vec4 split_distances;
-    vec4 dims;
+
+    vec2 cascade_texture_size;
+    float z_range;
+    float _padding;
 };
 
 uint CASCADE_COLORS[5] = uint[5](

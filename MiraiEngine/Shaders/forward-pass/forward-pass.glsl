@@ -139,14 +139,23 @@ void main() {
     vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
     Lo += getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_intensity);
 
+    ShadowParams shadow_params;
+    shadow_params.world_pos = fs_in.world_pos;
+    shadow_params.texture_index = shadow_texture_index;
+    shadow_params.cam_dist = cam_dist;
+    shadow_params.pcf_radius = pcf_radius;
+    shadow_params.pcf_sample_count = pcf_sample_count;
+    shadow_params.shadow_texel_size = 1.0f / cascade_info.cascade_texture_size;
+
     if (light_culling < 0.5) {
         for (int i = 0; i < num_lights; ++i) {
             Light light = lights[i];
             uint light_type = get_light_type(light.flag);
             if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+                shadow_params.ndotl = max(dot(normal, light.direction), 0.0);
                 if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
                     dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(shadow_texture_index, fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                    shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
             } else if (light_type == LIGHT_TYPE_POINT) {
@@ -169,7 +178,7 @@ void main() {
             if (light_type == LIGHT_TYPE_DIRECTIONAL) {
                 if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
                     dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(shadow_texture_index, fs_in.world_pos, cam_dist, cascade_index, pcf_radius, pcf_sample_count), 0.05f);
+                    shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
                 }
                 Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
             } else if (light_type == LIGHT_TYPE_POINT) {

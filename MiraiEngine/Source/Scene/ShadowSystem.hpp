@@ -24,9 +24,8 @@ namespace mirai {
         glm::mat4 VP[NUM_DIRLIGHT_CASCADE];
         float split_distances[4];
 
+        glm::vec2 cascade_texture_size;
         float z_range;
-        float width;
-        float height;
         float _padding;
     };
 
