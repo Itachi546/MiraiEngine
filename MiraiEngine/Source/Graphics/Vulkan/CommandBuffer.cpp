@@ -118,6 +118,10 @@ namespace mirai {
                 VulkanBuffer *buffer = device->access_buffer(state.resource);
                 VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
                 VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
+
+                if (buffer->stage_mask == dst_stage && buffer->access_flags == dst_access_flag)
+                    continue;
+
                 memory_barriers.push_back(CreateBufferMemoryBarrier2(
                     buffer->buffer,
                     buffer->stage_mask,
@@ -160,6 +164,9 @@ namespace mirai {
                     // Special case for depth texture
                     if (is_depth_texture && src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
                         src_stage_mask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+                    if (texture->stage_mask == dst_stage && texture->access_flags == dst_access_flag && texture->current_layout == dst_layout)
+                        continue;
 
                     image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
                                                                        src_stage_mask,
