@@ -59,9 +59,6 @@ vec3 taa(vec2 uv, vec2 texel_size) {
         velocity = sample_texture(velocity_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], closest_position).rg;
     }
     vec2 reprojected_uv = uv - velocity;
-    if (any(lessThan(reprojected_uv, vec2(0.0f))) || any(greaterThan(reprojected_uv, vec2(1.0f)))) {
-        return current_sample;
-    }
     vec3 history_sample = sample_texture(history_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], reprojected_uv).rgb;
     history_sample = clamp(history_sample, min_color, max_color);
     return current_sample * 0.1 + history_sample * 0.9;
