@@ -1143,6 +1143,7 @@ namespace mirai {
 
         bool resized = (width != surface_caps.currentExtent.width) || (height != surface_caps.currentExtent.height);
         if (resized || vsync != AppSettings::enable_vsync) {
+            vkDeviceWaitIdle(device);
             vsync = AppSettings::enable_vsync;
             swapchain->width = surface_caps.currentExtent.width;
             swapchain->height = surface_caps.currentExtent.height;
