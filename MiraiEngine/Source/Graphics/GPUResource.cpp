@@ -1,7 +1,11 @@
 #include "GPUResource.hpp"
 #include "Engine/AppSettings.hpp"
 
+constexpr uint32_t K_INVALID_PAGE_ID = UINT32_MAX;
 namespace mirai {
+
+    std::vector<uint32_t> GPUIndexAllocator::free_lists = {};
+    uint32_t GPUIndexAllocator::next_index = 0;
 
     void GPUResourceDescriptorHeap::new_frame(uint32_t frame_index) {
         per_frame_current_offset = (AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT + frame_index * AppSettings::K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT);
@@ -38,4 +42,54 @@ namespace mirai {
         // We need index into descriptor rather than actual address
         return current_offset;
     }
+
+    BufferView GPUPagedAllocator::allocate(uint32_t size, uint32_t alignment) {
+        uint32_t required_size = align_memory(size, alignment);
+
+        // Check if we can allocate from existing pages
+        uint32_t page = find_existing_page(required_size);
+        if (page == K_INVALID_PAGE_ID) {
+            // Create new allocation
+            BufferDescription buffer_desc = {
+                .size = page_size,
+                .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT | BUFFER_USAGE_INDEX_BUFFER_BIT,
+                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+            };
+            BufferID buffer = RenderingDevice::get()->create_buffer(&buffer_desc, "GPUBufferPage" + std::to_string(allocations.size()));
+            allocations.push_back(Allocation{
+                .id = buffer,
+                .current_offset = required_size,
+            });
+
+            return BufferView{buffer, 0, required_size, nullptr};
+
+        } else {
+            Allocation &allocation = allocations[page];
+            uint32_t offset = allocation.current_offset;
+            allocation.current_offset += required_size;
+            return BufferView{allocation.id, offset, required_size, nullptr};
+        }
+    }
+
+    void GPUPagedAllocator::shutdown() {
+        RenderingDevice *device = RenderingDevice::get();
+        for (auto &allocation : allocations)
+            device->destroy_buffers(&allocation.id, 1);
+    }
+
+    bool GPUPagedAllocator::can_allocate(const Allocation &allocation, uint32_t required_size) {
+        if (allocation.current_offset + required_size > page_size)
+            return false;
+
+        return true;
+    }
+
+    uint32_t GPUPagedAllocator::find_existing_page(uint32_t required_size) {
+        for (uint32_t i = 0; i < allocations.size(); ++i) {
+            if (can_allocate(allocations[i], required_size))
+                return i;
+        }
+        return K_INVALID_PAGE_ID;
+    }
+
 } // namespace mirai

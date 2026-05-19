@@ -16,6 +16,16 @@ namespace mirai {
                    (pack_float_to_u8(z) << 8);
         }
 
+        inline float unpack_u8_to_float(uint32_t x) {
+            return (x - 127.5f) / (127.0f);
+        }
+
+        inline void u32_to_vec3(uint32_t data, float n_out[]) {
+            n_out[0] = unpack_u8_to_float((data >> 24) & 0xff);
+            n_out[1] = unpack_u8_to_float((data >> 16) & 0xff);
+            n_out[2] = unpack_u8_to_float((data >> 8) & 0xff);
+        }
+
         template <typename T>
         inline uint64_t mb_to_bytes(T mb) {
             return mb * 1024 * 1024;

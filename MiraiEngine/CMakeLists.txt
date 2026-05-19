@@ -52,7 +52,8 @@ file(GLOB_RECURSE PROJECT_HEADER_FILES CONFIGURE_DEPENDS Source/*.hpp)
 file(GLOB_RECURSE PROJECT_SOURCE_FILES CONFIGURE_DEPENDS Source/*.cpp)
 
 set( HEADER_FILES ${PROJECT_HEADER_FILES} ${CMAKE_SOURCE_DIR})
-set( SOURCE_FILES ${PROJECT_SOURCE_FILES} "${CMAKE_SOURCE_DIR}/External/SPIRV-Reflect/spirv_reflect.c")
+set( SOURCE_FILES ${PROJECT_SOURCE_FILES} "${CMAKE_SOURCE_DIR}/External/SPIRV-Reflect/spirv_reflect.c"
+                                          "${CMAKE_SOURCE_DIR}/External/MikkTSpace/mikktspace.c")
 
 add_library(${TARGET_NAME} ${MIRAI_LIBRARY_TYPE} ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(${TARGET_NAME} 
@@ -62,6 +63,7 @@ target_include_directories(${TARGET_NAME}
     ../External/glfw/include
     ${CMAKE_CURRENT_SOURCE_DIR}/Source
     ../External/SPIRV-Reflect
+    ../External/MikkTSpace
     ../External/tinygltf
     ../External/stb
     ../External/flat_hash_map

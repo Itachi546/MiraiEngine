@@ -3,69 +3,53 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
 #include "Common/HashMap.hpp"
+#include "Shader.hpp"
 
 #include <vector>
 #include <atomic>
 
 namespace mirai {
-    struct Shader;
 
-    enum PassMode {
-        PASS_MODE_DEPTH_PREPASS = 0,
-        PASS_MODE_FORWARD,
-        PASS_MODE_DIRLIGHT_SHADOW,
-        PASS_MODE_COUNT
-    };
+    class ShaderRegistry {
+      public:
+        ShaderRegistry();
 
-    inline uint32_t GetCustomPassID() {
-        static std::atomic<uint32_t> pass_id = PASS_MODE_COUNT;
-        return pass_id++;
-    }
+        ShaderRegistry(const ShaderRegistry &) = delete;
+        ShaderRegistry(ShaderRegistry &&) = delete;
+        void operator=(const ShaderRegistry &) = delete;
+        void operator=(ShaderRegistry &&) = delete;
 
-    struct ShaderRegistry {
-        std::string name;
-        HashMap<uint32_t, std::shared_ptr<Shader>> table;
+        ~ShaderRegistry() = default;
 
-        ShaderRegistry(const std::string_view name) : name(name) {}
-        Shader *find(uint32_t sort_key) {
-            auto found = table.find(sort_key);
+        Shader *find(uint32_t pso_key) {
+            auto found = table.find(pso_key);
             if (found == table.end())
                 return nullptr;
             return found->second.get();
         }
 
-        void add(uint32_t sort_key, std::shared_ptr<Shader> shader) {
-            auto found = table.find(sort_key);
+        bool has(uint32_t pso_key) {
+            return table.find(pso_key) != table.end();
+        }
+
+        void add(uint64_t pso_key, std::shared_ptr<Shader> shader) {
+            auto found = table.find(pso_key);
             if (found == table.end())
-                table.insert(std::make_pair(sort_key, shader));
+                table.insert(std::make_pair(pso_key, shader));
             else {
                 ASSERT("Failed to add sortkey in registry, already exists");
             }
         }
-    };
 
-    class ShaderRegistryMap {
-      public:
-        ShaderRegistryMap();
-        ShaderRegistryMap(const ShaderRegistryMap &) = delete;
-        ShaderRegistryMap(ShaderRegistryMap &&) = delete;
-        void operator=(const ShaderRegistryMap &) = delete;
-        void operator=(ShaderRegistryMap &&) = delete;
-
-        ~ShaderRegistryMap() = default;
-
-        ShaderRegistry *add_registry(uint32_t pass_mode, std::shared_ptr<ShaderRegistry> shader);
-        ShaderRegistry *get_registry(uint32_t pass_mode);
-
-        static ShaderRegistryMap *get() {
+        static ShaderRegistry *get() {
             return Instance;
         }
 
         void destroy();
 
       private:
-        static ShaderRegistryMap *Instance;
-        HashMap<uint64_t, std::shared_ptr<ShaderRegistry>> shader_registry_map;
+        static ShaderRegistry *Instance;
+        HashMap<uint64_t, std::shared_ptr<Shader>> table;
     };
 
 } // namespace mirai

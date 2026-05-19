@@ -20,7 +20,7 @@ namespace mirai {
 
         float ibl_intensity;
         uint32_t num_lights;
-        float light_culling;
+        float disable_punctual_light;
         uint32_t tile_size;
 
         float mip_bias;
@@ -38,16 +38,16 @@ namespace mirai {
                 uint32_t height = AppSettings::get_height();
 
                 data.color_texture = builder.create_texture("ForwardPassTexture", {
-                                                                                .create_flags = 0,
-                                                                                .width = width,
-                                                                                .height = height,
-                                                                                .depth = 1,
-                                                                                .mip_levels = 1,
-                                                                                .array_layers = 1,
-                                                                                .texture_type = TEXTURE_TYPE_2D,
-                                                                                .format = FORMAT_R16G16B16A16_SFLOAT,
-                                                                                .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
-                                                                            });
+                                                                                      .create_flags = 0,
+                                                                                      .width = width,
+                                                                                      .height = height,
+                                                                                      .depth = 1,
+                                                                                      .mip_levels = 1,
+                                                                                      .array_layers = 1,
+                                                                                      .texture_type = TEXTURE_TYPE_2D,
+                                                                                      .format = FORMAT_R16G16B16A16_SFLOAT,
+                                                                                      .usage_flags = TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT,
+                                                                                  });
                 builder.write(data.color_texture, {
                                                       .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE,
                                                       .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -97,8 +97,6 @@ namespace mirai {
                                                                     .access_flags = ACCESS_FLAG_SHADER_READ,
                                                                     .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                                 });
-
-                data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_FORWARD);
 
                 data.skybox_shader = std::make_shared<EffectMaterial>("OverlaySkyboxShader",
                                                                       std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"},
@@ -150,15 +148,15 @@ namespace mirai {
                     shadow_system->dir_light_params.pcf_radius,
                     shadow_system->dir_light_params.pcf_sample_count,
                     AppSettings::ibl_contribution,
-                    renderer->total_visible_lights,
-                    cast_float(debug_data.light_culling),
+                    renderer->total_lights,
+                    cast_float(renderer->disable_punctual_lights),
                     AppSettings::K_LIGHT_TILE_SIZE,
                     AppSettings::enable_taa ? debug_data.mip_lod_bias : 0.0f,
                     pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id.id,
                     pass_resource.get<FrameGraphTexture>(csm_data.output).id.id,
                 };
 
-                PushData push_data = {
+                BatchPushData push_data = {
                     .data = &push_constant_data,
                     .offset = 0,
                     .size = cast_u32(sizeof(push_constant_data)),
@@ -196,34 +194,45 @@ namespace mirai {
 
                 std::vector<DescriptorOffset> descriptors = {
                     renderer->per_frame_data_descriptor,
-                    renderer->global_geometry_descriptor,
+                    0,
                     renderer->transform_descriptor,
                     0,
                     renderer->material_descriptor,
                     renderer->cascade_data_descriptor,
-                    renderer->per_frame_light_descriptor,
+                    renderer->light_descriptor,
                     light_list_binding,
                 };
 
-                auto draw_batch = [&](const std::vector<RenderBatch> &batches, RenderBatchType batch_type) {
+                ShaderRegistry *registry = ShaderRegistry::get();
+
+                auto draw_batch = [&](const std::vector<RenderBatch> &batches, AlphaMode alpha_mode) {
                     for (const auto &batch : batches) {
-                        if (batch.batch_type != batch_type)
+                        if (batch.get_alpha_mode() != alpha_mode)
                             continue;
+                        /*
                         Shader *shader = is_custom_sort_key(batch.sort_key)
                                              ? batch.custom_shader
                                              : data.registry->find(batch.sort_key);
+                        */
+                        Shader *shader = registry->find(batch.get_pso_key());
+#ifdef _DEBUG
+                        MaterialKey mat_key;
+                        mat_key.hash = batch.get_pso_key() & 0xFFFF;
                         ASSERT(shader != nullptr);
+#endif
+                        descriptors[1] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
+                        descriptors[3] = batch.draw_data_descriptor;
+
                         DrawBatch(command_buffer, batch, {
                                                              .shader = shader,
                                                              .descriptor_infos = descriptors,
                                                              .push_data = &push_data,
-                                                             .draw_data_descriptor_index = 3,
                                                          });
                     }
                 };
 
-                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE);
-                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK);
+                draw_batch(renderer->main_render_batches, ALPHA_MODE_OPAQUE);
+                draw_batch(renderer->main_render_batches, ALPHA_MODE_MASK);
 
                 {
                     Camera *camera = scene->get_camera();
@@ -242,7 +251,7 @@ namespace mirai {
                     LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
                 }
 
-                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_TRANSPARENT);
+                draw_batch(renderer->main_render_batches, ALPHA_MODE_BLEND);
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

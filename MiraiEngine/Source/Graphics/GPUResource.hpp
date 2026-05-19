@@ -37,7 +37,7 @@ namespace mirai {
         uint32_t per_frame_current_offset_end = 0;
     };
 
-    struct GPUBufferAllocation {
+    struct GPULinearAllocator {
         BufferID buffer;
         uint32_t offset;
         uint32_t size;
@@ -55,13 +55,14 @@ namespace mirai {
         }
 
         bool can_allocate(uint32_t required_size) {
-            if (required_size >= (size - offset))
+            if (required_size > (size - offset))
                 return false;
             return true;
         }
 
         BufferView allocate(uint32_t required_size, uint32_t alignment = 64) {
-            required_size = align_memory(required_size, alignment);
+            if (alignment > 0)
+                required_size = align_memory(required_size, alignment);
             if (!can_allocate(required_size)) {
                 ASSERT_MSG(0, "Cannot allocate from buffer");
                 // @TODO handle this
@@ -76,15 +77,60 @@ namespace mirai {
             return buffer_view;
         }
 
-        void destroy() {
+        void reset() {
+            offset = 0;
+        }
+
+        void shutdown() {
             RenderingDevice::get()->destroy_buffers(&buffer, 1);
         }
     };
 
-    struct GPUBufferLinearAllocator : public GPUBufferAllocation {
-        void reset() {
-            offset = 0;
+    /*
+        Used for allocating memory that is resident only in GPU and not accessed by CPU
+        For now, paged allocator is responsible for allocating buffer and releasing it
+    */
+    struct GPUPagedAllocator {
+        void init(uint32_t page_size = 64 * 1024 * 1024) {
+            this->page_size = page_size;
         }
+
+        BufferView allocate(uint32_t size, uint32_t alignment = 64);
+
+        void shutdown();
+
+        struct Allocation {
+            BufferID id;
+            uint32_t current_offset;
+        };
+        std::vector<Allocation> allocations;
+
+      private:
+        uint32_t page_size = 0;
+
+        bool can_allocate(const Allocation &allocation, uint32_t required_size);
+
+        uint32_t find_existing_page(uint32_t required_size);
+    };
+
+    struct GPUIndexAllocator {
+      public:
+        static uint32_t allocate_index() {
+            if (!free_lists.empty()) {
+                uint32_t index = free_lists.back();
+                free_lists.pop_back();
+                return index;
+            }
+            return next_index++;
+        }
+
+        static void free(uint32_t index) {
+            free_lists.push_back(index);
+        }
+
+      private:
+        static std::vector<uint32_t> free_lists;
+        static uint32_t next_index;
     };
 
 }; // namespace mirai

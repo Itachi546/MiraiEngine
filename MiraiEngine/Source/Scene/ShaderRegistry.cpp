@@ -3,61 +3,21 @@
 #include "Shader.hpp"
 
 namespace mirai {
-    ShaderRegistryMap *ShaderRegistryMap::Instance = nullptr;
+    ShaderRegistry *ShaderRegistry::Instance = nullptr;
 
-    ShaderRegistryMap::ShaderRegistryMap() {
+    ShaderRegistry::ShaderRegistry() {
         ASSERT(Instance == nullptr);
         Instance = this;
     }
 
-    ShaderRegistry *ShaderRegistryMap::add_registry(uint32_t pass_mode, std::shared_ptr<ShaderRegistry> shader) {
-        auto found = shader_registry_map.find(pass_mode);
-        if (found != shader_registry_map.end()) {
-            ASSERT_MSG(0, "Material variant already created");
-            return shader_registry_map[pass_mode].get();
-        }
-
-        shader_registry_map.insert(std::make_pair(pass_mode, shader));
-        return shader.get();
-    }
-
-    ShaderRegistry *ShaderRegistryMap::get_registry(uint32_t pass_mode) {
-        auto found = shader_registry_map.find(pass_mode);
-        if (found != shader_registry_map.end())
-            return found->second.get();
-        return nullptr;
-    }
-
-    void ShaderRegistryMap::destroy() {
+    void ShaderRegistry::destroy() {
         std::vector<PipelineID> pipelines;
-        pipelines.reserve(256);
-        for (auto &[pass, registry] : shader_registry_map) {
-            for (auto &[key, val] : registry->table) {
-                pipelines.push_back(val->pipeline_id);
-            }
+        pipelines.reserve(table.size());
+
+        for (auto &[key, val] : table) {
+            pipelines.push_back(val->pipeline_id);
         }
         RenderingDevice::get()->destroy_pipelines(pipelines.data(), cast_u32(pipelines.size()));
-        shader_registry_map.clear();
+        table.clear();
     }
-
-    /*
-    Shader *ShaderRegistryMap::add_shader(uint32_t shader_id, std::shared_ptr<Shader> shader) {
-        auto found = shader_map.find(shader_id);
-        if (found != shader_map.end()) {
-            ASSERT_MSG(0, "Shader already exists");
-            return found->second.get();
-        }
-        shader_map.insert(std::make_pair(shader_id, shader));
-        return shader.get();
-    }
-
-    Shader *ShaderRegistryMap::get_shader(uint32_t shader_id) {
-        auto found = shader_map.find(shader_id);
-        if (found == shader_map.end()) {
-            ASSERT_MSG(0, "Shader not found");
-            return nullptr;
-        }
-        return found->second.get();
-    }
-    */
 } // namespace mirai

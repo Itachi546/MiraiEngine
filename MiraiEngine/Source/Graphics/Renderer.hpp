@@ -11,7 +11,7 @@
 #include "Math/Frustum.hpp"
 namespace mirai {
     class CommandBuffer;
-    class ShaderRegistryMap;
+    class ShaderRegistry;
     class TextureCache;
     class FrameGraph;
     class FrameGraphBlackBoard;
@@ -44,7 +44,7 @@ namespace mirai {
 
         void add_bindless_texture(TextureID texture);
 
-        GPUBufferLinearAllocator *get_per_frame_gpu_allocator() {
+        GPULinearAllocator *get_per_frame_gpu_allocator() {
             ASSERT(frame_flight_index < AppSettings::K_MAX_FRAME_IN_FLIGHTS);
             return &per_frame_allocator[frame_flight_index];
         }
@@ -63,28 +63,30 @@ namespace mirai {
         GPUResourceDescriptorHeap resource_heap;
         GPUSamplerDescriptorHeap sampler_heap;
 
-        DescriptorOffset per_frame_light_descriptor;
-        DescriptorOffset per_frame_data_descriptor;
         DescriptorOffset transform_descriptor;
         DescriptorOffset material_descriptor;
-        DescriptorOffset global_geometry_descriptor;
+        DescriptorOffset light_descriptor;
+
+        DescriptorOffset per_frame_data_descriptor;
         DescriptorOffset cascade_data_descriptor;
 
-        // Global Geometry Buffer
-        const uint32_t DEFAULT_GEOMETRY_BUFFER_ALLOCATION_SIZE = 64 * 1024 * 1024;
-        GPUBufferAllocation vertex_buffer_allocator;
-        GPUBufferAllocation index_buffer_allocator;
+        // Global Geometry Buffer Allocator
+        std::unique_ptr<GPUPagedAllocator> geometry_buffer_allocator;
 
         // Uniform Buffer
-        BufferID global_transform_buffer;
-        BufferID global_material_buffer;
+        std::unique_ptr<GPULinearAllocator> gpu_allocator;
 
+        BufferView transform_buffer;
+        BufferView material_buffer;
+        BufferView light_buffer;
+        
         BufferID blas_buffer_static;
         BufferID blas_buffer_dynamic;
+        BufferID tlas_buffer;
 
         // Acceleration Structure — single instance, GPU-only, safe to reuse each frame (fence wait guarantees GPU idle)
-        BufferID tlas_buffer;
         AccelerationStructure tlas;
+        std::vector<AccelerationStructureID> blas;
 
         // Per frame Uniform Set
         std::vector<RenderBatch> main_render_batches;
@@ -95,8 +97,8 @@ namespace mirai {
         FrustumPlanes freezed_frustum_planes;
         glm::mat4 freezed_inv_VP;
 
-        uint32_t total_visible_lights = 0;
         uint32_t total_visible_entities = 0;
+        uint32_t total_lights = 0;
 
         TextureID blue_noise_texture128;
         uint64_t frame_id;
@@ -108,14 +110,15 @@ namespace mirai {
         std::unique_ptr<TextureCache> texture_cache;
         std::unique_ptr<FrameGraph> frame_graph;
         std::unique_ptr<FrameGraphBlackBoard> frame_graph_blackboard;
-        std::unique_ptr<ShaderRegistryMap> shader_registry_map;
+        std::unique_ptr<ShaderRegistry> shader_registry;
         std::unique_ptr<ShadowSystem> shadow_system;
         std::unique_ptr<LineRenderer> line_renderer;
 
         // Skinning
         std::unique_ptr<ComputeShader> skinning_shader;
+        std::unique_ptr<ComputeShader> patch_buffer_shader;
 
-        void copy_buffers();
+        void upload_per_frame_data();
 
         void initialize();
 
@@ -129,8 +132,6 @@ namespace mirai {
 
         void render();
 
-        void patch_global_data(CommandBuffer *command_buffer);
-
         void create_batches();
 
         void create_blas();
@@ -139,12 +140,28 @@ namespace mirai {
 
         void update_skinned_mesh(CommandBuffer *command_buffer);
 
-        void upload_visible_lights();
+        void upload_transforms(CommandBuffer *command_buffer);
+        void upload_lights(CommandBuffer *command_buffer);
+        void upload_materials(CommandBuffer *command_buffer);
+
+        void prepare_buffer_for_shader_read(CommandBuffer *command_buffer);
+
+        void initialize_scene_default_meshes(CommandBuffer *command_buffer);
+
+        struct BufferPatch {
+            // Buffer in shader are access in the size of 4 bytes, so the offset should be specified in
+            // 4 byte
+            uint32_t offset;
+            // No of element in 4 byte size
+            uint32_t count;
+        };
+
+        void dispatch_patch_copy(CommandBuffer *command_buffer, const BufferView &patch_buffer, const BufferView &src_buffer, const BufferView &dst_buffer, uint32_t total_patches);
 
         uint32_t frame_flight_index;
         const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
         uint32_t bindless_texture_count = 0;
-        GPUBufferLinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
+        GPULinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
         HashMap<uint64_t, DescriptorOffset> descriptor_map;
 
         friend class Engine;

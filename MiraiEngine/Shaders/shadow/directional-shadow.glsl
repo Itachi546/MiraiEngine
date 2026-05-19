@@ -24,8 +24,9 @@ float texture_proj(uint shadow_texture, vec4 shadow_coord, vec2 offset, float bi
 }
 
 float calculate_shadow_bias(ShadowParams shadow_params) {
-    float normal_bias = max(0.05 * (1.0 - shadow_params.ndotl), 0.005);
-    return normal_bias + 0.001f;
+    return 0.001f;
+    //float normal_bias = max(0.05 * (1.0 - shadow_params.ndotl), 0.005);
+    //return normal_bias + 0.001f;
 }
 
 float sample_shadow_disc_pcf(ShadowParams shadow_params, int cascade_index) {

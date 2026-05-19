@@ -14,7 +14,7 @@ namespace AppSettings {
 
     // Renderer Settings
     RenderMode render_mode = RenderMode::RENDERMODE_FORWARD;
-    float ibl_contribution = 0.01f;
+    float ibl_contribution = 0.15f;
 
     /**************************************DEBUG SETTINGS **********************************************/
     bool enable_debug_draw = true;

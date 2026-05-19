@@ -5,10 +5,23 @@
 #include "Common/HashMap.hpp"
 namespace mirai {
 
+    enum MeshType {
+        MESH_TYPE_STATIC = 0,
+        MESH_TYPE_DYNAMIC = 1,
+    };
+
+    enum PassMode : uint8_t {
+        PASS_MODE_DEPTH_PREPASS = 0,
+        PASS_MODE_FORWARD,
+        PASS_MODE_DIRLIGHT_SHADOW,
+        PASS_MODE_COUNT
+    };
+
     enum DrawMode {
         DRAWMODE_INDEXED = 0,
         DRAWMODE_INDEXED_INDIRECT,
         DRAWMODE_INSTANCED,
+        DRAWMODE_COUNT,
     };
 
     enum AlphaMode {
@@ -29,11 +42,14 @@ namespace mirai {
     // Only material-facing variant bits are hashed.
     union MaterialKey {
         struct {
-            uint16_t cull_mode : 2;    // affects pipeline variant
-            uint16_t front_face : 1;   // affects pipeline variant
-            uint16_t polygon_mode : 2; // affects pipeline variant (wireframe)
-            uint16_t alpha_mode : 2;   // opaque / blend / mask
-            uint16_t padding : 9;
+            uint16_t cull_mode : 2;
+            uint16_t front_face : 1;
+            uint16_t polygon_mode : 2;
+            uint16_t alpha_mode : 2;
+            uint16_t draw_mode : 3;
+            uint16_t topology : 4;
+            uint16_t depth_write : 1;
+            uint16_t stencil_test : 1;
         };
         struct {
             uint16_t hash;
@@ -48,72 +64,51 @@ namespace mirai {
         }
     };
 
-    struct MaterialOverrides {
-        uint16_t override_flag = 0;
-        uint16_t override_value = 0;
+    inline uint32_t create_pso_key(PassMode pass, uint16_t mat_key, MeshType mesh_type) {
+        // | PASS | MESH | MAT_KEY |
+        //    8      8      16
 
-        void set_cull_mode(CullMode cull_mode) {
-            override_flag |= 3;
-            override_value |= uint16_t(cull_mode);
-        }
+        return cast_u32(pass) << 24 |
+               cast_u32(mesh_type) << 16 |
+               mat_key;
+    }
 
-        void set_front_face(FrontFace front_face) {
-            override_flag |= 4;
-            override_value |= uint16_t(front_face);
-        }
-
-        void set_polygon_mode(PolygonMode polygon_mode) {
-            override_flag |= 24;
-            override_value |= uint16_t(polygon_mode);
-        }
-
-        void set_alpha_mode(AlphaMode alpha_mode) {
-            override_flag |= 96;
-            override_value |= uint16_t(alpha_mode);
-        }
-    };
-
-    // Material-facing properties — drives sort key and shader variant selection.
-    // render_flags is behavioral and intentionally NOT part of the hash.
-    struct MaterialState {
-        CullMode cull_mode = CULL_MODE_BACK;
-        FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
-        PolygonMode polygon_mode = POLYGON_MODE_FILL;
-        AlphaMode alpha_mode = ALPHA_MODE_OPAQUE;
-        uint32_t render_flags = RENDER_FLAG_DEFAULT;
-
-        uint16_t get_hash() const {
-            MaterialKey key = {};
-            key.cull_mode = cull_mode;
-            key.front_face = front_face;
-            key.polygon_mode = polygon_mode;
-            key.alpha_mode = alpha_mode;
-            key.padding = 0;
-            return key.hash;
-        }
-
-        bool has_flag(RenderFlags flag) const {
-            return (render_flags & flag) == flag;
-        }
-    };
-
+    inline uint64_t create_sort_key(PassMode pass, uint16_t mat_key, MeshType mesh_type, BufferID buffer) {
+        return uint64_t(create_pso_key(pass, mat_key, mesh_type)) << 32 |
+               uint64_t(buffer.id);
+    }
     struct PipelineState {
         CullMode cull_mode = CULL_MODE_BACK;
         FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
         CompareOp depth_op = COMPARE_OP_LESS_OR_EQUAL;
         PolygonMode polygon_mode = POLYGON_MODE_FILL;
         Topology topology = TOPOLOGY_TRIANGLE_LIST;
-        DrawMode draw_mode = DRAWMODE_INDEXED;
+        DrawMode draw_mode = DRAWMODE_INDEXED_INDIRECT;
         BlendMode blend_mode = BLEND_MODE_ADD;
         AlphaMode alpha_mode = ALPHA_MODE_OPAQUE;
-        bool depth_test = false;
-        bool depth_write = false;
+        bool depth_test = true;
+        bool depth_write = true;
         bool depth_bias = false;
         bool depth_clamp = false;
         bool stencil_test = false;
 
-        // Note: PipelineState has no get_hash() — it is only used at shader
-        // creation time. Sort keys are derived from MaterialState::get_hash().
+        uint16_t get_hash(PassMode pass = PASS_MODE_COUNT) const {
+            MaterialKey key = {};
+            if (pass == PASS_MODE_DIRLIGHT_SHADOW && cull_mode != CULL_MODE_NONE) {
+                key.cull_mode = alpha_mode == ALPHA_MODE_OPAQUE ? CULL_MODE_FRONT : CULL_MODE_NONE;
+            } else {
+                key.cull_mode = cull_mode;
+            }
+
+            key.front_face = front_face;
+            key.polygon_mode = polygon_mode;
+            key.alpha_mode = alpha_mode;
+            key.draw_mode = draw_mode;
+            key.topology = topology;
+            key.depth_write = depth_write;
+            key.stencil_test = stencil_test;
+            return key.hash;
+        }
     };
 
     struct PipelineAttachmentInfo {

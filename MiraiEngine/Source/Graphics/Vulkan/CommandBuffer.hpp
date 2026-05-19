@@ -112,5 +112,8 @@ namespace mirai {
         VkCommandBuffer command_buffer;
         uint32_t queue_family_indices;
         VkFence fence;
+
+        BufferID active_index_buffer;
+        PipelineID active_pipeline;
     };
 } // namespace mirai

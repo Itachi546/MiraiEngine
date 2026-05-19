@@ -35,8 +35,6 @@ namespace mirai {
                                                .stage_mask = PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
-                data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DIRLIGHT_SHADOW);
-                ASSERT(data.registry != nullptr);
 
                 board->add<CascadedShadowPassData>(data);
             },
@@ -66,7 +64,7 @@ namespace mirai {
 
                 if (shadow_params.enabled) {
                     uint32_t push_constant_data[] = {0, 0, 0, 0};
-                    PushData push_constants = {
+                    BatchPushData push_data = {
                         .data = &push_constant_data,
                         .offset = 0,
                         .size = sizeof(uint32_t) * 4,
@@ -76,16 +74,31 @@ namespace mirai {
                     std::vector<RenderBatch> render_batches;
                     const DirectionalLightCascadeInfo &cascade_info = shadow_system->cascade_info;
 
+                    uint32_t current_frame = RenderingDevice::get()->get_current_frame_in_flight_index();
                     std::vector<DescriptorOffset> descriptors = {
                         renderer->cascade_data_descriptor,
-                        renderer->global_geometry_descriptor,
+                        0,
                         0,
                         renderer->transform_descriptor,
                     };
+                    ShaderRegistry *registry = ShaderRegistry::get();
 
-                    uint32_t current_frame = RenderingDevice::get()->get_current_frame_in_flight_index();
-                    MaterialOverrides pass_state_override;
-                    pass_state_override.set_cull_mode(CULL_MODE_FRONT);
+                    auto draw_batch = [&](const std::vector<RenderBatch> &batches, AlphaMode alpha_mode) {
+                        for (const auto &batch : render_batches) {
+                            if (batch.get_alpha_mode() == alpha_mode && batch.draw_infos.size() > 0) {
+                                Shader *shader = registry->find(batch.get_pso_key());
+                                ASSERT(shader != nullptr);
+
+                                descriptors[1] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
+                                descriptors[2] = batch.draw_data_descriptor;
+                                DrawBatch(command_buffer, batch, {
+                                                                     .shader = shader,
+                                                                     .descriptor_infos = descriptors,
+                                                                     .push_data = &push_data,
+                                                                 });
+                            }
+                        }
+                    };
 
                     for (uint32_t i = 0; i < NUM_DIRLIGHT_CASCADE; ++i) {
                         std::string split = "Split" + std::to_string(i);
@@ -99,10 +112,8 @@ namespace mirai {
                         DrawBatchGenerator::BuildBatches(
                             renderer->get_scene(),
                             BatchBuildParams{
-                                .filter_flags = BATCH_FILTER_FLAG_OPAQUE | BATCH_FILTER_FLAG_ALPHA_MASK,
                                 .frustum = &frustum_planes,
-                                .pass_state_override = &pass_state_override,
-                                .shadow_pass = true,
+                                .pass = PASS_MODE_DIRLIGHT_SHADOW,
                             },
                             render_batches);
 
@@ -126,41 +137,17 @@ namespace mirai {
                         command_buffer->set_scissor(x, y, width, height);
 
                         // Draw Opaque batch
-                        for (const auto &batch : render_batches) {
-                            if (batch.batch_type == RENDERBATCH_TYPE_OPAQUE && batch.meshes.size() > 0) {
-                                Shader *shader = data.registry->find(batch.sort_key);
-                                ASSERT(shader != nullptr);
-                                DrawBatch(command_buffer, batch, {
-                                                                     .shader = shader,
-                                                                     .descriptor_infos = descriptors,
-                                                                     .push_data = &push_constants,
-                                                                     .draw_data_descriptor_index = 2,
-                                                                 });
-                            }
-                        }
+                        draw_batch(render_batches, ALPHA_MODE_OPAQUE);
 
                         // Draw Alpha mask batch
                         descriptors.push_back(renderer->material_descriptor);
-                        for (const auto &batch : render_batches) {
-                            if (batch.batch_type == RENDERBATCH_TYPE_ALPHA_MASK && batch.meshes.size() > 0) {
-                                // Set the cull mode to none for alpha mask, instead of front
-                                uint32_t sort_key = (batch.sort_key & ~(3 << 16));
-                                Shader *shader = data.registry->find(sort_key);
-                                ASSERT(shader != nullptr);
-                                DrawBatch(command_buffer, batch, {
-                                                                     .shader = shader,
-                                                                     .descriptor_infos = descriptors,
-                                                                     .push_data = &push_constants,
-                                                                     .draw_data_descriptor_index = 2,
-                                                                 });
-                            }
-                        }
+                        draw_batch(render_batches, ALPHA_MODE_MASK);
 
                         command_buffer->end_gpu_debug_label();
-
                         render_batches.clear();
                     }
                 }
+
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();
             });

@@ -8,7 +8,8 @@
 #include "Engine/Engine.hpp"
 #include "Engine/Profiler.hpp"
 #include "Common/Random.hpp"
-#include "Math/Math.hpp"
+#include "Graphics/Renderer.hpp"
+#include "MeshData.hpp"
 #include <execution>
 
 namespace mirai {
@@ -140,11 +141,6 @@ namespace mirai {
 
         // if frustum is freezed then we don't regenerate render object list
         generate_render_object_list();
-
-        if (updated_transforms.size() > 0)
-            std::sort(updated_transforms.begin(), updated_transforms.end());
-        if (updated_materials.size() > 0)
-            std::sort(updated_materials.begin(), updated_materials.end());
     }
 
     void Scene::remove_entity_tree(Entity entity) {
@@ -255,8 +251,10 @@ namespace mirai {
             transform->world_transform = parent_transform * transform->local_transform;
             transform->dirty = false;
             uint32_t transform_component_index = ecs->component_manager->get_component_index<TransformComponent>(entity);
-            // Update list of transforms to be patched
-            updated_transforms.push_back(transform_component_index);
+            // We only need to update the GPU buffer for transform that is actually rendered
+            MeshComponent *mesh_component = ecs->component_manager->get_component<MeshComponent>(entity);
+            if (mesh_component)
+                updated_transforms.push_back(std::make_pair(transform_component_index, mesh_component->gpu_index));
             force_update = true;
         }
 
@@ -272,12 +270,7 @@ namespace mirai {
     }
 
     void Scene::generate_render_object_list() {
-
-        // Calculated only when object is added or removed
-        // @TODO calculate it only once if possible
         ScopedCpuProfiling("Update Draw Data");
-        // Even though the draw data hasn't changed, we must calculate the
-        // transformed AABB every frame
 
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
@@ -293,14 +286,12 @@ namespace mirai {
             AnimatorComponent *animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
             is_skinned = animator ? true : false;
 
-            BufferView vertex_buffer = mesh_component.vertex_buffer;
-            BufferView index_buffer = mesh_component.index_buffer;
-
             const float K_BONE_RADIUS = 1.0f;
-            for (uint32_t s = 0; s < mesh_component.mesh_subsets.size(); ++s) {
-                MeshComponent::MeshSubset &subset = mesh_component.mesh_subsets[s];
-                AABB transformed_aabb = mesh_component.aabbs[s];
+            for (uint32_t p = 0; p < mesh_component.primitives.size(); ++p) {
+                const Primitive &primitive = mesh_component.primitives[p];
+                const MeshAllocation &allocation = mesh_allocations[primitive.mesh];
 
+                AABB transformed_aabb = allocation.local_aabb;
                 // Create a combined AABB from animated pose and rest pose
                 if (is_skinned) {
                     const auto &animation_player = animation_players[animator->animation_player_index];
@@ -321,20 +312,60 @@ namespace mirai {
 
                 render_object_list[index] = RenderableObjectData{
                     .entity = entity,
-                    .material_index = subset.material_index,
+                    .material_index = primitive.material,
+                    .transform_index = mesh_component.gpu_index,
                     .mesh_type = mesh_component.mesh_type,
-                    .vertex_buffer = vertex_buffer.buffer,
-                    .index_buffer = index_buffer.buffer,
-                    .vertex_offset_bytes = is_skinned ? subset.output_vertex_offset_bytes : subset.vertex_offset_bytes, // Manually calculating in shader
-                    .first_index = cast_u32(subset.index_offset_bytes / sizeof(uint32_t)),
-                    .index_count = subset.index_count,
+                    .buffer = allocation.buffer,
+                    .vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes,
+                    .first_index = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t)),
+                    .index_count = allocation.index_count,
                     .vertex_stride = K_VERTEX_DATA_SIZE,
-                    .blas_buffer_device_address = mesh_component.blases[s].buffer_device_address,
+                    .blas_buffer_device_address = allocation.blas.buffer_device_address,
                     .transformed_aabb = transformed_aabb,
                 };
             }
         });
         jobsystem::Wait();
+    }
+
+    Entity Scene::create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index) {
+        ASSERT(mesh_index != K_INVALID_ID);
+        Entity entity = create_entity(name);
+        MeshComponent mesh_component = {
+            .mesh_type = MESH_TYPE_STATIC,
+            .gpu_index = GPUIndexAllocator::allocate_index(),
+            .primitives = {
+                Primitive{.mesh = mesh_index, .material = material_index},
+            },
+        };
+        ecs->component_manager->add_component<MeshComponent>(entity, mesh_component);
+        return entity;
+    }
+
+    Entity Scene::create_plane(const std::string &name) {
+
+        uint32_t material_index = cast_u32(materials.size());
+        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
+        material->set_cull_mode(CULL_MODE_NONE);
+        materials.push_back(std::move(material));
+
+        return create_entity(name, plane_mesh_index, material_index);
+    }
+
+    Entity Scene::create_cube(const std::string &name) {
+        uint32_t material_index = cast_u32(materials.size());
+        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
+        materials.push_back(std::move(material));
+
+        return create_entity(name, cube_mesh_index, material_index);
+    }
+
+    Entity Scene::create_sphere(const std::string &name) {
+        uint32_t material_index = cast_u32(materials.size());
+        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
+        materials.push_back(std::move(material));
+
+        return create_entity(name, sphere_mesh_index, material_index);
     }
 
     void Scene::remove_entity(Entity entity) {

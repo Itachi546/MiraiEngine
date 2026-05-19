@@ -9,6 +9,7 @@
 #include "Scene/Camera.hpp"
 #include "Scene/AsyncLoader.hpp"
 #include "Scene/Animation.hpp"
+#include "Scene/MeshData.hpp"
 #include "Component.hpp"
 #include "Common/FileUtils.hpp"
 #include "Math/MathUtils.hpp"
@@ -51,10 +52,11 @@ namespace mirai {
     };
     struct LoadState {
         Scene *scene;
-        std::vector<MeshComponent> mesh_components;
         uint32_t material_base_offset;
         uint32_t animation_player_base_offset;
+
         // Map of node and it's position in scene animation_clip vector
+        std::vector<MeshComponent> mesh_components;
         std::vector<TempAnimation> animations;
         HashSet<int> global_joint_list;
         AsyncLoader *async_loader;
@@ -81,7 +83,7 @@ namespace mirai {
             return FORMAT_UNDEFINED;
         }
     }
-
+    /*
     FilterMode get_sampler_filter(int filter) {
         switch (filter) {
         case TINYGLTF_TEXTURE_FILTER_NEAREST:
@@ -121,7 +123,7 @@ namespace mirai {
             return SAMPLER_ADDRESS_MODE_REPEAT;
         };
     }
-
+    */
     bool is_srgb_format(dds::DXGI_FORMAT format) {
         switch (format) {
         case dds::DXGI_FORMAT_BC7_UNORM_SRGB:
@@ -369,6 +371,7 @@ namespace mirai {
             if (alpha_mode == "OPAQUE")
                 material->set_alpha_mode(ALPHA_MODE_OPAQUE);
             else if (alpha_mode == "BLEND") {
+                material->set_depth_write(false);
                 material->set_alpha_mode(ALPHA_MODE_BLEND);
             } else if (alpha_mode == "MASK")
                 material->set_alpha_mode(ALPHA_MODE_MASK);
@@ -433,68 +436,58 @@ namespace mirai {
     }
 
     void LoadMeshes(const tinygltf::Model *model, LoadState *load_state) {
+        Renderer *renderer = Renderer::get();
+        Scene *scene = load_state->scene;
+
         size_t mesh_count = model->meshes.size();
-        std::vector<MeshComponent> &mesh_components = load_state->mesh_components;
-        mesh_components.resize(mesh_count);
-
-        uint32_t gpu_mesh_index = static_cast<uint32_t>(load_state->scene->gpu_meshes.size());
-        GpuMesh &gpu_mesh = load_state->scene->gpu_meshes.emplace_back(GpuMesh{});
-
-        std::vector<uint8_t> &vertices = gpu_mesh.vertices;
-        std::vector<uint32_t> &indices = gpu_mesh.indices;
-
         for (uint32_t m = 0; m < mesh_count; ++m) {
-            MeshComponent &mesh_component = mesh_components[m];
-            mesh_component.mesh_type = MESH_TYPE_STATIC;
+            const tinygltf::Mesh &gltf_mesh = model->meshes[m];
+            uint32_t primitive_count = cast_u32(gltf_mesh.primitives.size());
+
+            MeshComponent &mesh_component = load_state->mesh_components.emplace_back();
+            mesh_component.primitives.resize(primitive_count);
 
             bool is_skinned_mesh = false;
-            mesh_component.gpu_mesh_index = gpu_mesh_index;
-            const tinygltf::Mesh &gltf_mesh = model->meshes[m];
-
-            uint32_t primitive_count = static_cast<uint32_t>(gltf_mesh.primitives.size());
-            mesh_component.mesh_subsets.resize(primitive_count);
-            mesh_component.aabbs.resize(primitive_count);
+            bool has_tangent_space = false;
 
             for (uint32_t p = 0; p < primitive_count; ++p) {
-                const auto &primitive = gltf_mesh.primitives[p];
-                uint32_t vertex_offset_bytes = static_cast<uint32_t>(vertices.size());
-                uint32_t index_offset_bytes = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
+                const auto &gltf_primitive = gltf_mesh.primitives[p];
+                const std::map<std::string, int> &attributes = gltf_primitive.attributes;
 
-                auto position_attributes = primitive.attributes.find("POSITION");
+                // Parse position
+                auto position_attributes = attributes.find("POSITION");
+                ASSERT(position_attributes != attributes.end());
                 const tinygltf::Accessor position_accessor = model->accessors[position_attributes->second];
                 float *positions = (float *)GetBufferPtr(model, position_accessor);
 
+                // Parse normal
                 float *normals = nullptr;
-                auto normal_attributes = primitive.attributes.find("NORMAL");
+                auto normal_attributes = attributes.find("NORMAL");
+                ASSERT(normal_attributes != attributes.end());
                 const tinygltf::Accessor normal_accessor = model->accessors[normal_attributes->second];
-                if (normal_attributes != primitive.attributes.end())
-                    normals = (float *)GetBufferPtr(model, normal_accessor);
+                normals = (float *)GetBufferPtr(model, normal_accessor);
 
+                // Parse tangent
                 float *tangents = nullptr;
-                auto tangent_attributes = primitive.attributes.find("TANGENT");
-                if (tangent_attributes != primitive.attributes.end()) {
+                auto tangent_attributes = attributes.find("TANGENT");
+                if (tangent_attributes != attributes.end()) {
                     const tinygltf::Accessor tangent_accessor = model->accessors[tangent_attributes->second];
-                    if (tangent_attributes != primitive.attributes.end())
-                        tangents = (float *)GetBufferPtr(model, tangent_accessor);
+                    tangents = (float *)GetBufferPtr(model, tangent_accessor);
+                    has_tangent_space = true;
                 }
 
+                // Parse texture coordinates
                 float *uvs = nullptr;
-                auto uv_attributes = primitive.attributes.find("TEXCOORD_0");
-                if (uv_attributes != primitive.attributes.end()) {
+                auto uv_attributes = attributes.find("TEXCOORD_0");
+                if (uv_attributes != attributes.end()) {
                     const tinygltf::Accessor uv_accessor = model->accessors[uv_attributes->second];
                     uvs = (float *)GetBufferPtr(model, uv_accessor);
                 }
-                uint32_t num_position = static_cast<uint32_t>(position_accessor.count);
-                AABB &aabb = mesh_component.aabbs[p];
-                aabb.min = glm::vec3{FLT_MAX};
-                aabb.max = glm::vec3{-FLT_MAX};
 
                 // Parse animation data
-                bool has_animation_data = false;
-                auto joint_attributes = primitive.attributes.find("JOINTS_0");
+                auto joint_attributes = attributes.find("JOINTS_0");
                 std::vector<uint32_t> joints;
-                if (joint_attributes != primitive.attributes.end()) {
-                    has_animation_data = true;
+                if (joint_attributes != attributes.end()) {
                     is_skinned_mesh = true;
 
                     const tinygltf::Accessor joint_accessor = model->accessors[joint_attributes->second];
@@ -511,8 +504,8 @@ namespace mirai {
                 }
 
                 float *weights = nullptr;
-                auto weights_attributes = primitive.attributes.find("WEIGHTS_0");
-                if (weights_attributes != primitive.attributes.end()) {
+                auto weights_attributes = attributes.find("WEIGHTS_0");
+                if (weights_attributes != attributes.end()) {
                     const tinygltf::Accessor weights_accessor = model->accessors[weights_attributes->second];
                     ASSERT(weights_accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
                     ASSERT(weights_accessor.type == TINYGLTF_TYPE_VEC4);
@@ -520,45 +513,48 @@ namespace mirai {
                 }
 
                 // Copy local vertex data
-                uint32_t vertex_stride = has_animation_data ? K_VERTEX_DATA_SIZE_SKINNED : K_VERTEX_DATA_SIZE;
+                uint32_t vertex_stride = is_skinned_mesh ? K_VERTEX_DATA_SIZE_SKINNED : K_VERTEX_DATA_SIZE;
+                uint32_t num_position = cast_u32(position_accessor.count);
+
+                AABB local_aabb = {glm::vec3(FLT_MAX), glm::vec3(-FLT_MAX)};
+
+                auto parse_vec3 = [](int index, float *ptr) {
+                    return glm::vec3(ptr[index * 3], ptr[index * 3 + 1], ptr[index * 3 + 2]);
+                };
+
+                std::vector<uint8_t> vertices;
+                vertices.reserve(num_position * vertex_stride);
+
                 for (uint32_t i = 0; i < num_position; ++i) {
-                    TempVertex vertex;
-                    vertex.position = glm::vec3{
-                        positions[i * 3],
-                        positions[i * 3 + 1],
-                        positions[i * 3 + 2]};
+                    // We assume and allocate the total vertex data required for skinned mesh, but on copy partial data if it is not skinned
+                    SkinnedVertexData vertex;
+                    vertex.position = parse_vec3(i, positions);
 
-                    aabb.min = glm::min(aabb.min, vertex.position);
-                    aabb.max = glm::max(aabb.max, vertex.position);
+                    local_aabb.min = glm::min(local_aabb.min, vertex.position);
+                    local_aabb.max = glm::max(local_aabb.max, vertex.position);
 
-                    glm::vec3 normal;
-                    if (normals != nullptr)
-                        normal = {normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]};
-                    else
-                        normal = {0.0f, 1.0f, 0.0f};
-
+                    glm::vec3 normal = parse_vec3(i, normals);
                     vertex.normal = utils::pack_vec3_to_u32(normal.x, normal.y, normal.z);
 
-                    glm::vec4 tangent;
-                    if (tangents != nullptr)
-                        tangent = {
+                    vertex.tangent = 0;
+                    vertex.bitangent = 0;
+                    if (tangents != nullptr) {
+                        glm::vec4 tangent = {
                             tangents[i * 4],
                             tangents[i * 4 + 1],
                             tangents[i * 4 + 2],
                             tangents[i * 4 + 3],
                         };
-                    else
-                        tangent = {1.0f, 0.0f, 0.0f, 1.0f};
-
-                    vertex.tangent = utils::pack_vec3_to_u32(tangent.x, tangent.y, tangent.z);
-
-                    glm::vec3 bitangent = glm::cross(normal, glm::vec3(tangent)) * tangent.w;
-                    vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
+                        vertex.tangent = utils::pack_vec3_to_u32(tangent.x, tangent.y, tangent.z);
+                        glm::vec3 bitangent = glm::cross(normal, glm::vec3(tangent)) * tangent.w;
+                        vertex.bitangent = utils::pack_vec3_to_u32(bitangent.x, bitangent.y, bitangent.z);
+                    }
 
                     if (uvs != nullptr) {
                         vertex.uv = {uvs[i * 2 + 0], uvs[i * 2 + 1]};
                     }
-                    if (has_animation_data) {
+
+                    if (is_skinned_mesh) {
                         vertex.joints = cast_u32(joints[i * 4]) << 24 |
                                         cast_u32(joints[i * 4 + 1]) << 16 |
                                         cast_u32(joints[i * 4 + 2]) << 8 |
@@ -573,81 +569,67 @@ namespace mirai {
                         // Never exactly 1.0f
                         ASSERT(vertex.weights.x + vertex.weights.y + vertex.weights.z + vertex.weights.w <= 1.001f);
                     }
+
                     uint8_t *vertex_bytes = reinterpret_cast<uint8_t *>(&vertex);
                     vertices.insert(vertices.end(), vertex_bytes, vertex_bytes + vertex_stride);
                 }
 
-                const tinygltf::Accessor &indices_accessor = model->accessors[primitive.indices];
+                // Parse indices
+                const tinygltf::Accessor &indices_accessor = model->accessors[gltf_primitive.indices];
                 uint32_t index_count = static_cast<uint32_t>(indices_accessor.count);
+                uint32_t index_data_size = cast_u32(index_count * sizeof(uint32_t));
+
+                std::vector<uint8_t> indices;
+                indices.resize(index_data_size);
+
                 if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-                    uint32_t *indices_ptr = (uint32_t *)GetBufferPtr(model, indices_accessor);
-                    indices.insert(indices.end(), indices_ptr, indices_ptr + index_count);
+                    uint8_t *indices_ptr = (uint8_t *)GetBufferPtr(model, indices_accessor);
+                    std::memcpy(indices.data(), indices_ptr, index_data_size);
                 } else if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                     uint16_t *indices_ptr = (uint16_t *)GetBufferPtr(model, indices_accessor);
-                    indices.insert(indices.end(), indices_ptr, indices_ptr + index_count);
+                    uint32_t *dst = reinterpret_cast<uint32_t *>(indices.data());
+                    for (uint32_t i = 0; i < index_count; ++i)
+                        dst[i] = indices_ptr[i];
                 }
 
-                MeshComponent::MeshSubset &mesh_subset = mesh_component.mesh_subsets[p];
-                mesh_subset.vertex_offset_bytes = vertex_offset_bytes;
-                mesh_subset.vertex_count = num_position;
-                mesh_subset.index_offset_bytes = index_offset_bytes;
-                mesh_subset.vertex_stride = vertex_stride;
-                mesh_subset.index_count = index_count;
+                MeshHandle mesh_handle = cast_u32(scene->mesh_allocations.size());
+
+                Primitive &primitive = mesh_component.primitives[p];
+                primitive.mesh = mesh_handle;
 
                 ASSERT(primitive.material >= 0);
-                mesh_subset.material_index = primitive.material + load_state->material_base_offset;
+                primitive.material = gltf_primitive.material + load_state->material_base_offset;
+
+                // We allocate additional space for vertex data if the mesh is skinned
+                uint32_t vertex_data_size = cast_u32(vertices.size());
+                if (is_skinned_mesh)
+                    vertex_data_size *= 2;
+
+                BufferView buffer = renderer->geometry_buffer_allocator->allocate(vertex_data_size + index_data_size);
+
+                load_state->async_loader->push({
+                    .task_type = TaskType::UploadBuffer,
+                    .data = BufferCopyTask{buffer.buffer, buffer.offset, std::move(vertices)},
+                });
+
+                load_state->async_loader->push({
+                    .task_type = TaskType::UploadBuffer,
+                    .data = BufferCopyTask{buffer.buffer, buffer.offset + vertex_data_size, std::move(indices)},
+                });
+
+                // Allocate memory in the buffer
+                MeshAllocation &mesh_allocation = scene->mesh_allocations.emplace_back();
+                mesh_allocation.buffer = buffer.buffer;
+                mesh_allocation.blas.as = AccelerationStructureID{K_INVALID_ID};
+                mesh_allocation.local_aabb = local_aabb;
+                mesh_allocation.vertex_offset_bytes = buffer.offset;
+                mesh_allocation.index_offset_bytes = buffer.offset + vertex_data_size;
+                mesh_allocation.vertex_count = num_position;
+                mesh_allocation.vertex_stride = vertex_stride;
+                mesh_allocation.index_count = index_count;
+                mesh_allocation.ouput_vertex_offset_bytes = is_skinned_mesh ? buffer.offset + vertex_data_size / 2 : 0;
             }
         }
-
-        // @TODO May cause issue later when multiple mesh are loaded in different thread
-        // Pushing to the vector may invalidates all the reference
-        Renderer *renderer = Renderer::get();
-        uint32_t vertex_buffer_size = static_cast<uint32_t>(vertices.size());
-        BufferView vertex_buffer = renderer->vertex_buffer_allocator.allocate(vertex_buffer_size);
-        load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
-                                        .data = BufferCopyTask{
-                                            .dst = vertex_buffer.buffer,
-                                            .data = vertices.data(),
-                                            .offset_in_bytes = vertex_buffer.offset,
-                                            .size_in_bytes = vertex_buffer_size,
-                                        }});
-
-        uint32_t index_buffer_size = static_cast<uint32_t>(indices.size() * sizeof(uint32_t));
-        BufferView index_buffer = renderer->index_buffer_allocator.allocate(index_buffer_size);
-
-        load_state->async_loader->push({.task_type = TaskType::UploadBuffer,
-                                        .data = BufferCopyTask{
-                                            .dst = index_buffer.buffer,
-                                            .data = indices.data(),
-                                            .offset_in_bytes = index_buffer.offset,
-                                            .size_in_bytes = index_buffer_size,
-                                        }});
-
-        // Add global vertex buffer offset to the subset as well
-        for (auto &mesh_component : mesh_components) {
-            mesh_component.vertex_buffer = vertex_buffer;
-            mesh_component.index_buffer = index_buffer;
-
-            /**
-             * Skinned mesh are transformed using compute shader before rendering in the
-             * forward/deferred pass. The transformed vertices are stored alongside the
-             * main vertices. We allocate extra memory for transformed vertices as well.
-             */
-            for (auto &mesh_subset : mesh_component.mesh_subsets) {
-                mesh_subset.vertex_offset_bytes += vertex_buffer.offset;
-                mesh_subset.index_offset_bytes += index_buffer.offset;
-                if (mesh_subset.vertex_stride == K_VERTEX_DATA_SIZE_SKINNED) {
-                    BufferView skinned_mesh_output_buffer = renderer->vertex_buffer_allocator.allocate(mesh_subset.vertex_count * AppSettings::K_SKINNED_VERTEX_OUTPUT_SIZE);
-                    mesh_subset.output_vertex_offset_bytes = skinned_mesh_output_buffer.offset;
-                }
-            }
-        }
-
-        gpu_mesh.vertex_buffer = vertex_buffer;
-        gpu_mesh.vertex_buffer_size = vertex_buffer_size;
-
-        gpu_mesh.index_buffer = index_buffer;
-        gpu_mesh.index_buffer_size = index_buffer_size;
     }
 
     InterpolationMode get_interpolation_mode(const std::string &mode) {
@@ -916,6 +898,7 @@ namespace mirai {
                 ASSERT(mesh_id < cast_int(load_state->mesh_components.size()));
                 MeshComponent &mesh_comp = comp_manager->add_component<MeshComponent>(entity, load_state->mesh_components[mesh_id]);
                 mesh_comp.mesh_type = mesh_type;
+                mesh_comp.gpu_index = GPUIndexAllocator::allocate_index();
                 name = model->meshes[mesh_id].name;
             }
         }

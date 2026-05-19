@@ -190,5 +190,6 @@ namespace mirai {
         std::deque<std::pair<ID, uint64_t>> destroyed_textures;
         std::deque<std::pair<ID, uint64_t>> destroyed_pipelines;
         std::deque<std::pair<ID, uint64_t>> destroyed_queries;
+        std::deque<std::pair<ID, uint64_t>> destroyed_acceleration_structures;
     };
 } // namespace mirai

@@ -4,8 +4,6 @@
 #include "Scene/Material.hpp"
 
 namespace mirai {
-    struct ShaderRegistry;
-
     struct FinalCompositePassData {
         FrameGraphResourceHandle output;
         std::shared_ptr<EffectMaterial> shader;
@@ -13,7 +11,6 @@ namespace mirai {
 
     struct DepthPrePassData {
         FrameGraphResourceHandle output;
-        ShaderRegistry *registry;
     };
 
     struct ViewNormalDepthPassData {
@@ -41,7 +38,6 @@ namespace mirai {
 
     struct CascadedShadowPassData {
         FrameGraphResourceHandle output;
-        ShaderRegistry *registry;
     };
 
     struct TiledLightCullPassData {
@@ -54,7 +50,6 @@ namespace mirai {
     struct ForwardPassData {
         FrameGraphResourceHandle color_texture;
         FrameGraphResourceHandle velocity_buffer;
-        ShaderRegistry *registry;
         std::shared_ptr<EffectMaterial> skybox_shader;
     };
 
@@ -63,7 +58,6 @@ namespace mirai {
         int debug_param_index;
         bool show_debug_cascade_color;
         bool enable_gamma_correction;
-        bool light_culling;
         float exposure;
         float mip_lod_bias;
 

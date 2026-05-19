@@ -134,16 +134,17 @@ namespace mirai {
     }
 
     void AsyncLoader::copy_buffer(CommandBuffer *command_buffer, const BufferCopyTask &copy_task, void *staging_buffer_ptr) {
-        uint32_t copy_data_size = std::min(staging_buffer_size, copy_task.size_in_bytes);
+        uint32_t size_in_bytes = cast_u32(copy_task.data.size());
+        uint32_t copy_data_size = std::min(staging_buffer_size, size_in_bytes);
 
-        memcpy(staging_buffer_ptr, copy_task.data, copy_data_size);
+        memcpy(staging_buffer_ptr, copy_task.data.data(), copy_data_size);
 
         // Immediate Copy
         command_buffer->begin();
 
         BufferCopyRegion copy_region = {
             .src_offset = 0,
-            .dst_offset = copy_task.offset_in_bytes,
+            .dst_offset = copy_task.dst_offset,
             .size = copy_data_size,
         };
         command_buffer->copy_buffer(copy_task.dst, staging_buffer, &copy_region, 1);
@@ -152,19 +153,18 @@ namespace mirai {
         command_buffer->wait();
 
         // Check if the copy size is greater than the staging buffer
-        if (copy_task.size_in_bytes > staging_buffer_size) {
-            uint32_t remaining_data_size = copy_task.size_in_bytes - staging_buffer_size;
+        if (size_in_bytes > copy_data_size) {
+            uint32_t remaining_data_size = size_in_bytes - copy_data_size;
+            std::vector<uint8_t> remaining_data{copy_task.data.begin() + staging_buffer_size, copy_task.data.end()};
             copy_buffer(
                 command_buffer,
                 BufferCopyTask{
                     .dst = copy_task.dst,
-                    .data = ((uint8_t *)copy_task.data + staging_buffer_size),
-                    .offset_in_bytes = staging_buffer_size + copy_task.offset_in_bytes,
-                    .size_in_bytes = remaining_data_size,
-
+                    .dst_offset = staging_buffer_size + copy_task.dst_offset,
+                    .data = remaining_data,
                 },
                 staging_buffer_ptr);
-            Log::Warn("Splitting data, total: ", copy_task.size_in_bytes, " remaining: ", remaining_data_size);
+            Log::Warn("Splitting data, total: ", size_in_bytes, " remaining: ", remaining_data_size);
         }
     }
 

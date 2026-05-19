@@ -33,8 +33,6 @@ namespace mirai {
                                                .layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                                            });
 
-                data.registry = ShaderRegistryMap::get()->get_registry(PASS_MODE_DEPTH_PREPASS);
-                ASSERT(data.registry != nullptr);
                 board->add<DepthPrePassData>(data);
             },
             [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -70,31 +68,40 @@ namespace mirai {
                 });
                 command_buffer->set_scissor(0, 0, width, height);
 
-                const auto draw_batch = [&](const std::vector<RenderBatch> &render_batches, RenderBatchType render_batch_type, const std::vector<DescriptorOffset> &descriptor_infos) {
+                /*
+                    Batch is changed by two things only
+                    1. Shader
+                    2. Buffer
+                */
+                ShaderRegistry *registry = ShaderRegistry::get();
+                std::vector<DescriptorOffset> descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, 0, 0};
+                const auto draw_batch = [&](const std::vector<RenderBatch> &render_batches, AlphaMode alpha_mode) {
                     for (const auto &batch : render_batches) {
-                        if (batch.batch_type != render_batch_type)
+                        if (batch.get_alpha_mode() != alpha_mode)
                             continue;
 
-                        Shader *shader = data.registry->find(batch.sort_key);
+                        uint32_t mat_key = (batch.sort_key >> 32) & 0x00FFFFFF;
+                        uint32_t pso_key = uint8_t(PASS_MODE_DEPTH_PREPASS) << 24 | mat_key;
+                        Shader *shader = registry->find(pso_key);
                         ASSERT(shader != nullptr);
+
+                        // @TODO temp
+                        descriptor_infos[2] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
+                        descriptor_infos[3] = batch.draw_data_descriptor;
 
                         DrawBatch(command_buffer, batch, {
                                                              .shader = shader,
                                                              .descriptor_infos = descriptor_infos,
                                                              .push_data = nullptr,
-                                                             // Used to override descriptor info at given index
-                                                             .draw_data_descriptor_index = 3,
                                                          });
                     }
                 };
 
                 // Draw Opaque object
-                std::vector<DescriptorOffset>
-                    descriptor_infos = {renderer->per_frame_data_descriptor, renderer->transform_descriptor, renderer->global_geometry_descriptor, 0};
-                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_OPAQUE, descriptor_infos);
+                draw_batch(renderer->main_render_batches, ALPHA_MODE_OPAQUE);
 
                 descriptor_infos.push_back(renderer->material_descriptor);
-                draw_batch(renderer->main_render_batches, RENDERBATCH_TYPE_ALPHA_MASK, descriptor_infos);
+                draw_batch(renderer->main_render_batches, ALPHA_MODE_MASK);
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

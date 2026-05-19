@@ -737,9 +737,11 @@ namespace mirai {
     }
 
     void VulkanRenderingDevice::resize_buffer(const BufferDescription *buffer_description, BufferID resize_buffer, bool should_copy_data, const std::string &debug_name) {
-        VulkanBuffer temp_buffer;
+        uint32_t temp_buffer_id = resource_pool_buffers.obtain();
+        VulkanBuffer *temp_buffer = resource_pool_buffers.access(temp_buffer_id);
+
         VulkanBuffer *vk_buffer = resource_pool_buffers.access(resize_buffer);
-        std::memcpy(&temp_buffer, vk_buffer, sizeof(VulkanBuffer));
+        std::memcpy(temp_buffer, vk_buffer, sizeof(VulkanBuffer));
 
         VmaAllocation allocation = nullptr;
         VkBuffer buffer = create_vk_buffer(buffer_description, allocation, debug_name);
@@ -750,20 +752,27 @@ namespace mirai {
 
         if (should_copy_data) {
             // Should have same buffer properties
-            if (temp_buffer.buffer_ptr != nullptr) {
+            if (temp_buffer->buffer_ptr != nullptr) {
                 vk_buffer->buffer_ptr = map_buffer(resize_buffer);
                 // CPU to CPU Copy
-                std::memcpy(vk_buffer->buffer_ptr, temp_buffer.buffer_ptr, temp_buffer.size);
+                std::memcpy(vk_buffer->buffer_ptr, temp_buffer->buffer_ptr, temp_buffer->size);
             } else {
                 // GPU to GPU Copy
                 Log::Fatal("GPU Buffer Not supported yet");
             }
         }
 
-        if (temp_buffer.buffer_ptr) {
-            vmaUnmapMemory(vma_allocator, temp_buffer.allocation);
-            vmaDestroyBuffer(vma_allocator, temp_buffer.buffer, temp_buffer.allocation);
+        if (HAS_FLAG(buffer_description->usage_flags, BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+            VkBufferDeviceAddressInfo buffer_address_info = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                .pNext = nullptr,
+                .buffer = vk_buffer->buffer,
+            };
+            vk_buffer->device_address = vkGetBufferDeviceAddress(device, &buffer_address_info);
         }
+
+        BufferID destroyed_buffer{temp_buffer_id};
+        destroy_buffers(&destroyed_buffer, 1);
     }
 
     uint8_t *VulkanRenderingDevice::map_buffer(BufferID buffer) {
@@ -1064,6 +1073,13 @@ namespace mirai {
             }
         };
 
+        destroy(destroyed_acceleration_structures, [&](ID id) {
+            VkAccelerationStructureKHR *as = resource_pool_acceleration_structures.access(id);
+            vkDestroyAccelerationStructureKHR(device, *as, nullptr);
+            as = nullptr;
+            resource_pool_acceleration_structures.release(id);
+        });
+
         destroy(destroyed_buffers, [&](ID id) {
             VulkanBuffer *buffer = resource_pool_buffers.access(id);
             if (buffer->buffer_ptr)
@@ -1235,6 +1251,7 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             destroyed_pipelines.push_back(std::make_pair(pipeline_ids[i], frame_index));
+            pipeline_ids[i].id = K_INVALID_ID;
         }
     }
 
@@ -1242,18 +1259,21 @@ namespace mirai {
         for (uint32_t i = 0; i < count; ++i) {
             ASSERT(buffers[i].is_valid());
             destroyed_buffers.push_back(std::make_pair(buffers[i], frame_index));
+            buffers[i].id = K_INVALID_ID;
         }
     }
 
     void VulkanRenderingDevice::destroy_queries(QueryID *queries, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             destroyed_queries.push_back(std::make_pair(queries[i], frame_index));
+            queries[i].id = K_INVALID_ID;
         }
     }
 
     void VulkanRenderingDevice::destroy_textures(TextureID *textures, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             destroyed_textures.push_back(std::make_pair(textures[i], frame_index));
+            textures[i].id = K_INVALID_ID;
         }
     }
 
@@ -1579,11 +1599,15 @@ namespace mirai {
         };
 
         VulkanBuffer *scratch_buffer = nullptr;
+        bool is_tlas_invalidated = false;
         if (tlas_scratch_buffer.is_valid()) {
             scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
-            ASSERT(scratch_buffer->size >= size_info.buildScratchSize);
+            if (scratch_buffer->size < size_info.buildScratchSize) {
+                resize_buffer(&buffer_desc, tlas_scratch_buffer, false, "TLASScratchBuffer");
+                is_tlas_invalidated = true;
+            }
         } else {
-            tlas_scratch_buffer = create_buffer(&buffer_desc, "ScratchBuffer");
+            tlas_scratch_buffer = create_buffer(&buffer_desc, "TLASScratchBuffer");
             scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
         }
 
@@ -1592,7 +1616,10 @@ namespace mirai {
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         if (tlas_buffer_id.is_valid()) {
             tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
-            ASSERT(tlas_buffer->size >= size_info.accelerationStructureSize);
+            if (tlas_buffer->size < size_info.accelerationStructureSize) {
+                resize_buffer(&buffer_desc, tlas_buffer_id, false, "TLASBuffer");
+                is_tlas_invalidated = true;
+            }
         } else {
             tlas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
             tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
@@ -1600,6 +1627,10 @@ namespace mirai {
 
         out_tlas->buffer_device_address = tlas_buffer->device_address;
         out_tlas->buffer_size = cast_u32(size_info.accelerationStructureSize);
+
+        if (is_tlas_invalidated) {
+            destroy_acceleration_structures(&out_tlas->as, 1);
+        }
 
         // Only create a new AS handle the first time; reuse it on subsequent frames.
         // The TLAS buffer and scratch buffer are both guaranteed idle (fence wait in Renderer).
@@ -1649,9 +1680,10 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) {
         for (uint32_t i = 0; i < acceleration_structure_count; ++i) {
             VkAccelerationStructureKHR *as = resource_pool_acceleration_structures.access(acceleration_structures[i]);
-            vkDestroyAccelerationStructureKHR(device, *as, nullptr);
-            as = nullptr;
-            resource_pool_acceleration_structures.release(acceleration_structures[i]);
+            if (as) {
+                destroyed_acceleration_structures.push_back(std::make_pair(acceleration_structures[i], frame_index));
+            }
+            acceleration_structures[i].id = K_INVALID_ID;
         }
     }
 

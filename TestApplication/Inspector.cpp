@@ -117,8 +117,8 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
     if (!mesh_component)
         return;
     HashSet<uint32_t> unique_materials;
-    for (auto &mesh_subset : mesh_component->mesh_subsets) {
-        unique_materials.emplace(mesh_subset.material_index);
+    for (const auto &primitive : mesh_component->primitives) {
+        unique_materials.emplace(primitive.material);
     }
     if (unique_materials.size() == 0)
         return;

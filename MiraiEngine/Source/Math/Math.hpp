@@ -79,6 +79,10 @@ namespace mirai {
             max = vmax;
         }
 
+        glm::vec3 get_center() const {
+            return (min + max) * 0.5f;
+        }
+
         void combine(const AABB &other) {
             min = glm::min(min, other.min);
             max = glm::max(max, other.max);

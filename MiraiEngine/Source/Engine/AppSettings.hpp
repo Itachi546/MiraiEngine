@@ -25,6 +25,7 @@ namespace mirai {
         constexpr uint32_t K_SKINNED_VERTEX_OUTPUT_SIZE = 32;
         constexpr uint32_t K_LIGHT_TILE_SIZE = 16;
         constexpr uint32_t K_MAX_LIGHT_PER_TILE = 256;
+        constexpr uint32_t K_MAX_LIGHTS = 1024;
 
         // Vulkan Specific settings
         constexpr uint32_t K_RESOURCE_DESCRIPTOR_LIMIT = 65536;

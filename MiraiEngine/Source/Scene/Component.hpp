@@ -4,7 +4,8 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Math/Angles.hpp"
 #include "Animation.hpp"
-
+#include "Math/MathUtils.hpp"
+#include "Material.hpp"
 namespace mirai {
     struct NameComponent {
         std::string name;
@@ -38,49 +39,33 @@ namespace mirai {
         }
     };
 
-    enum MeshType {
-        MESH_TYPE_STATIC = 0,
-        MESH_TYPE_DYNAMIC = 1,
+    struct MeshAllocation {
+        BufferID buffer;
+
+        uint32_t vertex_offset_bytes;
+        uint32_t vertex_stride;
+        uint32_t vertex_count;
+
+        uint32_t index_offset_bytes;
+        uint32_t index_count;
+
+        uint32_t ouput_vertex_offset_bytes;
+        AABB local_aabb;
+        AccelerationStructure blas;
+    };
+
+    using MeshHandle = uint32_t;
+
+    struct Primitive {
+        MeshHandle mesh;
+        MaterialHandle material;
     };
 
     // Only used by GLTF parser
-    struct TempVertex {
-        glm::vec3 position;
-        uint32_t normal;
-
-        uint32_t tangent;
-        uint32_t bitangent;
-        glm::vec2 uv;
-
-        uint32_t joints;
-        glm::vec4 weights;
-    };
-
-    const uint32_t K_VERTEX_DATA_SIZE = 32;
-    const uint32_t K_VERTEX_DATA_SIZE_SKINNED = sizeof(TempVertex);
-
     struct MeshComponent {
-        MeshType mesh_type;
-        BufferView vertex_buffer;
-        BufferView index_buffer;
-
-        struct MeshSubset {
-            uint32_t vertex_offset_bytes;
-            uint32_t vertex_count;
-
-            // Only  applicable for skinned mesh
-            uint32_t output_vertex_offset_bytes;
-
-            uint32_t index_offset_bytes;
-            uint32_t index_count;
-            uint32_t vertex_stride;
-            uint32_t material_index;
-        };
-
-        uint32_t gpu_mesh_index;
-        std::vector<MeshSubset> mesh_subsets;
-        std::vector<AccelerationStructure> blases;
-        std::vector<AABB> aabbs;
+        MeshType mesh_type = MESH_TYPE_STATIC;
+        uint32_t gpu_index;
+        std::vector<Primitive> primitives;
     };
 
     struct TransformComponent {

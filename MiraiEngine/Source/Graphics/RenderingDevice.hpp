@@ -98,9 +98,9 @@ namespace mirai {
     };
 
     struct AccelerationStructure {
-        AccelerationStructureID as;
         uint64_t buffer_device_address;
         uint64_t buffer_size;
+        AccelerationStructureID as;
     };
     struct AccelerationStructureInstanceData {
         float matrix[3][4];
@@ -335,7 +335,8 @@ namespace mirai {
         ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_READ = 0x00000200ULL,
         ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE = 0x00000400ULL,
         ACCESS_FLAG_TRANSFER_READ = 0x00000800ULL,
-        ACCESS_FLAG_TRANSFER_WRITE = 0x00001000ULL
+        ACCESS_FLAG_TRANSFER_WRITE = 0x00001000ULL,
+        ACCESS_FLAG_ACCELERATION_STRUCTURE_READ_BIT_KHR = 0x00200000ULL,
     };
 
     enum ImageLayout {
@@ -382,6 +383,7 @@ namespace mirai {
         PIPELINE_STAGE_INDEX_INPUT_BIT = 0x1000000000ULL,
         PIPELINE_STAGE_VERTEX_ATTRIBUTE_INPUT_BIT = 0x2000000000ULL,
         PIPELINE_STAGE_PRE_RASTERIZATION_SHADERS_BIT = 0x4000000000ULL,
+        PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT = 0x02000000,
         PIPELINE_STAGE_MAX
     };
 
@@ -577,13 +579,6 @@ namespace mirai {
         uint32_t first_index;
         uint32_t vertex_offset_bytes;
         uint32_t first_instance;
-
-        DrawIndexedIndirectCommand(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance) : index_count(index_count),
-                                                                                                                                                           instance_count(instance_count),
-                                                                                                                                                           first_index(first_index),
-                                                                                                                                                           vertex_offset_bytes(vertex_offset),
-                                                                                                                                                           first_instance(first_instance) {
-        }
     };
 
     class CommandBuffer;
@@ -676,9 +671,11 @@ namespace mirai {
     namespace rendering_utils {
         void upload_default_samplers(RenderingDevice *device, void *ptr);
         void copy_texture_immediate(TextureID dst, void *data, uint32_t size);
+
         inline uint32_t get_workgroup_size(uint32_t work_size, uint32_t local_workgroup_size) {
             return (work_size + local_workgroup_size - 1) / local_workgroup_size;
         }
         TextureID load_texture2d_from_path(const std::string &path);
+
     } // namespace rendering_utils
 }; // namespace mirai

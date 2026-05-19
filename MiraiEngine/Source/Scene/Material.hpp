@@ -9,62 +9,46 @@
 
 namespace mirai {
 
+    using MaterialHandle = uint32_t;
     struct Material {
       public:
         Material(const std::string_view name);
 
         void set_cull_mode(CullMode m) {
-            material_state.cull_mode = m;
+            state.cull_mode = m;
         }
 
         CullMode get_cull_mode() const {
-            return material_state.cull_mode;
+            return state.cull_mode;
         }
 
         void set_front_face(FrontFace f) {
-            material_state.front_face = f;
+            state.front_face = f;
         }
 
         FrontFace get_front_face() const {
-            return material_state.front_face;
+            return state.front_face;
         }
 
         void set_polygon_mode(PolygonMode p) {
-            material_state.polygon_mode = p;
+            state.polygon_mode = p;
         }
 
         PolygonMode get_polygon_mode() const {
-            return material_state.polygon_mode;
+            return state.polygon_mode;
         }
 
         void set_alpha_mode(AlphaMode a) {
-            material_state.alpha_mode = a;
+            state.alpha_mode = a;
         }
 
         AlphaMode get_alpha_mode() const {
-            return material_state.alpha_mode;
-        }
-
-        // Render flags — behavioral, NOT part of the sort key.
-        void set_render_flags(uint32_t flags) {
-            material_state.render_flags = flags;
-        }
-
-        void add_render_flag(RenderFlags flag) {
-            material_state.render_flags |= flag;
-        }
-
-        void remove_render_flag(RenderFlags flag) {
-            material_state.render_flags &= ~static_cast<uint32_t>(flag);
-        }
-
-        bool has_render_flag(RenderFlags flag) const {
-            return material_state.has_flag(flag);
+            return state.alpha_mode;
         }
 
         // Hash is computed live — get_hash() is a trivial bitfield pack.
-        uint32_t get_hash() const {
-            return material_state.get_hash();
+        uint32_t get_hash(PassMode pass) const {
+            return state.get_hash(pass);
         }
 
         void set_dirty(bool state) {
@@ -75,21 +59,29 @@ namespace mirai {
             return this->dirty;
         }
 
+        void set_depth_write(bool state) {
+            this->state.depth_write = state;
+        }
+
+        bool is_depth_write_enabled() const {
+            return state.depth_write;
+        }
+
         std::string name;
         bool dirty = false;
 
         virtual ~Material() = default;
 
       protected:
-        MaterialState material_state;
+        PipelineState state;
     };
 
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
             properties.albedo = glm::vec4(1.0f);
             properties.emissive_factor = glm::vec3(0.0f);
-            properties.metallic_factor = 1.0f;
-            properties.roughness_factor = 1.0f;
+            properties.metallic_factor = 0.0f;
+            properties.roughness_factor = 0.5f;
             properties.alpha_cutoff = 0.9f;
             properties.flags = 0;
             properties.emissive_texture = K_INVALID_ID;
@@ -106,11 +98,11 @@ namespace mirai {
         }
 
         bool is_transparent() const {
-            return material_state.alpha_mode == ALPHA_MODE_BLEND;
+            return state.alpha_mode == ALPHA_MODE_BLEND;
         }
 
         bool is_alpha_mask() const {
-            return material_state.alpha_mode == ALPHA_MODE_MASK;
+            return state.alpha_mode == ALPHA_MODE_MASK;
         }
 
         // Returns true for ShaderMaterial3D; false for standard PBR Material3D.

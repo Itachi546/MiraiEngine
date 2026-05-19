@@ -55,7 +55,7 @@ layout(push_constant) uniform PushConstants {
 
     float ibl_intensity;
     uint num_lights;
-    float light_culling;
+    float disable_punctual_light;
     uint tile_size;
 
     float mip_bias;
@@ -147,47 +147,30 @@ void main() {
     shadow_params.pcf_sample_count = pcf_sample_count;
     shadow_params.shadow_texel_size = 1.0f / cascade_info.cascade_texture_size;
 
-    if (light_culling < 0.5) {
-        for (int i = 0; i < num_lights; ++i) {
-            Light light = lights[i];
-            uint light_type = get_light_type(light.flag);
-            if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-                shadow_params.ndotl = max(dot(normal, light.direction), 0.0);
-                if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
-                    dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
-                }
-                Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
-            } else if (light_type == LIGHT_TYPE_POINT) {
-                Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
-            } else if (light_type == LIGHT_TYPE_SPOT) {
-                Lo += evaluateSpotLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
-            }
-        }
-    } else {
-        uvec2 resolution = uvec2(per_frame_data.width, per_frame_data.height);
-        uvec2 tile_count = resolution / uvec2(tile_size);
-        uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
+    uvec2 resolution = uvec2(per_frame_data.width, per_frame_data.height);
+    uvec2 tile_count = resolution / uvec2(tile_size);
+    uvec2 tile_id = uvec2(gl_FragCoord.xy) / uvec2(tile_size);
 
-        uint tile_index = get_tile_address_opaque(tile_id, tile_count);
-        tile_light_count = light_lists[tile_index++];
-        for (int i = 0; i < tile_light_count; ++i) {
-            uint light_index = light_lists[tile_index + i];
-            Light light = lights[light_index];
-            uint light_type = get_light_type(light.flag);
-            if (light_type == LIGHT_TYPE_DIRECTIONAL) {
-                if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
-                    dir_light_cast_shadow = true;
-                    shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
-                }
-                Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
-            } else if (light_type == LIGHT_TYPE_POINT) {
-                Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
-            } else if (light_type == LIGHT_TYPE_SPOT) {
-                Lo += evaluateSpotLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+    uint tile_index = get_tile_address_opaque(tile_id, tile_count);
+
+    tile_light_count = light_lists[tile_index++];
+    for (int i = 0; i < tile_light_count; ++i) {
+        uint light_index = light_lists[tile_index + i];
+        Light light = lights[light_index];
+        uint light_type = get_light_type(light.flag);
+        if (light_type == LIGHT_TYPE_DIRECTIONAL) {
+            if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
+                dir_light_cast_shadow = true;
+                shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
             }
+            Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
+        } else if (light_type == LIGHT_TYPE_POINT && disable_punctual_light < 0.5f) {
+            Lo += evaluatePointLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
+        } else if (light_type == LIGHT_TYPE_SPOT && disable_punctual_light < 0.5f) {
+            Lo += evaluateSpotLight(light, fs_in.world_pos, view_dir, normal, pbr_params, 1.0f);
         }
     }
+
     Lo += pbr_params.emissive * 5.0f;
 
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);

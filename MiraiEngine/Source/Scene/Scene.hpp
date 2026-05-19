@@ -16,29 +16,16 @@ namespace mirai {
     struct RenderableObjectData {
         Entity entity;
         uint32_t material_index;
+        uint32_t transform_index;
         MeshType mesh_type;
 
-        BufferID vertex_buffer;
-        BufferID index_buffer;
-
+        BufferID buffer;
         uint32_t vertex_offset_bytes;
         uint32_t first_index;
         uint32_t index_count;
         uint32_t vertex_stride;
         uint64_t blas_buffer_device_address;
-
         AABB transformed_aabb;
-    };
-
-    struct GpuMesh {
-        BufferView vertex_buffer;
-        BufferView index_buffer;
-
-        uint32_t vertex_buffer_size;
-        uint32_t index_buffer_size;
-
-        std::vector<uint8_t> vertices;
-        std::vector<uint32_t> indices;
     };
 
     class Scene {
@@ -91,6 +78,11 @@ namespace mirai {
             return entity;
         }
 
+        Entity create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index);
+        Entity create_plane(const std::string &name);
+        Entity create_cube(const std::string &name);
+        Entity create_sphere(const std::string &name);
+
         void remove_entity(Entity entity);
 
         void release_all_entities();
@@ -100,15 +92,22 @@ namespace mirai {
         virtual ~Scene();
 
         std::unique_ptr<ECS> ecs;
-        std::vector<std::unique_ptr<Material3D>> materials;
         std::vector<Entity> entities;
+
+        std::vector<std::unique_ptr<Material3D>> materials;
+        std::vector<MeshAllocation> mesh_allocations;
+
+        std::array<RenderableObjectData, K_MAX_ENTITIES> render_object_list;
+        std::atomic<uint32_t> render_object_count;
 
         std::vector<std::unique_ptr<SkeletalAsset>> skeletal_assets;
         std::vector<std::unique_ptr<AnimationPlayer>> animation_players;
 
         // List of material/transforms that must be patched on gpu
-        std::vector<uint32_t> updated_transforms;
+        // first represent the transform index and second represent the index in GPU
+        std::vector<std::pair<uint32_t, uint32_t>> updated_transforms;
         std::vector<uint32_t> updated_materials;
+        std::vector<uint32_t> updated_lights;
 
         struct FrameData {
             glm::mat4 P;
@@ -133,10 +132,6 @@ namespace mirai {
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 
-        std::vector<GpuMesh> gpu_meshes;
-        std::array<RenderableObjectData, K_MAX_ENTITIES> render_object_list;
-        std::atomic<uint32_t> render_object_count;
-
         bool pause_animation = false;
         float animation_speed = 1.0f;
         int jitter_index = 0;
@@ -148,6 +143,15 @@ namespace mirai {
         std::unique_ptr<Camera> camera;
         std::shared_ptr<EnvironmentMap> env_map;
 
+        enum DefaultMeshType {
+            Plane = 0,
+            Count
+        };
+
+        uint32_t plane_mesh_index = K_INVALID_ID;
+        uint32_t cube_mesh_index = K_INVALID_ID;
+        uint32_t sphere_mesh_index = K_INVALID_ID;
+
         std::mutex mu;
 
         void remove_entity_tree(Entity entity);
@@ -157,5 +161,7 @@ namespace mirai {
         void update_hierarchy(Entity entity, const glm::mat4 &parent_transform, bool force_update = false);
 
         Entity create_directional_light(const std::string &name, glm::fquat orientation);
+
+        friend class Renderer;
     };
 } // namespace mirai

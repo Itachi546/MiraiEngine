@@ -69,7 +69,7 @@ namespace mirai {
                 const DepthPrePassData &depth_prepass = board->get<DepthPrePassData>();
                 DescriptorOffset descriptors[] = {
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(data.light_list_buffer).id, DescriptorType::StorageBuffer),
-                    renderer->per_frame_light_descriptor,
+                    renderer->light_descriptor,
                 };
                 uint32_t width = cast_u32(AppSettings::default_window_width * AppSettings::resolution_scale);
                 uint32_t height = cast_u32(AppSettings::default_window_height * AppSettings::resolution_scale);
@@ -91,7 +91,7 @@ namespace mirai {
                 } push_data;
                 push_data.invP = camera->get_inv_projection_transform();
                 push_data.V = camera->get_view_transform();
-                push_data.light_count = renderer->total_visible_lights;
+                push_data.light_count = renderer->total_lights;
                 push_data.tile_count_x = tile_count.x;
                 push_data.tile_count_y = tile_count.y;
                 push_data.depth_texture_width = data.depth_texture_width;

@@ -66,7 +66,7 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-#if 1
+#if 0 
         auto &component_manager = scene->ecs->component_manager;
         const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");
@@ -189,16 +189,26 @@ class TestApplication : public App {
             }
 
             ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
-            ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_visible_lights);
+            ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_lights);
 
             uint32_t total_materials = cast_u32(scene->materials.size());
             ImGui::Text("Total Materials: %u", total_materials);
 
-            uint32_t total_mesh_buffer = cast_u32(scene->gpu_meshes.size());
-            ImGui::Text("Total Mesh Buffer: %u", total_mesh_buffer);
+            uint32_t total_mesh_buffer = cast_u32(scene->mesh_allocations.size());
+            ImGui::Text("Total Mesh Allocation: %u", total_mesh_buffer);
 
             uint32_t total_textures = TextureCache::get()->get_texture_count();
             ImGui::Text("Total Textures: %u", total_textures);
+
+            if (ImGui::Button("Add Plane")) {
+                scene->create_plane("Plane");
+            }
+            if (ImGui::Button("Add Cube")) {
+                scene->create_cube("Cube");
+            }
+            if (ImGui::Button("Add Sphere")) {
+                scene->create_sphere("Sphere");
+            }
         }
 
         if (ImGui::CollapsingHeader("Camera")) {
@@ -244,7 +254,6 @@ class TestApplication : public App {
             ImGui::Combo("Target", &debug_data.debug_param_index, options);
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
             ImGui::DragFloat("Exposure", &debug_data.exposure, 0.1f, 0.0f, 8.0f);
-            ImGui::Checkbox("Light Culling", &debug_data.light_culling);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
             ImGui::Spacing();
             if (ImGui::Button("Show RenderPass Textures")) {

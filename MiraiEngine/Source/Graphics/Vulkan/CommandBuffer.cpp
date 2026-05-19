@@ -193,8 +193,11 @@ namespace mirai {
 
     void CommandBuffer::bind_pipeline(PipelineID pipeline_id) {
         ASSERT(pipeline_id.is_valid());
-        VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
-        vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
+        if (pipeline_id.is_valid() && pipeline_id != active_pipeline) {
+            VulkanPipeline *pipeline = device->access_pipeline(pipeline_id);
+            vkCmdBindPipeline(command_buffer, pipeline->bind_point, pipeline->pipeline);
+            active_pipeline = pipeline_id;
+        }
     }
 
     void CommandBuffer::bind_resource_heap(BufferID buffer) {
@@ -276,8 +279,11 @@ namespace mirai {
     }
 
     void CommandBuffer::set_index_buffer(BufferID buffer) {
-        VulkanBuffer *index_buffer = device->access_buffer(buffer);
-        vkCmdBindIndexBuffer(command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+        if (buffer.is_valid() && buffer != active_index_buffer) {
+            VulkanBuffer *index_buffer = device->access_buffer(buffer);
+            vkCmdBindIndexBuffer(command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+            active_index_buffer = buffer;
+        }
     }
 
     void CommandBuffer::copy_buffer(BufferID dst, BufferID src, const BufferCopyRegion *regions, uint32_t copy_region_count) {
@@ -500,6 +506,9 @@ namespace mirai {
 
     void CommandBuffer::prepare_image_for_shader_read(TextureID texture) {
         VulkanTexture *vk_image = device->access_texture(texture);
+        if (vk_image->access_flags == ACCESS_FLAG_SHADER_READ && vk_image->current_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            return;
+
         VkImageMemoryBarrier2 shader_read_barrier = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .srcStageMask = vk_image->stage_mask,
@@ -526,7 +535,8 @@ namespace mirai {
     }
 
     void CommandBuffer::prepare_buffer(const BufferBarrierInfo *barrier_infos, uint32_t barrier_count) {
-        std::vector<VkBufferMemoryBarrier2> buffer_barriers(barrier_count);
+        std::vector<VkBufferMemoryBarrier2> buffer_barriers;
+        buffer_barriers.reserve(barrier_count);
 
         for (uint32_t i = 0; i < barrier_count; ++i) {
             const BufferBarrierInfo *barrier_info = barrier_infos + i;
@@ -534,13 +544,17 @@ namespace mirai {
 
             VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(barrier_info->dst_stage_mask);
             VkAccessFlags2 dst_access = VkAccessFlags(barrier_info->dst_access_mask);
-            buffer_barriers[i] = CreateBufferMemoryBarrier2(buffer->buffer,
-                                                            buffer->stage_mask,
-                                                            buffer->access_flags,
-                                                            dst_stage,
-                                                            dst_access,
-                                                            barrier_info->offset,
-                                                            barrier_info->size);
+
+            if (dst_stage == buffer->stage_mask && dst_access == buffer->access_flags)
+                continue;
+
+            buffer_barriers.push_back(CreateBufferMemoryBarrier2(buffer->buffer,
+                                                                 buffer->stage_mask,
+                                                                 buffer->access_flags,
+                                                                 dst_stage,
+                                                                 dst_access,
+                                                                 barrier_info->offset,
+                                                                 barrier_info->size));
 
             buffer->stage_mask = dst_stage;
             buffer->access_flags = dst_access;
@@ -564,6 +578,9 @@ namespace mirai {
         };
 
         VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
+
+        active_index_buffer = BufferID{K_INVALID_ID};
+        active_pipeline = PipelineID{K_INVALID_ID};
     }
 
     void CommandBuffer::wait() {

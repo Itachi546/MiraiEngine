@@ -2,8 +2,8 @@
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Shader.hpp"
 namespace mirai {
-    Material::Material(const std::string_view name) : name(name) {
-        material_state = {};
+    Material::Material(const std::string_view name) : name(name), dirty(true) {
+        state = {};
     }
 
     EffectMaterial::EffectMaterial(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_infos) : Material(name) {
@@ -27,7 +27,6 @@ namespace mirai {
         : Material3D(name) {
         // No shadow casting by default — no shadow-pass pipeline is registered.
         // Call add_render_flag(RENDER_FLAG_CAST_SHADOW) to opt in.
-        material_state.render_flags = RENDER_FLAG_NONE;
         shader = Shader::create_from_file(std::string(name), shader_files, pipeline_state, attachment_info);
         ASSERT(shader != nullptr);
     }

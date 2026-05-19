@@ -16,9 +16,8 @@ namespace mirai {
     };
     struct BufferCopyTask {
         BufferID dst;
-        void *data;
-        uint32_t offset_in_bytes;
-        uint32_t size_in_bytes;
+        uint32_t dst_offset;
+        std::vector<uint8_t> data;
     };
 
     struct TextureLoadTask {
