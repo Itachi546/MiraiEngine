@@ -13,7 +13,7 @@ namespace mirai {
 
     void DrawBatchGenerator::BuildBatches(Scene *scene, const BatchBuildParams &build_params, std::vector<RenderBatch> &batches) {
 
-        uint32_t total_renderables = scene->render_object_count.load();
+        uint32_t total_renderables = cast_u32(scene->render_object_list.size());
         if (total_renderables == 0)
             return;
 
@@ -104,7 +104,7 @@ namespace mirai {
                     .index_count = renderable.index_count,
                     .instance_count = 1,
                     .first_index = renderable.first_index,
-                    .vertex_offset_bytes = renderable.vertex_offset_bytes,
+                    .vertex_offset_bytes = cast_int(renderable.vertex_offset_bytes),
                     .first_instance = 0,
                 },
                 .vertex_stride = renderable.vertex_stride,
@@ -122,7 +122,7 @@ namespace mirai {
         BufferID buffer = batch->get_geometry_buffer();
         // Should check if this buffer is same as last buffer
         command_buffer->set_index_buffer(buffer);
-        uint32_t draw_count = batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand);
+        uint32_t draw_count = cast_u32(batch->draw_indirect_buffer_view.size / sizeof(DrawIndexedIndirectCommand));
         command_buffer->draw_indexed_indirect(batch->draw_indirect_buffer_view.buffer, batch->draw_indirect_buffer_view.offset, draw_count, sizeof(DrawIndexedIndirectCommand));
     }
 

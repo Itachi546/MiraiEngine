@@ -577,7 +577,7 @@ namespace mirai {
                 // Parse indices
                 const tinygltf::Accessor &indices_accessor = model->accessors[gltf_primitive.indices];
                 uint32_t index_count = static_cast<uint32_t>(indices_accessor.count);
-                uint32_t index_data_size = cast_u32(index_count * sizeof(uint32_t));
+                uint64_t index_data_size = index_count * sizeof(uint32_t);
 
                 std::vector<uint8_t> indices;
                 indices.resize(index_data_size);
@@ -601,7 +601,7 @@ namespace mirai {
                 primitive.material = gltf_primitive.material + load_state->material_base_offset;
 
                 // We allocate additional space for vertex data if the mesh is skinned
-                uint32_t vertex_data_size = cast_u32(vertices.size());
+                uint64_t vertex_data_size = vertices.size();
                 if (is_skinned_mesh)
                     vertex_data_size *= 2;
 

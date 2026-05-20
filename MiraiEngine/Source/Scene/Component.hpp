@@ -42,14 +42,14 @@ namespace mirai {
     struct MeshAllocation {
         BufferID buffer;
 
-        uint32_t vertex_offset_bytes;
+        uint64_t vertex_offset_bytes;
         uint32_t vertex_stride;
         uint32_t vertex_count;
 
-        uint32_t index_offset_bytes;
+        uint64_t index_offset_bytes;
         uint32_t index_count;
 
-        uint32_t ouput_vertex_offset_bytes;
+        uint64_t ouput_vertex_offset_bytes;
         AABB local_aabb;
         AccelerationStructure blas;
     };

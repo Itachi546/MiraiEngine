@@ -252,12 +252,12 @@ namespace mirai {
         vkCmdDrawIndexed(command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);
     }
 
-    void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint32_t offset, uint32_t draw_count, uint32_t stride) {
+    void CommandBuffer::draw_indexed_indirect(BufferID buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
         VulkanBuffer *indirect_buffer = device->access_buffer(buffer);
         vkCmdDrawIndexedIndirect(command_buffer, indirect_buffer->buffer, offset, draw_count, stride);
     }
 
-    void CommandBuffer::draw_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride) {
+    void CommandBuffer::draw_indirect(BufferID indirect_buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
         VulkanBuffer *buffer = device->access_buffer(indirect_buffer);
         vkCmdDrawIndirect(command_buffer, buffer->buffer, offset, draw_count, stride);
     }

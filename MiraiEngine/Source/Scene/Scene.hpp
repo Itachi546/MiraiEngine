@@ -20,7 +20,7 @@ namespace mirai {
         MeshType mesh_type;
 
         BufferID buffer;
-        uint32_t vertex_offset_bytes;
+        uint64_t vertex_offset_bytes;
         uint32_t first_index;
         uint32_t index_count;
         uint32_t vertex_stride;
@@ -78,10 +78,10 @@ namespace mirai {
             return entity;
         }
 
-        Entity create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index);
-        Entity create_plane(const std::string &name);
-        Entity create_cube(const std::string &name);
-        Entity create_sphere(const std::string &name);
+        Entity create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index, Entity parent_entity);
+        Entity create_plane(const std::string &name, Entity parent_entity = K_INVALID_ENTITY);
+        Entity create_cube(const std::string &name, Entity parent_entity = K_INVALID_ENTITY);
+        Entity create_sphere(const std::string &name, Entity parent_entity = K_INVALID_ENTITY);
 
         void remove_entity(Entity entity);
 
@@ -97,8 +97,7 @@ namespace mirai {
         std::vector<std::unique_ptr<Material3D>> materials;
         std::vector<MeshAllocation> mesh_allocations;
 
-        std::array<RenderableObjectData, K_MAX_ENTITIES> render_object_list;
-        std::atomic<uint32_t> render_object_count;
+        std::vector<RenderableObjectData> render_object_list;
 
         std::vector<std::unique_ptr<SkeletalAsset>> skeletal_assets;
         std::vector<std::unique_ptr<AnimationPlayer>> animation_players;

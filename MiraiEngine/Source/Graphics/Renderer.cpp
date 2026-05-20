@@ -94,27 +94,22 @@ namespace mirai {
             per_frame_allocator[i].init(buffer_desc, "PerFrameAllocator" + std::to_string(i));
         }
 
-        uint32_t transform_buffer_size = cast_u32(K_MAX_ENTITIES * sizeof(glm::mat4));
-        uint32_t material_buffer_size = cast_u32(K_MAX_ENTITIES * sizeof(Material3D));
-        uint32_t light_buffer_size = cast_u32(AppSettings::K_MAX_LIGHTS * sizeof(GPULightData));
+        buffer_desc.allocation_type = MEMORY_ALLOCATION_TYPE_GPU;
+        buffer_desc.usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-        uint32_t total_size = transform_buffer_size + material_buffer_size + light_buffer_size + 64; // Additional 64 bytes due to alignment
-        gpu_allocator = std::make_unique<GPULinearAllocator>();
-        gpu_allocator->init({
-                                .size = total_size,
-                                .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT,
-                                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
-                            },
-                            "GPUBuffer");
-
-        // @TODO we can optimize it by using 4x3
-        transform_buffer = gpu_allocator->allocate(transform_buffer_size);
+        uint32_t transform_buffer_size = cast_u32(1024 * sizeof(glm::mat4));
+        buffer_desc.size = transform_buffer_size;
+        transform_buffer = BufferView{device->create_buffer(&buffer_desc, "TransformBuffer"), 0, transform_buffer_size};
 
         // Allocate material buffer
-        material_buffer = gpu_allocator->allocate(material_buffer_size);
+        uint32_t material_buffer_size = cast_u32(1024 * sizeof(Material3D));
+        buffer_desc.size = material_buffer_size;
+        material_buffer = BufferView{device->create_buffer(&buffer_desc, "MaterialBuffer"), 0, material_buffer_size};
 
         // Allocate light buffer
-        light_buffer = gpu_allocator->allocate(light_buffer_size);
+        uint32_t light_buffer_size = cast_u32(1024 * sizeof(GPULightData));
+        buffer_desc.size = light_buffer_size;
+        light_buffer = BufferView{device->create_buffer(&buffer_desc, "LightBuffer"), 0, light_buffer_size};
 
         // Allocate descriptor heap buffer
         buffer_desc.usage_flags = BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -149,25 +144,6 @@ namespace mirai {
         blue_noise_texture128 = rendering_utils::load_texture2d_from_path("Assets/Textures/blue-noise-128.png");
         texture_cache->add_texture("noise-texture-128", blue_noise_texture128);
         add_bindless_texture(blue_noise_texture128);
-    }
-
-    void Renderer::on_load_resources() {
-
-        Camera *camera = scene->get_camera();
-        freezed_inv_VP = camera->get_inv_view_projection_transform();
-        freezed_frustum_planes = camera->get_frustum_planes();
-
-        // Initialize Global Descriptors
-        DescriptorInfo descriptor_infos[] = {
-            {DescriptorType::StorageBuffer, transform_buffer.buffer, {transform_buffer.offset, transform_buffer.size}},
-            {DescriptorType::StorageBuffer, material_buffer.buffer, {material_buffer.offset, material_buffer.size}},
-            {DescriptorType::StorageBuffer, light_buffer.buffer, {light_buffer.offset, light_buffer.size}},
-        };
-        transform_descriptor = resource_heap.push_descriptors(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
-        material_descriptor = transform_descriptor + 1;
-        light_descriptor = transform_descriptor + 2;
-
-        frame_graph->compile();
 
         CommandBuffer *command_buffer = device->get_command_buffer(0);
         command_buffer->begin();
@@ -176,6 +152,15 @@ namespace mirai {
 
         device->submit_command_buffer_immediate(command_buffer);
         command_buffer->wait();
+    }
+
+    void Renderer::on_load_resources() {
+
+        Camera *camera = scene->get_camera();
+        freezed_inv_VP = camera->get_inv_view_projection_transform();
+        freezed_frustum_planes = camera->get_frustum_planes();
+
+        frame_graph->compile();
 
         create_blas();
     }
@@ -189,8 +174,25 @@ namespace mirai {
 
         uint32_t total_meshes = cast_u32(mesh_comp_ptr->components.size());
 
+        uint64_t transform_data_size = total_meshes * sizeof(glm::mat4);
+
+        bool should_reupload_data = false;
+        if (transform_data_size > transform_buffer.size) {
+            Log::Info("Resizing transform buffer: ", utils::bytes_to_mb(transform_data_size), "MB");
+            BufferDescription buffer_desc = {
+                .size = std::max(transform_data_size, transform_buffer.size * 2),
+                .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+            };
+            device->resize_buffer(&buffer_desc, transform_buffer.buffer, false, "TransformBuffer");
+
+            transform_buffer.offset = 0;
+            transform_buffer.size = buffer_desc.size;
+            should_reupload_data = true;
+        }
+
         // If more than half of the transforms has changed or it is first frame, then we copy everything
-        if (scene->updated_transforms.size() >= total_meshes / 2 || frame_id == 0) {
+        if (scene->updated_transforms.size() >= total_meshes / 2 || frame_id == 0 || should_reupload_data) {
             uint32_t total_transform_size_bytes = cast_u32(total_meshes * sizeof(glm::mat4));
             BufferView transform_staging_buffer = per_frame_allocator[frame_flight_index].allocate(total_transform_size_bytes);
             glm::mat4 *transform_array = reinterpret_cast<glm::mat4 *>(transform_staging_buffer.ptr);
@@ -208,7 +210,7 @@ namespace mirai {
 
             BufferCopyRegion copy_region = {
                 .src_offset = transform_staging_buffer.offset,
-                .dst_offset = transform_buffer.offset,
+                .dst_offset = 0,
                 .size = total_transform_size_bytes,
             };
             command_buffer->copy_buffer(transform_buffer.buffer, transform_staging_buffer.buffer, &copy_region, 1);
@@ -237,7 +239,6 @@ namespace mirai {
                 uint32_t offset = gpu_index * element_size;
                 patch_array[i] = BufferPatch{offset, element_size};
             }
-
             dispatch_patch_copy(command_buffer, patch_buffer, src_buffer, transform_buffer, total_updated_transforms);
         }
 
@@ -249,6 +250,23 @@ namespace mirai {
             return;
 
         uint32_t total_materials = cast_u32(scene->materials.size());
+        uint64_t material_data_size = sizeof(Material3D::Properties) * total_materials;
+
+        bool should_reupload_data = false;
+        if (material_data_size > material_buffer.size) {
+            Log::Info("Resizing material buffer: ", utils::bytes_to_mb(material_data_size), "MB");
+            BufferDescription buffer_desc = {
+                .size = std::max(material_data_size, material_buffer.size * 2),
+                .usage_flags = BUFFER_USAGE_TRANSFER_DST_BIT | BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
+            };
+
+            device->resize_buffer(&buffer_desc, material_buffer.buffer, false, "MaterialBuffer");
+            material_buffer.offset = 0;
+            material_buffer.size = buffer_desc.size;
+            should_reupload_data = true;
+        }
+
         if (scene->updated_materials.size() > total_materials / 2 || frame_id == 0) {
             uint32_t material_instance_size = cast_u32(sizeof(Material3D::Properties));
             uint32_t total_materials_size_bytes = cast_u32(total_materials * material_instance_size);
@@ -265,7 +283,7 @@ namespace mirai {
 
             BufferCopyRegion copy_region = {
                 .src_offset = material_staging_buffer.offset,
-                .dst_offset = material_buffer.offset,
+                .dst_offset = 0,
                 .size = total_materials_size_bytes,
             };
             command_buffer->copy_buffer(material_buffer.buffer, material_staging_buffer.buffer, &copy_region, 1);
@@ -302,10 +320,19 @@ namespace mirai {
 
     void Renderer::prepare_buffer_for_shader_read(CommandBuffer *command_buffer) {
         std::vector<BufferBarrierInfo> barrier_infos(3);
-        barrier_infos[0] = {transform_buffer.buffer, transform_buffer.offset, transform_buffer.size, PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
-        barrier_infos[1] = {material_buffer.buffer, material_buffer.offset, material_buffer.size, PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
-        barrier_infos[2] = {light_buffer.buffer, light_buffer.offset, light_buffer.size, PIPELINE_STAGE_FRAGMENT_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
+        barrier_infos[0] = {transform_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
+        barrier_infos[1] = {material_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
+        barrier_infos[2] = {light_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
         command_buffer->prepare_buffer(barrier_infos.data(), cast_u32(barrier_infos.size()));
+
+        DescriptorInfo descriptor_infos[] = {
+            {DescriptorType::StorageBuffer, transform_buffer.buffer, {0, UINT64_MAX}},
+            {DescriptorType::StorageBuffer, material_buffer.buffer, {0, UINT64_MAX}},
+            {DescriptorType::StorageBuffer, light_buffer.buffer, {0, UINT64_MAX}},
+        };
+        transform_descriptor = resource_heap.push_descriptors_per_frame(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+        material_descriptor = transform_descriptor + 1;
+        light_descriptor = transform_descriptor + 2;
     }
 
     void Renderer::upload_lights(CommandBuffer *command_buffer) {
@@ -352,9 +379,9 @@ namespace mirai {
         const auto &light_comp_array = component_manager->get_component_array<LightComponent>();
 
         total_lights = cast_u32(light_comp_array->components.size());
-        ASSERT(total_lights <= AppSettings::K_MAX_LIGHTS);
+        // ASSERT(total_lights <= AppSettings::K_MAX_LIGHTS);
         if (scene->updated_lights.size() > total_lights / 2 || frame_id == 0) {
-            uint32_t total_light_size_bytes = cast_u32(total_lights * sizeof(GPULightData));
+            uint64_t total_light_size_bytes = total_lights * sizeof(GPULightData);
             BufferView light_staging_buffer = per_frame_allocator[frame_flight_index].allocate(total_light_size_bytes);
             GPULightData *light_array = reinterpret_cast<GPULightData *>(light_staging_buffer.ptr);
 
@@ -368,7 +395,7 @@ namespace mirai {
             jobsystem::Wait();
             BufferCopyRegion copy_region = {
                 .src_offset = light_staging_buffer.offset,
-                .dst_offset = light_buffer.offset,
+                .dst_offset = 0,
                 .size = total_light_size_bytes,
             };
             command_buffer->copy_buffer(light_buffer.buffer, light_staging_buffer.buffer, &copy_region, 1);
@@ -417,7 +444,7 @@ namespace mirai {
         MeshData mesh_data;
         {
             generate_plane_mesh(&mesh_data);
-            scene->plane_mesh_index = create_mesh_allocation(mesh_data, AABB{glm::vec3(-1.0f, -0.01f, -1.0f), glm::vec3(1.0f, 0.01f, 1.0f)});
+            scene->plane_mesh_index = create_mesh_allocation(mesh_data, AABB{glm::vec3(-0.5f, -0.01f, -0.5f), glm::vec3(0.5f, 0.01f, 0.5f)});
         }
         {
             generate_cube_mesh(&mesh_data);
@@ -545,7 +572,7 @@ namespace mirai {
             ScopedCpuProfiling("TLAS Build CPU");
             ScopedGpuProfiling(command_buffer, "TLAS Build");
 
-            uint32_t instance_count = scene->render_object_count.load();
+            uint32_t instance_count = cast_u32(scene->render_object_list.size());
             uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
             BufferView instance_buffer = per_frame_allocator[frame_flight_index].allocate(instance_count * instance_data_size);
             uint64_t blas_device_address = device->get_buffer_device_address(blas_buffer_static);
@@ -644,10 +671,10 @@ namespace mirai {
                 uint32_t pallete_count = skinned_matrix_prefix_sum[animation_player_index] - pallete_offset;
 
                 skinned_mesh_data[allocation.buffer.id].emplace_back(SkinnedMeshPushData{
-                    .vertex_address = allocation.vertex_offset_bytes / 4,
+                    .vertex_address = cast_u32(allocation.vertex_offset_bytes / 4),
                     .vertex_stride = allocation.vertex_stride / 4,
                     .vertex_count = allocation.vertex_count,
-                    .output_offset = allocation.ouput_vertex_offset_bytes / 4,
+                    .output_offset = cast_u32(allocation.ouput_vertex_offset_bytes / 4),
                     // Access as mat4 in shader, so we don't convert it to bytes
                     .matrix_palletes_offset = pallete_offset,
                     .matrix_pallete_count = pallete_count,
@@ -747,8 +774,8 @@ namespace mirai {
         BufferView draw_indirect_buffer = per_frame_allocator[current_frame].allocate(draw_indirect_size_bytes);
         uint8_t *draw_indirect_array = draw_indirect_buffer.ptr;
 
-        uint32_t batch_draw_data_offset = draw_data_buffer.offset;
-        uint32_t batch_draw_indirect_data_offset = draw_indirect_buffer.offset;
+        uint64_t batch_draw_data_offset = draw_data_buffer.offset;
+        uint64_t batch_draw_indirect_data_offset = draw_indirect_buffer.offset;
 
         DescriptorInfo draw_data_descriptor_info = {
             .type = DescriptorType::StorageBuffer,
@@ -770,7 +797,7 @@ namespace mirai {
                 uint32_t draw_data[] = {
                     draw_info.transform_index,
                     draw_info.material_index,
-                    draw_info.draw_info.vertex_offset_bytes / 4,
+                    cast_u32(draw_info.draw_info.vertex_offset_bytes / 4),
                     draw_info.vertex_stride / 4, // Convert stride to uint32 offset
                 };
                 std::memcpy(draw_data_array, &draw_data, draw_data_instance_size);
@@ -830,10 +857,7 @@ namespace mirai {
     }
 
     void Renderer::upload_per_frame_data() {
-        // Reset staging buffer offset
-
         GPULinearAllocator *frame_allocator = &per_frame_allocator[frame_flight_index];
-        frame_allocator->reset();
 
         // Copy per frame uniform data
         uint32_t per_frame_data_size = align_memory(cast_u32(sizeof(Scene::FrameData)), 64);
@@ -857,8 +881,14 @@ namespace mirai {
         cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Populate per-frame batch data
-        total_visible_entities = 0;
         upload_batch_data(main_render_batches, frame_flight_index);
+
+        DescriptorInfo descriptor_infos[] = {
+            {DescriptorType::UniformBuffer, per_frame_data_buffer.buffer, {per_frame_data_buffer.offset, per_frame_data_buffer.size}},
+            {DescriptorType::UniformBuffer, cascade_data_buffer.buffer, {cascade_data_buffer.offset, cascade_data_buffer.size}},
+        };
+        per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
+        cascade_data_descriptor = per_frame_data_descriptor + 1;
     }
 
     void Renderer::add_bindless_texture(TextureID texture) {
@@ -899,7 +929,7 @@ namespace mirai {
         if (show_aabbs) {
             Camera *camera = scene->get_camera();
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
-            uint32_t render_object_count = scene->render_object_count.load();
+            uint32_t render_object_count = cast_u32(scene->render_object_list.size());
             for (uint32_t i = 0; i < render_object_count; ++i) {
                 const RenderableObjectData &renderable = scene->render_object_list[i];
                 if (!frustum.intersect_aabb(renderable.transformed_aabb))
@@ -955,7 +985,7 @@ namespace mirai {
         barrier_infos[0].dst_stage_mask = PIPELINE_STAGE_VERTEX_SHADER_BIT;
         cb->prepare_buffer(barrier_infos, 1);
     }
-    
+
     void Renderer::render() {
 
         device->new_frame();
@@ -976,6 +1006,7 @@ namespace mirai {
             ScopedGpuProfiling(cb, "GPU Time");
 
             // Copy per frame data from staging buffer to gpu uniform buffer
+            // Transform/Material/Light descriptor are also updated here
             upload_per_frame_data();
 
             upload_transforms(cb);
@@ -1005,12 +1036,11 @@ namespace mirai {
 
     Renderer::~Renderer() {
         geometry_buffer_allocator->shutdown();
-        gpu_allocator->shutdown();
 
         for (uint32_t i = 0; i < AppSettings::K_MAX_FRAME_IN_FLIGHTS; ++i)
             per_frame_allocator[i].shutdown();
 
-        BufferID buffers[] = {resource_heap.buffer, sampler_heap.buffer};
+        BufferID buffers[] = {resource_heap.buffer, sampler_heap.buffer, light_buffer.buffer, transform_buffer.buffer, material_buffer.buffer};
         device->destroy_buffers(buffers, cast_u32(std::size(buffers)));
 
         if (device->supports_raytracing()) {

@@ -73,13 +73,10 @@ namespace mirai {
         // Global Geometry Buffer Allocator
         std::unique_ptr<GPUPagedAllocator> geometry_buffer_allocator;
 
-        // Uniform Buffer
-        std::unique_ptr<GPULinearAllocator> gpu_allocator;
-
         BufferView transform_buffer;
         BufferView material_buffer;
         BufferView light_buffer;
-        
+
         BufferID blas_buffer_static;
         BufferID blas_buffer_dynamic;
         BufferID tlas_buffer;
@@ -159,7 +156,7 @@ namespace mirai {
         void dispatch_patch_copy(CommandBuffer *command_buffer, const BufferView &patch_buffer, const BufferView &src_buffer, const BufferView &dst_buffer, uint32_t total_patches);
 
         uint32_t frame_flight_index;
-        const uint32_t k_staging_buffer_size_per_frame = 4 * 1024 * 1024;
+        const uint32_t k_staging_buffer_size_per_frame = 16 * 1024 * 1024;
         uint32_t bindless_texture_count = 0;
         GPULinearAllocator per_frame_allocator[AppSettings::K_MAX_FRAME_IN_FLIGHTS];
         HashMap<uint64_t, DescriptorOffset> descriptor_map;

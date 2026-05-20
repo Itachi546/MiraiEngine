@@ -16,7 +16,7 @@ namespace mirai {
     };
     struct BufferCopyTask {
         BufferID dst;
-        uint32_t dst_offset;
+        uint64_t dst_offset;
         std::vector<uint8_t> data;
     };
 

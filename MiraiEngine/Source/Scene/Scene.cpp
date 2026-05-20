@@ -274,7 +274,19 @@ namespace mirai {
 
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
-        render_object_count.store(0u);
+
+        std::atomic<int> render_object_count;
+        render_object_count.store(0);
+        jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
+            MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
+            uint32_t primitive_count = cast_u32(mesh_component.primitives.size());
+            render_object_count.fetch_add(primitive_count);
+        });
+
+        jobsystem::Wait();
+
+        render_object_list.resize(render_object_count);
+        render_object_count.store(0);
 
         jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
             MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
@@ -295,21 +307,19 @@ namespace mirai {
                 // Create a combined AABB from animated pose and rest pose
                 if (is_skinned) {
                     const auto &animation_player = animation_players[animator->animation_player_index];
-                    if (animation_player->is_valid()) {
-                        const AABB &animation_aabb = animation_player->aabb;
-                        transformed_aabb.combine(animation_aabb);
-                    }
+                    const AABB &animation_aabb = animation_player->aabb;
+                    transformed_aabb.combine(animation_aabb);
+                    // The K_BONE radius is added later because it is defined in world space
+                    // When adding it in local space it get affected by scaling of mesh
+                    // 0.01 scaling means only 0.01 bound size in world space which is not enough
+                    transformed_aabb.transform(transform->world_transform);
+                    transformed_aabb.min -= K_BONE_RADIUS;
+                    transformed_aabb.max += K_BONE_RADIUS;
+                } else {
+                    transformed_aabb.transform(transform->world_transform);
                 }
-                // The K_BONE radius is added later because it is defined in world space
-                // When adding it in local space it get affected by scaling of mesh
-                // 0.01 scaling means only 0.01 bound size in world space which is not enough
-                transformed_aabb.transform(transform->world_transform);
-                transformed_aabb.min -= K_BONE_RADIUS;
-                transformed_aabb.max += K_BONE_RADIUS;
 
                 uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
-                ASSERT(index < K_MAX_ENTITIES);
-
                 render_object_list[index] = RenderableObjectData{
                     .entity = entity,
                     .material_index = primitive.material,
@@ -328,9 +338,9 @@ namespace mirai {
         jobsystem::Wait();
     }
 
-    Entity Scene::create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index) {
+    Entity Scene::create_entity(const std::string &name, uint32_t mesh_index, uint32_t material_index, Entity parent) {
         ASSERT(mesh_index != K_INVALID_ID);
-        Entity entity = create_entity(name);
+        Entity entity = create_entity(name, parent);
         MeshComponent mesh_component = {
             .mesh_type = MESH_TYPE_STATIC,
             .gpu_index = GPUIndexAllocator::allocate_index(),
@@ -342,30 +352,29 @@ namespace mirai {
         return entity;
     }
 
-    Entity Scene::create_plane(const std::string &name) {
-
+    Entity Scene::create_plane(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
         std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
         material->set_cull_mode(CULL_MODE_NONE);
         materials.push_back(std::move(material));
 
-        return create_entity(name, plane_mesh_index, material_index);
+        return create_entity(name, plane_mesh_index, material_index, parent);
     }
 
-    Entity Scene::create_cube(const std::string &name) {
+    Entity Scene::create_cube(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
         std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
         materials.push_back(std::move(material));
 
-        return create_entity(name, cube_mesh_index, material_index);
+        return create_entity(name, cube_mesh_index, material_index, parent);
     }
 
-    Entity Scene::create_sphere(const std::string &name) {
+    Entity Scene::create_sphere(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
         std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
         materials.push_back(std::move(material));
 
-        return create_entity(name, sphere_mesh_index, material_index);
+        return create_entity(name, sphere_mesh_index, material_index, parent);
     }
 
     void Scene::remove_entity(Entity entity) {

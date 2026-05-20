@@ -73,8 +73,8 @@ namespace mirai {
     struct BLASDescription {
         BufferID vertex_buffer;
         BufferID index_buffer;
-        uint32_t vertex_offset;
-        uint32_t index_offset;
+        uint64_t vertex_offset;
+        uint64_t index_offset;
         uint32_t vertex_stride;
         uint32_t vertex_count;
         uint32_t index_count;
@@ -458,8 +458,8 @@ namespace mirai {
 
     struct BufferView {
         BufferID buffer;
-        uint32_t offset;
-        uint32_t size;
+        size_t offset;
+        size_t size;
         // ptr is only valid for mapped buffer
         // is already mapped at offset
         uint8_t *ptr;
@@ -469,7 +469,7 @@ namespace mirai {
         }
     };
     struct BufferDescription {
-        uint32_t size;
+        uint64_t size;
         uint32_t usage_flags;
         MemoryAllocationType allocation_type;
     };
@@ -541,10 +541,10 @@ namespace mirai {
         union {
             struct {
                 // Only used for buffer
-                size_t offset;
+                uint64_t offset;
                 // If the size specified is greater than the actual size of buffer, the sized is clamped to buffer size
                 // We can specify the whole region of buffer by using large value like UINT64_MAX
-                size_t size;
+                uint64_t size;
             } buffer_info;
 
             struct {
@@ -577,7 +577,7 @@ namespace mirai {
         uint32_t index_count;
         uint32_t instance_count;
         uint32_t first_index;
-        uint32_t vertex_offset_bytes;
+        int32_t vertex_offset_bytes;
         uint32_t first_instance;
     };
 

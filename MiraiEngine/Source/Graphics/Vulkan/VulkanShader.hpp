@@ -34,7 +34,7 @@ namespace mirai {
     struct VulkanBuffer {
         VkBuffer buffer;
         VmaAllocation allocation;
-        uint32_t size;
+        uint64_t size;
         void *buffer_ptr;
         VkDeviceSize device_address;
 

@@ -1417,13 +1417,15 @@ namespace mirai {
 
         if (!blas_scratch_buffer.is_valid()) {
             BufferDescription buffer_desc = {
-                .size = cast_u32(required_scratch_size),
+                .size = required_scratch_size + acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment,
                 .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                 .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
             };
             blas_scratch_buffer = create_buffer(&buffer_desc, "BLASScratchBuffer");
         }
+
         VulkanBuffer *scratch_buffer = resource_pool_buffers.access(blas_scratch_buffer);
+        scratch_buffer->device_address = align_memory(scratch_buffer->device_address, uint64_t(acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment));
         ASSERT(scratch_buffer->size >= required_scratch_size);
 
         VkDeviceSize scratch_buffer_device_address = scratch_buffer->device_address;
@@ -1466,12 +1468,13 @@ namespace mirai {
             vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_infos[i], &max_primitives, &size_info);
 
             // Just use the memory for now, this is not the final data
+            uint64_t required_scratch_size = align_memory(size_info.buildScratchSize, uint64_t(acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment));
             blas_info.blas_offset = blas_buffer_size;
             blas_info.blas_size = size_info.accelerationStructureSize;
-            blas_info.scratch_size = size_info.buildScratchSize;
+            blas_info.scratch_size = required_scratch_size;
 
             blas_buffer_size += align_memory(size_info.accelerationStructureSize, k_alignment);
-            scratch_buffer_size = std::max(scratch_buffer_size, size_info.buildScratchSize);
+            scratch_buffer_size = std::max(scratch_buffer_size, required_scratch_size);
         }
 
         Log::Info("Scratch Buffer Size: ", utils::bytes_to_mb(scratch_buffer_size), " mb");
@@ -1479,13 +1482,14 @@ namespace mirai {
 
         // Allocate memory for scratch buffer and blas
         BufferDescription buffer_desc = {
-            .size = cast_u32(scratch_buffer_size),
+            .size = cast_u32(scratch_buffer_size + acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment),
             .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
 
         BufferID scratch_buffer_id = create_buffer(&buffer_desc, "blas_scratch_buffer");
         VulkanBuffer *scratch_buffer = resource_pool_buffers.access(scratch_buffer_id);
+        scratch_buffer->device_address = align_memory(scratch_buffer->device_address, uint64_t(acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment));
 
         buffer_desc.size = cast_u32(blas_buffer_size);
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -1593,38 +1597,45 @@ namespace mirai {
         vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
 
         // Allocate memory for scratch buffer and blas
+        uint64_t scratch_buffer_size = size_info.buildScratchSize + acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
+
         BufferDescription buffer_desc = {
-            .size = cast_u32(size_info.buildScratchSize),
+            .size = scratch_buffer_size,
             .usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_GPU,
         };
 
-        VulkanBuffer *scratch_buffer = nullptr;
         bool is_tlas_invalidated = false;
         if (tlas_scratch_buffer.is_valid()) {
-            scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
-            if (scratch_buffer->size < size_info.buildScratchSize) {
+            VulkanBuffer *scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
+            if (scratch_buffer->size < scratch_buffer_size) {
+                Log::Info("TLAS Scratch Buffer Resize: ", utils::bytes_to_mb(scratch_buffer_size), "MB");
                 resize_buffer(&buffer_desc, tlas_scratch_buffer, false, "TLASScratchBuffer");
                 is_tlas_invalidated = true;
             }
         } else {
+            Log::Info("Allocate TLAS Scratch Buffer: ", utils::bytes_to_mb(scratch_buffer_size), "MB");
             tlas_scratch_buffer = create_buffer(&buffer_desc, "TLASScratchBuffer");
-            scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
         }
 
-        VulkanBuffer *tlas_buffer = nullptr;
-        buffer_desc.size = cast_u32(size_info.accelerationStructureSize);
+        buffer_desc.size = size_info.accelerationStructureSize;
         buffer_desc.usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         if (tlas_buffer_id.is_valid()) {
-            tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
+            VulkanBuffer *tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
             if (tlas_buffer->size < size_info.accelerationStructureSize) {
+                Log::Info("TLAS Buffer Resize: ", utils::bytes_to_mb(buffer_desc.size), "MB");
                 resize_buffer(&buffer_desc, tlas_buffer_id, false, "TLASBuffer");
                 is_tlas_invalidated = true;
             }
         } else {
+            Log::Info("Allocate TLAS Buffer: ", utils::bytes_to_mb(buffer_desc.size), "MB");
             tlas_buffer_id = create_buffer(&buffer_desc, "blas_buffer");
-            tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
         }
+
+        VulkanBuffer *scratch_buffer = resource_pool_buffers.access(tlas_scratch_buffer);
+        scratch_buffer->device_address = align_memory(scratch_buffer->device_address, uint64_t(acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment));
+
+        VulkanBuffer *tlas_buffer = resource_pool_buffers.access(tlas_buffer_id);
 
         out_tlas->buffer_device_address = tlas_buffer->device_address;
         out_tlas->buffer_size = cast_u32(size_info.accelerationStructureSize);
@@ -1676,7 +1687,7 @@ namespace mirai {
         dependency_info.memoryBarrierCount = 1;
         dependency_info.pMemoryBarriers = &memory_barrier;
         vkCmdPipelineBarrier2(command_buffer->command_buffer, &dependency_info);
-    }
+    } // namespace mirai
 
     void VulkanRenderingDevice::destroy_acceleration_structures(AccelerationStructureID *acceleration_structures, uint32_t acceleration_structure_count) {
         for (uint32_t i = 0; i < acceleration_structure_count; ++i) {

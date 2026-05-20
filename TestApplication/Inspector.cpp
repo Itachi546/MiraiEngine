@@ -129,7 +129,7 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
             if (material == nullptr)
                 continue;
 
-            ImGui::PushID(entity * K_MAX_ENTITIES + material_index);
+            ImGui::PushID(entity * INT16_MAX  + material_index);
             std::string mat_name = material->name.size() > 0 ? material->name : "unnamed" + std::to_string(material_index);
             if (ImGui::TreeNodeEx(mat_name.c_str())) {
                 add_pbr_standard_material_ui(material.get());

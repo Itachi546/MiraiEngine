@@ -65,8 +65,21 @@ class TestApplication : public App {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);
         }
-
 #if 0 
+        Entity parent = scene->create_entity("Probes");
+        for (uint32_t y = 0; y < 64; ++y) {
+            for (uint32_t x = 0; x < 64; ++x) {
+                Entity entity = scene->create_sphere("Probe" + std::to_string(x) + std::to_string(y), parent);
+                TransformComponent *component = scene->ecs->component_manager->get_component<TransformComponent>(entity);
+
+                glm::vec2 pos = glm::vec2(float(x) / 64.0f, float(y) / 64.0f);
+                pos = pos * 2.0f - 1.0f;
+                pos *= 64.0f;
+                component->position = glm::vec3(pos.x, 0.5f, pos.y);
+            }
+        }
+#endif
+#if 0
         auto &component_manager = scene->ecs->component_manager;
         const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");

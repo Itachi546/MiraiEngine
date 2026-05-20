@@ -15,7 +15,7 @@ namespace mirai {
         Instance = this;
 
         BufferDescription buffer_desc = {
-            .size = cast_u32(K_MAX_LINE_COUNT * sizeof(Line)) * AppSettings::K_MAX_FRAME_IN_FLIGHTS,
+            .size = K_MAX_LINE_COUNT * sizeof(Line) * AppSettings::K_MAX_FRAME_IN_FLIGHTS,
             .usage_flags = BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
         };

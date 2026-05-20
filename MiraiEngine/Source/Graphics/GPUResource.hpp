@@ -5,7 +5,7 @@
 namespace mirai {
     struct GPUSamplerDescriptorHeap {
         BufferID buffer;
-        uint32_t size;
+        uint64_t size;
         uint32_t descriptor_size;
         void *ptr;
     };
@@ -13,7 +13,7 @@ namespace mirai {
     struct GPUResourceDescriptorHeap {
       public:
         BufferID buffer;
-        uint32_t size;
+        uint64_t size;
         uint32_t descriptor_size;
         void *ptr;
 
@@ -39,8 +39,8 @@ namespace mirai {
 
     struct GPULinearAllocator {
         BufferID buffer;
-        uint32_t offset;
-        uint32_t size;
+        uint64_t offset;
+        uint64_t size;
         uint8_t *ptr;
 
         void init(const BufferDescription &buffer_desc, const std::string &debug_name) {
@@ -54,13 +54,13 @@ namespace mirai {
                 this->ptr = nullptr;
         }
 
-        bool can_allocate(uint32_t required_size) {
+        bool can_allocate(uint64_t required_size) {
             if (required_size > (size - offset))
                 return false;
             return true;
         }
 
-        BufferView allocate(uint32_t required_size, uint32_t alignment = 64) {
+        BufferView allocate(uint64_t required_size, uint64_t alignment = 64) {
             if (alignment > 0)
                 required_size = align_memory(required_size, alignment);
             if (!can_allocate(required_size)) {
@@ -91,26 +91,26 @@ namespace mirai {
         For now, paged allocator is responsible for allocating buffer and releasing it
     */
     struct GPUPagedAllocator {
-        void init(uint32_t page_size = 64 * 1024 * 1024) {
+        void init(uint64_t page_size = 64 * 1024 * 1024) {
             this->page_size = page_size;
         }
 
-        BufferView allocate(uint32_t size, uint32_t alignment = 64);
+        BufferView allocate(uint64_t size, uint64_t alignment = 64);
 
         void shutdown();
 
         struct Allocation {
             BufferID id;
-            uint32_t current_offset;
+            uint64_t current_offset;
         };
         std::vector<Allocation> allocations;
 
       private:
-        uint32_t page_size = 0;
+        uint64_t page_size = 0;
 
-        bool can_allocate(const Allocation &allocation, uint32_t required_size);
+        bool can_allocate(const Allocation &allocation, uint64_t required_size);
 
-        uint32_t find_existing_page(uint32_t required_size);
+        uint32_t find_existing_page(uint64_t required_size);
     };
 
     struct GPUIndexAllocator {

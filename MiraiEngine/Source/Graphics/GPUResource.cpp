@@ -43,8 +43,8 @@ namespace mirai {
         return current_offset;
     }
 
-    BufferView GPUPagedAllocator::allocate(uint32_t size, uint32_t alignment) {
-        uint32_t required_size = align_memory(size, alignment);
+    BufferView GPUPagedAllocator::allocate(uint64_t size, uint64_t alignment) {
+        uint64_t required_size = align_memory(size, alignment);
 
         // Check if we can allocate from existing pages
         uint32_t page = find_existing_page(required_size);
@@ -65,7 +65,7 @@ namespace mirai {
 
         } else {
             Allocation &allocation = allocations[page];
-            uint32_t offset = allocation.current_offset;
+            uint64_t offset = allocation.current_offset;
             allocation.current_offset += required_size;
             return BufferView{allocation.id, offset, required_size, nullptr};
         }
@@ -77,14 +77,14 @@ namespace mirai {
             device->destroy_buffers(&allocation.id, 1);
     }
 
-    bool GPUPagedAllocator::can_allocate(const Allocation &allocation, uint32_t required_size) {
+    bool GPUPagedAllocator::can_allocate(const Allocation &allocation, uint64_t required_size) {
         if (allocation.current_offset + required_size > page_size)
             return false;
 
         return true;
     }
 
-    uint32_t GPUPagedAllocator::find_existing_page(uint32_t required_size) {
+    uint32_t GPUPagedAllocator::find_existing_page(uint64_t required_size) {
         for (uint32_t i = 0; i < allocations.size(); ++i) {
             if (can_allocate(allocations[i], required_size))
                 return i;

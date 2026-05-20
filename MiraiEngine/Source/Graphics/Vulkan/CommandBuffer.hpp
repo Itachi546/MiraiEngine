@@ -60,9 +60,9 @@ namespace mirai {
 
         void draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
-        void draw_indexed_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+        void draw_indexed_indirect(BufferID indirect_buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
 
-        void draw_indirect(BufferID indirect_buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+        void draw_indirect(BufferID indirect_buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
 
         void dispatch(uint32_t work_size_x, uint32_t work_size_y, uint32_t work_size_z);
 
