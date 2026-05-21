@@ -63,7 +63,15 @@ namespace mirai {
 
     // Only used by GLTF parser
     struct MeshComponent {
+        enum Flags : uint32_t {
+            MESH_FLAG_NONE = 0,
+            MESH_FLAG_CAST_SHADOW = 1 << 0,
+            MESH_FLAG_RECEIVE_SHADOW = 1 << 1,
+            MESH_FLAG_DEFAULT = MESH_FLAG_CAST_SHADOW | MESH_FLAG_RECEIVE_SHADOW,
+        };
+
         MeshType mesh_type = MESH_TYPE_STATIC;
+        uint32_t flags = Flags::MESH_FLAG_DEFAULT;
         uint32_t gpu_index;
         std::vector<Primitive> primitives;
     };

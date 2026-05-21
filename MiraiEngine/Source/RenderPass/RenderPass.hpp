@@ -11,3 +11,4 @@
 #include "BloomPass.hpp"
 #include "ViewNormalDepthPass.hpp"
 #include "RTShadowPass.hpp"
+#include "DDGIPass.hpp"

@@ -59,6 +59,9 @@ namespace mirai {
         per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
         per_frame_data.current_frame_jitter = glm::vec2(0.0f);
+
+        std::unique_ptr<Material3D> default_material = std::make_unique<Material3D>("DefaultMaterialShared");
+        materials.push_back(std::move(default_material));
     }
 
     void Scene::update() {
@@ -324,6 +327,7 @@ namespace mirai {
                     .entity = entity,
                     .material_index = primitive.material,
                     .transform_index = mesh_component.gpu_index,
+                    .mesh_flags = mesh_component.flags,
                     .mesh_type = mesh_component.mesh_type,
                     .buffer = allocation.buffer,
                     .vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes,
@@ -354,27 +358,17 @@ namespace mirai {
 
     Entity Scene::create_plane(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
-        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
-        material->set_cull_mode(CULL_MODE_NONE);
-        materials.push_back(std::move(material));
-
-        return create_entity(name, plane_mesh_index, material_index, parent);
+        return create_entity(name, plane_mesh_index, 0, parent);
     }
 
     Entity Scene::create_cube(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
-        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
-        materials.push_back(std::move(material));
-
-        return create_entity(name, cube_mesh_index, material_index, parent);
+        return create_entity(name, cube_mesh_index, 0, parent);
     }
 
     Entity Scene::create_sphere(const std::string &name, Entity parent) {
         uint32_t material_index = cast_u32(materials.size());
-        std::unique_ptr<Material3D> material = std::make_unique<Material3D>(name + "_mat");
-        materials.push_back(std::move(material));
-
-        return create_entity(name, sphere_mesh_index, material_index, parent);
+        return create_entity(name, sphere_mesh_index, 0, parent);
     }
 
     void Scene::remove_entity(Entity entity) {

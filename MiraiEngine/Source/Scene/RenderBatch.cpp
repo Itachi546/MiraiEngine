@@ -30,7 +30,7 @@ namespace mirai {
 
             // Skip transparent object and object that doesn't cast shadow
             if (is_shadow_pass) {
-                if (material->is_transparent()) {
+                if (material->is_transparent() || !HAS_FLAG(renderable.mesh_flags, MeshComponent::MESH_FLAG_CAST_SHADOW)) {
                     renderable_sort_keys[index] = UINT64_MAX;
                     return;
                 }

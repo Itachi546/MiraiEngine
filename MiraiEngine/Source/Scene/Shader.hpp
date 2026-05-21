@@ -31,14 +31,6 @@ namespace mirai {
         ALPHA_MODE_MAX,
     };
 
-    // Behavioral flags — not part of the sort key.
-    enum RenderFlags : uint32_t {
-        RENDER_FLAG_NONE = 0,
-        RENDER_FLAG_CAST_SHADOW = 1 << 0,
-        RENDER_FLAG_RECEIVE_SHADOW = 1 << 1,
-        RENDER_FLAG_DEFAULT = RENDER_FLAG_CAST_SHADOW | RENDER_FLAG_RECEIVE_SHADOW,
-    };
-
     // Only material-facing variant bits are hashed.
     union MaterialKey {
         struct {

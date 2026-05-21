@@ -17,6 +17,7 @@ namespace mirai {
         Entity entity;
         uint32_t material_index;
         uint32_t transform_index;
+        uint32_t mesh_flags;
         MeshType mesh_type;
 
         BufferID buffer;
