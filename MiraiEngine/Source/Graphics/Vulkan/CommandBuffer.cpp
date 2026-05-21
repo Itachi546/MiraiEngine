@@ -119,8 +119,11 @@ namespace mirai {
                 VkPipelineStageFlags2 dst_stage = VkPipelineStageFlags2(state.declaration->stage_mask);
                 VkAccessFlags2 dst_access_flag = VkAccessFlags2(state.declaration->access_flags);
 
-                if (buffer->stage_mask == dst_stage && buffer->access_flags == dst_access_flag)
-                    continue;
+                if (buffer->stage_mask == dst_stage && buffer->access_flags == dst_access_flag) {
+                    if (buffer->access_flags != ACCESS_FLAG_SHADER_WRITE) {
+                        continue;
+                    }
+                }
 
                 memory_barriers.push_back(CreateBufferMemoryBarrier2(
                     buffer->buffer,
@@ -165,8 +168,13 @@ namespace mirai {
                     if (is_depth_texture && src_stage_mask == VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
                         src_stage_mask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
-                    if (texture->stage_mask == dst_stage && texture->access_flags == dst_access_flag && texture->current_layout == dst_layout)
-                        continue;
+                    if (texture->stage_mask == dst_stage && texture->access_flags == dst_access_flag && texture->current_layout == dst_layout) {
+                        // Should be careful about write write dependency, partial write to the texture
+                        if (!HAS_FLAG(texture->access_flags, ACCESS_FLAG_SHADER_WRITE) &&
+                            !HAS_FLAG(texture->access_flags, ACCESS_FLAG_DEPTH_STENCIL_ATTACHMENT_WRITE) &&
+                            !HAS_FLAG(texture->access_flags, ACCESS_FLAG_COLOR_ATTACHMENT_WRITE))
+                            continue;
+                    }
 
                     image_barriers.push_back(CreateImageMemoryBarrier2(texture->image,
                                                                        src_stage_mask,
