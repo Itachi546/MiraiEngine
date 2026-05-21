@@ -65,32 +65,7 @@ class TestApplication : public App {
             for (const auto &path : model_paths)
                 ImportModel_GLTF(path, scene);
         }
-#if 1
-        auto &component_manager = scene->ecs->component_manager;
-        IrradianceFieldSettings settings;
-        Entity parent = scene->create_entity("Probes");
-        const float radius = 0.1f;
 
-        uint32_t material_index = cast_u32(scene->materials.size());
-        {
-            std::unique_ptr<Material3D> probe_material = std::make_unique<Material3D>("ProbeMaterial");
-            probe_material->properties.albedo = glm::vec4(1.0f, 0.0f, 0.49f, 1.0f);
-            scene->materials.push_back(std::move(probe_material));
-        }
-
-        uint32_t probe_count = settings.get_probe_count();
-        for (uint32_t i = 0; i < probe_count; ++i) {
-            Entity entity = scene->create_sphere("Probe" + std::to_string(i), parent);
-            TransformComponent *component = component_manager->get_component<TransformComponent>(entity);
-            component->position = settings.probe_index_to_position(i);
-            component->scale = glm::vec3(radius);
-
-            MeshComponent *mesh_comp = component_manager->get_component<MeshComponent>(entity);
-            mesh_comp->flags = MeshComponent::Flags::MESH_FLAG_NONE;
-            mesh_comp->primitives[0].material = material_index;
-        }
-
-#endif
 #if 0
         const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");
@@ -289,7 +264,7 @@ class TestApplication : public App {
         if (show_render_pass_debug_popup) {
             FrameGraph *frame_graph = Renderer::get()->get_frame_graph();
             for (auto &resource : frame_graph->resources) {
-                if (resource.resource_type == ResourceType::Buffer)
+                if (resource.resource_type == ResourceType::Buffer || resource.ref_count == 0)
                     continue;
 
                 const FrameGraphTexture &texture = resource.get<FrameGraphTexture>();

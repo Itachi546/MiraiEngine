@@ -13,11 +13,6 @@
 
 namespace mirai {
 
-    struct RTShadowVisibilityPassData {
-        FrameGraphResourceHandle output;
-        std::shared_ptr<ComputeShader> shader;
-    };
-
     RTShadowPass::RTShadowPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<RTShadowVisibilityPassData>(
             "RTVisibilityPass",
@@ -52,8 +47,9 @@ namespace mirai {
                                                             });
 
                 data.shader = std::make_shared<ComputeShader>("RTVelocityGenShader", "SPIRV/rt-shadow-visibility.comp.spv");
+
                 // @TODO temp
-                builder.set_side_effect();
+                board->add<RTShadowVisibilityPassData>(data);
             },
             [](const RTShadowVisibilityPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
@@ -135,9 +131,6 @@ namespace mirai {
                 uint32_t local_size_x = rendering_utils::get_workgroup_size(width, 8);
                 uint32_t local_size_y = rendering_utils::get_workgroup_size(height, 8);
                 command_buffer->dispatch(local_size_x, local_size_y, 1);
-
-                // @TODO temp
-                command_buffer->prepare_image_for_shader_read(visibility_texture);
             });
 
         /*

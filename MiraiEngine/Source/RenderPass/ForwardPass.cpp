@@ -98,6 +98,13 @@ namespace mirai {
                                                                     .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                                 });
 
+                const RTShadowVisibilityPassData &rt_shadow_pass_data = board->get<RTShadowVisibilityPassData>();
+                builder.read(rt_shadow_pass_data.output, {
+                                                             .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                             .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                             .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         });
+
                 data.skybox_shader = std::make_shared<EffectMaterial>("OverlaySkyboxShader",
                                                                       std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/skybox.frag.spv"},
                                                                       PipelineState{

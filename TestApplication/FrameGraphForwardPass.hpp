@@ -13,6 +13,7 @@ using namespace mirai;
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     DepthPrePass depth_prepass{frame_graph, board};
     ViewNormalDepthPass view_pass{frame_graph, board};
+    DDGIPass ddgi_pass{frame_graph, board};
     RTShadowPass shadow_pass{frame_graph, board};
     SSAOPass ssao_pass{frame_graph, board};
     CascadedShadowPass cascaded_shadow_pass{frame_graph, board};

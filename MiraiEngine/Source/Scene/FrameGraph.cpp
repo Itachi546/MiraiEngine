@@ -156,7 +156,7 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         // Allocate actual resources
         for (auto &resource : resources) {
-            if (resource.external)
+            if (resource.external || resource.ref_count == 0)
                 continue;
 
             if (resource.resource_type == ResourceType::Buffer) {
@@ -220,6 +220,10 @@ namespace mirai {
             if (resource.external)
                 continue;
             ID id = std::visit([](const auto &d) { return d.id; }, resource.resource);
+
+            if (!id.is_valid())
+                continue;
+
             if (resource.resource_type == ResourceType::Buffer) {
                 FrameGraphBuffer buffer = resource.get<FrameGraphBuffer>();
                 buffers.push_back(id);

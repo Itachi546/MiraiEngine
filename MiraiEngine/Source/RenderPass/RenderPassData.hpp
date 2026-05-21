@@ -13,6 +13,12 @@ namespace mirai {
         FrameGraphResourceHandle output;
     };
 
+    // @TODO temp
+    struct RTShadowVisibilityPassData {
+        FrameGraphResourceHandle output;
+        std::shared_ptr<ComputeShader> shader;
+    };
+
     struct ViewNormalDepthPassData {
         FrameGraphResourceHandle output;
         std::shared_ptr<ComputeShader> shader;
