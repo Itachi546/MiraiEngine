@@ -6,7 +6,7 @@
 namespace mirai {
 
     struct IrradianceFieldSettings {
-        glm::uvec3 probe_counts = glm::uvec3(32, 32, 32);
+        glm::uvec3 probe_counts = glm::uvec3(4, 4, 4);
         uint32_t irradiance_oct_resolution = 8;
         uint32_t depth_oct_resolution = 16;
 

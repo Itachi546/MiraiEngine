@@ -749,9 +749,9 @@ namespace mirai {
         device->refit_blas(command_buffer, blas_descriptions, blases, blas_buffer_dynamic, ASC_ALLOW_UPDATE_BIT_KHR | ASC_PREFER_FAST_BUILD_BIT_KHR);
     }
 
-    void Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
+    uint32_t Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
         if (batches.size() == 0)
-            return;
+            return 0;
         // Calculate total memory required in staging buffer
         uint32_t total_entities = 0;
         uint32_t draw_indirect_size_bytes = 0;
@@ -763,7 +763,7 @@ namespace mirai {
         }
 
         if (total_entities == 0)
-            return;
+            return 0;
 
         uint32_t draw_data_instance_size = sizeof(uint32_t) * 4;
         uint32_t draw_data_size_bytes = total_entities * draw_data_instance_size;
@@ -814,8 +814,7 @@ namespace mirai {
             batch_draw_indirect_data_offset += sizeof(DrawIndexedIndirectCommand) * num_entity;
             batch_draw_data_offset += draw_data_instance_size * num_entity;
         }
-
-        total_visible_entities = total_entities;
+        return total_entities;
     }
 
     DescriptorOffset Renderer::get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type) {
@@ -881,7 +880,7 @@ namespace mirai {
         cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Populate per-frame batch data
-        upload_batch_data(main_render_batches, frame_flight_index);
+        total_visible_entities = upload_batch_data(main_render_batches, frame_flight_index);
 
         DescriptorInfo descriptor_infos[] = {
             {DescriptorType::UniformBuffer, per_frame_data_buffer.buffer, {per_frame_data_buffer.offset, per_frame_data_buffer.size}},

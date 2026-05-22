@@ -50,7 +50,7 @@ namespace mirai {
         }
 
         // Helper function to upload batch data to per frame staging buffer
-        void upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
+        uint32_t upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
 
         // Used for resources with default descriptor parameter
         DescriptorOffset get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type);
