@@ -278,11 +278,21 @@ namespace mirai {
         auto mesh_component_ptr = ecs->component_manager->get_component_array<MeshComponent>();
         uint32_t component_count = static_cast<uint32_t>(mesh_component_ptr->size());
 
+        uint32_t batch_size = 64;
+        uint32_t dispatch_count = rendering_utils::get_workgroup_size(component_count, batch_size);
+
         std::atomic<int> render_object_count;
         render_object_count.store(0);
-        jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
-            MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
-            uint32_t primitive_count = cast_u32(mesh_component.primitives.size());
+
+        jobsystem::Dispatch(dispatch_count, 32, [&](jobsystem::JobDispatchArg arg) {
+            uint32_t start_index = arg.job_index * batch_size;
+            uint32_t end_index = std::min(start_index + batch_size, component_count);
+
+            uint32_t primitive_count = 0;
+            for (uint32_t i = start_index; i < end_index; ++i) {
+                MeshComponent &mesh_component = mesh_component_ptr->components[i];
+                primitive_count += cast_u32(mesh_component.primitives.size());
+            }
             render_object_count.fetch_add(primitive_count);
         });
 
@@ -291,52 +301,60 @@ namespace mirai {
         render_object_list.resize(render_object_count);
         render_object_count.store(0);
 
-        jobsystem::Dispatch(component_count, 64, [&](jobsystem::JobDispatchArg arg) {
-            MeshComponent &mesh_component = mesh_component_ptr->components[arg.job_index];
-            bool is_skinned = false;
+        jobsystem::Dispatch(dispatch_count, 32, [&](jobsystem::JobDispatchArg arg) {
+            uint32_t start_index = arg.job_index * batch_size;
+            uint32_t end_index = std::min(start_index + batch_size, component_count);
 
-            const Entity entity = mesh_component_ptr->entities[arg.job_index];
-            const TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+            std::vector<RenderableObjectData> batch_renderables;
 
-            AnimatorComponent *animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
-            is_skinned = animator ? true : false;
+            for (uint32_t i = start_index; i < end_index; ++i) {
+                MeshComponent &mesh_component = mesh_component_ptr->components[i];
 
-            const float K_BONE_RADIUS = 1.0f;
-            for (uint32_t p = 0; p < mesh_component.primitives.size(); ++p) {
-                const Primitive &primitive = mesh_component.primitives[p];
-                const MeshAllocation &allocation = mesh_allocations[primitive.mesh];
+                bool is_skinned = false;
 
-                AABB transformed_aabb = allocation.local_aabb;
-                // Create a combined AABB from animated pose and rest pose
-                if (is_skinned) {
-                    const auto &animation_player = animation_players[animator->animation_player_index];
-                    const AABB &animation_aabb = animation_player->aabb;
-                    transformed_aabb.combine(animation_aabb);
-                    // The K_BONE radius is added later because it is defined in world space
-                    // When adding it in local space it get affected by scaling of mesh
-                    // 0.01 scaling means only 0.01 bound size in world space which is not enough
-                    transformed_aabb.transform(transform->world_transform);
-                    transformed_aabb.min -= K_BONE_RADIUS;
-                    transformed_aabb.max += K_BONE_RADIUS;
-                } else {
-                    transformed_aabb.transform(transform->world_transform);
+                const Entity entity = mesh_component_ptr->entities[i];
+                const TransformComponent *transform = ecs->component_manager->get_component<TransformComponent>(entity);
+
+                AnimatorComponent *animator = ecs->component_manager->get_component<AnimatorComponent>(entity);
+                is_skinned = animator ? true : false;
+
+                const float K_BONE_RADIUS = 1.0f;
+                for (uint32_t p = 0; p < mesh_component.primitives.size(); ++p) {
+                    const Primitive &primitive = mesh_component.primitives[p];
+                    const MeshAllocation &allocation = mesh_allocations[primitive.mesh];
+
+                    AABB transformed_aabb = allocation.local_aabb;
+                    // Create a combined AABB from animated pose and rest pose
+                    if (is_skinned) {
+                        const auto &animation_player = animation_players[animator->animation_player_index];
+                        const AABB &animation_aabb = animation_player->aabb;
+                        transformed_aabb.combine(animation_aabb);
+                        // The K_BONE radius is added later because it is defined in world space
+                        // When adding it in local space it get affected by scaling of mesh
+                        // 0.01 scaling means only 0.01 bound size in world space which is not enough
+                        transformed_aabb.transform(transform->world_transform);
+                        transformed_aabb.min -= K_BONE_RADIUS;
+                        transformed_aabb.max += K_BONE_RADIUS;
+                    } else {
+                        transformed_aabb.transform(transform->world_transform);
+                    }
+
+                    uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
+                    render_object_list[index] = RenderableObjectData{
+                        .entity = entity,
+                        .material_index = primitive.material,
+                        .transform_index = mesh_component.gpu_index,
+                        .mesh_flags = mesh_component.flags,
+                        .mesh_type = mesh_component.mesh_type,
+                        .buffer = allocation.buffer,
+                        .vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes,
+                        .first_index = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t)),
+                        .index_count = allocation.index_count,
+                        .vertex_stride = K_VERTEX_DATA_SIZE,
+                        .blas_buffer_device_address = allocation.blas.buffer_device_address,
+                        .transformed_aabb = transformed_aabb,
+                    };
                 }
-
-                uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
-                render_object_list[index] = RenderableObjectData{
-                    .entity = entity,
-                    .material_index = primitive.material,
-                    .transform_index = mesh_component.gpu_index,
-                    .mesh_flags = mesh_component.flags,
-                    .mesh_type = mesh_component.mesh_type,
-                    .buffer = allocation.buffer,
-                    .vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes,
-                    .first_index = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t)),
-                    .index_count = allocation.index_count,
-                    .vertex_stride = K_VERTEX_DATA_SIZE,
-                    .blas_buffer_device_address = allocation.blas.buffer_device_address,
-                    .transformed_aabb = transformed_aabb,
-                };
             }
         });
         jobsystem::Wait();
