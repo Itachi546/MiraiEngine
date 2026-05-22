@@ -1,7 +1,8 @@
 #ifndef PBR_GLSL
 #define PBR_GLSL
 
-#define PI 3.14159265359
+#include "../utils/math.glsl"
+
 const float MAX_REFLECTION_LOD = 7.0;
 
 float D_GGX(float ndoth, float roughness) {
@@ -37,8 +38,6 @@ vec3 F_Schlick(float ldoth, vec3 F0) {
 vec3 F_SchlickRoughness(float hdotv, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - hdotv, 0.0, 1.0), 5.0);
 }
-
-#define PI 3.14159265359
 
 float RadicalInverse_VdC(uint bits) {
     bits = (bits << 16u) | (bits >> 16u);

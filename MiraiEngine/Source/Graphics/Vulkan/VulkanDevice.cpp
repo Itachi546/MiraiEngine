@@ -85,6 +85,11 @@ namespace mirai {
 
     VkDevice CreateDevice(VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
         VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr};
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
+        if (support_raytracing) {
+            indexing_features.pNext = &rt_pipeline_features;
+        }
+
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
         vkGetPhysicalDeviceFeatures2(physical_device, &supported_features);
 
@@ -92,11 +97,14 @@ namespace mirai {
         if (!bindless_supported) {
             Log::Fatal("VULKAN::FEATURE::Bindless Resource (Not Supported)");
         }
-
         Log::Info("VULKAN::FEATURE::Bindless Resource (Supported)");
-        if (support_raytracing)
+
+        bool rt_pipeline_supported = rt_pipeline_features.rayTracingPipeline;
+        if (support_raytracing) {
+            if (!rt_pipeline_supported)
+                Log::Fatal("VULKAN::FEATURE::RayTracing pipeline is not supported");
             Log::Info("VULKAN::FEATURE::Raytracing (Supported)");
-        else
+        } else
             Log::Warn("VULKAN::FEATURE::Raytracing (Not Supported)");
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};

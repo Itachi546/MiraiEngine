@@ -7,6 +7,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 #include "../utils/transform.glsl"
 #include "../utils/bindless-texture.glsl"
 #include "../utils/bindless-sampler.glsl"
+#include "../utils/math.glsl"
 
 layout(set = 0, binding = 0, r16f) uniform image2D u_ssao_texture;
 
@@ -37,8 +38,6 @@ layout(push_constant) uniform HBAOPushConstants {
     uint padding[3];
 }
 hbao;
-
-#define PI 3.14159265359
 
 /*
 ivec2 uv_to_iuv(vec2 uv) {

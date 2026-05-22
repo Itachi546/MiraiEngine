@@ -9,6 +9,7 @@ layout(set = 0, binding = 1, rgba16f) uniform imageCube u_irradiance_map;
 
 #include "../utils/cubemap.glsl"
 #include "../utils/bindless-sampler.glsl"
+#include "../utils/math.glsl"
 
 layout(push_constant) uniform PushConstants {
     vec2 irradiance_map_dims;
@@ -18,8 +19,6 @@ layout(push_constant) uniform PushConstants {
 // https://www.youtube.com/watch?v=xFsJMUS94Fs&list=PL8vNj3osX2PzZ-cNSqhA8G6C1-Li5-Ck8&index=10&ab_channel=GSNComposer
 const int K_MAX_SAMPLES = 180;
 const int K_MAX_SAMPLES_IMPORTANCE = 100000;
-
-#define PI 3.14159265359
 
 #define PI2 (PI * 2.0f)
 #define PIH (PI * 0.5)

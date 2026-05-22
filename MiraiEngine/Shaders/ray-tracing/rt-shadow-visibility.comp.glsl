@@ -9,6 +9,7 @@
 #include "../utils/bindless-sampler.glsl"
 #include "../utils/light.glsl"
 #include "../utils/noise.glsl"
+#include "../utils/math.glsl"
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -52,7 +53,7 @@ vec3 get_perpendicular_vector(vec3 u) {
     return cross(u, vec3(xm, ym, zm));
 }
 
-#define PI 3.14159265359
+
 vec3 get_cone_sample(ivec2 id, vec3 light_dir, float cos_theta_max) {
     vec2 rand = sample_noise_texture(id);
 

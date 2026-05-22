@@ -10,6 +10,9 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
     "*.vert.glsl"
     "*.comp.glsl"
     "*.geom.glsl"
+    "*.rahit.glsl"
+    "*.rmiss.glsl"
+    "*.rgen.glsl"
 )
 
 set(GLSL_FLAGS -V --target-env vulkan1.4)

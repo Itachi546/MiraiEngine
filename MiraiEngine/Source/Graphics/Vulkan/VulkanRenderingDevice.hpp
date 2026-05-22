@@ -164,6 +164,7 @@ namespace mirai {
 
         VkPhysicalDeviceProperties2 physical_device_properties;
         VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties;
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features;
         VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties;
 
         uint32_t resource_descriptor_size = 0;

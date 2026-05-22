@@ -75,6 +75,7 @@ namespace mirai {
         const std::vector<const char *> raytracing_extensions = {
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
             VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
             VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
         };
 
@@ -113,8 +114,11 @@ namespace mirai {
         Log::Info("VULKAN::SELECTED DEVICE:: ", all_vendor_infos[max_score_index].name);
         physical_device = physical_device_infos[max_score_index].physical_device;
 
-        acceleration_structure_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR};
-        descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT, &acceleration_structure_properties};
+        descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
+        if (has_rt_support) {
+            acceleration_structure_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR};
+            descriptor_heap_properties.pNext = &acceleration_structure_properties;
+        }
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &descriptor_heap_properties};
         vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
 
