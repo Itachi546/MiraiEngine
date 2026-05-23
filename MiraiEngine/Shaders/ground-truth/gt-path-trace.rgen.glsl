@@ -9,7 +9,7 @@ layout(binding = 1, rgba8) uniform image2D output_image;
 layout(location = 0) rayPayloadEXT vec3 hit_color;
 
 void main() {
-    const uvec2 launch_id = uvec2(gl_LaunchIDEXT.xy);
+    const ivec2 launch_id = ivec2(gl_LaunchIDEXT.xy);
     vec2 uv = vec2(launch_id + 0.5) / vec2(gl_LaunchSizeEXT.xy);
 
     vec3 origin = vec3(0.0f, 0.0f, -2.0f);

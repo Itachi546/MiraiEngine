@@ -11,6 +11,8 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES CONFIGURE_DEPENDS
     "*.comp.glsl"
     "*.geom.glsl"
     "*.rahit.glsl"
+    "*.rchit.glsl"
+    "*.rint.glsl"
     "*.rmiss.glsl"
     "*.rgen.glsl"
 )

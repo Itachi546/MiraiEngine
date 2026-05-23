@@ -299,6 +299,13 @@ namespace mirai {
         Format depth_attachment_format;
     };
 
+    struct RayTracingPipelineDescription {
+        ShaderProgram ray_gen_program;
+        std::vector<ShaderProgram> ray_hit_programs;
+        std::vector<ShaderProgram> ray_miss_programs;
+        uint32_t max_recursion_depth;
+    };
+
     enum TextureType {
         TEXTURE_TYPE_1D = 0,
         TEXTURE_TYPE_2D = 1,
@@ -600,7 +607,7 @@ namespace mirai {
         virtual void present() = 0;
 
         virtual PipelineID create_graphics_pipeline(const PipelineDescription *pipeline_description, const std::string &debug_name = "") = 0;
-
+        virtual PipelineID create_raytracing_pipeline(const RayTracingPipelineDescription *pipeline_desc, const std::string &debug_name = "") = 0;
         virtual PipelineID create_compute_pipeline(const ShaderProgram &shader, const std::string &debug_name) = 0;
 
         virtual void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) = 0;

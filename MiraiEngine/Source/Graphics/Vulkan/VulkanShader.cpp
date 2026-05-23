@@ -52,7 +52,6 @@ namespace mirai {
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size_in_bytes) {
         parse_shader_reflection(shader, code, code_size_in_bytes);
-
         VkShaderModuleCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .codeSize = code_size_in_bytes,

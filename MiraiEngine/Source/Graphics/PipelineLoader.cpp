@@ -23,7 +23,7 @@ namespace mirai {
             ASSERT(0);
             return;
         }
-        std::shared_ptr<Shader> shader = Shader::create_from_file(name, shaders, pipeline_state, attachment_info);
+        std::shared_ptr<Shader> shader = Shader::create_graphics_shader(name, shaders, pipeline_state, attachment_info);
         registry->add(pso_key, shader);
     }
 

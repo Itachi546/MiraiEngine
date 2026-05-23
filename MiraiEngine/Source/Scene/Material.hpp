@@ -171,4 +171,16 @@ namespace mirai {
       private:
         std::shared_ptr<Shader> shader;
     };
+
+    struct RTShader {
+        RTShader(const std::string &name, std::string ray_gen_shader_file, std::vector<std::string> ray_hit_shader_files, std::vector<std::string> ray_miss_shader_files, uint32_t max_recursion_depth = 1);
+
+        void bind(CommandBuffer *command_buffer);
+
+        ~RTShader();
+
+      private:
+        std::shared_ptr<Shader> shader;
+    };
+
 } // namespace mirai

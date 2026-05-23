@@ -30,6 +30,7 @@ namespace mirai {
 
         PipelineID create_graphics_pipeline(const PipelineDescription *pipeline_description, const std::string &debug_name = "") override;
         PipelineID create_compute_pipeline(const ShaderProgram &shader_file, const std::string &debug_name = "") override;
+        PipelineID create_raytracing_pipeline(const RayTracingPipelineDescription *pipeline_description, const std::string &debug_name = "") override;
 
         void write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) override;
         void write_sampler_descriptors(const SamplerDescription *samplers, uint32_t sampler_count, void *start_address) override;
@@ -156,6 +157,7 @@ namespace mirai {
         ResourcePool<VulkanBuffer> resource_pool_buffers;
         ResourcePool<VulkanQuery> resource_pool_queries;
         ResourcePool<VkAccelerationStructureKHR> resource_pool_acceleration_structures;
+        ResourcePool<VulkanRayTracingPipelineInfo> resource_pool_rt_pipeline_info;
 
         uint32_t current_frame_flight_index = 0;
         uint64_t frame_index = 0;
@@ -164,8 +166,10 @@ namespace mirai {
 
         VkPhysicalDeviceProperties2 physical_device_properties;
         VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties;
-        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features;
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rt_pipeline_properties;
         VkPhysicalDeviceDescriptorHeapPropertiesEXT descriptor_heap_properties;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features;
 
         uint32_t resource_descriptor_size = 0;
 

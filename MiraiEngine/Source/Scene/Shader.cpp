@@ -12,7 +12,7 @@ namespace mirai {
         command_buffer->bind_pipeline(pipeline_id);
     }
 
-    std::shared_ptr<Shader> Shader::create_from_file(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info) {
+    std::shared_ptr<Shader> Shader::create_graphics_shader(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info) {
         RasterizationState rs = RasterizationState::create();
         rs.cull_mode = pipeline_state.cull_mode;
         rs.front_face = pipeline_state.front_face;
@@ -60,15 +60,37 @@ namespace mirai {
 
         PipelineID pipeline = RenderingDevice::get()->create_graphics_pipeline(&pipeline_description, name);
 
+        // Private constructor, can't do std::make_shared
         std::shared_ptr<Shader> shader(new Shader{name});
-        shader->shader_files = shader_files;
-        shader->attachment_info = attachment_info;
-        shader->draw_mode = DrawMode(pipeline_state.draw_mode);
         shader->pipeline_id = pipeline;
+        shader->shader_files = shader_files;
+        shader->shader_type = ShaderType::Graphics;
+        shader->draw_mode = DRAWMODE_INDEXED_INDIRECT;
         return shader;
     }
 
-    std::shared_ptr<Shader> Shader::create_from_file(const std::string &name, const std::string &shader_file) {
+    std::shared_ptr<Shader> Shader::create_rt_shader(const std::string &name, std::string ray_gen_shader_file, std::vector<std::string> ray_hit_shader_files, std::vector<std::string> ray_miss_shader_files, uint32_t max_recursion_depth) {
+        RayTracingPipelineDescription pipeline_desc;
+        pipeline_desc.max_recursion_depth = max_recursion_depth;
+        pipeline_desc.ray_gen_program = {.byte_code = load_shader_binary(ray_gen_shader_file)};
+
+        uint32_t hit_shader_count = cast_u32(ray_hit_shader_files.size());
+        pipeline_desc.ray_hit_programs.resize(hit_shader_count);
+        for (uint32_t i = 0; i < hit_shader_count; ++i)
+            pipeline_desc.ray_hit_programs[i] = {.byte_code = load_shader_binary(ray_hit_shader_files[i])};
+
+        uint32_t miss_shader_count = cast_u32(ray_miss_shader_files.size());
+        pipeline_desc.ray_miss_programs.resize(hit_shader_count);
+        for (uint32_t i = 0; i < miss_shader_count; ++i)
+            pipeline_desc.ray_miss_programs[i] = {.byte_code = load_shader_binary(ray_miss_shader_files[i])};
+
+        std::shared_ptr<Shader> shader(new Shader(name));
+        shader->pipeline_id = RenderingDevice::get()->create_raytracing_pipeline(&pipeline_desc, name);
+        shader->shader_type = ShaderType::RayTracing;
+        return shader;
+    }
+
+    std::shared_ptr<Shader> Shader::create_compute_shader(const std::string &name, const std::string &shader_file) {
         ShaderProgram compute_program = {
             .byte_code = load_shader_binary(shader_file),
         };
@@ -78,7 +100,7 @@ namespace mirai {
         std::shared_ptr<Shader> shader(new Shader{name});
         shader->pipeline_id = pipeline;
         shader->shader_files.push_back(shader_file);
-        shader->is_graphics_shader = false;
+        shader->shader_type = ShaderType::Compute;
         return shader;
     }
 } // namespace mirai

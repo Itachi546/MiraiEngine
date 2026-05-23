@@ -3,6 +3,7 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
 #include "Common/HashMap.hpp"
+#include "Engine/Log.hpp"
 namespace mirai {
 
     enum MeshType {
@@ -124,14 +125,28 @@ namespace mirai {
             return draw_mode;
         }
 
-        static std::shared_ptr<Shader> create_from_file(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info);
-        static std::shared_ptr<Shader> create_from_file(const std::string &name, const std::string &shader_file);
+        static std::shared_ptr<Shader> create_graphics_shader(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_info);
+        static std::shared_ptr<Shader> create_rt_shader(const std::string &name,
+                                                        std::string ray_gen_shader_file,
+                                                        std::vector<std::string> ray_hit_shader_files,
+                                                        std::vector<std::string> ray_miss_shader_files,
+                                                        uint32_t max_recursion_depth = 3);
+        static std::shared_ptr<Shader> create_compute_shader(const std::string &name, const std::string &shader_file);
 
-      private:
-        Shader(const std::string &name) : name(name), pipeline_id(K_INVALID_ID), is_graphics_shader(false) {
+        ~Shader() {
         }
 
-        bool is_graphics_shader;
+      private:
+        Shader(const std::string &name) : name(name), pipeline_id(K_INVALID_ID) {
+        }
+
+        enum class ShaderType {
+            Graphics,
+            Compute,
+            RayTracing
+        };
+
+        ShaderType shader_type;
         DrawMode draw_mode;
         std::vector<std::string> shader_files;
         PipelineAttachmentInfo attachment_info;

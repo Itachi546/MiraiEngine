@@ -581,7 +581,10 @@ namespace mirai {
             auto &component_manager = scene->ecs->component_manager;
             jobsystem::Dispatch(instance_count, 64, [&](jobsystem::JobDispatchArg arg) {
                 AccelerationStructureInstanceData *instance = reinterpret_cast<AccelerationStructureInstanceData *>(instance_buffer.ptr + arg.job_index * instance_data_size);
-                TransformComponent *transform_component = component_manager->get_component<TransformComponent>(scene->render_object_list[arg.job_index].entity);
+                const RenderableObjectData &renderable = scene->render_object_list[arg.job_index];
+                // if (!HAS_FLAG(renderable.mesh_flags, MeshComponent::Flags::MESH_FLAG_CAST_SHADOW))
+                //    return;
+                TransformComponent *transform_component = component_manager->get_component<TransformComponent>(renderable.entity);
                 // The default representation of glm is column major while the VkTransformKHR uses row major
                 // glm::mat4 transform = glm::transpose(transform_component.world_transform);
                 glm::mat4 transform = transform_component->world_transform;

@@ -53,32 +53,20 @@ namespace mirai {
         VkWriteDescriptorSet binding;
         ID resource_id;
     };
-
-    /*
-    struct VulkanDescriptorSet
-    {
-        std::vector<VkDescriptorSet> descriptor_set;
-        std::vector<VulkanBindingInfo> bindings;
-    };
-
-    struct VulkanBindingLookupInfo
-    {
-        uint32_t set_index;
-        uint32_t binding_index;
-    };
-    */
-    /*
-    struct VulkanBindings
-    {
-        std::vector<VulkanDescriptorSet> descriptor_sets;
-        HashMap<uint32_t, VulkanBindingLookupInfo> lookup_info;
-    };
-    */
-
     struct VulkanPipeline {
         VkPipeline pipeline;
         VkPipelineBindPoint bind_point;
-        bool support_bindless_texture;
+
+        // Only related to vulkan raytracing
+        uint32_t rt_pipeline_info_index = UINT32_MAX;
+    };
+
+    struct VulkanRayTracingPipelineInfo {
+        // Shader binding table buffer
+        BufferID buffer;
+        VkStridedDeviceAddressRegionKHR ray_gen_region;
+        VkStridedDeviceAddressRegionKHR ray_hit_region;
+        VkStridedDeviceAddressRegionKHR ray_miss_region;
     };
 
     void CreateShader(VulkanShader *shader, VkDevice device, const uint32_t *code, uint32_t code_size);

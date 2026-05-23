@@ -7,7 +7,7 @@ namespace mirai {
     }
 
     EffectMaterial::EffectMaterial(const std::string &name, const std::vector<std::string> &shader_files, const PipelineState &pipeline_state, const PipelineAttachmentInfo &attachment_infos) : Material(name) {
-        shader = Shader::create_from_file(name, shader_files, pipeline_state, attachment_infos);
+        shader = Shader::create_graphics_shader(name, shader_files, pipeline_state, attachment_infos);
         ASSERT(shader != nullptr);
     }
 
@@ -27,7 +27,7 @@ namespace mirai {
         : Material3D(name) {
         // No shadow casting by default — no shadow-pass pipeline is registered.
         // Call add_render_flag(RENDER_FLAG_CAST_SHADOW) to opt in.
-        shader = Shader::create_from_file(std::string(name), shader_files, pipeline_state, attachment_info);
+        shader = Shader::create_graphics_shader(std::string(name), shader_files, pipeline_state, attachment_info);
         ASSERT(shader != nullptr);
     }
 
@@ -37,7 +37,7 @@ namespace mirai {
     }
 
     ComputeShader::ComputeShader(const std::string &name, const std::string &shader_file) {
-        shader = Shader::create_from_file(name, shader_file);
+        shader = Shader::create_compute_shader(name, shader_file);
         ASSERT(shader != nullptr);
     }
 
@@ -46,6 +46,20 @@ namespace mirai {
     }
 
     ComputeShader::~ComputeShader() {
+        if (shader)
+            RenderingDevice::get()->destroy_pipelines(&shader->pipeline_id, 1);
+    }
+
+    RTShader::RTShader(const std::string &name, std::string ray_gen_shader_file, std::vector<std::string> ray_hit_shader_files, std::vector<std::string> ray_miss_shader_files, uint32_t max_recursion_depth) {
+        shader = Shader::create_rt_shader(name, ray_gen_shader_file, ray_hit_shader_files, ray_miss_shader_files, max_recursion_depth);
+        ASSERT(shader != nullptr);
+    }
+
+    void RTShader::bind(CommandBuffer *command_buffer) {
+        command_buffer->bind_pipeline(shader->pipeline_id);
+    }
+
+    RTShader::~RTShader() {
         if (shader)
             RenderingDevice::get()->destroy_pipelines(&shader->pipeline_id, 1);
     }

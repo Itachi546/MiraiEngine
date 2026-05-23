@@ -35,6 +35,7 @@ namespace mirai {
                                                      resource_pool_textures(1024, "Texture"),
                                                      resource_pool_buffers(256, "Buffer"),
                                                      resource_pool_acceleration_structures(4096, "AccelerationStructures"),
+                                                     resource_pool_rt_pipeline_info(128, "RTPipelineInfo"),
                                                      resource_pool_queries(32, "Query") {
         requested_instance_extensions = {
             VK_KHR_SURFACE_EXTENSION_NAME,
@@ -116,8 +117,11 @@ namespace mirai {
 
         descriptor_heap_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT};
         if (has_rt_support) {
-            acceleration_structure_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR};
             descriptor_heap_properties.pNext = &acceleration_structure_properties;
+
+            rt_pipeline_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+            acceleration_structure_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR};
+            acceleration_structure_properties.pNext = &rt_pipeline_properties;
         }
         physical_device_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &descriptor_heap_properties};
         vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
@@ -303,7 +307,6 @@ namespace mirai {
             .pNext = nullptr,
         };
 
-        bool support_bindless_texture = false;
         uint32_t push_constants_size = 0;
         for (uint32_t i = 0; i < shader_count; ++i) {
             const ShaderProgram &shader_program = pipeline_description->shader_programs[i];
@@ -446,7 +449,6 @@ namespace mirai {
         uint32_t pipeline_id = resource_pool_pipelines.obtain();
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        pipeline->support_bindless_texture = support_bindless_texture;
 
         VkPipelineCreateFlags2CreateInfo pipeline_create_flag2_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
@@ -489,7 +491,6 @@ namespace mirai {
         VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
 
         pipeline->bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
-        pipeline->support_bindless_texture = false;
 
         // Compute shader should be limited to single push constant block
         ASSERT(shader.push_constants_info.size() <= 1);
@@ -537,6 +538,206 @@ namespace mirai {
 
         return PipelineID{pipeline_id};
     }
+
+    PipelineID VulkanRenderingDevice::create_raytracing_pipeline(const RayTracingPipelineDescription *pipeline_desc, const std::string &debug_name) {
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos;
+        std::vector<VkRayTracingShaderGroupCreateInfoKHR> shader_group_infos;
+        std::vector<VulkanShader> shader_modules;
+
+        uint32_t push_constants_size = 0;
+        uint32_t shader_binding_offset = 0;
+        VkShaderDescriptorSetAndBindingMappingInfoEXT binding_mapping_info = {
+            .sType = VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT,
+            .pNext = nullptr,
+        };
+
+        // Ray Gen Shader
+        {
+            VulkanShader &ray_gen_shader = shader_modules.emplace_back();
+            const uint32_t *spirv = reinterpret_cast<const uint32_t *>(pipeline_desc->ray_gen_program.byte_code.data());
+            CreateShader(&ray_gen_shader, device, spirv, cast_u32(pipeline_desc->ray_gen_program.byte_code.size()));
+            ASSERT(ray_gen_shader.shader_stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+
+            shader_group_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+                .pNext = nullptr,
+                .type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR,
+                .generalShader = shader_binding_offset++,
+                .closestHitShader = VK_SHADER_UNUSED_KHR,
+                .anyHitShader = VK_SHADER_UNUSED_KHR,
+                .intersectionShader = VK_SHADER_UNUSED_KHR,
+            });
+
+            shader_stage_create_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = &binding_mapping_info,
+                .stage = ray_gen_shader.shader_stage,
+                .module = ray_gen_shader.shader,
+                .pName = "main",
+            });
+
+            for (const auto &pc : ray_gen_shader.push_constants_info)
+                push_constants_size = std::max(push_constants_size, pc.offset + pc.size);
+        }
+        // Ray miss shader
+        for (uint32_t i = 0; i < pipeline_desc->ray_miss_programs.size(); ++i) {
+            VulkanShader &ray_miss_shader = shader_modules.emplace_back();
+            const uint32_t *spirv = reinterpret_cast<const uint32_t *>(pipeline_desc->ray_miss_programs[i].byte_code.data());
+            CreateShader(&ray_miss_shader, device, spirv, cast_u32(pipeline_desc->ray_miss_programs[i].byte_code.size()));
+            ASSERT(ray_miss_shader.shader_stage == VK_SHADER_STAGE_MISS_BIT_KHR);
+
+            shader_group_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+                .pNext = nullptr,
+                .type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR,
+                .generalShader = shader_binding_offset++,
+                .closestHitShader = VK_SHADER_UNUSED_KHR,
+                .anyHitShader = VK_SHADER_UNUSED_KHR,
+                .intersectionShader = VK_SHADER_UNUSED_KHR,
+            });
+
+            shader_stage_create_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = &binding_mapping_info,
+                .stage = ray_miss_shader.shader_stage,
+                .module = ray_miss_shader.shader,
+                .pName = "main",
+            });
+
+            for (const auto &pc : ray_miss_shader.push_constants_info)
+                push_constants_size = std::max(push_constants_size, pc.offset + pc.size);
+        }
+
+        // Ray Hit Shader
+        for (uint32_t i = 0; i < pipeline_desc->ray_hit_programs.size(); ++i) {
+            VulkanShader &ray_hit_shader = shader_modules.emplace_back();
+            const uint32_t *spirv = reinterpret_cast<const uint32_t *>(pipeline_desc->ray_hit_programs[i].byte_code.data());
+            CreateShader(&ray_hit_shader, device, spirv, cast_u32(pipeline_desc->ray_hit_programs[i].byte_code.size()));
+            ASSERT(ray_hit_shader.shader_stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+
+            shader_group_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+                .pNext = nullptr,
+                .type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR,
+                .generalShader = VK_SHADER_UNUSED_KHR,
+                .closestHitShader = shader_binding_offset++,
+                .anyHitShader = VK_SHADER_UNUSED_KHR,
+                .intersectionShader = VK_SHADER_UNUSED_KHR,
+            });
+
+            shader_stage_create_infos.push_back({
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .pNext = &binding_mapping_info,
+                .stage = ray_hit_shader.shader_stage,
+                .module = ray_hit_shader.shader,
+                .pName = "main",
+            });
+
+            for (const auto &pc : ray_hit_shader.push_constants_info)
+                push_constants_size = std::max(push_constants_size, pc.offset + pc.size);
+        }
+
+        // Create descriptor mapping
+        std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
+        for (auto &shader : shader_modules) {
+            create_set_and_binding_mappings(shader, push_constants_size, mappings);
+        }
+        binding_mapping_info.mappingCount = cast_u32(mappings.size()),
+        binding_mapping_info.pMappings = mappings.data();
+
+        VkPipelineCreateFlags2CreateInfo pipeline_create_flag2 = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT,
+        };
+
+        VkRayTracingPipelineCreateInfoKHR pipeline_create_info = {VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR};
+        pipeline_create_info.pNext = &pipeline_create_flag2;
+        pipeline_create_info.flags = 0;
+        pipeline_create_info.stageCount = cast_u32(shader_stage_create_infos.size());
+        pipeline_create_info.pStages = shader_stage_create_infos.data();
+        pipeline_create_info.groupCount = cast_u32(shader_group_infos.size());
+        pipeline_create_info.pGroups = shader_group_infos.data();
+        pipeline_create_info.maxPipelineRayRecursionDepth = 1;
+        pipeline_create_info.layout = VK_NULL_HANDLE;
+
+        uint32_t pipeline_id = resource_pool_pipelines.obtain();
+        VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_id);
+        pipeline->bind_point = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+
+        vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipeline_create_info, nullptr, &pipeline->pipeline);
+
+        for (auto &shader : shader_modules)
+            DestroyShader(&shader, device);
+
+        // Setup shader binding table
+        pipeline->rt_pipeline_info_index = resource_pool_rt_pipeline_info.obtain();
+        VulkanRayTracingPipelineInfo *rt_pipeline_info = resource_pool_rt_pipeline_info.access(pipeline->rt_pipeline_info_index);
+
+        uint32_t handle_size = rt_pipeline_properties.shaderGroupHandleSize;
+        uint32_t shader_group_base_alignment = rt_pipeline_properties.shaderGroupBaseAlignment;
+        uint32_t handle_aligned_size = align_memory(rt_pipeline_properties.shaderGroupHandleSize, rt_pipeline_properties.shaderGroupHandleAlignment);
+
+        uint32_t ray_gen_region_size = align_memory(handle_aligned_size, shader_group_base_alignment);
+        rt_pipeline_info->ray_gen_region.stride = ray_gen_region_size;
+        rt_pipeline_info->ray_gen_region.size = ray_gen_region_size;
+
+        rt_pipeline_info->ray_miss_region.stride = handle_aligned_size;
+        rt_pipeline_info->ray_miss_region.size = align_memory(cast_u32(pipeline_desc->ray_miss_programs.size()) * handle_aligned_size, shader_group_base_alignment);
+
+        rt_pipeline_info->ray_hit_region.stride = handle_aligned_size;
+        rt_pipeline_info->ray_hit_region.size = align_memory(cast_u32(pipeline_desc->ray_hit_programs.size()) * handle_aligned_size, shader_group_base_alignment);
+
+        uint32_t sbt_size = cast_u32(rt_pipeline_info->ray_gen_region.size + rt_pipeline_info->ray_hit_region.size + rt_pipeline_info->ray_miss_region.size);
+
+        BufferDescription buffer_desc = {
+            .size = sbt_size,
+            // Instead of using BUFFER_USAGE, we use VK_BUFFER flags as they are one-to-one
+            .usage_flags = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            .allocation_type = MEMORY_ALLOCATION_TYPE_CPU,
+        };
+
+        rt_pipeline_info->buffer = create_buffer(&buffer_desc, debug_name + "SBTBuffer");
+        VulkanBuffer *sbt_buffer = resource_pool_buffers.access(rt_pipeline_info->buffer);
+
+        VkBufferDeviceAddressInfo buffer_address_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .pNext = nullptr,
+            .buffer = sbt_buffer->buffer,
+        };
+
+        const size_t scratch_size = handle_size * shader_group_infos.size();
+        std::vector<uint8_t> scratch_mem(scratch_size);
+        VK_CHECK(vkGetRayTracingShaderGroupHandlesKHR(device, pipeline->pipeline, 0, cast_u32(shader_group_infos.size()), sbt_size, scratch_mem.data()));
+
+        auto get_handle = [&](int i) {
+            return scratch_mem.data() + i * handle_size;
+        };
+
+        uint8_t *sbt_buffer_ptr = map_buffer(rt_pipeline_info->buffer);
+
+        uint32_t handle_index = 0;
+        uint8_t *sbt_current_ptr = reinterpret_cast<uint8_t *>(sbt_buffer_ptr);
+
+        // Raygen
+        memcpy(sbt_current_ptr, get_handle(handle_index++), handle_size);
+        sbt_current_ptr = sbt_buffer_ptr + rt_pipeline_info->ray_gen_region.size;
+
+        // Miss
+        for (uint32_t i = 0; i < pipeline_desc->ray_miss_programs.size(); ++i) {
+            memcpy(sbt_current_ptr, get_handle(handle_index++), handle_size);
+            sbt_current_ptr += rt_pipeline_info->ray_miss_region.stride;
+        }
+
+        sbt_current_ptr = sbt_buffer_ptr + rt_pipeline_info->ray_gen_region.size + rt_pipeline_info->ray_miss_region.size;
+        for (uint32_t i = 0; i < pipeline_desc->ray_hit_programs.size(); ++i) {
+            memcpy(sbt_current_ptr, get_handle(handle_index++), handle_size);
+            sbt_current_ptr += rt_pipeline_info->ray_hit_region.stride;
+        }
+
+        return PipelineID{pipeline_id};
+
+    } // namespace mirai
 
     void VulkanRenderingDevice::write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) {
         std::vector<VkImageViewCreateInfo> image_view_create_infos;
@@ -1256,6 +1457,13 @@ namespace mirai {
     void VulkanRenderingDevice::destroy_pipelines(PipelineID *pipeline_ids, uint32_t count) {
         for (uint32_t i = 0; i < count; ++i) {
             destroyed_pipelines.push_back(std::make_pair(pipeline_ids[i], frame_index));
+            VulkanPipeline *pipeline = resource_pool_pipelines.access(pipeline_ids[i]);
+            if (pipeline->bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
+                VulkanRayTracingPipelineInfo *rt_info = resource_pool_rt_pipeline_info.access(pipeline->rt_pipeline_info_index);
+                destroyed_buffers.push_back(std::make_pair(rt_info->buffer, frame_index));
+                resource_pool_rt_pipeline_info.release(ID{pipeline->rt_pipeline_info_index});
+            }
+
             pipeline_ids[i].id = K_INVALID_ID;
         }
     }

@@ -139,15 +139,21 @@ namespace mirai {
         device_features13.synchronization2 = true;
         device_features13.shaderDemoteToHelperInvocation = true;
 
-        VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-            .pNext = nullptr,
-            .accelerationStructure = true,
-            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
-        };
         device_features2.pNext = &device_features11;
         device_features11.pNext = &device_features12;
         device_features12.pNext = &device_features13;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_feature = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+            .rayTracingPipeline = VK_TRUE,
+        };
+
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+            .pNext = &rt_pipeline_feature,
+            .accelerationStructure = true,
+            .descriptorBindingAccelerationStructureUpdateAfterBind = true,
+        };
 
         VkPhysicalDeviceRayQueryFeaturesKHR ray_query_feature = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
