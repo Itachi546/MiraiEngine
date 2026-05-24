@@ -572,19 +572,38 @@ namespace mirai {
             ScopedCpuProfiling("TLAS Build CPU");
             ScopedGpuProfiling(command_buffer, "TLAS Build");
 
-            uint32_t instance_count = cast_u32(scene->render_object_list.size());
+            uint32_t total_renderable = cast_u32(scene->render_object_list.size());
+            std::vector<uint32_t> write_indexes(total_renderable);
+            uint32_t total_instances = 0;
+            for (uint32_t i = 0; i < total_renderable; ++i) {
+                const RenderableObjectData &renderable = scene->render_object_list[i];
+                if (HAS_FLAG(renderable.mesh_flags, MeshComponent::MESH_FLAG_DEBUG)) {
+                    write_indexes[i] = UINT32_MAX;
+                    continue;
+                }
+                const auto &material = scene->materials[renderable.material_index];
+                if (material->is_transparent()) {
+                    write_indexes[i] = UINT32_MAX;
+                    continue;
+                }
+                write_indexes[i] = total_instances++;
+            }
+
             uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
-            BufferView instance_buffer = per_frame_allocator[frame_flight_index].allocate(instance_count * instance_data_size);
+            BufferView instance_buffer = per_frame_allocator[frame_flight_index].allocate(total_instances * instance_data_size);
             uint64_t blas_device_address = device->get_buffer_device_address(blas_buffer_static);
 
-            // Copy TLAS instance data
             auto &component_manager = scene->ecs->component_manager;
-            jobsystem::Dispatch(instance_count, 64, [&](jobsystem::JobDispatchArg arg) {
-                AccelerationStructureInstanceData *instance = reinterpret_cast<AccelerationStructureInstanceData *>(instance_buffer.ptr + arg.job_index * instance_data_size);
+            jobsystem::Dispatch(total_renderable, 64, [&](jobsystem::JobDispatchArg arg) {
+                uint32_t write_index = write_indexes[arg.job_index];
+
+                if (write_index == UINT32_MAX)
+                    return;
+
+                AccelerationStructureInstanceData *instance = reinterpret_cast<AccelerationStructureInstanceData *>(instance_buffer.ptr + write_index * instance_data_size);
                 const RenderableObjectData &renderable = scene->render_object_list[arg.job_index];
-                // if (!HAS_FLAG(renderable.mesh_flags, MeshComponent::Flags::MESH_FLAG_CAST_SHADOW))
-                //    return;
                 TransformComponent *transform_component = component_manager->get_component<TransformComponent>(renderable.entity);
+
                 // The default representation of glm is column major while the VkTransformKHR uses row major
                 // glm::mat4 transform = glm::transpose(transform_component.world_transform);
                 glm::mat4 transform = transform_component->world_transform;
@@ -593,15 +612,20 @@ namespace mirai {
                         instance->matrix[y][x] = transform[x][y];
                     }
                 }
+
+                const auto &material = scene->materials[renderable.material_index];
+                uint32_t flags = material->is_alpha_mask() ? GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT : GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
+
                 instance->instanceCustomIndex = 0;
                 instance->mask = 0xFF;
                 instance->instanceShaderBindingTableRecordOffset = 0;
-                instance->flags = GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT;
+                instance->flags = flags;
+
                 instance->accelerationStructureReference = scene->render_object_list[arg.job_index].blas_buffer_device_address;
             });
             jobsystem::Wait();
 
-            device->create_tlas(command_buffer, instance_count, instance_buffer, tlas_buffer, &tlas);
+            device->create_tlas(command_buffer, total_instances, instance_buffer, tlas_buffer, &tlas);
         }
     }
 

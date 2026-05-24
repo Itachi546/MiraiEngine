@@ -1507,8 +1507,7 @@ namespace mirai {
                     .transformData = {},
                 },
             },
-            // @TODO maybe need to change this later for transparent
-            .flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
+            .flags = 0,
         };
     }
     void VulkanRenderingDevice::create_blas_internal(VulkanBuffer *scratch_buffer, VulkanBuffer *blas_buffer,

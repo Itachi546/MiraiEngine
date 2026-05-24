@@ -67,6 +67,7 @@ namespace mirai {
             MESH_FLAG_NONE = 0,
             MESH_FLAG_CAST_SHADOW = 1 << 0,
             MESH_FLAG_RECEIVE_SHADOW = 1 << 1,
+            MESH_FLAG_DEBUG = 1 << 2,
             MESH_FLAG_DEFAULT = MESH_FLAG_CAST_SHADOW | MESH_FLAG_RECEIVE_SHADOW,
         };
 

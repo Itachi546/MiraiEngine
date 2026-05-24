@@ -87,7 +87,7 @@ namespace mirai {
                         component->scale = glm::vec3(radius);
 
                         MeshComponent *mesh_comp = component_manager->get_component<MeshComponent>(entity);
-                        mesh_comp->flags = MeshComponent::Flags::MESH_FLAG_NONE;
+                        mesh_comp->flags = MeshComponent::Flags::MESH_FLAG_DEBUG;
                         mesh_comp->primitives[0].material = material_index;
                     }
                 }

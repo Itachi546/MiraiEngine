@@ -7,6 +7,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "RenderPassData.hpp"
+#include "Engine/Profiler.hpp"
 
 namespace mirai {
 
@@ -42,6 +43,8 @@ namespace mirai {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Renderer *renderer = ctx->renderer;
+
+                ScopedGpuProfiling(command_buffer, "RTGroundTruthPass");
 
                 const auto &resource_states = pass_resources.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
