@@ -38,7 +38,7 @@ namespace mirai {
 
                 board->add<CascadedShadowPassData>(data);
             },
-            [](const CascadedShadowPassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            [](const CascadedShadowPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;

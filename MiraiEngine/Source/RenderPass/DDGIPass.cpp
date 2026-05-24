@@ -92,7 +92,7 @@ namespace mirai {
                     }
                 }
             },
-            [](const DDGIGenerateIrradiancePassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            [](const DDGIGenerateIrradiancePassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 return;
             });
     }

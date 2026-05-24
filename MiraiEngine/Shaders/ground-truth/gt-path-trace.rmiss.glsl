@@ -1,7 +1,21 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
 
 layout(location = 0) rayPayloadInEXT vec3 hit_color;
+
+#include "../utils/bindless-texture.glsl"
+#include "../utils/bindless-sampler.glsl"
+
+layout(push_constant) uniform PushConstant {
+    mat4 invP;
+    mat4 invV;
+    vec3 camera_position;
+    uint skybox_texture_index;
+};
+
 void main() {
-    hit_color = vec3(0.1, 0.1, 0.3);
+    vec3 ray_dir = -normalize(gl_WorldRayDirectionEXT);
+    vec4 sky_color = sample_texture_cube(skybox_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], ray_dir);
+    hit_color = sky_color.rgb;
 }

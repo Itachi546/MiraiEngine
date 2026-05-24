@@ -63,7 +63,7 @@ namespace mirai {
                 board->add<FinalCompositePassData>(data);
             },
 
-            [](const FinalCompositePassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            [](const FinalCompositePassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 CommandBuffer *command_buffer = ctx->command_buffer;
 

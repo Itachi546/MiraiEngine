@@ -68,6 +68,8 @@ namespace mirai {
 
         void dispatch_indirect(BufferID indirect_buffer, uint32_t offset);
 
+        void trace_rays(uint32_t width, uint32_t height, uint32_t depth = 1);
+
         void set_vertex_buffer(BufferID buffer);
 
         void set_index_buffer(BufferID buffer);

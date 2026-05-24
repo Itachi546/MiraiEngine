@@ -31,6 +31,7 @@ namespace mirai {
             }
         }
 
+        ASSERT(present_texture != K_INVALID_RESOURCE_HANDLE);
         // Present texture should also update reference
         resources[present_texture].ref_count += 1;
         resources[present_texture].access_flag |= ACCESS_FLAG_TRANSFER_READ;

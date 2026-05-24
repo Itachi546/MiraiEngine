@@ -279,6 +279,15 @@ namespace mirai {
         vkCmdDispatchIndirect(command_buffer, buffer->buffer, offset);
     }
 
+    void CommandBuffer::trace_rays(uint32_t width, uint32_t height, uint32_t depth) {
+        VulkanPipeline *pipeline = device->access_pipeline(active_pipeline);
+        ASSERT(pipeline->rt_pipeline_info_index != UINT32_MAX);
+        VulkanRayTracingPipelineInfo *rt_info = device->resource_pool_rt_pipeline_info.access(pipeline->rt_pipeline_info_index);
+
+        VkStridedDeviceAddressRegionKHR callbale_shader_sbt_entry{};
+        vkCmdTraceRaysKHR(command_buffer, &rt_info->ray_gen_region, &rt_info->ray_miss_region, &rt_info->ray_hit_region, &callbale_shader_sbt_entry, width, height, depth);
+    }
+
     void CommandBuffer::set_vertex_buffer(BufferID buffer) {
         VulkanBuffer *vertex_buffer = device->access_buffer(buffer);
 

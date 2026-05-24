@@ -12,6 +12,7 @@ using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     RTGroundTruthPass rt_ground_truth{frame_graph, board};
+    /*
     DepthPrePass depth_prepass{frame_graph, board};
     ViewNormalDepthPass view_pass{frame_graph, board};
     DDGIPass ddgi_pass{frame_graph, board};
@@ -23,8 +24,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     BloomPass bloom_pass{frame_graph, board};
     TAAResolvePass taa_pass{frame_graph, board};
     FinalCompositePass composite_pass{frame_graph, board};
-    // DeferredOverlay3DPass overlay3d_pass{frame_graph, board};
-
+    */
     /*
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
@@ -269,19 +269,27 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     // ImGui Pass
     struct ImGuiPassData {
         FrameGraphResourceHandle output;
+        bool is_swapchain_input = true;
     };
 
     frame_graph->add_callback_pass<ImGuiPassData>(
         "ImGuiPass",
         [board](FrameGraph::Builder &builder, ImGuiPassData &data) {
+#if 0
             const FinalCompositePassData &input_pass = board->get<FinalCompositePassData>();
             data.output = input_pass.output;
+#else
+            const RTGroundTruthPassData &input_pass = board->get<RTGroundTruthPassData>();
+            data.output = input_pass.output;
+            data.is_swapchain_input = false;
+#endif
 
             builder.write(data.output, {
                                            .access_flags = ACCESS_FLAG_COLOR_ATTACHMENT_WRITE | ACCESS_FLAG_COLOR_ATTACHMENT_READ,
                                            .stage_mask = PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                            .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                        });
+
             builder.present(data.output);
         },
         [](const ImGuiPassData &data, FrameGraphPassResource &pass_resource, void *context) {
@@ -295,8 +303,13 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
             command_buffer->prepare_resources(resource_states);
 
             uint32_t width, height;
-            Window::get()->get_size(&width, &height);
-
+            if (data.is_swapchain_input)
+                Window::get()->get_size(&width, &height);
+            else {
+                width = AppSettings::get_width();
+                height = AppSettings::get_height();
+            }
+            
             const FrameGraphTexture &texture = pass_resource.get<FrameGraphTexture>(data.output);
             command_buffer->begin_render_pass({
                                                   AttachmentInfo{

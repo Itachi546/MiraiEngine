@@ -700,11 +700,9 @@ namespace mirai {
         rt_pipeline_info->buffer = create_buffer(&buffer_desc, debug_name + "SBTBuffer");
         VulkanBuffer *sbt_buffer = resource_pool_buffers.access(rt_pipeline_info->buffer);
 
-        VkBufferDeviceAddressInfo buffer_address_info = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .pNext = nullptr,
-            .buffer = sbt_buffer->buffer,
-        };
+        rt_pipeline_info->ray_gen_region.deviceAddress = sbt_buffer->device_address;
+        rt_pipeline_info->ray_miss_region.deviceAddress = sbt_buffer->device_address + rt_pipeline_info->ray_gen_region.size;
+        rt_pipeline_info->ray_hit_region.deviceAddress = rt_pipeline_info->ray_miss_region.deviceAddress + rt_pipeline_info->ray_miss_region.size;
 
         const size_t scratch_size = handle_size * shader_group_infos.size();
         std::vector<uint8_t> scratch_mem(scratch_size);

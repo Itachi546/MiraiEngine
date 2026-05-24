@@ -120,7 +120,7 @@ namespace mirai {
                 board->add<ForwardPassData>(data);
             },
 
-            [](const ForwardPassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            [](const ForwardPassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;

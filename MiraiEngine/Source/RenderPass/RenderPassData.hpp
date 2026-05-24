@@ -15,6 +15,7 @@ namespace mirai {
 
     struct RTGroundTruthPassData {
         std::shared_ptr<RTShader> shader;
+        FrameGraphResourceHandle output;
     };
 
     // @TODO temp

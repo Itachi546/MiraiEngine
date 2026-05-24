@@ -119,6 +119,7 @@ namespace mirai {
 
         device->destroy_textures(&hdri_texture, 1);
 
+        renderer->add_bindless_texture(cubemap_texture);
         renderer->add_bindless_texture(irradiance_texture);
         renderer->add_bindless_texture(prefilter_texture);
         renderer->add_bindless_texture(brdf_texture);

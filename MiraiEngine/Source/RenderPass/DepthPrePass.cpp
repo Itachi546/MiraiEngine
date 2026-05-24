@@ -35,7 +35,7 @@ namespace mirai {
 
                 board->add<DepthPrePassData>(data);
             },
-            [](const DepthPrePassData &data, FrameGraphPassResource &pass_resource, void *context) {
+            [](const DepthPrePassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;
