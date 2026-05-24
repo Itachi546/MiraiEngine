@@ -12,7 +12,7 @@ using namespace mirai;
 
 void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
     RTGroundTruthPass rt_ground_truth{frame_graph, board};
-    /*
+#if 0
     DepthPrePass depth_prepass{frame_graph, board};
     ViewNormalDepthPass view_pass{frame_graph, board};
     DDGIPass ddgi_pass{frame_graph, board};
@@ -24,7 +24,8 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
     BloomPass bloom_pass{frame_graph, board};
     TAAResolvePass taa_pass{frame_graph, board};
     FinalCompositePass composite_pass{frame_graph, board};
-    */
+#endif
+
     /*
     struct LinearizeDepthPassData {
         FrameGraphResourceHandle depth_texture;
@@ -309,7 +310,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                 width = AppSettings::get_width();
                 height = AppSettings::get_height();
             }
-            
+
             const FrameGraphTexture &texture = pass_resource.get<FrameGraphTexture>(data.output);
             command_buffer->begin_render_pass({
                                                   AttachmentInfo{

@@ -64,6 +64,7 @@ namespace mirai {
 
                 board->add<DDGIGenerateIrradiancePassData>(data);
 
+                // irradiance_settings.enable_debug_probe = false;
                 if (irradiance_settings.enable_debug_probe) {
                     Renderer *renderer = Renderer::get();
                     Scene *scene = renderer->get_scene();

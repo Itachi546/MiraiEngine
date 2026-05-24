@@ -576,7 +576,7 @@ namespace mirai {
             std::vector<uint32_t> write_indexes(total_renderable);
             uint32_t total_instances = 0;
             for (uint32_t i = 0; i < total_renderable; ++i) {
-                const RenderableObjectData &renderable = scene->render_object_list[i];
+                const Renderable &renderable = scene->render_object_list[i];
                 if (HAS_FLAG(renderable.mesh_flags, MeshComponent::MESH_FLAG_DEBUG)) {
                     write_indexes[i] = UINT32_MAX;
                     continue;
@@ -601,7 +601,7 @@ namespace mirai {
                     return;
 
                 AccelerationStructureInstanceData *instance = reinterpret_cast<AccelerationStructureInstanceData *>(instance_buffer.ptr + write_index * instance_data_size);
-                const RenderableObjectData &renderable = scene->render_object_list[arg.job_index];
+                const Renderable &renderable = scene->render_object_list[arg.job_index];
                 TransformComponent *transform_component = component_manager->get_component<TransformComponent>(renderable.entity);
 
                 // The default representation of glm is column major while the VkTransformKHR uses row major
@@ -616,12 +616,13 @@ namespace mirai {
                 const auto &material = scene->materials[renderable.material_index];
                 uint32_t flags = material->is_alpha_mask() ? GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT : GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
 
-                instance->instanceCustomIndex = 0;
+                instance->instanceCustomIndex = renderable.mesh_index;
                 instance->mask = 0xFF;
                 instance->instanceShaderBindingTableRecordOffset = 0;
                 instance->flags = flags;
 
-                instance->accelerationStructureReference = scene->render_object_list[arg.job_index].blas_buffer_device_address;
+                const MeshAllocation &allocation = scene->mesh_allocations[renderable.mesh_index];
+                instance->accelerationStructureReference = allocation.blas.buffer_device_address;
             });
             jobsystem::Wait();
 
@@ -957,7 +958,7 @@ namespace mirai {
             const FrustumPlanes &frustum = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
             uint32_t render_object_count = cast_u32(scene->render_object_list.size());
             for (uint32_t i = 0; i < render_object_count; ++i) {
-                const RenderableObjectData &renderable = scene->render_object_list[i];
+                const Renderable &renderable = scene->render_object_list[i];
                 if (!frustum.intersect_aabb(renderable.transformed_aabb))
                     continue;
                 line_renderer->add_aabb(renderable.transformed_aabb, 0xf07314ff);

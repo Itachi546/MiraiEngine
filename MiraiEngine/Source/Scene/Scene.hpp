@@ -13,19 +13,14 @@ namespace mirai {
     class Camera;
     class EnvironmentMap;
 
-    struct RenderableObjectData {
+    struct Renderable {
         Entity entity;
-        uint32_t material_index;
         uint32_t transform_index;
-        uint32_t mesh_flags;
         MeshType mesh_type;
+        uint32_t mesh_index;
 
-        BufferID buffer;
-        uint64_t vertex_offset_bytes;
-        uint32_t first_index;
-        uint32_t index_count;
-        uint32_t vertex_stride;
-        uint64_t blas_buffer_device_address;
+        uint32_t material_index;
+        uint32_t mesh_flags;
         AABB transformed_aabb;
     };
 
@@ -98,7 +93,7 @@ namespace mirai {
         std::vector<std::unique_ptr<Material3D>> materials;
         std::vector<MeshAllocation> mesh_allocations;
 
-        std::vector<RenderableObjectData> render_object_list;
+        std::vector<Renderable> render_object_list;
 
         std::vector<std::unique_ptr<SkeletalAsset>> skeletal_assets;
         std::vector<std::unique_ptr<AnimationPlayer>> animation_players;

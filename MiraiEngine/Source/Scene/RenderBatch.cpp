@@ -5,6 +5,7 @@
 #include "Scene.hpp"
 #include "Common/JobSystem.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
+#include "MeshData.hpp"
 #include "Graphics/Renderer.hpp"
 
 #include <mutex>
@@ -25,7 +26,7 @@ namespace mirai {
         std::vector<uint64_t> renderable_sort_keys(total_renderables);
         jobsystem::Dispatch(total_renderables, 64, [&](jobsystem::JobDispatchArg arg) {
             uint32_t index = arg.job_index;
-            const RenderableObjectData &renderable = renderables[index];
+            const Renderable &renderable = renderables[index];
             const auto &material = scene->materials[renderable.material_index];
 
             // Skip transparent object and object that doesn't cast shadow
@@ -42,7 +43,8 @@ namespace mirai {
                 return;
             }
 
-            renderable_sort_keys[index] = create_sort_key(build_params.pass, material->get_hash(build_params.pass), renderable.mesh_type, renderable.buffer);
+            const MeshAllocation &allocation = scene->mesh_allocations[renderable.mesh_index];
+            renderable_sort_keys[index] = create_sort_key(build_params.pass, material->get_hash(build_params.pass), renderable.mesh_type, allocation.buffer);
         });
 
         jobsystem::Wait();
@@ -87,7 +89,7 @@ namespace mirai {
             if (sort_key == UINT64_MAX)
                 return;
 
-            const RenderableObjectData &renderable = renderables[index];
+            const Renderable &renderable = renderables[index];
 
             float distance_to_cam_sqr = 0;
             if (build_params.camera_position) {
@@ -97,17 +99,20 @@ namespace mirai {
 
             uint32_t batch_index = sort_key_to_batch_index.at(sort_key);
             uint32_t slot_index = batch_counters[batch_index].fetch_add(1, std::memory_order_relaxed);
+
+            const MeshAllocation &allocation = scene->mesh_allocations[renderable.mesh_index];
+            bool is_skinned_mesh = (allocation.vertex_stride == K_VERTEX_DATA_SIZE_SKINNED);
             batches[batch_index].draw_infos[slot_index] = {
                 .transform_index = renderable.transform_index,
                 .material_index = renderable.material_index,
                 .draw_info = {
-                    .index_count = renderable.index_count,
+                    .index_count = allocation.index_count,
                     .instance_count = 1,
-                    .first_index = renderable.first_index,
-                    .vertex_offset_bytes = cast_int(renderable.vertex_offset_bytes),
+                    .first_index = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t)),
+                    .vertex_offset_bytes = is_skinned_mesh ? cast_int(allocation.ouput_vertex_offset_bytes) : cast_int(allocation.vertex_offset_bytes),
                     .first_instance = 0,
                 },
-                .vertex_stride = renderable.vertex_stride,
+                .vertex_stride = K_VERTEX_DATA_SIZE,
                 .distance_to_camera_sqr = distance_to_cam_sqr,
             };
         });

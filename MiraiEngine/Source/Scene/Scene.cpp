@@ -305,7 +305,7 @@ namespace mirai {
             uint32_t start_index = arg.job_index * batch_size;
             uint32_t end_index = std::min(start_index + batch_size, component_count);
 
-            std::vector<RenderableObjectData> batch_renderables;
+            std::vector<Renderable> batch_renderables;
 
             for (uint32_t i = start_index; i < end_index; ++i) {
                 MeshComponent &mesh_component = mesh_component_ptr->components[i];
@@ -340,18 +340,13 @@ namespace mirai {
                     }
 
                     uint32_t index = render_object_count.fetch_add(1, std::memory_order_relaxed);
-                    render_object_list[index] = RenderableObjectData{
+                    render_object_list[index] = Renderable{
                         .entity = entity,
-                        .material_index = primitive.material,
                         .transform_index = mesh_component.gpu_index,
-                        .mesh_flags = mesh_component.flags,
                         .mesh_type = mesh_component.mesh_type,
-                        .buffer = allocation.buffer,
-                        .vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes,
-                        .first_index = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t)),
-                        .index_count = allocation.index_count,
-                        .vertex_stride = K_VERTEX_DATA_SIZE,
-                        .blas_buffer_device_address = allocation.blas.buffer_device_address,
+                        .mesh_index = primitive.mesh,
+                        .material_index = primitive.material,
+                        .mesh_flags = mesh_component.flags,
                         .transformed_aabb = transformed_aabb,
                     };
                 }
