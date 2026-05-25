@@ -8,7 +8,6 @@
 // #include "Graphics/Renderer.hpp"
 // #include "RenderPass/RenderPass.hpp"
 // #include "Utils/FirstPersonController.hpp"
-// #include "Engine/Profiler.hpp"
 // #include <memory>
 
 // using namespace mirai;

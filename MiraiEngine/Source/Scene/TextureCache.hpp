@@ -2,7 +2,7 @@
 
 #include "Common/HashMap.hpp"
 #include "Graphics/RenderingDevice.hpp"
-#include "Engine/Log.hpp"
+#include "Common/Log.hpp"
 
 namespace mirai {
 

@@ -1,5 +1,5 @@
 #include "VulkanInstance.hpp"
-
+#include "Common/Log.hpp"
 #include <vector>
 #include <string.h>
 

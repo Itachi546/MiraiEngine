@@ -3,7 +3,7 @@
 #include "Graphics/RenderingDevice.hpp"
 #include "Common/Hash.hpp"
 #include "Common/HashMap.hpp"
-#include "Engine/Log.hpp"
+#include "Common/Log.hpp"
 namespace mirai {
 
     enum MeshType {

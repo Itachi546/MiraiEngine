@@ -3,7 +3,7 @@
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Graphics/Renderer.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Engine/AppSettings.hpp"
 #include "Device/Window.hpp"

@@ -6,7 +6,7 @@
 #include "Common/JobSystem.hpp"
 #include "Device/Window.hpp"
 #include "Engine/Engine.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Common/Random.hpp"
 #include "Graphics/Renderer.hpp"
 #include "MeshData.hpp"

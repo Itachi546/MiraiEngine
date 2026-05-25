@@ -13,19 +13,23 @@ layout(set = 0, binding = 1, rgba16f) uniform imageCube u_prefilter_map;
 
 layout(push_constant) uniform PushConstants {
     vec2 prefilter_map_dims;
-    vec2 cubemap_dims_and_roughness;
+
+    float cubemap_dims;
+    float roughness;
 };
 
 void main() {
     ivec3 uv = ivec3(gl_GlobalInvocationID.xyz);
+    if (any(greaterThanEqual(uv.xy, ivec2(prefilter_map_dims))))
+        return;
+
     vec3 N = normalize(uv_to_xyz(uv, prefilter_map_dims));
     vec3 R = N;
     vec3 V = R;
 
-    uint SAMPLE_COUNT = 4096u;
+    uint SAMPLE_COUNT = 1;
     float weight = 0.0;
     vec3 Lo = vec3(0.0);
-    float roughness = cubemap_dims_and_roughness.y;
 
     for (uint i = 0; i < SAMPLE_COUNT; ++i) {
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
@@ -40,8 +44,7 @@ void main() {
             float hdotv = max(dot(H, V), 0.0);
             float pdf = (D * ndoth) / (4.0 * hdotv + 0.0001);
 
-            float resolution = cubemap_dims_and_roughness.x;
-            float sa_texel = (4.0 * PI) / (6.0 * resolution * resolution);
+            float sa_texel = (4.0 * PI) / (6.0 * cubemap_dims * cubemap_dims);
             float sa_sample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
             float mip_level = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
 
@@ -51,5 +54,5 @@ void main() {
     }
 
     Lo /= weight;
-    imageStore(u_prefilter_map, uv, vec4(Lo, 1.0f));
+    imageStore(u_prefilter_map, uv, vec4(N, 1.0f));
 }

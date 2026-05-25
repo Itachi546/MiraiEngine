@@ -8,7 +8,7 @@
 #include "RenderPassData.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Graphics/LineRenderer.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Scene/EnvironmentMap.hpp"
 #include "Scene/Camera.hpp"
 namespace mirai {

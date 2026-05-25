@@ -1,6 +1,6 @@
 #include "ViewNormalDepthPass.hpp"
 
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Graphics/RenderingDevice.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/Scene.hpp"

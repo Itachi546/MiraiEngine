@@ -4,7 +4,7 @@
 #include "RenderPassData.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 
 namespace mirai {
 

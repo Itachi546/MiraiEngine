@@ -6,7 +6,7 @@
 #include "RenderPassData.hpp"
 #include "Scene/RenderBatch.hpp"
 #include "Scene/ShadowSystem.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 namespace mirai {

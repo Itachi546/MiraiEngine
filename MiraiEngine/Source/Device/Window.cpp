@@ -1,5 +1,5 @@
 #include "Window.hpp"
-#include "Engine/Log.hpp"
+#include "Common/Log.hpp"
 #include "InputDevice.hpp"
 
 #include <GLFW/glfw3.h>

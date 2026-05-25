@@ -1,6 +1,6 @@
 #include "Engine/App.hpp"
 #include "Engine/Engine.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Scene/Scene.hpp"
 #include "Scene/TextureCache.hpp"

@@ -78,6 +78,8 @@ namespace mirai {
         data.reset();
         data = nullptr;
 
+        Log::Debug("Loading Environment map");
+
         initialize_textures();
 
         ComputeShader cubemap_shader{"hdri-cubemap", "SPIRV/hdri-to-cubemap.comp.spv"};
@@ -158,6 +160,7 @@ namespace mirai {
         command_buffer->end_gpu_debug_label();
 
         device->submit_command_buffer_immediate(command_buffer);
+
         command_buffer->wait();
     }
 
@@ -258,30 +261,34 @@ namespace mirai {
 
         RenderingDevice *device = RenderingDevice::get();
         Renderer *renderer = Renderer::get();
+
         DescriptorInfo cubemap_descriptor_info = {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}};
         DescriptorOffset cubemap_descriptor = renderer->resource_heap.push_descriptors_per_frame(device, &cubemap_descriptor_info, 1);
 
         DescriptorInfo prefilter_map_descriptor_info = {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, 1, 0, ~0u}};
 
-        uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
+        uint32_t num_mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
+        std::vector<DescriptorOffset> output_image_descriptors(num_mip_levels);
+        for (uint32_t i = 0; i < num_mip_levels; ++i) {
+            prefilter_map_descriptor_info.image_info.base_mip_level = i;
+            output_image_descriptors[i] = renderer->resource_heap.push_descriptors_per_frame(device, &prefilter_map_descriptor_info, 1);
+        }
+
         uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
-        float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size),
-                            cast_float(cubemap_size), cast_float(cubemap_size)};
+        float push_data[] = {0.0f, 0.0f, cast_float(cubemap_size), 0.0f};
+        uint32_t push_data_size = cast_u32(sizeof(push_data));
 
         prefilter_shader->bind(command_buffer);
+        command_buffer->set_push_data(push_data_size, &cubemap_descriptor, cast_u32(sizeof(uint32_t)));
 
-        uint32_t dims = prefilter_map_size;
-        uint32_t num_mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
+        uint32_t dims = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
         for (uint32_t i = 0; i < num_mip_levels; ++i) {
-            map_dims[3] = cast_float(i) / cast_float(num_mip_levels - 1);
-            map_dims[0] = cast_float(dims);
-            map_dims[1] = cast_float(dims);
+            push_data[0] = cast_float(dims);
+            push_data[1] = cast_float(dims);
+            push_data[3] = cast_float(i) / cast_float(num_mip_levels - 1);
 
-            prefilter_map_descriptor_info.image_info.base_mip_level = i;
-            DescriptorOffset descriptors[2] = {cubemap_descriptor, renderer->resource_heap.push_descriptors_per_frame(device, &prefilter_map_descriptor_info, 1)};
-
-            command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
-            command_buffer->set_push_data(sizeof(float) * 4, &descriptors, sizeof(uint32_t) * 2);
+            command_buffer->set_push_data(0, push_data, push_data_size);
+            command_buffer->set_push_data(push_data_size + sizeof(uint32_t), output_image_descriptors.data() + i, cast_u32(sizeof(uint32_t)));
 
             uint32_t work_group_size = rendering_utils::get_workgroup_size(dims, 16);
             command_buffer->dispatch(work_group_size, work_group_size, 6);

@@ -7,7 +7,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "RenderPassData.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 
 namespace mirai {
 

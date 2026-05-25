@@ -6,7 +6,7 @@
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Scene/ShaderRegistry.hpp"
 #include "Scene/Camera.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Engine/AppSettings.hpp"
 #include "Scene/TextureCache.hpp"
 namespace mirai {

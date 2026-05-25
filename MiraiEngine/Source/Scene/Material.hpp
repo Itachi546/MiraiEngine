@@ -3,7 +3,7 @@
 #include <string>
 #include "Math/Math.hpp"
 #include "Common/Hash.hpp"
-#include "Engine/Log.hpp"
+#include "Common/Log.hpp"
 #include "Shader.hpp"
 #include "Engine/AppSettings.hpp"
 

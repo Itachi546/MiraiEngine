@@ -12,7 +12,7 @@
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Engine/Engine.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Device/Window.hpp"
 #include "Math/MathUtils.hpp"
 #include "Math/Frustum.hpp"

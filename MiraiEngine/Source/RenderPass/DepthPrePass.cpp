@@ -5,7 +5,7 @@
 #include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
 #include "Engine/AppSettings.hpp"
-#include "Engine/Profiler.hpp"
+#include "Common/Profiler.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 
 namespace mirai {

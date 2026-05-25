@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common/CommonInclude.hpp"
-#include "Engine/Log.hpp"
+#include "Common/Log.hpp"
 
 #include <vector>
 #include <array>

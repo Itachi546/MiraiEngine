@@ -322,7 +322,7 @@ namespace mirai {
 
         VkImageMemoryBarrier2 transfer_dst_barrier = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .srcStageMask = 0,
             .srcAccessMask = 0,
             .dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
             .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
@@ -339,6 +339,7 @@ namespace mirai {
                 .layerCount = VK_REMAINING_ARRAY_LAYERS,
             },
         };
+
         pipeline_barrier(&transfer_dst_barrier, 1, nullptr, 0);
 
         uint32_t mip_width = dst_image->width;
@@ -369,6 +370,7 @@ namespace mirai {
             mip_width = mip_width > 1 ? mip_width / 2 : 1;
             mip_height = mip_height > 1 ? mip_height / 2 : 1;
         }
+        dst_image->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         dst_image->access_flags = VK_ACCESS_2_TRANSFER_WRITE_BIT;
         dst_image->stage_mask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     }
