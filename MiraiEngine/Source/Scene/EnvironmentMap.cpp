@@ -14,7 +14,7 @@ namespace mirai {
             .width = (uint32_t)cubemap_size,
             .height = (uint32_t)cubemap_size,
             .depth = 1,
-            .mip_levels = cast_u32(std::floor(log2(cubemap_size))),
+            .mip_levels = 1,
             .array_layers = 6,
             .texture_type = TEXTURE_TYPE_CUBE,
             .format = FORMAT_R16G16B16A16_SFLOAT,
@@ -22,12 +22,13 @@ namespace mirai {
         };
 
         RenderingDevice *device = RenderingDevice::get();
+        texture_desc.mip_levels = cast_u32(std::floor(std::log2(cubemap_size)));
+        cubemap_texture = device->create_texture(&texture_desc, "cubemap");
 
         uint32_t irradiance_map_size = EnvironmentSettings::K_IRRADIANCE_MAP_SIZE;
-        cubemap_texture = device->create_texture(&texture_desc, "cubemap");
+        texture_desc.mip_levels = 1;
         texture_desc.width = irradiance_map_size;
         texture_desc.height = irradiance_map_size;
-        texture_desc.mip_levels = 1;
         texture_desc.usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_STORAGE_BIT;
         irradiance_texture = device->create_texture(&texture_desc, "cubemap_irradiance");
 
@@ -244,13 +245,7 @@ namespace mirai {
         // Layout transition
         TextureBarrierInfo barrier_infos[] = {
             {
-                .texture_id = cubemap_texture, // CUBEMAP TEXTURE
-                .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                .access_mask = ACCESS_FLAG_SHADER_READ,
-                .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            },
-            {
-                .texture_id = prefilter_texture, // PREFILTER TEXTURE
+                .texture_id = prefilter_texture, // IRRADIANCE TEXTURE
                 .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 .access_mask = ACCESS_FLAG_SHADER_WRITE,
                 .layout = IMAGE_LAYOUT_GENERAL,
@@ -262,46 +257,28 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         Renderer *renderer = Renderer::get();
 
-        DescriptorInfo cubemap_descriptor_info = {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}};
-        DescriptorOffset cubemap_descriptor = renderer->resource_heap.push_descriptors_per_frame(device, &cubemap_descriptor_info, 1);
+        DescriptorInfo descriptor_infos[] = {
+            {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}},
+            {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, ~0u, 0, ~0u}},
+        };
+        DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(device, descriptor_infos, cast_u32(std::size(descriptor_infos)));
+        uint32_t descriptors[] = {descriptor_index, descriptor_index + 1};
 
-        DescriptorInfo prefilter_map_descriptor_info = {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, 1, 0, ~0u}};
-
-        uint32_t num_mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
-        std::vector<DescriptorOffset> output_image_descriptors(num_mip_levels);
-        for (uint32_t i = 0; i < num_mip_levels; ++i) {
-            prefilter_map_descriptor_info.image_info.base_mip_level = i;
-            output_image_descriptors[i] = renderer->resource_heap.push_descriptors_per_frame(device, &prefilter_map_descriptor_info, 1);
-        }
-
+        uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
         uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
-        float push_data[] = {0.0f, 0.0f, cast_float(cubemap_size), 0.0f};
-        uint32_t push_data_size = cast_u32(sizeof(push_data));
+        float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size), cast_float(cubemap_size), cast_float(0.0f)};
 
         prefilter_shader->bind(command_buffer);
-        command_buffer->set_push_data(push_data_size, &cubemap_descriptor, cast_u32(sizeof(uint32_t)));
+        command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
+        command_buffer->set_push_data(sizeof(float) * 4, &descriptors, cast_u32(sizeof(uint32_t) * 2));
 
-        uint32_t dims = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
-        for (uint32_t i = 0; i < num_mip_levels; ++i) {
-            push_data[0] = cast_float(dims);
-            push_data[1] = cast_float(dims);
-            push_data[3] = cast_float(i) / cast_float(num_mip_levels - 1);
+        uint32_t work_group_size = rendering_utils::get_workgroup_size(prefilter_map_size, 32);
+        command_buffer->dispatch(work_group_size, work_group_size, 6);
 
-            command_buffer->set_push_data(0, push_data, push_data_size);
-            command_buffer->set_push_data(push_data_size + sizeof(uint32_t), output_image_descriptors.data() + i, cast_u32(sizeof(uint32_t)));
-
-            uint32_t work_group_size = rendering_utils::get_workgroup_size(dims, 16);
-            command_buffer->dispatch(work_group_size, work_group_size, 6);
-            dims = dims / 2;
-        }
-
-        for (int i = 0; i < 2; ++i) {
-            barrier_infos[i].stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-            barrier_infos[i].access_mask = ACCESS_FLAG_SHADER_READ;
-            barrier_infos[i].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
-
-        command_buffer->prepare_image(barrier_infos, cast_u32(std::size(barrier_infos)));
+        barrier_infos[0].stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        barrier_infos[0].access_mask = ACCESS_FLAG_SHADER_READ;
+        barrier_infos[0].layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        command_buffer->prepare_image(barrier_infos, 1);
     }
 
     void EnvironmentMap::integrate_brdf_texture(CommandBuffer *command_buffer, ComputeShader *integrate_brdf_shader) {

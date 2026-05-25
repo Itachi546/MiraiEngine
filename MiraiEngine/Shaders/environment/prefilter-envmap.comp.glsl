@@ -2,7 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : enable
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform textureCube u_cubemap;
 layout(set = 0, binding = 1, rgba16f) uniform imageCube u_prefilter_map;
@@ -27,7 +27,7 @@ void main() {
     vec3 R = N;
     vec3 V = R;
 
-    uint SAMPLE_COUNT = 1;
+    uint SAMPLE_COUNT = 4096;
     float weight = 0.0;
     vec3 Lo = vec3(0.0);
 
@@ -54,5 +54,5 @@ void main() {
     }
 
     Lo /= weight;
-    imageStore(u_prefilter_map, uv, vec4(N, 1.0f));
+    imageStore(u_prefilter_map, uv, vec4(Lo, 1.0f));
 }

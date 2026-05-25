@@ -49,8 +49,10 @@ namespace mirai {
     namespace EnvironmentSettings {
         constexpr uint32_t K_CUBEMAP_SIZE = 512;
         constexpr uint32_t K_IRRADIANCE_MAP_SIZE = 64;
+
         constexpr uint32_t K_PREFILTER_MAP_SIZE = 512;
-        constexpr uint32_t K_PREFILTER_MAP_MAX_MIP_LEVELS = 7;
+        constexpr uint32_t K_PREFILTER_MAP_MAX_MIP_LEVELS = 6;
+
         constexpr uint32_t K_BRDF_MAP_SIZE = 512;
     }; // namespace EnvironmentSettings
 
