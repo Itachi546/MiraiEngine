@@ -72,18 +72,4 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
     return normalize(sampleVec);
 }
 
-const float C_MIN_ROUGHNESS = 0.04f;
-float convert_metallic(vec3 diffuse, vec3 specular, float max_specular) {
-    float perceived_diffuse = sqrt(0.299 * diffuse.r * diffuse.r + 0.587 * diffuse.g * diffuse.g + 0.114 * diffuse.b * diffuse.b);
-    float perceived_specular = sqrt(0.299 * specular.r * specular.r + 0.587 * specular.g * specular.g + 0.114 * specular.b * specular.b);
-    if (perceived_diffuse < C_MIN_ROUGHNESS) {
-        return 0.0;
-    }
-    float a = C_MIN_ROUGHNESS;
-    float b = perceived_diffuse * (1.0 - max_specular) / (1.0 - C_MIN_ROUGHNESS) + perceived_specular - 2.0 * C_MIN_ROUGHNESS;
-    float c = C_MIN_ROUGHNESS - perceived_specular;
-    float D = max(b * b - 4.0 * a * c, 0.0);
-    return clamp((-b + sqrt(D)) / (2.0 * a), 0.0, 1.0);
-}
-
 #endif

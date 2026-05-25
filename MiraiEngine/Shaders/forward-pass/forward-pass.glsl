@@ -64,10 +64,6 @@ layout(push_constant) uniform PushConstants {
     uint _padding;
 };
 
-bool is_valid(uint texture) {
-    return texture != K_INVALID_TEXTURE;
-}
-
 void main() {
     PBRMaterial material = materials[fs_in.mat_id];
 

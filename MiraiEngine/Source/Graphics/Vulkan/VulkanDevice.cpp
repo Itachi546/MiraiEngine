@@ -167,12 +167,13 @@ namespace mirai {
             .descriptorHeap = true,
             .descriptorHeapCaptureReplay = false,
         };
+
         device_features13.pNext = &descriptor_heap_feature;
+        device_features12.descriptorIndexing = true;
+        device_features12.bufferDeviceAddress = true;
 
         if (support_raytracing) {
             // Required by raytracing
-            device_features12.descriptorIndexing = true;
-            device_features12.bufferDeviceAddress = true;
             descriptor_heap_feature.pNext = &ray_query_feature;
         }
 

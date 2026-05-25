@@ -41,6 +41,13 @@ namespace mirai {
     };
     static_assert(sizeof(GPULightData) % 16 == 0);
 
+    struct RTMeshInstanceData {
+        uint32_t vertex_offset;
+        uint32_t index_offset;
+        uint32_t vertex_stride;
+        uint32_t material_index;
+    };
+
     Renderer::Renderer() {
         ASSERT(Instance == nullptr);
         Instance = this;
@@ -164,6 +171,7 @@ namespace mirai {
 
         create_blas();
     }
+
     // @TODO do it in batch, so that we can wait for task at once in the end
     void Renderer::upload_transforms(CommandBuffer *command_buffer) {
         if (scene->updated_transforms.size() == 0 && frame_id > 0)
@@ -173,7 +181,8 @@ namespace mirai {
         auto mesh_comp_ptr = component_manager->get_component_array<MeshComponent>();
 
         uint32_t total_meshes = cast_u32(mesh_comp_ptr->components.size());
-
+        if (total_meshes == 0)
+            return;
         uint64_t transform_data_size = total_meshes * sizeof(glm::mat4);
 
         bool should_reupload_data = false;
@@ -250,6 +259,8 @@ namespace mirai {
             return;
 
         uint32_t total_materials = cast_u32(scene->materials.size());
+        if (total_materials == 0)
+            return;
         uint64_t material_data_size = sizeof(Material3D::Properties) * total_materials;
 
         bool should_reupload_data = false;
@@ -569,10 +580,13 @@ namespace mirai {
 
     void Renderer::create_tlas(CommandBuffer *command_buffer) {
         if (device->supports_raytracing()) {
+            uint32_t total_renderable = cast_u32(scene->render_object_list.size());
+            if (total_renderable == 0)
+                return;
+
             ScopedCpuProfiling("TLAS Build CPU");
             ScopedGpuProfiling(command_buffer, "TLAS Build");
 
-            uint32_t total_renderable = cast_u32(scene->render_object_list.size());
             std::vector<uint32_t> write_indexes(total_renderable);
             uint32_t total_instances = 0;
             for (uint32_t i = 0; i < total_renderable; ++i) {
@@ -592,6 +606,9 @@ namespace mirai {
             uint32_t instance_data_size = cast_u32(sizeof(AccelerationStructureInstanceData));
             BufferView instance_buffer = per_frame_allocator[frame_flight_index].allocate(total_instances * instance_data_size);
             uint64_t blas_device_address = device->get_buffer_device_address(blas_buffer_static);
+
+            uint32_t rt_meshdata_size = cast_u32(sizeof(RTMeshInstanceData));
+            BufferView rt_meshdata_buffer = per_frame_allocator[frame_flight_index].allocate(total_instances * rt_meshdata_size);
 
             auto &component_manager = scene->ecs->component_manager;
             jobsystem::Dispatch(total_renderable, 64, [&](jobsystem::JobDispatchArg arg) {
@@ -616,15 +633,35 @@ namespace mirai {
                 const auto &material = scene->materials[renderable.material_index];
                 uint32_t flags = material->is_alpha_mask() ? GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT : GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT;
 
-                instance->instanceCustomIndex = renderable.mesh_index;
+                instance->instanceCustomIndex = write_index;
                 instance->mask = 0xFF;
                 instance->instanceShaderBindingTableRecordOffset = 0;
                 instance->flags = flags;
 
                 const MeshAllocation &allocation = scene->mesh_allocations[renderable.mesh_index];
                 instance->accelerationStructureReference = allocation.blas.buffer_device_address;
+
+                RTMeshInstanceData *mesh_instance = reinterpret_cast<RTMeshInstanceData *>(rt_meshdata_buffer.ptr + write_index * rt_meshdata_size);
+                // For skinned meshes, the BLAS is built from the post-skinning output region
+                // (ouput_vertex_offset_bytes) with K_VERTEX_DATA_SIZE stride. The hit shader
+                // must read from the same region. For static meshes, ouput_vertex_offset_bytes
+                // is 0 so we fall back to vertex_offset_bytes.
+                bool is_skinned = allocation.ouput_vertex_offset_bytes != 0;
+                uint64_t rt_vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes;
+                uint32_t rt_vertex_stride = is_skinned ? K_VERTEX_DATA_SIZE : allocation.vertex_stride;
+                mesh_instance->vertex_offset = cast_u32(rt_vertex_offset_bytes / 4);
+                mesh_instance->index_offset = cast_u32(allocation.index_offset_bytes / 4);
+                mesh_instance->vertex_stride = K_VERTEX_DATA_SIZE / 4;
+                mesh_instance->material_index = renderable.material_index;
             });
             jobsystem::Wait();
+
+            DescriptorInfo descriptor_info = {
+                .type = DescriptorType::StorageBuffer,
+                .resource = rt_meshdata_buffer.buffer,
+                .buffer_info = {.offset = rt_meshdata_buffer.offset, .size = rt_meshdata_buffer.size},
+            };
+            rt_instance_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
             device->create_tlas(command_buffer, total_instances, instance_buffer, tlas_buffer, &tlas);
         }
@@ -891,21 +928,10 @@ namespace mirai {
         BufferView per_frame_data_buffer = frame_allocator->allocate(per_frame_data_size);
         std::memcpy(per_frame_data_buffer.ptr, &scene->per_frame_data, per_frame_data_size);
 
-        // Update per frame data descriptor
-        DescriptorInfo descriptor_info = {
-            .type = DescriptorType::UniformBuffer,
-            .resource = per_frame_data_buffer.buffer,
-            .buffer_info = {per_frame_data_buffer.offset, per_frame_data_buffer.size},
-        };
-        per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
-
         // Update cascade data
         uint32_t cascade_data_size = align_memory(sizeof(shadow_system->cascade_info), 64);
         BufferView cascade_data_buffer = frame_allocator->allocate(cascade_data_size);
         std::memcpy(cascade_data_buffer.ptr, &shadow_system->cascade_info, cascade_data_size);
-        descriptor_info.buffer_info.offset = cascade_data_buffer.offset;
-        descriptor_info.buffer_info.size = cascade_data_size;
-        cascade_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
         // Populate per-frame batch data
         total_visible_entities = upload_batch_data(main_render_batches, frame_flight_index);
@@ -914,6 +940,7 @@ namespace mirai {
             {DescriptorType::UniformBuffer, per_frame_data_buffer.buffer, {per_frame_data_buffer.offset, per_frame_data_buffer.size}},
             {DescriptorType::UniformBuffer, cascade_data_buffer.buffer, {cascade_data_buffer.offset, cascade_data_buffer.size}},
         };
+
         per_frame_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), descriptor_infos, cast_u32(std::size(descriptor_infos)));
         cascade_data_descriptor = per_frame_data_descriptor + 1;
     }
@@ -1074,8 +1101,8 @@ namespace mirai {
             for (auto &allocation : scene->mesh_allocations) {
                 device->destroy_acceleration_structures(&allocation.blas.as, 1);
             }
-
-            device->destroy_acceleration_structures(&tlas.as, 1);
+            if (tlas.as.is_valid())
+                device->destroy_acceleration_structures(&tlas.as, 1);
             if (blas_buffer_dynamic.is_valid())
                 device->destroy_buffers(&blas_buffer_dynamic, 1);
             if (blas_buffer_static.is_valid())

@@ -31,9 +31,9 @@ namespace mirai {
         constexpr uint32_t K_PER_FRAME_RESOURCE_DESCRIPTOR_LIMIT = 1024;
         constexpr uint32_t K_SAMPLER_DESCRIPTOR_LIMIT = 16;
 
-        constexpr uint32_t K_NUM_THREAD = 2;
+        constexpr uint32_t K_NUM_THREAD = 3;
         constexpr uint32_t K_NUM_COMMAND_BUFFER_PER_THREAD = 3;
-        constexpr uint32_t K_MAX_FRAME_IN_FLIGHTS = 2;
+        constexpr uint32_t K_MAX_FRAME_IN_FLIGHTS = 3;
 
         constexpr uint32_t K_MAX_BINDLESS_TEXTURE_COUNT = 4096;
 

@@ -5,10 +5,10 @@
 
 #include "../utils/raycast.glsl"
 
-layout(binding = 0) uniform accelerationStructureEXT tlas;
-layout(binding = 1, rgba8) uniform image2D output_image;
+layout(set = 0, binding = 0) uniform accelerationStructureEXT tlas;
+layout(set = 0, binding = 1, rgba8) uniform image2D output_image;
 
-layout(location = 0) rayPayloadEXT vec3 hit_color;
+layout(location = 0) rayPayloadEXT vec4 hit_color;
 
 layout(push_constant) uniform PushConstant {
     mat4 invP;
@@ -26,5 +26,5 @@ void main() {
     vec3 direction = generate_camera_ray(uv, invP, invV);
 
     traceRayEXT(tlas, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin, 0.01, direction, 1000.0, 0);
-    imageStore(output_image, launch_id, vec4(hit_color, 1.0));
+    imageStore(output_image, launch_id, hit_color);
 }

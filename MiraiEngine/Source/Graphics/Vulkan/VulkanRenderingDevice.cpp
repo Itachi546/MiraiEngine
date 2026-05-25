@@ -15,6 +15,7 @@
 #include <vma/vk_mem_alloc.h>
 #include <variant>
 #include <algorithm>
+#include <array>
 
 namespace mirai {
     void VulkanRenderingDevice::set_debug_marker_object_name(VkObjectType objectType, uint64_t handle, const char *objectName) {
@@ -252,24 +253,45 @@ namespace mirai {
         return fence;
     }
 
-    void VulkanRenderingDevice::create_set_and_binding_mappings(const VulkanShader &shader, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings) {
-        uint32_t descriptorCount = cast_u32(mappings.size());
-        for (const auto &set : shader.descriptor_sets_info) {
-            for (const auto &binding : set.bindings) {
-                // Check for duplicate mapping
-                auto found = std::find_if(mappings.begin(), mappings.end(), [set, binding](const VkDescriptorSetAndBindingMappingEXT &mapping) {
-                    return mapping.descriptorSet == set.set && mapping.firstBinding == binding.binding;
-                });
-                if (found != mappings.end())
-                    continue;
+    void VulkanRenderingDevice::create_set_and_binding_mappings(const std::vector<VulkanShader> &shader_modules, uint32_t push_constants_size, std::vector<VkDescriptorSetAndBindingMappingEXT> &mappings) {
+        std::array<std::vector<ShaderReflectionDescriptorBinding>, 32> set_bindings;
+        uint32_t max_set_index = 0;
+        for (const auto &shader : shader_modules) {
+            for (const auto &set_info : shader.descriptor_sets_info) {
+                std::vector<ShaderReflectionDescriptorBinding> &out_bindings = set_bindings[set_info.set];
 
-                bool is_sampler_resource = (set.set == K_BINDLESS_SAMPLER_SET && binding.binding_type == BINDING_TYPE_SAMPLER);
-                bool is_bindless_texture_resource = (set.set == K_BINDLESS_TEXTURE_SET && binding.binding == K_BINDLESS_TEXTURE_BINDING);
+                for (uint32_t b = 0; b < set_info.bindings.size(); ++b) {
+                    const ShaderReflectionDescriptorBinding &current = set_info.bindings[b];
+                    auto found = std::find_if(out_bindings.begin(), out_bindings.end(), [current](const ShaderReflectionDescriptorBinding &binding) {
+                        return current.binding == binding.binding;
+                    });
+
+                    if (found != out_bindings.end()) {
+                        ASSERT(found->binding_type == current.binding_type);
+                        continue;
+                    }
+                    out_bindings.push_back(current);
+                }
+
+                max_set_index = std::max(max_set_index, set_info.set);
+            }
+        }
+
+        uint32_t descriptor_count = 0;
+        for (uint32_t set = 0; set <= max_set_index; ++set) {
+            std::vector<ShaderReflectionDescriptorBinding> &bindings = set_bindings[set];
+            std::sort(bindings.begin(), bindings.end(), [](const ShaderReflectionDescriptorBinding &lhs, const ShaderReflectionDescriptorBinding &rhs) {
+                return lhs.binding < rhs.binding;
+            });
+
+            for (const auto &binding : bindings) {
+                bool is_sampler_resource = (set == K_BINDLESS_SAMPLER_SET && binding.binding_type == BINDING_TYPE_SAMPLER);
+                bool is_bindless_texture_resource = (set == K_BINDLESS_TEXTURE_SET && binding.binding == K_BINDLESS_TEXTURE_BINDING);
 
                 VkDescriptorSetAndBindingMappingEXT &mapping = mappings.emplace_back();
                 mapping.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
                 mapping.pNext = nullptr;
-                mapping.descriptorSet = set.set;
+                mapping.descriptorSet = set;
                 mapping.firstBinding = binding.binding;
                 if (is_sampler_resource) {
                     mapping.bindingCount = AppSettings::K_SAMPLER_DESCRIPTOR_LIMIT;
@@ -288,11 +310,11 @@ namespace mirai {
                     mapping.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
                     mapping.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
                     mapping.sourceData.pushIndex.heapOffset = 0;
-                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptorCount * sizeof(uint32_t);
+                    mapping.sourceData.pushIndex.pushOffset = push_constants_size + descriptor_count * sizeof(uint32_t);
                     mapping.sourceData.pushIndex.heapIndexStride = resource_descriptor_size;
                     mapping.sourceData.pushIndex.heapArrayStride = resource_descriptor_size;
                     mapping.sourceData.pushIndex.pEmbeddedSampler = nullptr;
-                    descriptorCount++;
+                    descriptor_count++;
                 }
             }
         }
@@ -326,9 +348,7 @@ namespace mirai {
         }
 
         std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
-        for (auto &shader : shader_modules) {
-            create_set_and_binding_mappings(shader, push_constants_size, mappings);
-        }
+        create_set_and_binding_mappings(shader_modules, push_constants_size, mappings);
 
         binding_mapping_info.pMappings = mappings.data();
         binding_mapping_info.mappingCount = cast_u32(mappings.size());
@@ -502,7 +522,7 @@ namespace mirai {
 
         std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
         mappings.reserve(16);
-        create_set_and_binding_mappings(shader, push_constants_size, mappings);
+        create_set_and_binding_mappings({shader}, push_constants_size, mappings);
 
         VkShaderDescriptorSetAndBindingMappingInfoEXT binding_mapping_info = {
             .sType = VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT,
@@ -639,9 +659,8 @@ namespace mirai {
 
         // Create descriptor mapping
         std::vector<VkDescriptorSetAndBindingMappingEXT> mappings;
-        for (auto &shader : shader_modules) {
-            create_set_and_binding_mappings(shader, push_constants_size, mappings);
-        }
+        create_set_and_binding_mappings(shader_modules, push_constants_size, mappings);
+
         binding_mapping_info.mappingCount = cast_u32(mappings.size()),
         binding_mapping_info.pMappings = mappings.data();
 
@@ -738,14 +757,17 @@ namespace mirai {
     } // namespace mirai
 
     void VulkanRenderingDevice::write_resource_descriptors(const DescriptorInfo *descriptor_infos, uint32_t descriptor_count, void *start_address, uint32_t descriptor_size) {
-        std::vector<VkImageViewCreateInfo> image_view_create_infos;
-        image_view_create_infos.reserve(descriptor_count);
+        // Since we are assigning address, we should prevent reallocation
+        std::vector<VkImageViewCreateInfo> image_view_create_infos(descriptor_count);
+        std::vector<VkImageDescriptorInfoEXT> image_descriptor_infos(descriptor_count);
 
-        std::vector<std::variant<VkImageDescriptorInfoEXT, VkDeviceAddressRangeEXT>> datas;
-        datas.reserve(descriptor_count);
+        std::vector<VkDeviceAddressRangeEXT> device_address_ranges(descriptor_count);
 
         std::vector<VkResourceDescriptorInfoEXT> descriptor_resource_infos(descriptor_count);
         std::vector<VkHostAddressRangeEXT> host_address_ranges(descriptor_count);
+
+        uint32_t image_count = 0;
+        uint32_t buffer_count = 0;
 
         for (uint32_t i = 0; i < descriptor_count; ++i) {
             const DescriptorInfo *descriptor_info = &descriptor_infos[i];
@@ -759,7 +781,8 @@ namespace mirai {
             case DescriptorType::StorageImage:
             case DescriptorType::SampledImage: {
                 VulkanTexture *texture = resource_pool_textures.access(descriptor_info->resource);
-                VkImageViewCreateInfo &image_view_create_info = image_view_create_infos.emplace_back(VkImageViewCreateInfo{
+                VkImageViewCreateInfo &image_view_create_info = image_view_create_infos[image_count];
+                image_view_create_info = {
                     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                     .pNext = nullptr,
                     .flags = 0,
@@ -774,9 +797,9 @@ namespace mirai {
                         .baseArrayLayer = descriptor_info->image_info.array_layer,
                         .layerCount = descriptor_info->image_info.array_layer_count,
                     },
-                });
+                };
 
-                VkImageDescriptorInfoEXT &image_info = std::get<VkImageDescriptorInfoEXT>(datas.emplace_back());
+                VkImageDescriptorInfoEXT &image_info = image_descriptor_infos[image_count];
                 image_info.sType = VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT;
                 image_info.pNext = nullptr;
                 image_info.pView = &image_view_create_info;
@@ -784,13 +807,15 @@ namespace mirai {
 
                 descriptor_resource_infos[i].type = descriptor_info->type == DescriptorType::SampledImage ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 descriptor_resource_infos[i].data.pImage = &image_info;
+
+                image_count += 1;
                 break;
             }
 
             case DescriptorType::UniformBuffer:
             case DescriptorType::StorageBuffer: {
                 VulkanBuffer *buffer = resource_pool_buffers.access(descriptor_info->resource);
-                VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
+                VkDeviceAddressRangeEXT &address_range = device_address_ranges[buffer_count++];
                 ASSERT(buffer->device_address != 0);
                 address_range.address = buffer->device_address + descriptor_info->buffer_info.offset;
                 address_range.size = std::min(descriptor_info->buffer_info.size, size_t(buffer->size));
@@ -805,7 +830,7 @@ namespace mirai {
                 address_info.accelerationStructure = *as;
                 VkDeviceAddress address = vkGetAccelerationStructureDeviceAddressKHR(device, &address_info);
 
-                VkDeviceAddressRangeEXT &address_range = std::get<VkDeviceAddressRangeEXT>(datas.emplace_back(VkDeviceAddressRangeEXT{}));
+                VkDeviceAddressRangeEXT &address_range = device_address_ranges[buffer_count++];
                 ASSERT(address != 0);
                 address_range.address = address;
                 address_range.size = 0;
@@ -890,11 +915,11 @@ namespace mirai {
         case MEMORY_ALLOCATION_TYPE_CPU: {
             // This is a staging buffer
             allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-            allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            allocation_create_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
             break;
         }
         case MEMORY_ALLOCATION_TYPE_GPU: {
-            allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+            allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
             break;
         }
         }

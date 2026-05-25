@@ -97,7 +97,7 @@ namespace mirai {
             .usage_flags = TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT,
         };
 
-        TextureID texture_id = RenderingDevice::get()->create_texture(&texture_desc, "test");
+        TextureID texture_id = RenderingDevice::get()->create_texture(&texture_desc, path);
         rendering_utils::copy_texture_immediate(texture_id, data.get(), width * height * sizeof(uint8_t) * 4);
 
         data.reset();

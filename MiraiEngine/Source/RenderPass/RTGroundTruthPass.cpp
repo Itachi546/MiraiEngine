@@ -44,7 +44,11 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Renderer *renderer = ctx->renderer;
 
+                if (!renderer->tlas.as.is_valid())
+                    return;
+
                 ScopedGpuProfiling(command_buffer, "RTGroundTruthPass");
+                command_buffer->begin_gpu_debug_label("RTGroundTruth Pass");
 
                 const auto &resource_states = pass_resources.get_resource_access_states();
                 command_buffer->prepare_resources(resource_states);
@@ -65,9 +69,16 @@ namespace mirai {
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
 
+                // @TODO we can use cached descriptor later
+                BufferID buffer = renderer->geometry_buffer_allocator->allocations[0].id;
+                DescriptorInfo descriptor_info = {.type = DescriptorType::StorageBuffer, .resource = buffer, .buffer_info = {0, UINT64_MAX}};
+                DescriptorOffset geometry_descriptor = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &descriptor_info, 1);
                 DescriptorOffset descriptors[] = {
                     renderer->get_or_create_descriptor(renderer->tlas.as, DescriptorType::AccelerationStructure),
                     renderer->get_or_create_descriptor(pass_resources.get<FrameGraphTexture>(data.output).id, DescriptorType::StorageImage),
+                    renderer->rt_instance_data_descriptor,
+                    geometry_descriptor,
+                    renderer->material_descriptor,
                 };
 
                 data.shader->bind(command_buffer);
@@ -77,6 +88,8 @@ namespace mirai {
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
                 command_buffer->trace_rays(width, height);
+
+                command_buffer->end_gpu_debug_label();
             });
     }
 } // namespace mirai

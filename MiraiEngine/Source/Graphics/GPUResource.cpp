@@ -19,26 +19,30 @@ namespace mirai {
     }
 
     DescriptorOffset GPUResourceDescriptorHeap::push_descriptor_at_index(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count, uint32_t index) {
-        uint32_t current_offset = index;
-        ASSERT(current_offset + descriptor_info_count <= AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT);
-        device->write_resource_descriptors(descriptor_infos, descriptor_info_count, static_cast<uint8_t *>(ptr) + current_offset * descriptor_size, descriptor_size);
+        ASSERT(index + descriptor_info_count <= AppSettings::K_RESOURCE_DESCRIPTOR_LIMIT);
+        device->write_resource_descriptors(descriptor_infos, descriptor_info_count, static_cast<uint8_t *>(ptr) + index * descriptor_size, descriptor_size);
         return index;
     }
 
     DescriptorOffset GPUResourceDescriptorHeap::push_descriptors(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
-        uint32_t current_offset = push_descriptor_at_index(device, descriptor_infos, descriptor_info_count, offset);
-        offset += descriptor_info_count;
+        uint32_t current_offset = offset;
+        // Writing descriptor in batch trigger access violation while debugging in nsight, we 
+        // will keep single write for now
+        for (uint32_t i = 0; i < descriptor_info_count; ++i) {
+            push_descriptor_at_index(device, descriptor_infos + i, 1, offset);
+            offset += 1;
+        }
         return current_offset;
     }
 
     DescriptorOffset GPUResourceDescriptorHeap::push_descriptors_per_frame(RenderingDevice *device, const DescriptorInfo *descriptor_infos, uint32_t descriptor_info_count) {
         uint32_t current_offset = per_frame_current_offset;
         ASSERT(per_frame_current_offset + descriptor_info_count <= per_frame_current_offset_end);
-
-        uint8_t *descriptor_buffer_ptr = static_cast<uint8_t *>(ptr) + per_frame_current_offset * descriptor_size;
-        device->write_resource_descriptors(descriptor_infos, descriptor_info_count, descriptor_buffer_ptr, descriptor_size);
-        per_frame_current_offset += descriptor_info_count;
-
+        for (uint32_t i = 0; i < descriptor_info_count; ++i) {
+            uint8_t *descriptor_buffer_ptr = static_cast<uint8_t *>(ptr) + per_frame_current_offset * descriptor_size;
+            device->write_resource_descriptors(descriptor_infos + i, 1, descriptor_buffer_ptr, descriptor_size);
+            per_frame_current_offset += 1;
+        }
         // We need index into descriptor rather than actual address
         return current_offset;
     }
@@ -49,6 +53,8 @@ namespace mirai {
         // Check if we can allocate from existing pages
         uint32_t page = find_existing_page(required_size);
         if (page == K_INVALID_PAGE_ID) {
+            // @TODOf We don't allow allocation from other page for now, due to RT pipeline
+            ASSERT(allocations.size() <= 1);
             // Create new allocation
             BufferDescription buffer_desc = {
                 .size = page_size,
