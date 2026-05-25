@@ -18,6 +18,7 @@ set(PROJECT_INCLUDE_FILES
     Inspector.hpp
     AnimationDebug.hpp
     FrameGraphForwardPass.hpp
+    DebugTexturePass.hpp
 )
 
 add_executable(TestApplication ${PROJECT_SOURCE_FILES} ${PROJECT_INCLUDE_FILES})

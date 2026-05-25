@@ -34,7 +34,6 @@ namespace mirai {
 
         // Create Prefilter Environment map texture
         uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
-        texture_desc.create_flags = TEXTURE_CREATION_FLAG_IMAGE_VIEW_PER_MIP;
         texture_desc.mip_levels = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
         texture_desc.width = prefilter_map_size;
         texture_desc.height = prefilter_map_size;
@@ -257,23 +256,39 @@ namespace mirai {
         RenderingDevice *device = RenderingDevice::get();
         Renderer *renderer = Renderer::get();
 
-        DescriptorInfo descriptor_infos[] = {
-            {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}},
-            {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, ~0u, 0, ~0u}},
-        };
-        DescriptorOffset descriptor_index = renderer->resource_heap.push_descriptors_per_frame(device, descriptor_infos, cast_u32(std::size(descriptor_infos)));
-        uint32_t descriptors[] = {descriptor_index, descriptor_index + 1};
+        DescriptorInfo cubemap_descriptor_info = {.type = DescriptorType::SampledImage, .resource = cubemap_texture, .image_info = {0, ~0u, 0, ~0u}};
+        DescriptorOffset cubemap_descriptor = renderer->resource_heap.push_descriptors_per_frame(device, &cubemap_descriptor_info, 1);
 
-        uint32_t prefilter_map_size = EnvironmentSettings::K_PREFILTER_MAP_SIZE;
+        DescriptorInfo prefilter_texture_descriptor_info = {.type = DescriptorType::StorageImage, .resource = prefilter_texture, .image_info = {0, 1, 0, ~0u}};
+
         uint32_t cubemap_size = EnvironmentSettings::K_CUBEMAP_SIZE;
-        float map_dims[] = {cast_float(prefilter_map_size), cast_float(prefilter_map_size), cast_float(cubemap_size), cast_float(0.0f)};
+        float push_data[] = {0.0f, 0.0f, 0.0f, 0.0f};
+        uint32_t push_data_size = cast_u32(sizeof(push_data));
 
         prefilter_shader->bind(command_buffer);
-        command_buffer->set_push_data(0, map_dims, sizeof(float) * 4);
-        command_buffer->set_push_data(sizeof(float) * 4, &descriptors, cast_u32(sizeof(uint32_t) * 2));
 
-        uint32_t work_group_size = rendering_utils::get_workgroup_size(prefilter_map_size, 32);
-        command_buffer->dispatch(work_group_size, work_group_size, 6);
+        // Setup cubemap descriptor
+        command_buffer->set_push_data(push_data_size, &cubemap_descriptor, sizeof(uint32_t));
+
+        uint32_t prefilter_mip_count = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
+        float mip_resolution = cast_u32(EnvironmentSettings::K_PREFILTER_MAP_SIZE);
+
+        for (uint32_t i = 0; i < prefilter_mip_count; ++i) {
+            push_data[0] = push_data[1] = mip_resolution;
+            push_data[2] = cast_float(cubemap_size);
+            push_data[3] = float(i) / float(std::max(prefilter_mip_count, 2u) - 1);
+
+            command_buffer->set_push_data(0, push_data, sizeof(float) * 4);
+
+            prefilter_texture_descriptor_info.image_info.base_mip_level = i;
+            DescriptorOffset prefilter_texture_descriptor = renderer->resource_heap.push_descriptors_per_frame(device, &prefilter_texture_descriptor_info, 1);
+            command_buffer->set_push_data(sizeof(float) * 4 + sizeof(uint32_t), &prefilter_texture_descriptor, sizeof(uint32_t));
+
+            uint32_t work_group_size = rendering_utils::get_workgroup_size(cast_u32(mip_resolution), 32);
+            command_buffer->dispatch(work_group_size, work_group_size, 6);
+
+            mip_resolution = mip_resolution * 0.5f;
+        }
 
         barrier_infos[0].stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         barrier_infos[0].access_mask = ACCESS_FLAG_SHADER_READ;
