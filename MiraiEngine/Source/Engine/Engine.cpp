@@ -2,10 +2,10 @@
 #include "Device/Window.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Common/Log.hpp"
-#include "Timer.hpp"
+#include "Common/Timer.hpp"
 #include "Device/InputDevice.hpp"
 #include "Common/JobSystem.hpp"
-#include "Profiler.hpp"
+#include "Common/Profiler.hpp"
 
 #include <chrono>
 #include <filesystem>

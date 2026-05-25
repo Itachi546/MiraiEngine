@@ -10,10 +10,10 @@ namespace mirai {
         char message[4096];
         snprintf(message, std::size(message), "[%s]::%s", type, p_message);
 
-        std::cout << message << std::endl;
+        Log::Warn(message);
 
         if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
-            assert(!"Validation error encountered!");
+            ASSERT_MSG(0, "Validation error encountered!");
 
         return VK_FALSE;
     }

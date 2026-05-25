@@ -6,8 +6,11 @@
 #include <string_view>
 #include <queue>
 #include <sstream>
+#include <fstream>
 
 namespace mirai {
+
+#define ENABLE_LOG_FILE 0
 
 #define MI_EXIT_FAIL(code) (exit(code))
     class Log {
@@ -63,17 +66,29 @@ namespace mirai {
             std::string message;
         };
         static std::queue<LogEntry> entries;
+#if ENABLE_LOG_FILE
+        static std::ofstream log_file;
+#endif
 
         template <typename... Args>
         static void Write(Args &&...args) {
-            std::unique_lock<std::mutex>
-                lock(WriteMutex);
+            std::unique_lock<std::mutex> lock(WriteMutex);
+#if ENABLE_LOG_FILE
+            if (!log_file)
+                log_file.open("log.txt", std::ios::out | std::ios::trunc);
+#endif
 #ifdef _DEBUG
             ((void)args, ...);
             const LogEntry &entry = entries.back();
             std::cout << entry.message << std::endl;
+#if ENABLE_LOG_FILE
+            log_file << entry.message << '\n';
+#endif
 #else
             (std::cout << ... << args) << '\n';
+#if ENABLE_LOG_FILE
+            (log_file << ... << args) << '\n';
+#endif
 #endif
         }
 
