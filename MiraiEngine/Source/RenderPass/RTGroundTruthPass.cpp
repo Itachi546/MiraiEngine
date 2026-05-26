@@ -44,7 +44,8 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
                 Renderer *renderer = ctx->renderer;
 
-                if (!renderer->tlas.as.is_valid())
+                const RenderDebugData &debug_data = renderer->get_frame_graph_blackboard()->get<RenderDebugData>();
+                if (!renderer->tlas.as.is_valid() || !debug_data.show_rt_ground_truth)
                     return;
 
                 ScopedGpuProfiling(command_buffer, "RTGroundTruthPass");
@@ -79,6 +80,7 @@ namespace mirai {
                     renderer->rt_instance_data_descriptor,
                     geometry_descriptor,
                     renderer->material_descriptor,
+                    renderer->light_descriptor,
                 };
 
                 data.shader->bind(command_buffer);

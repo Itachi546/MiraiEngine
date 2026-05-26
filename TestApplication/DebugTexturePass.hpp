@@ -28,13 +28,13 @@ void add_texture_debug_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *board
                                            .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                        });
 
-            const ForwardPassData &input_pass_data = board->get<ForwardPassData>();
-            builder.read(input_pass_data.color_texture, {
+            const RTGroundTruthPassData &input_pass_data = board->get<RTGroundTruthPassData>();
+            builder.read(input_pass_data.output, {
                                                      .access_flags = ACCESS_FLAG_SHADER_READ,
                                                      .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                                      .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                  });
-            data.input = input_pass_data.color_texture;
+            data.input = input_pass_data.output;
 
             data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
                                                            std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/debug.frag.spv"},

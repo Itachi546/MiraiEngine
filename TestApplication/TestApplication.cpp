@@ -254,6 +254,7 @@ class TestApplication : public App {
             ImGui::Checkbox("Gamma Correction", &debug_data.enable_gamma_correction);
             ImGui::DragFloat("Exposure", &debug_data.exposure, 0.1f, 0.0f, 8.0f);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
+            ImGui::Checkbox("Ground Truth", &debug_data.show_rt_ground_truth);
             ImGui::Spacing();
             if (ImGui::Button("Show RenderPass Textures")) {
                 ImGui::OpenPopup("RenderPassDebugPopup");

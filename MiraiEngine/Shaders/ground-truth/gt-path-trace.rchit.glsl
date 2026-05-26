@@ -6,6 +6,8 @@
 #include "../utils/bindless-texture.glsl"
 #include "../utils/bindless-sampler.glsl"
 #include "../utils/material.glsl"
+#include "../utils/light.glsl"
+#include "../utils/color.glsl"
 
 layout(location = 0) rayPayloadInEXT vec4 hitColor;
 hitAttributeEXT vec2 bary_coord;
@@ -17,6 +19,8 @@ struct MeshInstanceData {
     uint material_index;
 };
 
+#include "ground-truth.glsl"
+
 layout(set = 0, binding = 2) readonly buffer MeshInstanceBuffer {
     MeshInstanceData mesh_instances[];
 };
@@ -27,6 +31,10 @@ layout(set = 0, binding = 3) readonly buffer VertexBuffer {
 
 layout(set = 0, binding = 4) readonly buffer MaterialBuffer {
     PBRMaterial materials[];
+};
+
+layout(std430, set = 0, binding = 6) readonly buffer Lights {
+    Light lights[];
 };
 
 #include "../utils/vertexdata.glsl"
@@ -81,8 +89,14 @@ void main() {
     PBRMaterial material = materials[instance.material_index];
     vec2 texture_scale = vec2(material.texture_scale_x, material.texture_scale_y);
 
-    vec4 albedo = fetch_albedo(material, vertex.tex_coord * texture_scale, 0.0f);
-    vec3 emissive = fetch_emissive(material, vertex.tex_coord * texture_scale, 0.0f);
+    PBRParameter pbr_params;
+    pbr_params.albedo = fetch_albedo(material, vertex.tex_coord * texture_scale, 0.0f);
+    pbr_params.emissive = fetch_emissive(material, vertex.tex_coord * texture_scale, 0.0f);
+    vec2 metallic_roughness = fetch_pbr_metallic_roughness(material, pbr_params.albedo, vertex.tex_coord * texture_scale, 0.0f);
+    pbr_params.metallic = metallic_roughness.x;
+    pbr_params.roughness = metallic_roughness.y;
+    pbr_params.ao = 1.0f;
+
     vec3 sn = fetch_normal_map(material, vertex.tex_coord * texture_scale, 0.0f);
 
     vec3 n = vertex.normal;
@@ -91,5 +105,11 @@ void main() {
 
     vec3 detail_normal = normalize(sn.x * t + sn.y * bt + sn.z * n);
 
-    hitColor = vec4(emissive + albedo.rgb, 0.0f);
+    vec3 view_dir = camera_position - vertex.position;
+    float cam_dist = length(view_dir);
+    view_dir /= cam_dist;
+
+    float diffuse = max(dot(lights[0].direction, detail_normal), 0.01);
+    vec3 Lo = (diffuse + 0.01) * u32_to_rgba(lights[0].color).rgb * pbr_params.albedo.rgb;
+    hitColor = vec4(Lo, 1.0f);
 }

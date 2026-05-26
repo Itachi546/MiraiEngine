@@ -10,12 +10,7 @@ layout(set = 0, binding = 1, rgba8) uniform image2D output_image;
 
 layout(location = 0) rayPayloadEXT vec4 hit_color;
 
-layout(push_constant) uniform PushConstant {
-    mat4 invP;
-    mat4 invV;
-    vec3 camera_position;
-    uint skybox_texture_index;
-};
+#include "ground-truth.glsl"
 
 void main() {
     const ivec2 launch_id = ivec2(gl_LaunchIDEXT.xy);

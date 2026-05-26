@@ -15,7 +15,8 @@ layout(push_constant) uniform PushConstant {
 };
 
 void main() {
-    vec3 ray_dir = -normalize(gl_WorldRayDirectionEXT);
+    vec3 ray_dir = normalize(gl_WorldRayDirectionEXT);
+    ray_dir.y = -ray_dir.y;
     vec4 sky_color = sample_texture_cube(skybox_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], ray_dir);
     hit_color = vec4(sky_color.rgb, 1.0f);
 }

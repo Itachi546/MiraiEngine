@@ -76,6 +76,7 @@ namespace mirai {
             .mip_lod_bias = -0.5f,
             .bloom_strength = 0.04f,
             .bloom_radius = 1.0f,
+            .show_rt_ground_truth = false,
         });
 
         shadow_system = std::make_unique<ShadowSystem>();

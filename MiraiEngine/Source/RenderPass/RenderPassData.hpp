@@ -74,6 +74,7 @@ namespace mirai {
 
         float bloom_strength;
         float bloom_radius;
+        bool show_rt_ground_truth;
     };
 
     struct BloomPassData {

@@ -48,6 +48,12 @@ namespace mirai {
                                                          .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 
                                                      });
+                const RTGroundTruthPassData &rt_ground_truth_data = board->get<RTGroundTruthPassData>();
+                builder.read(rt_ground_truth_data.output, {
+                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                              .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                              .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          });
 
                 data.shader = std::make_shared<EffectMaterial>("FinalCompositeShader",
                                                                std::vector<std::string>{"SPIRV/fullscreen.vert.spv", "SPIRV/final-composite.frag.spv"},
@@ -85,6 +91,7 @@ namespace mirai {
                 input_color_texture = pass_resource.get<FrameGraphTexture>(forward_pass_data.color_texture).id;
 #endif
                 const BloomPassData &bloom_pass_data = board->get<BloomPassData>();
+                const RTGroundTruthPassData &rt_ground_truth_data = board->get<RTGroundTruthPassData>();
 
                 ASSERT(input_color_texture.is_valid());
 
@@ -95,10 +102,14 @@ namespace mirai {
                     float height;
                     float enable_gamma_correction;
                     float exposure;
+
                     uint32_t input_color_texture;
                     uint32_t bloom_texture;
                     float bloom_strength;
-                    float _padding;
+                    uint32_t rt_ground_truth_texture;
+
+                    float enable_rt_ground_truth;
+                    uint32_t _padding[3];
                 } push_data;
 
                 push_data.width = cast_float(width);
@@ -108,6 +119,8 @@ namespace mirai {
                 push_data.input_color_texture = input_color_texture.id;
                 push_data.bloom_texture = pass_resource.get<FrameGraphTexture>(bloom_pass_data.output).id.id;
                 push_data.bloom_strength = debug_data.bloom_strength;
+                push_data.rt_ground_truth_texture = pass_resource.get<FrameGraphTexture>(rt_ground_truth_data.output).id.id;
+                push_data.enable_rt_ground_truth = debug_data.show_rt_ground_truth;
 
                 command_buffer->begin_gpu_debug_label("FinalCompositePass");
                 ScopedGpuProfiling(command_buffer, "FinalCompositePass");
