@@ -359,6 +359,7 @@ namespace mirai {
                     .direction = quat_to_direction(transform->rotation),
                     .intensity = light->intensity,
                     .color = rgb_to_u32(&light->color[0]),
+                    .radius_or_height = light->radius,
                 };
             } else if (light->light_type == LIGHT_TYPE_POINT) {
                 return GPULightData{

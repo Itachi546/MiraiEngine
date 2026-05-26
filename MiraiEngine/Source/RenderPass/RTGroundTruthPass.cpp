@@ -18,7 +18,7 @@ namespace mirai {
                 data.shader = std::make_shared<RTShader>("RTGroundTruthShader",
                                                          "SPIRV/gt-path-trace.rgen.spv",
                                                          std::vector<std::string>{"SPIRV/gt-path-trace.rchit.spv"},
-                                                         std::vector<std::string>{"SPIRV/gt-path-trace.rmiss.spv"});
+                                                         std::vector<std::string>{"SPIRV/gt-path-trace.rmiss.spv"}, 4);
                 uint32_t width = AppSettings::get_width();
                 uint32_t height = AppSettings::get_height();
                 data.output = builder.create_texture("RTGroundTruthOutput", {
@@ -29,7 +29,7 @@ namespace mirai {
                                                                                 .mip_levels = 1,
                                                                                 .array_layers = 1,
                                                                                 .texture_type = TEXTURE_TYPE_2D,
-                                                                                .format = FORMAT_B8G8R8A8_UNORM,
+                                                                                .format = FORMAT_R16G16B16A16_SFLOAT,
                                                                                 .usage_flags = TEXTURE_USAGE_STORAGE_BIT | TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_SRC_BIT | TEXTURE_USAGE_COLOR_ATTACHMENT_BIT,
                                                                             });
                 builder.write(data.output, {
@@ -59,6 +59,9 @@ namespace mirai {
                     glm::mat4 inv_V;
                     glm::vec3 camera_position;
                     uint32_t skybox_texture_index;
+
+                    uint32_t frame_index;
+                    uint32_t _padding[3];
                 } push_data;
 
                 Scene *scene = renderer->get_scene();
@@ -67,6 +70,7 @@ namespace mirai {
                 push_data.inv_V = camera->get_inv_view_transform();
                 push_data.camera_position = glm::vec4(camera->position, 1.0f);
                 push_data.skybox_texture_index = scene->get_environment_map()->get_cubemap().id;
+                push_data.frame_index = cast_u32(renderer->frame_id % UINT32_MAX);
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
 

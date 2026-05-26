@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_ray_query : require
 
 #define DISABLE_TEXTURE_DERIVATIVE
 #include "../utils/bindless-texture.glsl"
@@ -8,8 +9,12 @@
 #include "../utils/material.glsl"
 #include "../utils/light.glsl"
 #include "../utils/color.glsl"
+#include "../pbr/pbr.glsl"
+#include "../utils/sample-direction.glsl"
+#include "ground-truth.glsl"
 
-layout(location = 0) rayPayloadInEXT vec4 hitColor;
+layout(location = 0) rayPayloadInEXT RayPayload p_payload;
+layout(location = 1) rayPayloadEXT RayPayload p_indirect_payload;
 hitAttributeEXT vec2 bary_coord;
 
 struct MeshInstanceData {
@@ -19,7 +24,9 @@ struct MeshInstanceData {
     uint material_index;
 };
 
-#include "ground-truth.glsl"
+#define MAX_RAY_DEPTH 2
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT tlas;
 
 layout(set = 0, binding = 2) readonly buffer MeshInstanceBuffer {
     MeshInstanceData mesh_instances[];
@@ -38,6 +45,7 @@ layout(std430, set = 0, binding = 6) readonly buffer Lights {
 };
 
 #include "../utils/vertexdata.glsl"
+
 struct Vertex {
     vec3 position;
     vec3 normal;
@@ -45,7 +53,7 @@ struct Vertex {
     vec2 tex_coord;
 };
 
-Vertex fetch_interpolated_vertex(uint triangle_index, MeshInstanceData instance, vec3 bary_coord) {
+Vertex fetch_interpolated_vertex(uint triangle_index, MeshInstanceData instance, vec3 bary) {
     uint index_address = instance.index_offset + triangle_index * 3;
     uint i0 = vertices[index_address + 0];
     uint i1 = vertices[index_address + 1];
@@ -56,60 +64,139 @@ Vertex fetch_interpolated_vertex(uint triangle_index, MeshInstanceData instance,
     uint va2 = instance.vertex_offset + i2 * instance.vertex_stride;
 
     Vertex result;
-    vec3 p0 = unpack_position(va0);
-    vec3 n0 = unpack_normal(va0);
-    vec3 t0 = unpack_tangent(va0);
-    vec2 uv0 = unpack_uv(va0);
-
-    vec3 p1 = unpack_position(va1);
-    vec3 n1 = unpack_normal(va1);
-    vec3 t1 = unpack_tangent(va1);
-    vec2 uv1 = unpack_uv(va1);
-
-    vec3 p2 = unpack_position(va2);
-    vec3 n2 = unpack_normal(va2);
-    vec3 t2 = unpack_tangent(va2);
-    vec2 uv2 = unpack_uv(va2);
-
-    result.position = bary_coord.x * p0 + bary_coord.y * p1 + bary_coord.z * p2;
-    result.normal = normalize(bary_coord.x * n0 + bary_coord.y * n1 + bary_coord.z * n2);
-    result.tangent = normalize(bary_coord.x * t0 + bary_coord.y * t1 + bary_coord.z * t2);
-    result.tex_coord = bary_coord.x * uv0 + bary_coord.y * uv1 + bary_coord.z * uv2;
-
+    result.position = bary.x * unpack_position(va0) + bary.y * unpack_position(va1) + bary.z * unpack_position(va2);
+    result.normal = normalize(bary.x * unpack_normal(va0) + bary.y * unpack_normal(va1) + bary.z * unpack_normal(va2));
+    result.tangent = normalize(bary.x * unpack_tangent(va0) + bary.y * unpack_tangent(va1) + bary.z * unpack_tangent(va2));
+    result.tex_coord = bary.x * unpack_uv(va0) + bary.y * unpack_uv(va1) + bary.z * unpack_uv(va2);
     return result;
 }
 
-void main() {
-    // Color using barycentric coordinates
-    MeshInstanceData instance = mesh_instances[gl_InstanceCustomIndexEXT];
-    uint triangle_index = gl_PrimitiveID;
+float trace_shadow(vec3 world_pos, vec3 N, vec3 light_dir) {
+    rayQueryEXT ray_query;
 
-    Vertex vertex = fetch_interpolated_vertex(triangle_index, instance, vec3(1.0 - bary_coord.x - bary_coord.y, bary_coord.x, bary_coord.y));
+    rayQueryInitializeEXT(
+        ray_query,
+        tlas,
+        gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+        0xFF,
+        world_pos + N * 0.01,
+        0.0,
+        light_dir,
+        1000.0);
+
+    while (rayQueryProceedEXT(ray_query)) {
+        // Confirm every candidate intersection immediately
+        if (rayQueryGetIntersectionTypeEXT(ray_query, false) == gl_RayQueryCandidateIntersectionTriangleEXT) {
+            rayQueryConfirmIntersectionEXT(ray_query);
+            break; // any hit is enough — stop traversal
+        }
+    }
+
+    return rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT
+               ? 1.0
+               : 0.0;
+}
+
+vec3 evaluateBRDF(vec3 L, vec3 V, vec3 N, PBRParameter pbr) {
+    vec3 H = normalize(V + L);
+    float NdotL = clamp(dot(N, L), 0.001, 1.0);
+    float NdotV = clamp(dot(N, V), 0.001, 1.0);
+    float NdotH = clamp(dot(N, H), 0.0, 1.0);
+    float LdotH = clamp(dot(L, H), 0.0, 1.0);
+
+    vec3 F0 = mix(vec3(0.04), pbr.albedo.rgb, pbr.metallic);
+    vec3 diffuse = pbr.albedo.rgb / PI;
+
+    float D = D_GGX(NdotH, pbr.roughness);
+    float G = G_Smith(NdotV, NdotL, pbr.roughness);
+    vec3 F = F_Schlick(LdotH, F0);
+
+    vec3 specular = (D * F * G) / (4.0 * NdotV * NdotL + 0.0001);
+    vec3 kD = (1.0 - F) * (1.0 - pbr.metallic); // fix: use F not specular for energy conservation
+    return (kD * diffuse + specular) * NdotL;
+}
+
+vec3 evaluateDirectionalLight(in Light light, in vec3 V, in vec3 N, in PBRParameter pbr, float shadow) {
+    vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
+    return evaluateBRDF(light.direction, V, N, pbr) * shadow * radiance;
+}
+
+vec3 direct_lighting(Light light, vec3 V, vec3 N, PBRParameter pbr, float shadow_factor) {
+    return evaluateDirectionalLight(light, V, N, pbr, shadow_factor);
+}
+
+vec3 indirect_lighting(vec3 V, vec3 N, vec3 world_pos, PBRParameter pbr) {
+    // Cosine-weighted hemisphere sample — two independent floats from RNG
+    vec2 xi = next_vec2(p_payload.rng);
+    vec3 dir = cosine_hemisphere_sample(N, xi);
+
+    const float tmin = 0.01;
+
+    p_indirect_payload.L = vec3(0.0);
+    p_indirect_payload.rng = p_payload.rng; // propagate RNG state
+    p_indirect_payload.depth = p_payload.depth + 1;
+
+    traceRayEXT(
+        tlas,
+        gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
+        0xFF,
+        0,                    // sbtRecordOffset — same hit group as primary
+        0,                    // sbtRecordStride
+        0,                    // missIndex       — same miss shader as primary
+        world_pos + N * tmin, // world-space origin, offset along normal
+        0.0,
+        dir,
+        10000.0,
+        1 // payload location 1
+    );
+
+    p_payload.rng = p_indirect_payload.rng; // bring RNG state back
+
+    // Cosine-weighted PDF = NdotL/PI, BRDF diffuse = albedo/PI
+    // estimator: BRDF * NdotL / PDF = albedo (for pure diffuse)
+    vec3 kD = (1.0 - pbr.metallic) * pbr.albedo.rgb;
+    return kD * p_indirect_payload.L;
+}
+
+void main() {
+    MeshInstanceData instance = mesh_instances[gl_InstanceCustomIndexEXT];
+
+    vec3 bary = vec3(1.0 - bary_coord.x - bary_coord.y, bary_coord.x, bary_coord.y);
+    Vertex vertex = fetch_interpolated_vertex(gl_PrimitiveID, instance, bary);
+
+    // Transform vertex position to world space for secondary ray origin
+    vec3 world_pos = vec3(gl_ObjectToWorldEXT * vec4(vertex.position, 1.0));
 
     PBRMaterial material = materials[instance.material_index];
-    vec2 texture_scale = vec2(material.texture_scale_x, material.texture_scale_y);
+    vec2 tex_scale = vec2(material.texture_scale_x, material.texture_scale_y);
+    vec2 uv = vertex.tex_coord * tex_scale;
 
-    PBRParameter pbr_params;
-    pbr_params.albedo = fetch_albedo(material, vertex.tex_coord * texture_scale, 0.0f);
-    pbr_params.emissive = fetch_emissive(material, vertex.tex_coord * texture_scale, 0.0f);
-    vec2 metallic_roughness = fetch_pbr_metallic_roughness(material, pbr_params.albedo, vertex.tex_coord * texture_scale, 0.0f);
-    pbr_params.metallic = metallic_roughness.x;
-    pbr_params.roughness = metallic_roughness.y;
-    pbr_params.ao = 1.0f;
+    PBRParameter pbr;
+    pbr.albedo = fetch_albedo(material, uv, 0.0);
+    pbr.emissive = fetch_emissive(material, uv, 0.0);
+    vec2 mr = fetch_pbr_metallic_roughness(material, pbr.albedo, uv, 0.0);
+    pbr.metallic = mr.x;
+    pbr.roughness = mr.y;
+    pbr.ao = 1.0;
 
-    vec3 sn = fetch_normal_map(material, vertex.tex_coord * texture_scale, 0.0f);
+    // Build TBN and apply normal map
+    vec3 sn = fetch_normal_map(material, uv, 0.0);
+    vec3 N = vertex.normal;
+    vec3 T = vertex.tangent;
+    vec3 B = cross(N, T);
+    vec3 detail_normal = normalize(sn.x * T + sn.y * B + sn.z * N);
 
-    vec3 n = vertex.normal;
-    vec3 t = vertex.tangent;
-    vec3 bt = cross(n, t);
+    vec3 V = -gl_WorldRayDirectionEXT;
 
-    vec3 detail_normal = normalize(sn.x * t + sn.y * bt + sn.z * n);
+    vec3 light_dir = get_cone_sample(next_vec2(p_payload.rng), lights[0].direction, cos(lights[0].radius_or_height));
 
-    vec3 view_dir = camera_position - vertex.position;
-    float cam_dist = length(view_dir);
-    view_dir /= cam_dist;
+    float shadow_factor = trace_shadow(world_pos, N, light_dir);
+    vec3 Lo = direct_lighting(lights[0], V, detail_normal, pbr, shadow_factor);
+    Lo += pbr.emissive.rgb;
 
-    float diffuse = max(dot(lights[0].direction, detail_normal), 0.01);
-    vec3 Lo = (diffuse + 0.01) * u32_to_rgba(lights[0].color).rgb * pbr_params.albedo.rgb;
-    hitColor = vec4(Lo, 1.0f);
+    // Single bounce indirect — if (depth+1 < MAX) not while
+    if ((p_payload.depth + 1) < MAX_RAY_DEPTH)
+        Lo += indirect_lighting(V, N, world_pos, pbr);
+
+    p_payload.L = Lo;
 }

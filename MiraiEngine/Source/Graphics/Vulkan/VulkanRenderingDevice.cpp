@@ -677,7 +677,7 @@ namespace mirai {
         pipeline_create_info.pStages = shader_stage_create_infos.data();
         pipeline_create_info.groupCount = cast_u32(shader_group_infos.size());
         pipeline_create_info.pGroups = shader_group_infos.data();
-        pipeline_create_info.maxPipelineRayRecursionDepth = 1;
+        pipeline_create_info.maxPipelineRayRecursionDepth = pipeline_desc->max_recursion_depth;
         pipeline_create_info.layout = VK_NULL_HANDLE;
 
         uint32_t pipeline_id = resource_pool_pipelines.obtain();

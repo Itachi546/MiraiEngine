@@ -9,7 +9,7 @@
 #include "../utils/bindless-sampler.glsl"
 #include "../utils/light.glsl"
 #include "../utils/noise.glsl"
-#include "../utils/math.glsl"
+#include "../utils/sample-direction.glsl"
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -43,32 +43,6 @@ vec2 sample_noise_texture(ivec2 id) {
     return fract(noise + 0.618033 * frame_index);
 }
 
-// Utility function to get a vector perpendicular to an input vector
-// (from "Efficient Construction of Perpendicular Vectors Without Branching")
-vec3 get_perpendicular_vector(vec3 u) {
-    vec3 a = abs(u);
-    uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
-    uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
-    uint zm = 1 ^ (xm | ym);
-    return cross(u, vec3(xm, ym, zm));
-}
-
-
-vec3 get_cone_sample(ivec2 id, vec3 light_dir, float cos_theta_max) {
-    vec2 rand = sample_noise_texture(id);
-
-    vec3 bitangent = get_perpendicular_vector(light_dir);
-    vec3 tangent = cross(bitangent, light_dir);
-
-    float cos_theta = mix(cos_theta_max, 1.0, rand.x);
-
-    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-
-    float phi = rand.y * 2.0 * PI;
-
-    return tangent * (sin_theta * cos(phi)) + bitangent * (sin_theta * sin(phi)) + light_dir * cos_theta;
-}
-
 void main() {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
     if (any(greaterThanEqual(id, resolution)))
@@ -98,7 +72,7 @@ void main() {
         ray_dir = dir / range;
     }
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, 0.0f, get_cone_sample(id, ray_dir, cos_angular_radius), range);
+    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, world_pos, 0.0f, get_cone_sample(sample_noise_texture(id), ray_dir, cos_angular_radius), range);
     rayQueryProceedEXT(ray_query);
 
     if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
