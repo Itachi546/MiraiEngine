@@ -10,14 +10,18 @@ layout(push_constant) uniform PushConstant {
     vec3 camera_position;
     uint skybox_texture_index;
 
-    uint frame_index;
-    uint _padding[3];
+    uint frame_count;
+    uint input_texture_index;
+    uint _padding[2];
 };
 
 struct RayPayload {
     vec3 L;
-    RNG rng;
     uint depth;
+
+    vec3 T;
+
+    RNG rng;
 };
 
 #endif

@@ -11,6 +11,8 @@
 #include "../utils/color.glsl"
 #include "../pbr/pbr.glsl"
 #include "../utils/sample-direction.glsl"
+
+#include "brdf.glsl"
 #include "ground-truth.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload p_payload;
@@ -40,7 +42,7 @@ layout(set = 0, binding = 4) readonly buffer MaterialBuffer {
     PBRMaterial materials[];
 };
 
-layout(std430, set = 0, binding = 6) readonly buffer Lights {
+layout(std430, set = 0, binding = 5) readonly buffer Lights {
     Light lights[];
 };
 
@@ -112,7 +114,7 @@ vec3 evaluateBRDF(vec3 L, vec3 V, vec3 N, PBRParameter pbr) {
     vec3 F = F_Schlick(LdotH, F0);
 
     vec3 specular = (D * F * G) / (4.0 * NdotV * NdotL + 0.0001);
-    vec3 kD = (1.0 - F) * (1.0 - pbr.metallic); // fix: use F not specular for energy conservation
+    vec3 kD = (1.0 - F) * (1.0 - pbr.metallic);
     return (kD * diffuse + specular) * NdotL;
 }
 
@@ -126,36 +128,40 @@ vec3 direct_lighting(Light light, vec3 V, vec3 N, PBRParameter pbr, float shadow
 }
 
 vec3 indirect_lighting(vec3 V, vec3 N, vec3 world_pos, PBRParameter pbr) {
-    // Cosine-weighted hemisphere sample — two independent floats from RNG
-    vec2 xi = next_vec2(p_payload.rng);
-    vec3 dir = cosine_hemisphere_sample(N, xi);
+    vec3 Wi;
+    float pdf;
 
-    const float tmin = 0.01;
+    const vec3 F0 = mix(vec3(0.04f), pbr.albedo.rgb, pbr.metallic);
+    const vec3 c_diffuse = mix(pbr.albedo.rgb * (vec3(1.0f) - F0), vec3(0.0f), pbr.metallic);
+    vec3 brdf = sample_uber_brdf(pbr.albedo.rgb, F0, N, pbr.roughness, pbr.metallic, V, p_payload.rng, Wi, pdf);
+    float cos_theta = clamp(dot(N, Wi), 0.0f, 1.0f);
 
     p_indirect_payload.L = vec3(0.0);
-    p_indirect_payload.rng = p_payload.rng; // propagate RNG state
-    p_indirect_payload.depth = p_payload.depth + 1;
+    p_indirect_payload.T = p_payload.T * (brdf * cos_theta) / pdf;
 
+    float probability = max(p_indirect_payload.T.r, max(p_indirect_payload.T.g, p_indirect_payload.T.b));
+    if (next_float(p_payload.rng) > probability)
+        return vec3(0.0f);
+
+    p_indirect_payload.T *= 1.0f / probability;
+    p_indirect_payload.depth = p_payload.depth + 1;
+    p_indirect_payload.rng = p_payload.rng;
+
+    const float tmin = 0.01;
     traceRayEXT(
         tlas,
         gl_RayFlagsOpaqueEXT | gl_RayFlagsCullBackFacingTrianglesEXT,
         0xFF,
-        0,                    // sbtRecordOffset — same hit group as primary
-        0,                    // sbtRecordStride
-        0,                    // missIndex       — same miss shader as primary
-        world_pos + N * tmin, // world-space origin, offset along normal
+        0,
+        0,
+        0,
+        world_pos + N * tmin,
         0.0,
-        dir,
-        10000.0,
-        1 // payload location 1
-    );
+        Wi,
+        1000.0,
+        1);
 
-    p_payload.rng = p_indirect_payload.rng; // bring RNG state back
-
-    // Cosine-weighted PDF = NdotL/PI, BRDF diffuse = albedo/PI
-    // estimator: BRDF * NdotL / PDF = albedo (for pure diffuse)
-    vec3 kD = (1.0 - pbr.metallic) * pbr.albedo.rgb;
-    return kD * p_indirect_payload.L;
+    return p_indirect_payload.L;
 }
 
 void main() {
@@ -191,7 +197,7 @@ void main() {
     vec3 light_dir = get_cone_sample(next_vec2(p_payload.rng), lights[0].direction, cos(lights[0].radius_or_height));
 
     float shadow_factor = trace_shadow(world_pos, N, light_dir);
-    vec3 Lo = direct_lighting(lights[0], V, detail_normal, pbr, shadow_factor);
+    vec3 Lo = direct_lighting(lights[0], V, detail_normal, pbr, shadow_factor) * p_payload.T;
     Lo += pbr.emissive.rgb;
 
     // Single bounce indirect — if (depth+1 < MAX) not while

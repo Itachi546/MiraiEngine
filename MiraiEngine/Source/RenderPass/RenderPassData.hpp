@@ -15,6 +15,7 @@ namespace mirai {
 
     struct RTGroundTruthPassData {
         std::shared_ptr<RTShader> shader;
+        TextureID color_textures[2];
         FrameGraphResourceHandle output;
     };
 
@@ -75,6 +76,7 @@ namespace mirai {
         float bloom_strength;
         float bloom_radius;
         bool show_rt_ground_truth;
+        bool reset_rt_texture;
     };
 
     struct BloomPassData {

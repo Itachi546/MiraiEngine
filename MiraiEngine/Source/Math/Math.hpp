@@ -9,6 +9,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/norm.hpp>
 #include <array>
 
 namespace mirai {

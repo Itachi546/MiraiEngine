@@ -255,6 +255,10 @@ class TestApplication : public App {
             ImGui::DragFloat("Exposure", &debug_data.exposure, 0.1f, 0.0f, 8.0f);
             ImGui::SliderFloat("IBL Contribution", &AppSettings::ibl_contribution, 0.0f, 4.0f);
             ImGui::Checkbox("Ground Truth", &debug_data.show_rt_ground_truth);
+            if (debug_data.show_rt_ground_truth) {
+                ImGui::SameLine();
+                ImGui::Checkbox("Reset", &debug_data.reset_rt_texture);
+            }
             ImGui::Spacing();
             if (ImGui::Button("Show RenderPass Textures")) {
                 ImGui::OpenPopup("RenderPassDebugPopup");
