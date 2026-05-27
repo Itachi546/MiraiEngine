@@ -105,7 +105,8 @@ namespace mirai {
 
                     uint32_t frame_count;
                     uint32_t input_texture_index;
-                    uint32_t _padding[2];
+                    uint32_t directional_light_index;
+                    uint32_t _padding;
                 } push_data;
 
                 push_data.inv_P = camera->get_inv_projection_transform();
@@ -116,6 +117,9 @@ namespace mirai {
 
                 TextureID read_texture = data.color_textures[1 - current_texture_index];
                 push_data.input_texture_index = read_texture.id;
+
+                Entity sun = scene->get_default_directional_light();
+                push_data.directional_light_index = scene->ecs->component_manager->get_component_index<LightComponent>(sun);
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
 

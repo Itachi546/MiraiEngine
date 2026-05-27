@@ -249,6 +249,10 @@ namespace mirai {
                 uint32_t offset = gpu_index * element_size;
                 patch_array[i] = BufferPatch{offset, element_size};
             }
+
+            BufferBarrierInfo barrier = { transform_buffer.buffer, transform_buffer.offset, transform_buffer.size, PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_WRITE};
+            command_buffer->prepare_buffer(&barrier, 1);
+
             dispatch_patch_copy(command_buffer, patch_buffer, src_buffer, transform_buffer, total_updated_transforms);
         }
 
@@ -293,6 +297,15 @@ namespace mirai {
 
             jobsystem::Wait();
 
+            BufferBarrierInfo barrier_info = {
+                .buffer_id = material_buffer.buffer,
+                .offset = material_buffer.offset,
+                .size = material_buffer.size,
+                .dst_stage_mask = PIPELINE_STAGE_TRANSFER_BIT,
+                .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
+            };
+            command_buffer->prepare_buffer(&barrier_info, 1);
+
             BufferCopyRegion copy_region = {
                 .src_offset = material_staging_buffer.offset,
                 .dst_offset = 0,
@@ -323,6 +336,14 @@ namespace mirai {
                 uint32_t offset = material_index * element_size;
                 patch_array[i] = BufferPatch{offset, element_size};
             }
+            BufferBarrierInfo barrier_info = {
+                .buffer_id = material_buffer.buffer,
+                .offset = material_buffer.offset,
+                .size = material_buffer.size,
+                .dst_stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                .dst_access_mask = ACCESS_FLAG_SHADER_WRITE,
+            };
+            command_buffer->prepare_buffer(&barrier_info, 1);
 
             dispatch_patch_copy(command_buffer, patch_buffer, src_buffer, material_buffer, total_updated_materials);
         }
@@ -333,8 +354,8 @@ namespace mirai {
     void Renderer::prepare_buffer_for_shader_read(CommandBuffer *command_buffer) {
         std::vector<BufferBarrierInfo> barrier_infos(3);
         barrier_infos[0] = {transform_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_VERTEX_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
-        barrier_infos[1] = {material_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
-        barrier_infos[2] = {light_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_READ};
+        barrier_infos[1] = {material_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT | PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, ACCESS_FLAG_SHADER_READ};
+        barrier_infos[2] = {light_buffer.buffer, 0, UINT64_MAX, PIPELINE_STAGE_FRAGMENT_SHADER_BIT | PIPELINE_STAGE_COMPUTE_SHADER_BIT | PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, ACCESS_FLAG_SHADER_READ};
         command_buffer->prepare_buffer(barrier_infos.data(), cast_u32(barrier_infos.size()));
 
         DescriptorInfo descriptor_infos[] = {
@@ -406,19 +427,28 @@ namespace mirai {
             });
 
             jobsystem::Wait();
+
+            BufferBarrierInfo barrier_info = {
+                .buffer_id = light_buffer.buffer,
+                .offset = light_buffer.offset,
+                .size = light_buffer.size,
+                .dst_stage_mask = PIPELINE_STAGE_TRANSFER_BIT,
+                .dst_access_mask = ACCESS_FLAG_TRANSFER_WRITE,
+            };
+            command_buffer->prepare_buffer(&barrier_info, 1);
+
             BufferCopyRegion copy_region = {
                 .src_offset = light_staging_buffer.offset,
                 .dst_offset = 0,
                 .size = total_light_size_bytes,
             };
             command_buffer->copy_buffer(light_buffer.buffer, light_staging_buffer.buffer, &copy_region, 1);
-
         } else {
             ASSERT(0);
         }
 
         scene->updated_lights.clear();
-    }
+    } // namespace mirai
 
     void Renderer::initialize_scene_default_meshes(CommandBuffer *command_buffer) {
         // Create Plane Mesh

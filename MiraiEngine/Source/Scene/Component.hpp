@@ -132,15 +132,15 @@ namespace mirai {
     };
 
     struct LightComponent {
-        LightType light_type;
-        glm::vec3 color;
-        float intensity;
+        LightType light_type = LightType::LIGHT_TYPE_POINT;
+        glm::vec3 color = glm::vec3(1.0f);
+        float intensity = 1.0f;
         union {
             float radius;
             float height;
         };
-        bool cast_shadow;
-
+        bool cast_shadow = false;
+        bool dirty = true;
         float inner_cone_angle;
         float outer_cone_angle;
     };

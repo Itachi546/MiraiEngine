@@ -108,6 +108,19 @@ namespace mirai {
             }
         });
 
+        auto &light_components = ecs->component_manager->get_component_array<LightComponent>()->components;
+        uint32_t light_count = cast_u32(light_components.size());
+        std::mutex mu2;
+        jobsystem::Dispatch(light_count, 64, [&](jobsystem::JobDispatchArg arg) {
+            if (light_components[arg.job_index].dirty) {
+                {
+                    std::lock_guard<std::mutex> lk(mu2);
+                    updated_lights.push_back(arg.job_index);
+                }
+                light_components[arg.job_index].dirty = false;
+            }
+        });
+
         // Update Transforms
         auto &transform_components = ecs->component_manager->get_component_array<TransformComponent>()->components;
         uint32_t transform_count = cast_u32(transform_components.size());

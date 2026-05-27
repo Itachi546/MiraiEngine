@@ -129,7 +129,7 @@ void add_material_component_ui(MeshComponent *mesh_component, Scene *scene, Enti
             if (material == nullptr)
                 continue;
 
-            ImGui::PushID(entity * INT16_MAX  + material_index);
+            ImGui::PushID(entity * INT16_MAX + material_index);
             std::string mat_name = material->name.size() > 0 ? material->name : "unnamed" + std::to_string(material_index);
             if (ImGui::TreeNodeEx(mat_name.c_str())) {
                 add_pbr_standard_material_ui(material.get());
@@ -151,26 +151,30 @@ void add_light_component_ui(LightComponent *light, Entity entity) {
     if (!light)
         return;
     if (ImGui::CollapsingHeader("LightComponent")) {
+        bool changed = false;
         ImGui::PushID(entity);
         ImGui::Text("Light Type:%s", light_type_array[light->light_type]);
-        ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
-        ImGui::ColorPicker3("Color", &light->color[0]);
+        changed |= ImGui::DragFloat("Intensity", &light->intensity, 0.2f, 0.0f, 200.0f);
+        changed |= ImGui::ColorPicker3("Color", &light->color[0]);
         if (light->light_type == LIGHT_TYPE_DIRECTIONAL) {
-            ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
-            ImGui::DragFloat("Angular Radius", &light->radius, 0.001f, 0.0f, 1.0f);
+            changed |= ImGui::Checkbox("Enable Shadow", &light->cast_shadow);
+            changed |= ImGui::DragFloat("Angular Radius", &light->radius, 0.001f, 0.0f, 1.0f);
         } else if (light->light_type == LIGHT_TYPE_POINT) {
-            ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
+            changed |= ImGui::SliderFloat("Radius", &light->radius, 0.0f, 20.0f);
         } else if (light->light_type == LIGHT_TYPE_SPOT) {
-            ImGui::SliderFloat("Height", &light->radius, 0.0f, 20.0f);
+            changed |= ImGui::SliderFloat("Height", &light->radius, 0.0f, 20.0f);
             float inner_angle = glm::degrees(light->inner_cone_angle);
             float outer_angle = glm::degrees(light->outer_cone_angle);
             if (ImGui::SliderFloat("Outer Angle", &outer_angle, 0.0f, 90.0f)) {
                 light->outer_cone_angle = glm::radians(outer_angle);
+                changed = true;
             }
             if (ImGui::SliderFloat("Inner Angle", &inner_angle, 0.0f, outer_angle)) {
                 light->inner_cone_angle = glm::radians(inner_angle);
+                changed = true;
             }
         }
+        light->dirty = changed;
         ImGui::PopID();
     }
 }
@@ -383,11 +387,13 @@ void add_entity_components(Entity entity, Scene *scene) {
     auto &comp_manager = scene->ecs->component_manager;
     auto name_component = comp_manager->get_component<NameComponent>(entity);
     std::string name = name_component != nullptr ? name_component->name : "unnamed";
+    LightComponent *light_comp = comp_manager->get_component<LightComponent>(entity);
 
     ImGui::Separator();
     ImGui::Text("Components(%s)", name.c_str());
 
-    add_transform_component(comp_manager->get_component<TransformComponent>(entity), entity);
+    TransformComponent *transform = comp_manager->get_component<TransformComponent>(entity);
+    add_transform_component(transform, entity);
     add_material_component_ui(comp_manager->get_component<MeshComponent>(entity), scene, entity);
 
     AnimatorComponent *animator_component = comp_manager->get_component<AnimatorComponent>(entity);
@@ -395,7 +401,10 @@ void add_entity_components(Entity entity, Scene *scene) {
         add_animation_player(animator_component->animation_player_index, scene, entity);
     }
     add_node_animator_component(comp_manager->get_component<NodeAnimatorComponent>(entity), scene, entity);
-    add_light_component_ui(comp_manager->get_component<LightComponent>(entity), entity);
+    if (light_comp) {
+        add_light_component_ui(light_comp, entity);
+        light_comp->dirty |= transform->dirty;
+    }
 }
 
 void add_entity_inspector_ui(Scene *scene) {

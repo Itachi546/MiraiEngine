@@ -12,7 +12,8 @@ layout(push_constant) uniform PushConstant {
 
     uint frame_count;
     uint input_texture_index;
-    uint _padding[2];
+    uint directional_light_index;
+    uint _padding;
 };
 
 struct RayPayload {

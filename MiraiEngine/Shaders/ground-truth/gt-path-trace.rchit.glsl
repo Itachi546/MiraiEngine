@@ -194,10 +194,11 @@ void main() {
 
     vec3 V = -gl_WorldRayDirectionEXT;
 
-    vec3 light_dir = get_cone_sample(next_vec2(p_payload.rng), lights[0].direction, cos(lights[0].radius_or_height));
+    Light light = lights[directional_light_index];
+    vec3 light_dir = get_cone_sample(next_vec2(p_payload.rng), light.direction, cos(light.radius_or_height));
 
     float shadow_factor = trace_shadow(world_pos, N, light_dir);
-    vec3 Lo = direct_lighting(lights[0], V, detail_normal, pbr, shadow_factor) * p_payload.T;
+    vec3 Lo = direct_lighting(light, V, detail_normal, pbr, shadow_factor) * p_payload.T;
     Lo += pbr.emissive.rgb;
 
     // Single bounce indirect — if (depth+1 < MAX) not while
