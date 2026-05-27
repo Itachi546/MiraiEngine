@@ -54,7 +54,7 @@ namespace mirai {
         uint32_t page = find_existing_page(required_size);
         if (page == K_INVALID_PAGE_ID) {
             // @TODOf We don't allow allocation from other page for now, due to RT pipeline
-            ASSERT(allocations.size() <= 1);
+            ASSERT(allocations.size() < 1);
             // Create new allocation
             BufferDescription buffer_desc = {
                 .size = page_size,

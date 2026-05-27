@@ -84,6 +84,8 @@ namespace mirai {
                         uint32_t pso_key = uint8_t(PASS_MODE_DEPTH_PREPASS) << 24 | mat_key;
                         Shader *shader = registry->find(pso_key);
                         ASSERT(shader != nullptr);
+                        if (shader == nullptr)
+                            continue;
 
                         // @TODO temp
                         descriptor_infos[2] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);

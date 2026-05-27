@@ -187,8 +187,9 @@ void main() {
 
     // Build TBN and apply normal map
     vec3 sn = fetch_normal_map(material, uv, 0.0);
-    vec3 N = vertex.normal;
-    vec3 T = vertex.tangent;
+    mat3 normal_matrix = transpose(inverse(mat3(gl_ObjectToWorldEXT)));
+    vec3 N = normalize(normal_matrix * vertex.normal);
+    vec3 T = normalize(normal_matrix * vertex.tangent);
     vec3 B = cross(N, T);
     vec3 detail_normal = normalize(sn.x * T + sn.y * B + sn.z * N);
 
@@ -197,6 +198,7 @@ void main() {
     Light light = lights[directional_light_index];
     vec3 light_dir = get_cone_sample(next_vec2(p_payload.rng), light.direction, cos(light.radius_or_height));
 
+    // vec3 Lo = vec3(N * 0.5 + 0.5);
     float shadow_factor = trace_shadow(world_pos, N, light_dir);
     vec3 Lo = direct_lighting(light, V, detail_normal, pbr, shadow_factor) * p_payload.T;
     Lo += pbr.emissive.rgb;

@@ -219,7 +219,11 @@ namespace mirai {
                         MaterialKey mat_key;
                         mat_key.hash = batch.get_pso_key() & 0xFFFF;
                         ASSERT(shader != nullptr);
+
 #endif
+                        if (shader == nullptr)
+                            continue;
+                        
                         descriptors[1] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
                         descriptors[3] = batch.draw_data_descriptor;
 

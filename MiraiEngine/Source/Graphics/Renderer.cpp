@@ -84,7 +84,7 @@ namespace mirai {
 
     void Renderer::initialize() {
         geometry_buffer_allocator = std::make_unique<GPUPagedAllocator>();
-        geometry_buffer_allocator->init();
+        geometry_buffer_allocator->init(utils::mb_to_bytes(96));
 
         // Per frame staging buffer
         uint32_t total_frames = device->get_swapchain_image_count();
@@ -250,7 +250,7 @@ namespace mirai {
                 patch_array[i] = BufferPatch{offset, element_size};
             }
 
-            BufferBarrierInfo barrier = { transform_buffer.buffer, transform_buffer.offset, transform_buffer.size, PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_WRITE};
+            BufferBarrierInfo barrier = {transform_buffer.buffer, transform_buffer.offset, transform_buffer.size, PIPELINE_STAGE_COMPUTE_SHADER_BIT, ACCESS_FLAG_SHADER_WRITE};
             command_buffer->prepare_buffer(&barrier, 1);
 
             dispatch_patch_copy(command_buffer, patch_buffer, src_buffer, transform_buffer, total_updated_transforms);
@@ -628,6 +628,7 @@ namespace mirai {
                     continue;
                 }
                 const auto &material = scene->materials[renderable.material_index];
+                
                 if (material->is_transparent()) {
                     write_indexes[i] = UINT32_MAX;
                     continue;
@@ -678,12 +679,11 @@ namespace mirai {
                 // (ouput_vertex_offset_bytes) with K_VERTEX_DATA_SIZE stride. The hit shader
                 // must read from the same region. For static meshes, ouput_vertex_offset_bytes
                 // is 0 so we fall back to vertex_offset_bytes.
-                bool is_skinned = allocation.ouput_vertex_offset_bytes != 0;
+                bool is_skinned = allocation.vertex_stride == K_VERTEX_DATA_SIZE_SKINNED;
                 uint64_t rt_vertex_offset_bytes = is_skinned ? allocation.ouput_vertex_offset_bytes : allocation.vertex_offset_bytes;
-                uint32_t rt_vertex_stride = is_skinned ? K_VERTEX_DATA_SIZE : allocation.vertex_stride;
-                mesh_instance->vertex_offset = cast_u32(rt_vertex_offset_bytes / 4);
-                mesh_instance->index_offset = cast_u32(allocation.index_offset_bytes / 4);
-                mesh_instance->vertex_stride = K_VERTEX_DATA_SIZE / 4;
+                mesh_instance->vertex_offset = cast_u32(rt_vertex_offset_bytes / sizeof(uint32_t));
+                mesh_instance->index_offset = cast_u32(allocation.index_offset_bytes / sizeof(uint32_t));
+                mesh_instance->vertex_stride = cast_u32(K_VERTEX_DATA_SIZE / sizeof(uint32_t));
                 mesh_instance->material_index = renderable.material_index;
             });
             jobsystem::Wait();
@@ -696,6 +696,9 @@ namespace mirai {
             rt_instance_data_descriptor = resource_heap.push_descriptors_per_frame(device.get(), &descriptor_info, 1);
 
             device->create_tlas(command_buffer, total_instances, instance_buffer, tlas_buffer, &tlas);
+
+            BufferBarrierInfo barrier_info = {rt_meshdata_buffer.buffer, rt_meshdata_buffer.offset, rt_meshdata_buffer.size, PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, ACCESS_FLAG_SHADER_READ};
+            command_buffer->prepare_buffer(&barrier_info, 1);
         }
     }
 

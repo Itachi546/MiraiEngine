@@ -88,6 +88,8 @@ namespace mirai {
                             if (batch.get_alpha_mode() == alpha_mode && batch.draw_infos.size() > 0) {
                                 Shader *shader = registry->find(batch.get_pso_key());
                                 ASSERT(shader != nullptr);
+                                if (shader == nullptr)
+                                    continue;
 
                                 descriptors[1] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
                                 descriptors[2] = batch.draw_data_descriptor;
