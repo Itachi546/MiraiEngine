@@ -180,7 +180,7 @@ void main() {
     PBRParameter pbr;
     pbr.albedo = fetch_albedo(material, uv, 0.0);
     pbr.emissive = fetch_emissive(material, uv, 0.0);
-    vec2 mr = fetch_pbr_metallic_roughness(material, pbr.albedo, uv, 0.0);
+    vec2 mr = fetch_pbr_metallic_roughness(material, uv, 0.0);
     pbr.metallic = mr.x;
     pbr.roughness = mr.y;
     pbr.ao = 1.0;
@@ -200,9 +200,7 @@ void main() {
 
     // vec3 Lo = vec3(N * 0.5 + 0.5);
     float shadow_factor = trace_shadow(world_pos, N, light_dir);
-    vec3 Lo = direct_lighting(light, V, detail_normal, pbr, shadow_factor) * p_payload.T;
-    Lo += pbr.emissive.rgb;
-
+    vec3 Lo = (direct_lighting(light, V, detail_normal, pbr, shadow_factor) + pbr.emissive.rgb) * p_payload.T;
     // Single bounce indirect — if (depth+1 < MAX) not while
     if ((p_payload.depth + 1) < MAX_RAY_DEPTH)
         Lo += indirect_lighting(V, N, world_pos, pbr);

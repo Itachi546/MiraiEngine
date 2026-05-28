@@ -69,48 +69,21 @@ void main() {
 
     vec2 texture_scale = vec2(material.texture_scale_x, material.texture_scale_y);
 
-    vec4 albedo = material.albedo;
-    if (is_valid(material.albedo_texture)) {
-        albedo *= sample_texture_bias(material.albedo_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale, mip_bias);
-    }
+    vec2 scaled_uv = fs_in.uv * texture_scale;
+    vec4 albedo = fetch_albedo(material, scaled_uv, mip_bias);
+
 #ifdef ALPHA_MODE_MASK
     if (albedo.a <= material.alpha_cutoff)
         discard;
 #endif
-    vec3 normal = vec3(0.0f, 0.0f, 1.0f);
-    if (is_valid(material.normal_texture))
-        normal = sample_texture_bias(material.normal_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale, mip_bias).rgb * 2.0f - 1.0f;
+    vec3 normal = fetch_normal_map(material, scaled_uv, mip_bias);
     normal = normalize(normal.x * fs_in.tangent + normal.y * fs_in.bitangent + normal.z * fs_in.normal);
 
     PBRParameter pbr_params;
     pbr_params.albedo = albedo;
-    pbr_params.emissive = material.emissive_factor;
+    pbr_params.emissive = fetch_emissive(material, scaled_uv, mip_bias);
 
-    if (is_valid(material.emissive_texture))
-        pbr_params.emissive *= sample_texture_bias(material.emissive_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale, mip_bias).rgb;
-
-    vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
-    if (is_specular_glossiness_workflow(material.flags)) {
-        vec4 specular_glossiness = metallic_roughness.rrrg;
-        if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            specular_glossiness.rgb = sample_texture_bias(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale, mip_bias).rgb;
-
-        metallic_roughness.y = 1.0f - specular_glossiness.a;
-
-        const float epsilon = 1e-6;
-        vec3 specular = specular_glossiness.rgb;
-        float max_specular = max(specular.r, max(specular.g, specular.b));
-        float metallic = convert_metallic(albedo.rgb, specular.rgb, max_specular);
-        metallic_roughness.r = metallic;
-
-        vec3 base_color_diffuse = albedo.rgb * ((1.0 - max_specular) / (1 - C_MIN_ROUGHNESS) / max(1 - metallic, epsilon));
-        vec3 base_color_specular = specular - (vec3(C_MIN_ROUGHNESS) * (1 - metallic) * (1 / max(metallic, epsilon)));
-        albedo = vec4(mix(base_color_diffuse, base_color_diffuse, metallic * metallic), albedo.a);
-    } else {
-        if (material.metallic_roughness_texture != K_INVALID_TEXTURE)
-            metallic_roughness *= sample_texture_bias(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], fs_in.uv * texture_scale, mip_bias).bg;
-    }
-
+    vec2 metallic_roughness = fetch_pbr_metallic_roughness(material, scaled_uv, mip_bias);
     pbr_params.metallic = metallic_roughness.x;
     pbr_params.roughness = metallic_roughness.y;
 

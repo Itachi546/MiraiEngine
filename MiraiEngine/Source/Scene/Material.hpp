@@ -76,25 +76,36 @@ namespace mirai {
         PipelineState state;
     };
 
+    enum PBRMaterialFlags {
+        METALLIC_ROUGHNESS_WORKFLOW = 1 << 0,
+        SPECULAR_GLOSSINESS_WORKFLOW = 1 << 1,
+        SPECULAR_GLOSSINESS_NO_GLOSSINESS_CHANNEL = 1 << 2,
+    };
+
     struct Material3D : public Material {
         Material3D(const std::string_view name) : Material(name) {
             properties.albedo = glm::vec4(1.0f);
+
+            properties.specular_factor = glm::vec3(1.0f);
+            properties.glossiness = 1.0f;
+
+            properties.metallic_factor = 1.0f;
+            properties.roughness_factor = 1.0f;
+            properties.transmission = 0.0f;
+            properties.thickness = 0.0f;
+
             properties.emissive_factor = glm::vec3(0.0f);
-            properties.metallic_factor = 0.0f;
-            properties.roughness_factor = 0.5f;
-            properties.alpha_cutoff = 0.9f;
-            properties.flags = 0;
-            properties.emissive_texture = K_INVALID_ID;
+            properties.flags = PBRMaterialFlags::METALLIC_ROUGHNESS_WORKFLOW;
 
-            properties.albedo_texture = K_INVALID_ID;
-            properties.normal_texture = K_INVALID_ID;
-            properties.metallic_roughness_texture = K_INVALID_ID;
-            properties.occlusion_texture = K_INVALID_ID;
+            properties.alpha_cutoff = 0.5f;
+            properties.emissive_texture_index = K_INVALID_ID;
+            properties.albedo_texture_index = K_INVALID_ID;
+            properties.normal_texture_index = K_INVALID_ID;
 
-            properties.transmission = 1.0f;
+            properties.pbr_texture_index = K_INVALID_ID;
+            properties.occlusion_texture_index = K_INVALID_ID;
             properties.texture_scale_x = 1.0f;
             properties.texture_scale_y = 1.0f;
-            properties._reserved = 0.0f;
         }
 
         bool is_transparent() const {
@@ -112,26 +123,31 @@ namespace mirai {
         virtual Shader *get_custom_shader() const { return nullptr; }
 
         virtual ~Material3D() = default;
+
         struct Properties {
             glm::vec4 albedo;
 
-            glm::vec3 emissive_factor;
+            glm::vec3 specular_factor;
+            float glossiness;
+
             float metallic_factor;
-
             float roughness_factor;
-            float alpha_cutoff;
-            uint32_t flags = 0;
-            uint32_t emissive_texture;
-
-            uint32_t albedo_texture;
-            uint32_t normal_texture;
-            uint32_t metallic_roughness_texture;
-            uint32_t occlusion_texture;
-
             float transmission;
+            float thickness;
+
+            glm::vec3 emissive_factor;
+            uint32_t flags;
+
+            float alpha_cutoff;
+            uint32_t emissive_texture_index;
+            uint32_t albedo_texture_index;
+            uint32_t normal_texture_index;
+
+            // Can be specularGlossiness texture or metallicRoughness texture
+            uint32_t pbr_texture_index;
+            uint32_t occlusion_texture_index;
             float texture_scale_x;
             float texture_scale_y;
-            float _reserved;
 
         } properties;
 

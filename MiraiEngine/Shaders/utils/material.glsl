@@ -2,37 +2,41 @@
 #define MATERIAL_GLSL
 
 #include "color.glsl"
-#define FLAG_EMPTY 0
-#define FLAG_OPAQUE 1 << 0
-#define FLAG_ALPHA_BLEND 1 << 1
-#define FLAG_ALPHA_MASK 1 << 2
-#define FLAG_DOUBLE_SIDED 1 << 3
-#define FLAG_SPECULAR_GLOSSINESS_WORKFLOW 1 << 4
+#define FLAG_METALLIC_ROUGHNESS_WORKFLOW 1
+#define FLAG_SPECULAR_GLOSSINESS_WORKFLOW 2
+#define FLAG_NO_GLOSSINESS_CHANNEL 4
 
 struct PBRMaterial {
     vec4 albedo;
 
-    vec3 emissive_factor;
+    vec3 specular_factor;
+    float glossiness;
+
     float metallic_factor;
-
     float roughness_factor;
-    float alpha_cutoff;
-    uint flags;
-    uint emissive_texture;
+    float transmission;
+    float thickness;
 
+    vec3 emissive_factor;
+    uint flags;
+
+    float alpha_cutoff;
+    uint emissive_texture;
     uint albedo_texture;
     uint normal_texture;
-    uint metallic_roughness_texture;
-    uint occlusion_texture;
 
-    float transmission;
+    uint pbr_texture;
+    uint occlusion_texture;
     float texture_scale_x;
     float texture_scale_y;
-    float _reserved;
 };
 
 bool is_specular_glossiness_workflow(uint flags) {
     return (flags & FLAG_SPECULAR_GLOSSINESS_WORKFLOW) == FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
+}
+
+bool has_glossiness_channel(uint flags) {
+    return (flags & FLAG_NO_GLOSSINESS_CHANNEL) == FLAG_NO_GLOSSINESS_CHANNEL;
 }
 
 struct PBRParameter {
@@ -82,49 +86,56 @@ vec3 fetch_emissive(PBRMaterial material, vec2 uv, float mip_bias) {
     }
     return emissive;
 }
+// https://kcoley.github.io/glTF/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness/examples/convert-between-workflows-bjs/
+const float epsilon = 10e-6;
+vec3 dielectric_specular = vec3(0.04);
+float solve_metallic(float diffuse, float specular, float one_minus_specular_strength) {
+    if (specular < dielectric_specular.r)
+        return 0.0f;
 
-const float C_MIN_ROUGHNESS = 0.04f;
-float convert_metallic(vec3 diffuse, vec3 specular, float max_specular) {
-    float perceived_diffuse = sqrt(0.299 * diffuse.r * diffuse.r + 0.587 * diffuse.g * diffuse.g + 0.114 * diffuse.b * diffuse.b);
-    float perceived_specular = sqrt(0.299 * specular.r * specular.r + 0.587 * specular.g * specular.g + 0.114 * specular.b * specular.b);
-    if (perceived_diffuse < C_MIN_ROUGHNESS) {
-        return 0.0;
-    }
-    float a = C_MIN_ROUGHNESS;
-    float b = perceived_diffuse * (1.0 - max_specular) / (1.0 - C_MIN_ROUGHNESS) + perceived_specular - 2.0 * C_MIN_ROUGHNESS;
-    float c = C_MIN_ROUGHNESS - perceived_specular;
-    float D = max(b * b - 4.0 * a * c, 0.0);
-    return clamp((-b + sqrt(D)) / (2.0 * a), 0.0, 1.0);
+    float a = dielectric_specular.r;
+    float b = diffuse * one_minus_specular_strength / (1 - dielectric_specular.r) + specular - 2.0 * dielectric_specular.r;
+    float c = dielectric_specular.r - specular;
+    float D = b * b - 4 * a * c;
+    return clamp((-b + sqrt(D)) / (2 * a), 0.0f, 1.0f);
 }
 
-vec2 fetch_pbr_metallic_roughness(PBRMaterial material, vec4 albedo, vec2 uv, float mip_bias) {
+float get_perceived_brightness(vec3 color) {
+    vec3 squared = color * color;
+    return sqrt(dot(squared, vec3(0.299, 0.587, 0.114)));
+}
+
+vec2 fetch_pbr_metallic_roughness(PBRMaterial material, vec2 uv, float mip_bias) {
     vec2 metallic_roughness = vec2(material.metallic_factor, material.roughness_factor);
     if (is_specular_glossiness_workflow(material.flags)) {
-        vec4 specular_glossiness = metallic_roughness.rrrg;
-        if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
+        vec3 specular = material.specular_factor;
+        float glossiness = material.glossiness;
+        if (material.pbr_texture != K_INVALID_TEXTURE) {
 #ifdef DISABLE_TEXTURE_DERIVATIVE
-            specular_glossiness.rgb = sample_texture_lod(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, 0).rgb;
+            vec4 specular_glossiness_factor = sample_texture_lod(material.pbr_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, 0);
 #else
-            specular_glossiness.rgb = sample_texture_bias(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, mip_bias).rgb;
+            vec4 specular_glossiness_factor = sample_texture_bias(material.pbr_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, mip_bias);
 #endif
+            specular = specular_glossiness_factor.rgb;
+            if (has_glossiness_channel(material.flags))
+                glossiness = specular_glossiness_factor.a;
         }
-        metallic_roughness.y = 1.0f - specular_glossiness.a;
+        // Convert to metallic roughness workflow
+        float one_minus_specular_strength = 1.0f - max(specular.r, max(specular.g, specular.b));
+        float metallic = solve_metallic(get_perceived_brightness(material.albedo.rgb), get_perceived_brightness(specular), one_minus_specular_strength);
 
-        const float epsilon = 1e-6;
-        vec3 specular = specular_glossiness.rgb;
-        float max_specular = max(specular.r, max(specular.g, specular.b));
-        float metallic = convert_metallic(albedo.rgb, specular.rgb, max_specular);
+        vec3 base_color_from_diffuse = material.albedo.rgb * (one_minus_specular_strength / (1.0 - dielectric_specular.r)) / max(1.0 - metallic, epsilon);
+        vec3 base_color_from_specular = (specular - dielectric_specular * (1.0 - metallic)) / max(metallic, epsilon);
+        vec3 base_color = clamp(mix(base_color_from_diffuse, base_color_from_specular, metallic * metallic), 0.0, 1.0);
+        material.albedo.rgb = base_color;
         metallic_roughness.r = metallic;
-
-        vec3 base_color_diffuse = albedo.rgb * ((1.0 - max_specular) / (1 - C_MIN_ROUGHNESS) / max(1 - metallic, epsilon));
-        vec3 base_color_specular = specular - (vec3(C_MIN_ROUGHNESS) * (1 - metallic) * (1 / max(metallic, epsilon)));
-        albedo = vec4(mix(base_color_diffuse, base_color_diffuse, metallic * metallic), albedo.a);
+        metallic_roughness.g = 1 - glossiness;
     } else {
-        if (material.metallic_roughness_texture != K_INVALID_TEXTURE) {
+        if (material.pbr_texture != K_INVALID_TEXTURE) {
 #ifdef DISABLE_TEXTURE_DERIVATIVE
-            metallic_roughness *= sample_texture_lod(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, 0).bg;
+            metallic_roughness *= sample_texture_lod(material.pbr_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, 0).bg;
 #else
-            metallic_roughness *= sample_texture_bias(material.metallic_roughness_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, mip_bias).bg;
+            metallic_roughness *= sample_texture_bias(material.pbr_texture, u_samplers[SAMPLER_LINEAR_REPEAT], uv, mip_bias).bg;
 #endif
         }
     }

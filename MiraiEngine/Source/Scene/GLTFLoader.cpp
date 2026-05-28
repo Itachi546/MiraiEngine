@@ -386,45 +386,54 @@ namespace mirai {
 
             auto khr_specular_glossiness_ext = gltf_material->extensions.find("KHR_materials_pbrSpecularGlossiness");
             if (khr_specular_glossiness_ext != gltf_material->extensions.end()) {
-                // properties.flags |= MaterialFlags::FLAG_SPECULAR_GLOSSINESS_WORKFLOW;
-                if (khr_specular_glossiness_ext->second.Has("diffuseTexture"))
-                    properties.albedo_texture = LoadTexture(khr_specular_glossiness_ext->second.Get("diffuseTexture").Get("index").Get<int>(), true);
+                const tinygltf::Value &specular_glossiness_ext = khr_specular_glossiness_ext->second;
 
-                if (khr_specular_glossiness_ext->second.Has("specularGlossinessTexture"))
-                    properties.metallic_roughness_texture = LoadTexture(khr_specular_glossiness_ext->second.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
-
-                if (khr_specular_glossiness_ext->second.Has("glossinessFactor")) {
-                    properties.roughness_factor = cast_float(khr_specular_glossiness_ext->second.Get("glossinessFactor").Get<double>());
-                }
-
-                if (khr_specular_glossiness_ext->second.Has("specularFactor")) {
-                    properties.metallic_factor = cast_float(khr_specular_glossiness_ext->second.Get("specularFactor").Get<double>());
-                }
+                properties.flags = PBRMaterialFlags::SPECULAR_GLOSSINESS_WORKFLOW | PBRMaterialFlags::SPECULAR_GLOSSINESS_NO_GLOSSINESS_CHANNEL;
 
                 if (khr_specular_glossiness_ext->second.Has("diffuseFactor")) {
-                    auto factor = khr_specular_glossiness_ext->second.Get("diffuseFactor");
-                    for (uint32_t d = 0; d < factor.ArrayLen(); ++d) {
-                        auto val = factor.Get(d);
-                        properties.albedo[d] = val.IsNumber() ? (float)val.Get<double>() : (float)val.Get<int>();
-                    }
+                    auto diffuse_factor = specular_glossiness_ext.Get("diffuseFactor");
+                    ASSERT(diffuse_factor.IsArray() && diffuse_factor.ArrayLen() == 4);
+                    properties.albedo.x = cast_float(diffuse_factor.Get(0).GetNumberAsDouble());
+                    properties.albedo.y = cast_float(diffuse_factor.Get(1).GetNumberAsDouble());
+                    properties.albedo.z = cast_float(diffuse_factor.Get(2).GetNumberAsDouble());
+                    properties.albedo.w = cast_float(diffuse_factor.Get(3).GetNumberAsDouble());
                 }
+
+                if (specular_glossiness_ext.Has("diffuseTexture"))
+                    properties.albedo_texture_index = LoadTexture(specular_glossiness_ext.Get("diffuseTexture").Get("index").Get<int>(), true);
+
+                if (specular_glossiness_ext.Has("specularFactor")) {
+                    auto specular_factor = specular_glossiness_ext.Get("specularFactor");
+                    ASSERT(specular_factor.IsArray() && specular_factor.ArrayLen() == 3);
+                    properties.specular_factor.x = cast_float(specular_factor.Get(0).GetNumberAsDouble());
+                    properties.specular_factor.y = cast_float(specular_factor.Get(1).GetNumberAsDouble());
+                    properties.specular_factor.z = cast_float(specular_factor.Get(2).GetNumberAsDouble());
+                }
+
+                if (khr_specular_glossiness_ext->second.Has("specularGlossinessTexture"))
+                    properties.pbr_texture_index = LoadTexture(specular_glossiness_ext.Get("specularGlossinessTexture").Get("index").Get<int>(), true);
+
+                if (khr_specular_glossiness_ext->second.Has("glossinessFactor")) {
+                    properties.glossiness = cast_float(specular_glossiness_ext.Get("glossinessFactor").Get<double>());
+                }
+
             } else {
                 // Process Textures
-                properties.albedo_texture = LoadTexture(pbr.baseColorTexture.index, true);
-                properties.metallic_roughness_texture = LoadTexture(pbr.metallicRoughnessTexture.index, false);
+                properties.albedo_texture_index = LoadTexture(pbr.baseColorTexture.index, true);
+                properties.pbr_texture_index = LoadTexture(pbr.metallicRoughnessTexture.index, false);
                 properties.albedo = glm::vec4{pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]};
                 properties.metallic_factor = static_cast<float>(pbr.metallicFactor);
                 properties.roughness_factor = static_cast<float>(pbr.roughnessFactor);
             }
 
             properties.emissive_factor = glm::vec3{gltf_material->emissiveFactor[0], gltf_material->emissiveFactor[1], gltf_material->emissiveFactor[2]};
-            properties.emissive_texture = LoadTexture(gltf_material->emissiveTexture.index, true);
+            properties.emissive_texture_index = LoadTexture(gltf_material->emissiveTexture.index, true);
 
             const tinygltf::NormalTextureInfo &normal_texture = gltf_material->normalTexture;
-            properties.normal_texture = LoadTexture(normal_texture.index, false);
+            properties.normal_texture_index = LoadTexture(normal_texture.index, false);
 
             const tinygltf::OcclusionTextureInfo &occlusion_texture = gltf_material->occlusionTexture;
-            properties.occlusion_texture = LoadTexture(occlusion_texture.index, false);
+            properties.occlusion_texture_index = LoadTexture(occlusion_texture.index, false);
 
             load_state->scene->materials.push_back(std::move(material));
         }
