@@ -1,59 +1,61 @@
 #ifndef PBR_LIGHTING_GLSL
 #define PBR_LIGHTING_GLSL
 
-#include "pbr.glsl"
+#include "brdf.glsl"
 #include "../utils/material.glsl"
 #include "../utils/color.glsl"
 
+#ifdef ENABLE_INDIRECT_LIGHTING
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params, float ibl_contribution) {
-    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, pbr_params.roughness)).rg;
-    vec3 diffuse_light = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
+    vec3 F = FresnelSchlickRoughness(ndotv, F0, pbr_params.roughness);
+    vec3 kS = F;
+    vec3 kD = 1.0f - kS;
+    kD *= (1.0 - pbr_params.metallic);
 
-    float lod = pbr_params.roughness * (MAX_REFLECTION_LOD - 1.0);
+    vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
+    vec3 diffuse = irradiance * pbr_params.albedo.rgb;
+
+    float lod = pbr_params.roughness * (MAX_REFLECTION_LOD - 1);
     vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
 
-    // FssEss is the integrated Fresnel term for indirect specular
-    vec3 FssEss = F0 * brdf.x + brdf.y;
+    vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, pbr_params.roughness)).rg;
+    vec3 specular = prefilter_color * (F * brdf.x + brdf.y);
 
-    // Specular contribution
-    vec3 specular = prefilter_color * FssEss;
+    return (kD * diffuse + specular) * pbr_params.ao * ibl_contribution;
+}
+#endif
 
-    // Diffuse contribution: balanced with specular to preserve energy
-    // The amount of light not reflected is available for diffuse
-    vec3 kD = (vec3(1.0) - FssEss) * (1.0 - pbr_params.metallic);
-    vec3 diffuse = kD * pbr_params.albedo.rgb * diffuse_light;
+vec3 evaluateSpecularBRDF(float roughness, vec3 F, float NdotH, float NdotL, float NdotV) {
+    float alpha = roughness * roughness;
+    return (D_GGX(NdotH, alpha) * F * G_Schlick_GGX(NdotL, NdotV, roughness)) / max(EPSILON, 4.0 * NdotL * NdotV);
+}
 
-    return (diffuse + specular) * ibl_contribution * pbr_params.ao;
+vec3 evaluateDiffuseBRDF(vec3 diffuse_color) {
+    return diffuse_color / PI;
 }
 
 vec3 evaluateBRDF(vec3 light_direction, vec3 view_dir, vec3 normal, PBRParameter pbr_params) {
     vec3 halfway_vector = normalize(view_dir + light_direction);
-    vec3 reflection = normalize(reflect(-view_dir, normal));
+    vec3 reflection = normalize(reflect(view_dir, normal));
 
-    float ndotl = clamp(dot(normal, light_direction), 0.001, 1.0);
-    float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
-    float ndoth = clamp(dot(normal, halfway_vector), 0.0, 1.0);
-    float ldoth = clamp(dot(light_direction, halfway_vector), 0.0, 1.0);
+    float NdotL = max(dot(normal, light_direction), 0.0);
+    float NdotV = max(dot(normal, view_dir), 0.0);
+    float NdotH = max(dot(normal, halfway_vector), 0.0);
+    float VdotH = max(dot(view_dir, halfway_vector), 0.0);
 
-    // Directional Light Lighting calculation
-    vec3 Lo = vec3(0.0f);
     vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
-    vec3 diffuse = pbr_params.albedo.rgb / PI;
+    vec3 F = F_Schlick(F0, VdotH);
+    vec3 specular = evaluateSpecularBRDF(pbr_params.roughness, F, NdotH, NdotL, NdotV);
+    vec3 diffuse = evaluateDiffuseBRDF(pbr_params.albedo.rgb);
 
-    float D = D_GGX(ndoth, pbr_params.roughness);
-    float G = G_Smith(ndotv, ndotl, pbr_params.roughness);
-
-    vec3 F = F_Schlick(ldoth, F0);
-    vec3 specular = (D * F * G) / (4.0 * ndotv * ndotl + 0.0001);
-
-    vec3 kD = (1.0 - specular) * (1.0 - pbr_params.metallic);
-    return (kD * diffuse + specular) * ndotl;
+    return (1.0 - F) * diffuse + specular;
 }
 
 vec3 evaluateDirectionalLight(in Light light, in vec3 view_dir, in vec3 normal, in PBRParameter pbr_params, float shadow_factor) {
     vec3 light_direction = light.direction;
     vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance;
+    float ndotl = clamp(dot(normal, light_direction), 0.0f, 1.0f);
+    return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * ndotl;
 }
 
 // Attenuation
@@ -81,7 +83,9 @@ vec3 evaluatePointLight(in Light light, in vec3 world_pos, in vec3 view_dir, in 
     light_direction /= sqrt(distance2);
 
     vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height);
+
+    float ndotl = clamp(dot(normal, light_direction), 0.0f, 1.0f);
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height) * ndotl;
     return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
 }
 
@@ -91,7 +95,9 @@ vec3 evaluateSpotLight(in Light light, in vec3 world_pos, in vec3 view_dir, in v
     light_direction /= sqrt(distance2);
 
     vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height);
+
+    float ndotl = clamp(dot(normal, light_direction), 0.0f, 1.0f);
+    float attenuation = getSquareFallOffAttenaution(distance2, light.radius_or_height) * ndotl;
     attenuation *= getAngularAttenuation(-light_direction, light.direction, light.inner_angle, light.outer_angle);
     return evaluateBRDF(light_direction, view_dir, normal, pbr_params) * shadow_factor * radiance * attenuation;
 }

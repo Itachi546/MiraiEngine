@@ -27,6 +27,8 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
 };
 
 #include "../utils/light.glsl"
+
+#define ENABLE_INDIRECT_LIGHTING
 #include "../pbr/pbr-lighting.glsl"
 
 layout(std430, set = 0, binding = 4) readonly buffer Materials {

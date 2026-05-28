@@ -3,40 +3,30 @@
 
 #include "../utils/math.glsl"
 
-const float MAX_REFLECTION_LOD = 7.0;
+#define EPSILON 0.0001f
+const float MAX_REFLECTION_LOD = 6.0;
 
-float D_GGX(float ndoth, float roughness) {
-    float a2 = roughness * roughness;
+float D_GGX(float ndoth, float alpha) {
+    float a2 = alpha * alpha;
     float denom = ndoth * ndoth * (a2 - 1.0) + 1.0;
     return a2 / (PI * denom * denom);
 }
 
-float G_SGGX(float ndotv, float roughness) {
-    /*
-    float r = (roughness + 1.0);
-    float k = (r * r) / 8.0;
-    float denom = ndotv * (1.0 - k) + k;
-    return ndotv / max(denom, 0.0001f);
-    */
-    float a = roughness;
-    float k = (a * a) / 2.0;
-
-    float nom = ndotv;
-    float denom = ndotv * (1.0 - k) + k;
-
-    return nom / max(denom, 0.00001f);
+float G1_Schlick_GGX(float roughness, float NdotV) {
+    float k = ((roughness + 1) * (roughness + 1)) / 8.0;
+    return NdotV / max(EPSILON, (NdotV * (1 - k) + k));
 }
 
-float G_Smith(float ndotv, float ndotl, float roughness) {
-    return G_SGGX(ndotl, roughness) * G_SGGX(ndotv, roughness);
+float G_Schlick_GGX(float NdotL, float NdotV, float roughness) {
+    return G1_Schlick_GGX(roughness, NdotL) * G1_Schlick_GGX(roughness, NdotV);
 }
 
-vec3 F_Schlick(float ldoth, vec3 F0) {
-    return F0 + (1.0 - F0) * pow(1.0 - ldoth, 5.0);
+vec3 F_Schlick(vec3 F0, float VdotH) {
+    return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
-vec3 F_SchlickRoughness(float hdotv, vec3 F0, float roughness) {
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - hdotv, 0.0, 1.0), 5.0);
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
 float RadicalInverse_VdC(uint bits) {

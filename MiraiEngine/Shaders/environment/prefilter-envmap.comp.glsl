@@ -8,7 +8,7 @@ layout(set = 0, binding = 0) uniform textureCube u_cubemap;
 layout(set = 0, binding = 1, rgba16f) uniform imageCube u_prefilter_map;
 
 #include "../utils/cubemap.glsl"
-#include "../pbr/pbr.glsl"
+#include "../pbr/brdf.glsl"
 #include "../utils/bindless-sampler.glsl"
 
 layout(push_constant) uniform PushConstants {

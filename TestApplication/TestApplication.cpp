@@ -40,7 +40,7 @@ class TestApplication : public App {
 
         scene = renderer->get_scene();
 
-        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/the_sky_is_on_fire_2k.hdr");
+        std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>("Assets/Envmap/daytime.hdr");
         // std::shared_ptr<EnvironmentMap> env_map = std::make_shared<EnvironmentMap>();
         scene->set_environment_map(env_map);
 
@@ -66,7 +66,8 @@ class TestApplication : public App {
                 ImportModel_GLTF(path, scene);
         }
 
-#if 0
+#if 1
+        auto& component_manager = scene->ecs->component_manager;
         const uint32_t light_count = 256;
         Entity root_light = scene->create_entity("Lights");
         for (uint32_t i = 0; i < light_count; ++i) {

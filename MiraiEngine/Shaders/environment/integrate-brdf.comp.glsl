@@ -7,7 +7,7 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 layout(set = 0, binding = 0, rg16f) uniform image2D u_brdf_texture;
 
 #include "../utils/cubemap.glsl"
-#include "../pbr/pbr.glsl"
+#include "../pbr/brdf.glsl"
 
 layout(push_constant) uniform PushConstants {
     vec2 inv_brdf_texture_size;
@@ -34,7 +34,7 @@ vec2 IntegrateBRDF(float ndotv, float roughness) {
         float vdoth = clamp(dot(V, H), 0.0, 1.0);
 
         if (ndotl > 0.0) {
-            float G = G_Smith(ndotv, ndotl, roughness);
+            float G = G_Schlick_GGX(ndotl, ndotv, roughness);
             float G_Vis = (G * vdoth) / (ndoth * ndotv);
             float Fc = pow(1.0 - vdoth, 5.0);
 

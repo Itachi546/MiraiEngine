@@ -9,7 +9,8 @@
 #include "../utils/material.glsl"
 #include "../utils/light.glsl"
 #include "../utils/color.glsl"
-#include "../pbr/pbr.glsl"
+#include "../pbr/brdf.glsl"
+#include "../pbr/pbr-lighting.glsl"
 #include "../utils/sample-direction.glsl"
 
 #include "brdf.glsl"
@@ -97,30 +98,6 @@ float trace_shadow(vec3 world_pos, vec3 N, vec3 light_dir) {
     return rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT
                ? 1.0
                : 0.0;
-}
-
-vec3 evaluateBRDF(vec3 L, vec3 V, vec3 N, PBRParameter pbr) {
-    vec3 H = normalize(V + L);
-    float NdotL = clamp(dot(N, L), 0.001, 1.0);
-    float NdotV = clamp(dot(N, V), 0.001, 1.0);
-    float NdotH = clamp(dot(N, H), 0.0, 1.0);
-    float LdotH = clamp(dot(L, H), 0.0, 1.0);
-
-    vec3 F0 = mix(vec3(0.04), pbr.albedo.rgb, pbr.metallic);
-    vec3 diffuse = pbr.albedo.rgb / PI;
-
-    float D = D_GGX(NdotH, pbr.roughness);
-    float G = G_Smith(NdotV, NdotL, pbr.roughness);
-    vec3 F = F_Schlick(LdotH, F0);
-
-    vec3 specular = (D * F * G) / (4.0 * NdotV * NdotL + 0.0001);
-    vec3 kD = (1.0 - F) * (1.0 - pbr.metallic);
-    return (kD * diffuse + specular) * NdotL;
-}
-
-vec3 evaluateDirectionalLight(in Light light, in vec3 V, in vec3 N, in PBRParameter pbr, float shadow) {
-    vec3 radiance = u32_to_rgba(light.color).rgb * light.intensity;
-    return evaluateBRDF(light.direction, V, N, pbr) * shadow * radiance;
 }
 
 vec3 direct_lighting(Light light, vec3 V, vec3 N, PBRParameter pbr, float shadow_factor) {
