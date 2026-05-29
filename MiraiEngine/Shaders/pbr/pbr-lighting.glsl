@@ -15,7 +15,7 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     vec3 irradiance = sample_texture_cube(per_frame_data.irradiance_map, u_samplers[SAMPLER_LINEAR_CLAMP], normal).rgb;
     vec3 diffuse = irradiance * pbr_params.albedo.rgb;
 
-    float lod = pbr_params.roughness * (MAX_REFLECTION_LOD - 1);
+    float lod = pbr_params.roughness * (per_frame_data.prefilter_mip_count - 1);
     vec3 prefilter_color = sample_texture_cube_lod(per_frame_data.prefilter_map, u_samplers[SAMPLER_LINEAR_CLAMP], reflection, lod).rgb;
 
     vec2 brdf = sample_texture(per_frame_data.brdf_texture_map, u_samplers[SAMPLER_LINEAR_CLAMP], vec2(ndotv, pbr_params.roughness)).rg;

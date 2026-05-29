@@ -9,6 +9,7 @@ namespace mirai {
         glm::uvec3 probe_counts = glm::uvec3(4, 4, 4);
         uint32_t irradiance_oct_resolution = 8;
         uint32_t depth_oct_resolution = 16;
+        uint32_t rays_per_probe = 256;
 
         AABB probe_dimension = AABB{glm::vec3(0.0f), glm::vec3(1.0f)};
 
@@ -17,7 +18,7 @@ namespace mirai {
 
         bool enable_debug_probe = true;
 
-        IrradianceFieldSettings() {
+        IrradianceFieldSettings(const glm::uvec3 &probe_counts, const AABB &dimension) : probe_counts(probe_counts), probe_dimension(dimension) {
             ASSERT(probe_counts.x > 1 && probe_counts.y > 1 && probe_counts.z > 1);
             probe_start_position = probe_dimension.min;
             probe_step = (probe_dimension.max - probe_dimension.min) / glm::vec3(probe_counts - glm::uvec3(1));

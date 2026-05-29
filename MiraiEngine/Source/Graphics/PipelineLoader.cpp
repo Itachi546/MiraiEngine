@@ -184,6 +184,20 @@ namespace mirai {
                                        .depth_write = false,
                                    },
                                    fwd_attachment);
+
+            /*
+            create_shader_material("forward-pass-visualize-probe", PASS_MODE_FORWARD,
+                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/visualize-probe.frag.glsl"},
+                                   PipelineState{
+                                       .cull_mode = CULL_MODE_BACK,
+                                       .depth_op = COMPARE_OP_LESS_OR_EQUAL,
+                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                       .alpha_mode = ALPHA_MODE_OPAQUE,
+                                       .depth_test = true,
+                                       .depth_write = true,
+                                   },
+                                   fwd_attachment);
+                                   */
         }
     }
 

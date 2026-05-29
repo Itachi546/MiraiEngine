@@ -19,8 +19,10 @@ struct PerFrameData {
     uint irradiance_map;
     uint prefilter_map;
 
+    uint prefilter_mip_count;
     uint brdf_texture_map;
-    uint padding[3];
+    uint skybox_texture_index;
+    uint padding;
 };
 
 vec2 ndc_to_uv(vec2 uv) {

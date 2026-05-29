@@ -122,8 +122,10 @@ namespace mirai {
             uint32_t irradiance_map;
             uint32_t prefilter_map;
 
+            uint32_t prefilter_mip_count;
             uint32_t brdf_texture_map;
-            uint32_t padding[3];
+            uint32_t skybox_texture_index;
+            uint32_t padding;
         } per_frame_data;
         static_assert(sizeof(FrameData) % 16 == 0);
 

@@ -276,7 +276,7 @@ namespace mirai {
         for (uint32_t i = 0; i < prefilter_mip_count; ++i) {
             push_data[0] = push_data[1] = mip_resolution;
             push_data[2] = cast_float(cubemap_size);
-            push_data[3] = float(i) / float(std::max(prefilter_mip_count, 2u) - 1);
+            push_data[3] = prefilter_mip_count == 1 ? 0.0f : float(i) / float(prefilter_mip_count - 1);
 
             command_buffer->set_push_data(0, push_data, sizeof(float) * 4);
 

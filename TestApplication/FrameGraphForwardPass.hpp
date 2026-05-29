@@ -42,6 +42,19 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                                            .layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                        });
 
+            // @TODO temp
+            DDGIGenerateIrradiancePassData ddgi_pass_data = board->get<DDGIGenerateIrradiancePassData>();
+            builder.read(ddgi_pass_data.radiance_texture, {
+                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                              .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                              .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          });
+            builder.read(ddgi_pass_data.depth_texture, {
+                                                           .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                           .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                           .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       });
+
             builder.present(data.output);
         },
         [](const ImGuiPassData &data, FrameGraphPassResource &pass_resource, void *context) {

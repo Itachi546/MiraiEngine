@@ -57,7 +57,9 @@ namespace mirai {
         per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.brdf_texture_map = K_INVALID_RESOURCE_HANDLE;
-        per_frame_data.padding[0] = per_frame_data.padding[1] = per_frame_data.padding[2] = 0;
+        per_frame_data.skybox_texture_index = K_INVALID_RESOURCE_HANDLE;
+        per_frame_data.prefilter_mip_count = EnvironmentSettings::K_PREFILTER_MAP_MAX_MIP_LEVELS;
+        per_frame_data.padding = 0;
         per_frame_data.current_frame_jitter = glm::vec2(0.0f);
 
         std::unique_ptr<Material3D> default_material = std::make_unique<Material3D>("DefaultMaterialShared");
@@ -153,6 +155,7 @@ namespace mirai {
             per_frame_data.irradiance_map = env_map->get_irradiance_map().id;
             per_frame_data.prefilter_map = env_map->get_prefilter_map().id;
             per_frame_data.brdf_texture_map = env_map->get_brdf_texture().id;
+            per_frame_data.skybox_texture_index = env_map->get_cubemap().id;
         }
 
         // if frustum is freezed then we don't regenerate render object list

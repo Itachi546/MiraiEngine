@@ -4,7 +4,6 @@
 #include "../utils/math.glsl"
 
 #define EPSILON 0.0001f
-const float MAX_REFLECTION_LOD = 6.0;
 
 float D_GGX(float ndoth, float alpha) {
     float a2 = alpha * alpha;
