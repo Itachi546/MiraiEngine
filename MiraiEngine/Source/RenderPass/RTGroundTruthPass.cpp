@@ -123,15 +123,14 @@ namespace mirai {
 
                 uint32_t push_data_size = cast_u32(sizeof(PushData));
 
-                // @TODO we can use cached descriptor later
                 BufferID buffer = renderer->geometry_buffer_allocator->allocations[0].id;
-                DescriptorInfo descriptor_info = {.type = DescriptorType::StorageBuffer, .resource = buffer, .buffer_info = {0, UINT64_MAX}};
-                DescriptorOffset geometry_descriptor = renderer->resource_heap.push_descriptors_per_frame(RenderingDevice::get(), &descriptor_info, 1);
+                DescriptorOffset geometry_descriptor = renderer->get_or_create_descriptor(buffer, DescriptorType::StorageBuffer);
+
                 DescriptorOffset descriptors[] = {
                     renderer->get_or_create_descriptor(renderer->tlas.as, DescriptorType::AccelerationStructure),
                     renderer->get_or_create_descriptor(write_texture, DescriptorType::StorageImage),
-                    renderer->rt_instance_data_descriptor,
                     geometry_descriptor,
+                    renderer->rt_instance_data_descriptor,
                     renderer->material_descriptor,
                     renderer->light_descriptor,
                 };

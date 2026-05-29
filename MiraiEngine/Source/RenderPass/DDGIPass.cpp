@@ -7,10 +7,11 @@
 #include "Graphics/Renderer.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
 #include "Common/Profiler.hpp"
-
+#include "Common/Random.hpp"
+#include "Math/Math.hpp"
 namespace mirai {
 
-     DDGIPass::DDGIPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
+    DDGIPass::DDGIPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<DDGIGenerateIrradiancePassData>(
             "DDGI Generate Irradiance",
             [&board](FrameGraph::Builder &builder, DDGIGenerateIrradiancePassData &data) {
@@ -120,18 +121,30 @@ namespace mirai {
                     float _padding1;
                 } push_data;
 
-                push_data.random_orientation = glm::mat4(1.0f);
+                push_data.random_orientation = glm::mat4_cast(glm::angleAxis(
+                    random_float01() * (glm::pi<float>() * 2.0f),
+                    glm::normalize(glm::vec3(random_float01() * 2.0f - 1.0f,
+                                             random_float01() * 2.0f - 1.0f,
+                                             random_float01() * 2.0f - 1.0f))));
                 push_data.probe_counts = settings.probe_counts;
                 push_data.ray_per_probe = settings.rays_per_probe;
                 push_data.probe_start_position = settings.probe_start_position;
                 push_data.probe_step = settings.probe_step;
                 push_data.frame_count = cast_u32(renderer->frame_id & UINT32_MAX);
 
+                BufferID buffer = renderer->geometry_buffer_allocator->allocations[0].id;
+                DescriptorOffset geometry_descriptor = renderer->get_or_create_descriptor(buffer, DescriptorType::StorageBuffer);
+
                 DescriptorOffset descriptors[] = {
                     renderer->get_or_create_descriptor(renderer->tlas.as, DescriptorType::AccelerationStructure),
                     renderer->per_frame_data_descriptor,
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.radiance_texture).id, DescriptorType::StorageImage),
                     renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.depth_texture).id, DescriptorType::StorageImage),
+                    geometry_descriptor,
+                    renderer->rt_instance_data_descriptor,
+                    renderer->material_descriptor,
+                    renderer->light_descriptor,
+
                 };
 
                 data.shader->bind(command_buffer);

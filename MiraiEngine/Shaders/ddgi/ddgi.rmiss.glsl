@@ -18,5 +18,4 @@ void main() {
     vec3 rd = gl_WorldRayDirectionEXT;
     rd.y = -rd.y;
     p_payload.L = sample_texture_cube(per_frame_data.skybox_texture_index, u_samplers[SAMPLER_LINEAR_CLAMP], rd).rgb;
-    p_payload.hit_distance = 10000.0f;
 }

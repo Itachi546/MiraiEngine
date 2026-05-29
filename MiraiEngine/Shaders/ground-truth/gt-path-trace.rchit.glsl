@@ -9,10 +9,8 @@
 #include "../utils/material.glsl"
 #include "../utils/light.glsl"
 #include "../utils/color.glsl"
-#include "../pbr/brdf.glsl"
 #include "../pbr/pbr-lighting.glsl"
 #include "../utils/sample-direction.glsl"
-
 #include "brdf.glsl"
 #include "ground-truth.glsl"
 
@@ -20,23 +18,20 @@ layout(location = 0) rayPayloadInEXT RayPayload p_payload;
 layout(location = 1) rayPayloadEXT RayPayload p_indirect_payload;
 hitAttributeEXT vec2 bary_coord;
 
-struct MeshInstanceData {
-    uint vertex_offset;
-    uint index_offset;
-    uint vertex_stride;
-    uint material_index;
-};
-
 #define MAX_RAY_DEPTH 2
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT tlas;
 
-layout(set = 0, binding = 2) readonly buffer MeshInstanceBuffer {
-    MeshInstanceData mesh_instances[];
+
+layout(set = 0, binding = 2) readonly buffer VertexBuffer {
+    uint vertices[];
 };
 
-layout(set = 0, binding = 3) readonly buffer VertexBuffer {
-    uint vertices[];
+#include "../utils/vertexdata.glsl"
+#include "../utils/rt-common.glsl"
+
+layout(set = 0, binding = 3) readonly buffer MeshInstanceBuffer {
+    MeshInstanceData mesh_instances[];
 };
 
 layout(set = 0, binding = 4) readonly buffer MaterialBuffer {
@@ -47,32 +42,8 @@ layout(std430, set = 0, binding = 5) readonly buffer Lights {
     Light lights[];
 };
 
+#include "../utils/rt-common.glsl"
 #include "../utils/vertexdata.glsl"
-
-struct Vertex {
-    vec3 position;
-    vec3 normal;
-    vec3 tangent;
-    vec2 tex_coord;
-};
-
-Vertex fetch_interpolated_vertex(uint triangle_index, MeshInstanceData instance, vec3 bary) {
-    uint index_address = instance.index_offset + triangle_index * 3;
-    uint i0 = vertices[index_address + 0];
-    uint i1 = vertices[index_address + 1];
-    uint i2 = vertices[index_address + 2];
-
-    uint va0 = instance.vertex_offset + i0 * instance.vertex_stride;
-    uint va1 = instance.vertex_offset + i1 * instance.vertex_stride;
-    uint va2 = instance.vertex_offset + i2 * instance.vertex_stride;
-
-    Vertex result;
-    result.position = bary.x * unpack_position(va0) + bary.y * unpack_position(va1) + bary.z * unpack_position(va2);
-    result.normal = normalize(bary.x * unpack_normal(va0) + bary.y * unpack_normal(va1) + bary.z * unpack_normal(va2));
-    result.tangent = normalize(bary.x * unpack_tangent(va0) + bary.y * unpack_tangent(va1) + bary.z * unpack_tangent(va2));
-    result.tex_coord = bary.x * unpack_uv(va0) + bary.y * unpack_uv(va1) + bary.z * unpack_uv(va2);
-    return result;
-}
 
 float trace_shadow(vec3 world_pos, vec3 N, vec3 light_dir) {
     rayQueryEXT ray_query;

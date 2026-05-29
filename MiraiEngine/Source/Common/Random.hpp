@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Math/Math.hpp"
-
+#include <random>
 namespace mirai {
     inline float halton(int i, int b) {
         // Creates a halton sequence of values between 0 and 1.
@@ -21,7 +21,7 @@ namespace mirai {
         return glm::vec2{halton(index, 2), halton(index, 3)};
     }
 
-    inline float randomFloat01() {
+    inline float random_float01() {
         return float(rand()) / float(RAND_MAX);
     }
 

@@ -34,7 +34,7 @@ void main() {
 
     p_payload.L = vec3(0.0f);
     p_payload.rng = rng_init(pixel_coord, ddgi_settings.frame_count);
-    p_payload.T = vec3(1.0f);
+    p_payload.T = vec3(tmax);
     p_payload.hit_distance = tmax;
 
     traceRayEXT(tlas, ray_flags, cull_mask,
@@ -44,5 +44,5 @@ void main() {
                 0);
 
     imageStore(u_radiance_texture, pixel_coord, vec4(p_payload.L, 1.0f));
-    imageStore(u_distance_texture, pixel_coord, vec4(p_payload.hit_distance / 1000.0f, 0.0f, 0.0f, 1.0f));
+    imageStore(u_distance_texture, pixel_coord, vec4(p_payload.hit_distance, 0.0f, 0.0f, 1.0f));
 }
