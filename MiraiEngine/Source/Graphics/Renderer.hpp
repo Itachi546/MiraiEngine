@@ -50,7 +50,7 @@ namespace mirai {
         }
 
         // Helper function to upload batch data to per frame staging buffer
-        uint32_t upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame);
+        uint32_t upload_batch_data(std::vector<RenderBatch> &batches);
 
         // Used for resources with default descriptor parameter
         DescriptorOffset get_or_create_descriptor(ID resource_id, DescriptorType descriptor_type);
@@ -86,16 +86,12 @@ namespace mirai {
         AccelerationStructure tlas;
         std::vector<AccelerationStructureID> blas;
 
-        // Per frame Uniform Set
-        std::vector<RenderBatch> main_render_batches;
-
         bool freeze_frustum = false;
         bool show_aabbs = false;
         bool disable_punctual_lights = true;
         FrustumPlanes freezed_frustum_planes;
         glm::mat4 freezed_inv_VP;
 
-        uint32_t total_visible_entities = 0;
         uint32_t total_lights = 0;
 
         TextureID blue_noise_texture128;
@@ -129,8 +125,6 @@ namespace mirai {
         void update();
 
         void render();
-
-        void create_batches();
 
         void create_blas();
 

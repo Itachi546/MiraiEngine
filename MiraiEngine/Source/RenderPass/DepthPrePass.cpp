@@ -3,6 +3,7 @@
 #include "Scene/FrameGraphBlackBoard.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Scene/ShaderRegistry.hpp"
+#include "Scene/Camera.hpp"
 #include "RenderPassData.hpp"
 #include "Engine/AppSettings.hpp"
 #include "Common/Profiler.hpp"
@@ -41,6 +42,8 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
                 ScopedGpuProfiling(command_buffer, "DepthPrePass");
+                ScopedCpuProfiling("DepthPrepass[Render]");
+
                 command_buffer->begin_gpu_debug_label("DepthPrePass");
 
                 uint32_t width = AppSettings::get_width();
@@ -80,9 +83,7 @@ namespace mirai {
                         if (batch.get_alpha_mode() != alpha_mode)
                             continue;
 
-                        uint32_t mat_key = (batch.sort_key >> 32) & 0x00FFFFFF;
-                        uint32_t pso_key = uint8_t(PASS_MODE_DEPTH_PREPASS) << 24 | mat_key;
-                        Shader *shader = registry->find(pso_key);
+                        Shader *shader = registry->find(batch.get_pso_key());
                         ASSERT(shader != nullptr);
                         if (shader == nullptr)
                             continue;
@@ -99,11 +100,27 @@ namespace mirai {
                     }
                 };
 
-                // Draw Opaque object
-                draw_batch(renderer->main_render_batches, ALPHA_MODE_OPAQUE);
+                Scene *scene = renderer->get_scene();
+                Camera *camera = scene->get_camera();
 
-                descriptor_infos.push_back(renderer->material_descriptor);
-                draw_batch(renderer->main_render_batches, ALPHA_MODE_MASK);
+                std::vector<RenderBatch> render_batches;
+                DrawBatchGenerator::BuildBatches(
+                    renderer->get_scene(),
+                    BatchBuildParams{
+                        .frustum = &camera->get_frustum_planes(),
+                        .pass = PASS_MODE_DEPTH_PREPASS,
+                    },
+                    render_batches);
+
+                if (render_batches.size() > 0) {
+                    renderer->upload_batch_data(render_batches);
+
+                    // Draw Opaque object
+                    draw_batch(render_batches, ALPHA_MODE_OPAQUE);
+
+                    descriptor_infos.push_back(renderer->material_descriptor);
+                    draw_batch(render_batches, ALPHA_MODE_MASK);
+                }
 
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();

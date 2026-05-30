@@ -532,24 +532,6 @@ namespace mirai {
         command_buffer->dispatch(work_group_size, 1, 1);
     } // namespace mirai
 
-    void Renderer::create_batches() {
-        ScopedCpuProfiling("Create Batch");
-        main_render_batches.clear();
-
-        Camera *camera = scene->get_camera();
-        const FrustumPlanes &frustum_planes = freeze_frustum ? freezed_frustum_planes : camera->get_frustum_planes();
-        DrawBatchGenerator::BuildBatches(scene.get(), BatchBuildParams{
-                                                          .frustum = &frustum_planes,
-                                                          .camera_position = &camera->position,
-                                                      },
-                                         main_render_batches);
-
-        if (!freeze_frustum) {
-            freezed_frustum_planes = frustum_planes;
-            freezed_inv_VP = camera->get_inv_view_projection_transform();
-        }
-    }
-
     void Renderer::create_blas() {
         if (!device->supports_raytracing()) {
             tlas.as = AccelerationStructureID{K_INVALID_ID};
@@ -628,7 +610,7 @@ namespace mirai {
                     continue;
                 }
                 const auto &material = scene->materials[renderable.material_index];
-                
+
                 if (material->is_transparent()) {
                     write_indexes[i] = UINT32_MAX;
                     continue;
@@ -849,10 +831,11 @@ namespace mirai {
         device->refit_blas(command_buffer, blas_descriptions, blases, blas_buffer_dynamic, ASC_ALLOW_UPDATE_BIT_KHR | ASC_PREFER_FAST_BUILD_BIT_KHR);
     }
 
-    uint32_t Renderer::upload_batch_data(std::vector<RenderBatch> &batches, uint32_t current_frame) {
+    uint32_t Renderer::upload_batch_data(std::vector<RenderBatch> &batches) {
         if (batches.size() == 0)
             return 0;
         // Calculate total memory required in staging buffer
+        uint32_t current_frame = frame_flight_index;
         uint32_t total_entities = 0;
         uint32_t draw_indirect_size_bytes = 0;
 
@@ -968,9 +951,6 @@ namespace mirai {
         BufferView cascade_data_buffer = frame_allocator->allocate(cascade_data_size);
         std::memcpy(cascade_data_buffer.ptr, &shadow_system->cascade_info, cascade_data_size);
 
-        // Populate per-frame batch data
-        total_visible_entities = upload_batch_data(main_render_batches, frame_flight_index);
-
         DescriptorInfo descriptor_infos[] = {
             {DescriptorType::UniformBuffer, per_frame_data_buffer.buffer, {per_frame_data_buffer.offset, per_frame_data_buffer.size}},
             {DescriptorType::UniformBuffer, cascade_data_buffer.buffer, {cascade_data_buffer.offset, cascade_data_buffer.size}},
@@ -1002,9 +982,6 @@ namespace mirai {
         line_renderer->new_frame(frame_flight_index);
 
         scene->update();
-
-        // Generate and Upload visible lights
-        create_batches();
 
         shadow_system->update(scene.get());
 

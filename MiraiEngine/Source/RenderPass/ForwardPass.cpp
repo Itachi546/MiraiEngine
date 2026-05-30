@@ -119,6 +119,7 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
                 ScopedGpuProfiling(command_buffer, "ForwardPass");
+                ScopedCpuProfiling("ForwardPass[Render]");
                 command_buffer->begin_gpu_debug_label("ForwardPass");
 
                 uint32_t width = AppSettings::get_width();
@@ -223,7 +224,7 @@ namespace mirai {
 #endif
                         if (shader == nullptr)
                             continue;
-                        
+
                         descriptors[1] = renderer->get_or_create_descriptor(batch.get_geometry_buffer(), DescriptorType::StorageBuffer);
                         descriptors[3] = batch.draw_data_descriptor;
 
@@ -235,28 +236,40 @@ namespace mirai {
                     }
                 };
 
-                draw_batch(renderer->main_render_batches, ALPHA_MODE_OPAQUE);
-                draw_batch(renderer->main_render_batches, ALPHA_MODE_MASK);
+                std::vector<RenderBatch> render_batches;
 
-                {
-                    Camera *camera = scene->get_camera();
-                    // Draw Skybox
-                    glm::mat4 skybox_push_data[] = {
-                        camera->get_inv_projection_transform(),
-                        camera->get_inv_view_transform(),
-                    };
+                Camera *camera = scene->get_camera();
+                DrawBatchGenerator::BuildBatches(
+                    scene, {
+                               .frustum = &camera->get_frustum_planes(),
+                               .camera_position = &camera->position,
+                           },
+                    render_batches);
 
-                    data.skybox_shader->bind(command_buffer);
-                    command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
-                    command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &cubemap_binding, cast_u32(sizeof(uint32_t)));
-                    command_buffer->draw(3, 1, 0, 0);
+                if (render_batches.size() > 0) {
+                    renderer->upload_batch_data(render_batches);
 
-                    // DebugDraw line
-                    LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+                    draw_batch(render_batches, ALPHA_MODE_OPAQUE);
+                    draw_batch(render_batches, ALPHA_MODE_MASK);
+
+                    {
+                        // Draw Skybox
+                        glm::mat4 skybox_push_data[] = {
+                            camera->get_inv_projection_transform(),
+                            camera->get_inv_view_transform(),
+                        };
+
+                        data.skybox_shader->bind(command_buffer);
+                        command_buffer->set_push_data(0, skybox_push_data, cast_u32(sizeof(skybox_push_data)));
+                        command_buffer->set_push_data(cast_u32(sizeof(skybox_push_data)), &cubemap_binding, cast_u32(sizeof(uint32_t)));
+                        command_buffer->draw(3, 1, 0, 0);
+
+                        // DebugDraw line
+                        LineRenderer::get()->render(command_buffer, camera->get_view_projection_transform());
+                    }
+
+                    draw_batch(render_batches, ALPHA_MODE_BLEND);
                 }
-
-                draw_batch(renderer->main_render_batches, ALPHA_MODE_BLEND);
-
                 command_buffer->end_render_pass();
                 command_buffer->end_gpu_debug_label();
             });

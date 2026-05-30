@@ -44,7 +44,7 @@ namespace mirai {
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
                 ScopedGpuProfiling(command_buffer, "CascadedShadowPass");
-                ScopedCpuProfiling("CSM Render");
+                ScopedCpuProfiling("CascadedShadowPass[Render]");
                 command_buffer->begin_gpu_debug_label("CascadedShadowPass");
 
                 const auto &resource_states = pass_resource.get_resource_access_states();
@@ -122,7 +122,7 @@ namespace mirai {
                         if (render_batches.size() == 0)
                             continue;
 
-                        renderer->upload_batch_data(render_batches, current_frame);
+                        renderer->upload_batch_data(render_batches);
 
                         // Update push constants
                         push_constant_data[0] = i;

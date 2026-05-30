@@ -188,7 +188,6 @@ class TestApplication : public App {
                 transform->dirty = true;
             }
 
-            ImGui::Text("Total Visible Entities: %u", Renderer::get()->total_visible_entities);
             ImGui::Text("Total Visible Lights: %u", Renderer::get()->total_lights);
 
             uint32_t total_materials = cast_u32(scene->materials.size());
