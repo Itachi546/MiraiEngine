@@ -20,6 +20,7 @@ layout(location = 0) in FS_IN {
     flat uint mat_id;
     vec4 current_clip_pos;
     vec4 prev_clip_pos;
+    flat uint draw_id;
 }
 fs_in;
 
@@ -69,5 +70,5 @@ void main() {
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     velocity_buffer = velocity;
 
-    frag_color = vec4(1.0f, 0.0f, 0.5f, 1.0f);
+    frag_color = vec4(vec3(fs_in.draw_id / 1000.0f), 1.0f);
 }

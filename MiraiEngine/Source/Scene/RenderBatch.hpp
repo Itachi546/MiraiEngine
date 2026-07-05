@@ -23,6 +23,7 @@ namespace mirai {
 
     struct RenderBatch {
         uint64_t sort_key;
+
         std::vector<MeshDrawInfo> draw_infos;
 
         // Populated and only used for draw_indexed_indirect

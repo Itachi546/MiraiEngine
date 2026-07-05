@@ -20,6 +20,11 @@ namespace mirai {
             RenderingDevice::get()->destroy_pipelines(&shader->pipeline_id, 1);
     }
 
+    uint16_t custom_shader_material_id = 0;
+    static uint16_t get_custom_shader_material_id() {
+        return custom_shader_material_id++;
+    }
+
     ShaderMaterial3D::ShaderMaterial3D(const std::string_view name,
                                        const std::vector<std::string> &shader_files,
                                        const PipelineState &pipeline_state,
@@ -28,12 +33,8 @@ namespace mirai {
         // No shadow casting by default — no shadow-pass pipeline is registered.
         // Call add_render_flag(RENDER_FLAG_CAST_SHADOW) to opt in.
         shader = Shader::create_graphics_shader(std::string(name), shader_files, pipeline_state, attachment_info);
+        custom_material_id = get_custom_shader_material_id();
         ASSERT(shader != nullptr);
-    }
-
-    ShaderMaterial3D::~ShaderMaterial3D() {
-        if (shader)
-            RenderingDevice::get()->destroy_pipelines(&shader->pipeline_id, 1);
     }
 
     ComputeShader::ComputeShader(const std::string &name, const std::string &shader_file) {

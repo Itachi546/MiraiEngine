@@ -47,8 +47,8 @@ namespace mirai {
         }
 
         // Hash is computed live — get_hash() is a trivial bitfield pack.
-        uint32_t get_hash(PassMode pass) const {
-            return state.get_hash(pass);
+        uint32_t get_hash(PassMode pass, bool is_custom_shader) const {
+            return state.get_hash(pass, is_custom_shader);
         }
 
         void set_dirty(bool state) {
@@ -116,11 +116,7 @@ namespace mirai {
             return state.alpha_mode == ALPHA_MODE_MASK;
         }
 
-        // Returns true for ShaderMaterial3D; false for standard PBR Material3D.
-        virtual bool is_custom_shader() const { return false; }
-
-        // Returns the embedded Shader* when is_custom_shader() is true; nullptr otherwise.
-        virtual Shader *get_custom_shader() const { return nullptr; }
+        virtual std::shared_ptr<Shader> get_custom_shader() const { return nullptr; }
 
         virtual ~Material3D() = default;
 
@@ -170,13 +166,17 @@ namespace mirai {
                          const std::vector<std::string> &shader_files,
                          const PipelineState &pipeline_state,
                          const PipelineAttachmentInfo &attachment_info);
-        ~ShaderMaterial3D();
+        ~ShaderMaterial3D() = default;
 
-        bool is_custom_shader() const override { return true; }
-        Shader *get_custom_shader() const override { return shader.get(); }
+        std::shared_ptr<Shader> get_custom_shader() const override { return shader; }
+
+        uint16_t get_custom_material_id() {
+            return custom_material_id;
+        }
 
       private:
         std::shared_ptr<Shader> shader;
+        uint16_t custom_material_id;
     };
 
     struct ComputeShader {

@@ -6,6 +6,7 @@
 #include "Common/JobSystem.hpp"
 
 namespace mirai {
+
     // Register a shader under a material sort key for a given pass.
     // PipelineState is used only to compile the GPU pipeline and is discarded after.
     void create_shader_material(const std::string &name,
@@ -15,7 +16,7 @@ namespace mirai {
                                 const PipelineAttachmentInfo &attachment_info,
                                 MeshType mesh_type = MESH_TYPE_STATIC) {
 
-        uint32_t pso_key = create_pso_key(pass_mode, pipeline_state.get_hash(pass_mode), mesh_type);
+        uint32_t pso_key = create_pso_key(pass_mode, pipeline_state.get_hash(pass_mode, false), mesh_type);
 
         ShaderRegistry *registry = ShaderRegistry::get();
         if (registry->has(pso_key)) {
@@ -115,12 +116,7 @@ namespace mirai {
                                {.has_depth_attachment = true, .depth_attachment_format = FORMAT_D16_UNORM});
 
         if (AppSettings::render_mode == RenderMode::RENDERMODE_FORWARD) {
-            Format color_format = FORMAT_R16G16B16A16_SFLOAT;
-            PipelineAttachmentInfo fwd_attachment = {
-                .color_attachments_format = {color_format, FORMAT_R16G16_SFLOAT},
-                .has_depth_attachment = true,
-                .depth_attachment_format = FORMAT_D32_SFLOAT,
-            };
+            PipelineAttachmentInfo fwd_attachment = get_forward_pass_attachment_info();
             // ── Forward Pass ────────────────────────────────────────────────────
             // depth_op = EQUAL: depth prepass already wrote depth; the pass owns this.
             create_shader_material("forward-pass", PASS_MODE_FORWARD,
@@ -184,20 +180,6 @@ namespace mirai {
                                        .depth_write = false,
                                    },
                                    fwd_attachment);
-
-            /*
-            create_shader_material("forward-pass-visualize-probe", PASS_MODE_FORWARD,
-                                   {"SPIRV/forward-pass.vert.spv", "SPIRV/visualize-probe.frag.glsl"},
-                                   PipelineState{
-                                       .cull_mode = CULL_MODE_BACK,
-                                       .depth_op = COMPARE_OP_LESS_OR_EQUAL,
-                                       .draw_mode = DRAWMODE_INDEXED_INDIRECT,
-                                       .alpha_mode = ALPHA_MODE_OPAQUE,
-                                       .depth_test = true,
-                                       .depth_write = true,
-                                   },
-                                   fwd_attachment);
-                                   */
         }
     }
 

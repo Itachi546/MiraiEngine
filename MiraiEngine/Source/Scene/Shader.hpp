@@ -35,17 +35,25 @@ namespace mirai {
     // Only material-facing variant bits are hashed.
     union MaterialKey {
         struct {
-            uint16_t cull_mode : 2;
-            uint16_t front_face : 1;
-            uint16_t polygon_mode : 2;
-            uint16_t alpha_mode : 2;
-            uint16_t draw_mode : 3;
-            uint16_t topology : 4;
-            uint16_t depth_write : 1;
-            uint16_t stencil_test : 1;
+            uint32_t cull_mode : 2;
+            uint32_t front_face : 1;
+            uint32_t polygon_mode : 2;
+            uint32_t alpha_mode : 2;
+            uint32_t draw_mode : 3;
+            uint32_t topology : 4;
+            uint32_t depth_write : 1;
+            uint32_t stencil_test : 1;
+            uint32_t custom_shader : 1;
+            uint32_t unused : 3;
         };
         struct {
-            uint16_t hash;
+            uint32_t hash;
+        };
+
+        struct {
+            uint32_t custom_material_id : 16;
+            uint32_t custom_material : 1;
+            uint32_t unused : 3;
         };
 
         bool operator==(const MaterialKey &other) const {
@@ -57,19 +65,20 @@ namespace mirai {
         }
     };
 
-    inline uint32_t create_pso_key(PassMode pass, uint16_t mat_key, MeshType mesh_type) {
+    inline uint32_t create_pso_key(PassMode pass, uint32_t mat_key, MeshType mesh_type) {
         // | PASS | MESH | MAT_KEY |
-        //    8      8      16
+        //    8      4      20
 
         return cast_u32(pass) << 24 |
-               cast_u32(mesh_type) << 16 |
+               cast_u32(mesh_type) << 20 |
                mat_key;
     }
 
-    inline uint64_t create_sort_key(PassMode pass, uint16_t mat_key, MeshType mesh_type, BufferID buffer) {
+    inline uint64_t create_sort_key(PassMode pass, uint32_t mat_key, MeshType mesh_type, BufferID buffer) {
         return uint64_t(create_pso_key(pass, mat_key, mesh_type)) << 32 |
                uint64_t(buffer.id);
     }
+
     struct PipelineState {
         CullMode cull_mode = CULL_MODE_BACK;
         FrontFace front_face = FRONT_FACE_COUNTER_CLOCKWISE;
@@ -85,7 +94,7 @@ namespace mirai {
         bool depth_clamp = false;
         bool stencil_test = false;
 
-        uint16_t get_hash(PassMode pass = PASS_MODE_COUNT) const {
+        uint16_t get_hash(PassMode pass, bool is_custom_shader) const {
             MaterialKey key = {};
             if (pass == PASS_MODE_DIRLIGHT_SHADOW && cull_mode != CULL_MODE_NONE) {
                 key.cull_mode = alpha_mode == ALPHA_MODE_OPAQUE ? CULL_MODE_FRONT : CULL_MODE_NONE;
@@ -100,6 +109,7 @@ namespace mirai {
             key.topology = topology;
             key.depth_write = depth_write;
             key.stencil_test = stencil_test;
+            key.custom_shader = is_custom_shader;
             return key.hash;
         }
     };
@@ -109,6 +119,16 @@ namespace mirai {
         bool has_depth_attachment = false;
         Format depth_attachment_format;
     };
+
+    static PipelineAttachmentInfo FORWARD_PASS_ATTACHMENTS = {
+        .color_attachments_format = {FORMAT_R16G16B16A16_SFLOAT, FORMAT_R16G16_SFLOAT},
+        .has_depth_attachment = true,
+        .depth_attachment_format = FORMAT_D32_SFLOAT,
+    };
+
+    inline PipelineAttachmentInfo get_forward_pass_attachment_info() {
+        return FORWARD_PASS_ATTACHMENTS;
+    }
 
     struct Shader {
         std::string name;

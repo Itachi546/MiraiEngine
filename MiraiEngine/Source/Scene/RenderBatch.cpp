@@ -44,7 +44,16 @@ namespace mirai {
             }
 
             const MeshAllocation &allocation = scene->mesh_allocations[renderable.mesh_index];
-            renderable_sort_keys[index] = create_sort_key(build_params.pass, material->get_hash(build_params.pass), renderable.mesh_type, allocation.buffer);
+
+            std::shared_ptr<Shader> custom_shader = material->get_custom_shader();
+            if (custom_shader && build_params.pass == PASS_MODE_FORWARD) {
+                MaterialKey mat_key;
+                mat_key.custom_material = true;
+                mat_key.custom_material_id = static_cast<ShaderMaterial3D *>(material.get())->get_custom_material_id();
+                renderable_sort_keys[index] = create_sort_key(build_params.pass, mat_key.hash, renderable.mesh_type, allocation.buffer);
+            } else {
+                renderable_sort_keys[index] = create_sort_key(build_params.pass, material->get_hash(build_params.pass, false), renderable.mesh_type, allocation.buffer);
+            }
         });
 
         jobsystem::Wait();

@@ -9,6 +9,7 @@ layout(location = 0) out VS_OUT {
     flat uint mat_id;
     vec4 current_clip_pos;
     vec4 prev_clip_pos;
+    flat uint draw_id;
 }
 vs_out;
 
@@ -55,4 +56,5 @@ void main() {
     vs_out.world_pos = world_pos.xyz;
     vs_out.uv = unpack_uv(vertex_address);
     vs_out.mat_id = draw_data.material_index;
+    vs_out.draw_id = gl_DrawID;
 }

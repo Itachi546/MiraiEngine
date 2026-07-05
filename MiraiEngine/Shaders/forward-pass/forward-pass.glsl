@@ -19,6 +19,7 @@ layout(location = 0) in FS_IN {
     flat uint mat_id;
     vec4 current_clip_pos;
     vec4 prev_clip_pos;
+    flat uint draw_id;
 }
 fs_in;
 

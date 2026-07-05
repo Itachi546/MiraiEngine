@@ -2,7 +2,7 @@
 #include "Scene/Scene.hpp"
 #include "Scene/FrameGraph.hpp"
 #include "Scene/FrameGraphBlackBoard.hpp"
-#include "Scene/Material.hpp"
+#include "Scene/ShaderRegistry.hpp"
 #include "RenderPassData.hpp"
 #include "Graphics/Renderer.hpp"
 #include "Graphics/Vulkan/CommandBuffer.hpp"
@@ -76,8 +76,26 @@ namespace mirai {
 
                     uint32_t material_index = cast_u32(scene->materials.size());
                     {
-                        std::unique_ptr<Material3D> probe_material = std::make_unique<Material3D>("ProbeMaterial");
-                        probe_material->properties.albedo = glm::vec4(1.0f, 0.0f, 0.49f, 1.0f);
+
+                        PipelineAttachmentInfo attachment_info = get_forward_pass_attachment_info();
+                        std::unique_ptr<ShaderMaterial3D> probe_material = std::make_unique<ShaderMaterial3D>("ProbeMaterial",
+                                                                                                              std::vector<std::string>{"SPIRV/forward-pass.vert.spv", "SPIRV/visualize-probe.frag.spv"},
+                                                                                                              PipelineState{
+                                                                                                                  .cull_mode = CULL_MODE_BACK,
+                                                                                                                  .depth_op = COMPARE_OP_LESS_OR_EQUAL,
+                                                                                                                  .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                                                                                                  .alpha_mode = ALPHA_MODE_OPAQUE,
+                                                                                                                  .depth_test = true,
+                                                                                                                  .depth_write = true,
+                                                                                                              },
+                                                                                                              attachment_info);
+
+                        MaterialKey mat_key;
+                        mat_key.custom_material = true;
+                        mat_key.custom_material_id = probe_material->get_custom_material_id();
+
+                        uint64_t pso_key = create_pso_key(PASS_MODE_FORWARD, mat_key.hash, MESH_TYPE_STATIC);
+                        ShaderRegistry::get()->add(pso_key, probe_material->get_custom_shader());
                         scene->materials.push_back(std::move(probe_material));
                     }
 
