@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.10.0)
 set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 set(SPIRV_OUTPUT_DIR "${CMAKE_BINARY_DIR}/SPIRV")
 set(DEP_OUTPUT_DIR "${SPIRV_OUTPUT_DIR}/deps")

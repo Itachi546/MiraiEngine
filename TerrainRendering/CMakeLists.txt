@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.10.0)
 project(TerrainRendering)
 
 file(GLOB_RECURSE PROJECT_HEADER_FILES CONFIGURE_DEPENDS Source/*.hpp)
