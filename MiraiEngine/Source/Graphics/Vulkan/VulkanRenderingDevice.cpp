@@ -1203,6 +1203,14 @@ namespace mirai {
         // hung the GPU on NVIDIA driver 616.64 and dedicated allocations avoided it. Costs one
         // vkAllocateMemory per image at creation time; no per-frame cost is expected.
         allocation_create_info.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+
+        // Lets a debugger re-create the image so its descriptor heap image descriptors match on replay. The
+        // image must be bound to memory allocated with DEVICE_ADDRESS | DEVICE_ADDRESS_CAPTURE_REPLAY
+        // (VUID-vkBindImageMemory-image-08113), so it is allocated from the capture/replay pool.
+        create_info.flags |= VK_IMAGE_CREATE_DESCRIPTOR_HEAP_CAPTURE_REPLAY_BIT_EXT;
+        uint32_t memory_type_index = 0;
+        VK_CHECK(vmaFindMemoryTypeIndexForImageInfo(vma_allocator, &create_info, &allocation_create_info, &memory_type_index));
+        allocation_create_info.pool = get_capture_replay_pool(memory_type_index);
 #endif
 
         // Create Image

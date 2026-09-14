@@ -84,11 +84,12 @@ namespace mirai {
     }
 
     VkDevice CreateDevice(VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
-        VkPhysicalDeviceVulkan12Features supported_features12{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr};
+        VkPhysicalDeviceDescriptorHeapFeaturesEXT supported_descriptor_heap_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT, nullptr};
+        VkPhysicalDeviceVulkan12Features supported_features12{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, &supported_descriptor_heap_features};
         VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, &supported_features12};
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
         if (support_raytracing) {
-            supported_features12.pNext = &rt_pipeline_features;
+            supported_descriptor_heap_features.pNext = &rt_pipeline_features;
         }
 
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
@@ -112,6 +113,10 @@ namespace mirai {
         if (!supported_features12.bufferDeviceAddressCaptureReplay)
             Log::Fatal("VULKAN::FEATURE::Buffer device address capture/replay (Not Supported), set ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY to 0");
         Log::Info("VULKAN::FEATURE::Buffer device address capture/replay (Supported)");
+
+        if (!supported_descriptor_heap_features.descriptorHeapCaptureReplay)
+            Log::Fatal("VULKAN::FEATURE::Descriptor heap capture/replay (Not Supported), set ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY to 0");
+        Log::Info("VULKAN::FEATURE::Descriptor heap capture/replay (Supported)");
 #endif
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
@@ -180,6 +185,7 @@ namespace mirai {
         device_features12.bufferDeviceAddress = true;
 #if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
         device_features12.bufferDeviceAddressCaptureReplay = true;
+        descriptor_heap_feature.descriptorHeapCaptureReplay = true;
 #endif
 
         if (support_raytracing) {

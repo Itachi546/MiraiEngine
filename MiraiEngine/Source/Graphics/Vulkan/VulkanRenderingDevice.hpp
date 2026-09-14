@@ -177,8 +177,8 @@ namespace mirai {
         VmaAllocator vma_allocator;
 
 #if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
-        // Device address buffers are allocated from these pools (one per memory type, created lazily) so
-        // their memory carries VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT.
+        // Device address buffers and images are allocated from these pools (one per memory type, created
+        // lazily) so their memory carries VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT.
         VkMemoryAllocateFlagsInfo capture_replay_allocate_flags;
         HashMap<uint32_t, VmaPool> capture_replay_memory_pools;
         VmaPool get_capture_replay_pool(uint32_t memory_type_index);
