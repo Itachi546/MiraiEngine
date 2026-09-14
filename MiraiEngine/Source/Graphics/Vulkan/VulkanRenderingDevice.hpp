@@ -12,6 +12,7 @@
 
 VK_DEFINE_HANDLE(VmaAllocator)
 VK_DEFINE_HANDLE(VmaAllocation)
+VK_DEFINE_HANDLE(VmaPool)
 
 namespace mirai {
     struct VulkanSwapchain;
@@ -174,6 +175,14 @@ namespace mirai {
         uint32_t resource_descriptor_size = 0;
 
         VmaAllocator vma_allocator;
+
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        // Device address buffers are allocated from these pools (one per memory type, created lazily) so
+        // their memory carries VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT.
+        VkMemoryAllocateFlagsInfo capture_replay_allocate_flags;
+        HashMap<uint32_t, VmaPool> capture_replay_memory_pools;
+        VmaPool get_capture_replay_pool(uint32_t memory_type_index);
+#endif
 
         std::vector<VkCommandPool> command_pools;
         std::vector<std::unique_ptr<CommandBuffer>> command_buffers;

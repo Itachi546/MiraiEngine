@@ -84,10 +84,11 @@ namespace mirai {
     }
 
     VkDevice CreateDevice(VkPhysicalDevice physical_device, const std::vector<uint32_t> &queue_family_indices, const std::vector<const char *> &required_extensions, bool support_raytracing) {
-        VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr};
+        VkPhysicalDeviceVulkan12Features supported_features12{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr};
+        VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, &supported_features12};
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
         if (support_raytracing) {
-            indexing_features.pNext = &rt_pipeline_features;
+            supported_features12.pNext = &rt_pipeline_features;
         }
 
         VkPhysicalDeviceFeatures2 supported_features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
@@ -106,6 +107,12 @@ namespace mirai {
             Log::Info("VULKAN::FEATURE::Raytracing (Supported)");
         } else
             Log::Warn("VULKAN::FEATURE::Raytracing (Not Supported)");
+
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        if (!supported_features12.bufferDeviceAddressCaptureReplay)
+            Log::Fatal("VULKAN::FEATURE::Buffer device address capture/replay (Not Supported), set ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY to 0");
+        Log::Info("VULKAN::FEATURE::Buffer device address capture/replay (Supported)");
+#endif
 
         VkPhysicalDeviceFeatures2 device_features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
         device_features2.features.fragmentStoresAndAtomics = true;
@@ -171,6 +178,9 @@ namespace mirai {
         device_features13.pNext = &descriptor_heap_feature;
         device_features12.descriptorIndexing = true;
         device_features12.bufferDeviceAddress = true;
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        device_features12.bufferDeviceAddressCaptureReplay = true;
+#endif
 
         if (support_raytracing) {
             // Required by raytracing

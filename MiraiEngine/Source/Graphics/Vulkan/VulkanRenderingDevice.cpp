@@ -228,8 +228,22 @@ namespace mirai {
         vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
         vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
+        VmaAllocatorCreateFlags allocator_flags = 0;
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        // VMA's BUFFER_DEVICE_ADDRESS flag adds its own VkMemoryAllocateFlagsInfo without the capture/replay
+        // bit, which would collide with ours, so it stays off and device address buffers use the pools below.
+        capture_replay_allocate_flags = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+            .pNext = nullptr,
+            .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT | VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT,
+            .deviceMask = 0,
+        };
+#else
+        allocator_flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+#endif
+
         VmaAllocatorCreateInfo create_info = {
-            .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+            .flags = allocator_flags,
             .physicalDevice = physical_device,
             .device = device,
             .pVulkanFunctions = &vulkan_functions,
@@ -241,6 +255,23 @@ namespace mirai {
         VK_CHECK(vmaCreateAllocator(&create_info, &allocator));
         return allocator;
     }
+
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+    VmaPool VulkanRenderingDevice::get_capture_replay_pool(uint32_t memory_type_index) {
+        auto found = capture_replay_memory_pools.find(memory_type_index);
+        if (found != capture_replay_memory_pools.end())
+            return found->second;
+
+        VmaPoolCreateInfo pool_create_info = {};
+        pool_create_info.memoryTypeIndex = memory_type_index;
+        pool_create_info.pMemoryAllocateNext = &capture_replay_allocate_flags;
+
+        VmaPool pool = VK_NULL_HANDLE;
+        VK_CHECK(vmaCreatePool(vma_allocator, &pool_create_info, &pool));
+        capture_replay_memory_pools[memory_type_index] = pool;
+        return pool;
+    }
+#endif
 
     VkFence VulkanRenderingDevice::create_fence(const std::string &name, bool signalled) {
         VkFenceCreateInfo create_info = {
@@ -926,7 +957,24 @@ namespace mirai {
 
         VkBuffer vk_buffer = VK_NULL_HANDLE;
         VmaAllocationInfo allocation_info = {};
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        if (create_info.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+            // Lets a debugger re-create the buffer at the same device address on replay, which descriptor
+            // heap buffer descriptors depend on. vmaCreateBuffer refuses device address buffers while the
+            // allocator's BUFFER_DEVICE_ADDRESS flag is off, so create, allocate and bind separately.
+            create_info.flags |= VK_BUFFER_CREATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT;
+            uint32_t memory_type_index = 0;
+            VK_CHECK(vmaFindMemoryTypeIndexForBufferInfo(vma_allocator, &create_info, &allocation_create_info, &memory_type_index));
+            allocation_create_info.pool = get_capture_replay_pool(memory_type_index);
+            VK_CHECK(vkCreateBuffer(device, &create_info, nullptr, &vk_buffer));
+            VK_CHECK(vmaAllocateMemoryForBuffer(vma_allocator, vk_buffer, &allocation_create_info, &allocation, &allocation_info));
+            VK_CHECK(vmaBindBufferMemory(vma_allocator, allocation, vk_buffer));
+        } else {
+            VK_CHECK(vmaCreateBuffer(vma_allocator, &create_info, &allocation_create_info, &vk_buffer, &allocation, &allocation_info));
+        }
+#else
         VK_CHECK(vmaCreateBuffer(vma_allocator, &create_info, &allocation_create_info, &vk_buffer, &allocation, &allocation_info));
+#endif
         set_debug_marker_object_name(VK_OBJECT_TYPE_BUFFER, (uint64_t)vk_buffer, debug_name.c_str());
 
         if (MEMORY_ALLOCATION_TYPE_CPU) {
@@ -1995,6 +2043,11 @@ namespace mirai {
         ASSERT_MSG(resource_pool_buffers.used_indices == 0, "Buffer Pool is not empty!!!");
         ASSERT_MSG(resource_pool_acceleration_structures.used_indices == 0, "Acceleration Structure Pool is not empty!!!");
 
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        for (auto &[memory_type_index, pool] : capture_replay_memory_pools)
+            vmaDestroyPool(vma_allocator, pool);
+        capture_replay_memory_pools.clear();
+#endif
         vmaDestroyAllocator(vma_allocator);
         vkDestroyDevice(device, nullptr);
         if (debug_report_callback != VK_NULL_HANDLE)
