@@ -1354,8 +1354,8 @@ namespace mirai {
 
         const auto destroy = [&](std::deque<std::pair<ID, uint64_t>> &queue, std::function<void(ID)> free) {
             while (!queue.empty()) {
-                auto [id, frame_index] = queue.front();
-                if (frame_index + max_frame_in_flight < frame_index || force) {
+                auto [id, destroyed_frame_index] = queue.front();
+                if (destroyed_frame_index + max_frame_in_flight < frame_index || force) {
                     free(id);
                     queue.pop_front();
                 } else {
