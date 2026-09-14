@@ -17,8 +17,10 @@ namespace mirai {
 
 #define ENABLE_VALIDATION 1
 #define ENABLE_DEBUG_LABELS 1 
+// Fixes required for Nsight capture/replay with descriptor heap
+#define ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY 1
 
-    constexpr const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_3;
+constexpr const uint32_t VULKAN_API_VERSION = VK_API_VERSION_1_3;
 
 #define VK_CHECK(call)                 \
     do {                               \

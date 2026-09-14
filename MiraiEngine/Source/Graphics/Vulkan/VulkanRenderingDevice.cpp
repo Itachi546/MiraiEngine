@@ -1149,6 +1149,13 @@ namespace mirai {
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         allocation_create_info.flags = 0;
+#if ENABLE_DESCRIPTOR_HEAP_CAPTURE_REPLAY
+        // Give each image its own VkDeviceMemory, bound at offset 0, instead of suballocating it out of a
+        // shared block. With descriptor heap capture/replay enabled, suballocated capture/replay images
+        // hung the GPU on NVIDIA driver 616.64 and dedicated allocations avoided it. Costs one
+        // vkAllocateMemory per image at creation time; no per-frame cost is expected.
+        allocation_create_info.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+#endif
 
         // Create Image
         VmaAllocationInfo allocation_info = {};
