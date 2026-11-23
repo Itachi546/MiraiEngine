@@ -19,7 +19,6 @@ namespace mirai {
                                                                                         glm::vec3(-15.75f, -1.5f, -10.0f),
                                                                                         glm::vec3(14.75f, 11.5f, 9.0f),
                                                                                     }};
-                board->add<IrradianceFieldSettings>(irradiance_settings);
 
                 // For each probe, we add 1 pixel border, also we add one pixel border around the whole texture
                 glm::uvec3 probe_counts = irradiance_settings.probe_counts;
@@ -67,64 +66,75 @@ namespace mirai {
                 board->add<DDGIGenerateIrradiancePassData>(data);
 
                 // irradiance_settings.enable_debug_probe = false;
-                if (irradiance_settings.enable_debug_probe) {
-                    Renderer *renderer = Renderer::get();
-                    Scene *scene = renderer->get_scene();
-                    auto &component_manager = scene->ecs->component_manager;
-                    Entity parent = scene->create_entity("Probes");
-                    const float radius = 0.2f;
+                Renderer *renderer = Renderer::get();
+                Scene *scene = renderer->get_scene();
+                auto &component_manager = scene->ecs->component_manager;
+                Entity parent = scene->create_entity("Probes");
+                const float radius = 0.2f;
 
-                    uint32_t material_index = cast_u32(scene->materials.size());
-                    {
+                uint32_t material_index = cast_u32(scene->materials.size());
+                {
 
-                        PipelineAttachmentInfo attachment_info = get_forward_pass_attachment_info();
-                        std::unique_ptr<ShaderMaterial3D> probe_material = std::make_unique<ShaderMaterial3D>("ProbeMaterial",
-                                                                                                              std::vector<std::string>{"SPIRV/forward-pass.vert.spv", "SPIRV/visualize-probe.frag.spv"},
-                                                                                                              PipelineState{
-                                                                                                                  .cull_mode = CULL_MODE_BACK,
-                                                                                                                  .depth_op = COMPARE_OP_LESS_OR_EQUAL,
-                                                                                                                  .draw_mode = DRAWMODE_INDEXED_INDIRECT,
-                                                                                                                  .alpha_mode = ALPHA_MODE_OPAQUE,
-                                                                                                                  .depth_test = true,
-                                                                                                                  .depth_write = true,
-                                                                                                              },
-                                                                                                              attachment_info);
+                    PipelineAttachmentInfo attachment_info = get_forward_pass_attachment_info();
+                    std::unique_ptr<ShaderMaterial3D> probe_material = std::make_unique<ShaderMaterial3D>("ProbeMaterial",
+                                                                                                          std::vector<std::string>{"SPIRV/forward-pass.vert.spv", "SPIRV/visualize-probe.frag.spv"},
+                                                                                                          PipelineState{
+                                                                                                              .cull_mode = CULL_MODE_BACK,
+                                                                                                              .depth_op = COMPARE_OP_LESS_OR_EQUAL,
+                                                                                                              .draw_mode = DRAWMODE_INDEXED_INDIRECT,
+                                                                                                              .alpha_mode = ALPHA_MODE_OPAQUE,
+                                                                                                              .depth_test = true,
+                                                                                                              .depth_write = true,
+                                                                                                          },
+                                                                                                          attachment_info);
 
-                        MaterialKey mat_key;
-                        mat_key.custom_material = true;
-                        mat_key.custom_material_id = probe_material->get_custom_material_id();
+                    MaterialKey mat_key;
+                    mat_key.custom_material = true;
+                    mat_key.custom_material_id = probe_material->get_custom_material_id();
 
-                        uint64_t pso_key = create_pso_key(PASS_MODE_FORWARD, mat_key.hash, MESH_TYPE_STATIC);
-                        ShaderRegistry::get()->add(pso_key, probe_material->get_custom_shader());
-                        scene->materials.push_back(std::move(probe_material));
-                    }
-
-                    uint32_t probe_count = irradiance_settings.get_probe_count();
-                    for (uint32_t i = 0; i < probe_count; ++i) {
-                        Entity entity = scene->create_sphere("Probe" + std::to_string(i), parent);
-                        TransformComponent *component = component_manager->get_component<TransformComponent>(entity);
-                        component->position = irradiance_settings.probe_index_to_position(i);
-                        component->scale = glm::vec3(radius);
-
-                        MeshComponent *mesh_comp = component_manager->get_component<MeshComponent>(entity);
-                        mesh_comp->flags = MeshComponent::Flags::MESH_FLAG_DEBUG;
-                        mesh_comp->primitives[0].material = material_index;
-                    }
+                    uint64_t pso_key = create_pso_key(PASS_MODE_FORWARD, mat_key.hash, MESH_TYPE_STATIC);
+                    ShaderRegistry::get()->add(pso_key, probe_material->get_custom_shader());
+                    scene->materials.push_back(std::move(probe_material));
                 }
+
+                uint32_t probe_count = irradiance_settings.get_probe_count();
+                for (uint32_t i = 0; i < probe_count; ++i) {
+                    Entity entity = scene->create_sphere("Probe" + std::to_string(i), parent);
+                    irradiance_settings.debug_probes.push_back(entity);
+                    TransformComponent *component = component_manager->get_component<TransformComponent>(entity);
+                    component->position = irradiance_settings.probe_index_to_position(i);
+                    component->scale = glm::vec3(radius);
+
+                    MeshComponent *mesh_comp = component_manager->get_component<MeshComponent>(entity);
+                    mesh_comp->flags = MeshComponent::Flags::MESH_FLAG_DEBUG;
+                    mesh_comp->primitives[0].material = material_index;
+                }
+
+                board->add<IrradianceFieldSettings>(irradiance_settings);
             },
+
             [](const DDGIGenerateIrradiancePassData &data, const FrameGraphPassResource &pass_resource, void *context) {
                 RenderContext *ctx = static_cast<RenderContext *>(context);
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;
+
+                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
+                const IrradianceFieldSettings &settings = board->get<IrradianceFieldSettings>();
+
+                // Update the debug probe visibility
+                {
+                    Scene *scene = renderer->get_scene();
+                    auto &comp_manager = scene->ecs->component_manager;
+                    for (auto &entity : settings.debug_probes) {
+                        comp_manager->get_component<MeshComponent>(entity)->visible = settings.show_debug_probes;
+                    }
+                }
 
                 if (!renderer->tlas.as.is_valid())
                     return;
 
                 ScopedGpuProfiling(command_buffer, "DDGIRadiancePass");
                 command_buffer->begin_gpu_debug_label("DDGIRadiancePass");
-
-                FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
-                const IrradianceFieldSettings &settings = board->get<IrradianceFieldSettings>();
 
                 struct PushData {
                     glm::mat4 random_orientation;

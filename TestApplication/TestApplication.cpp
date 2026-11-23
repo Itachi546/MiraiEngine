@@ -264,6 +264,11 @@ class TestApplication : public App {
                 ImGui::OpenPopup("RenderPassDebugPopup");
                 show_render_pass_debug_popup = true;
             }
+
+            if (board->has<IrradianceFieldSettings>()) {
+                IrradianceFieldSettings &settings = board->get<IrradianceFieldSettings>();
+                ImGui::Checkbox("Show probes", &settings.show_debug_probes);
+            }
         }
 
         if (show_render_pass_debug_popup) {

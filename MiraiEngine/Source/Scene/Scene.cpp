@@ -307,7 +307,8 @@ namespace mirai {
             uint32_t primitive_count = 0;
             for (uint32_t i = start_index; i < end_index; ++i) {
                 MeshComponent &mesh_component = mesh_component_ptr->components[i];
-                primitive_count += cast_u32(mesh_component.primitives.size());
+                if (mesh_component.visible)
+                    primitive_count += cast_u32(mesh_component.primitives.size());
             }
             render_object_count.fetch_add(primitive_count);
         });
@@ -325,6 +326,8 @@ namespace mirai {
 
             for (uint32_t i = start_index; i < end_index; ++i) {
                 MeshComponent &mesh_component = mesh_component_ptr->components[i];
+                if (!mesh_component.visible)
+                    continue;
 
                 bool is_skinned = false;
 

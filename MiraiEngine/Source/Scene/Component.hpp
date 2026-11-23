@@ -70,7 +70,7 @@ namespace mirai {
             MESH_FLAG_DEBUG = 1 << 2,
             MESH_FLAG_DEFAULT = MESH_FLAG_CAST_SHADOW | MESH_FLAG_RECEIVE_SHADOW,
         };
-
+        bool visible = true;
         MeshType mesh_type = MESH_TYPE_STATIC;
         uint32_t flags = Flags::MESH_FLAG_DEFAULT;
         uint32_t gpu_index;

@@ -2,7 +2,7 @@
 
 #include "Math/Math.hpp"
 #include "Common/CommonInclude.hpp"
-
+#include <vector>
 namespace mirai {
 
     struct IrradianceFieldSettings {
@@ -16,7 +16,8 @@ namespace mirai {
         glm::vec3 probe_start_position;
         glm::vec3 probe_step;
 
-        bool enable_debug_probe = true;
+        bool show_debug_probes = true;
+        std::vector<uint32_t> debug_probes;
 
         IrradianceFieldSettings(const glm::uvec3 &probe_counts, const AABB &dimension) : probe_counts(probe_counts), probe_dimension(dimension) {
             ASSERT(probe_counts.x > 1 && probe_counts.y > 1 && probe_counts.z > 1);
