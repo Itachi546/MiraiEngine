@@ -76,5 +76,5 @@ void main() {
     vec3 Lo = (direct_lighting(light, V, detail_normal, pbr, 1.0f) + pbr.emissive.rgb) * p_payload.T;
 
     p_payload.L = Lo;
-    p_payload.hit_distance = gl_RayTminEXT + gl_HitTEXT;
+    p_payload.hit_distance = gl_HitTEXT;
 }

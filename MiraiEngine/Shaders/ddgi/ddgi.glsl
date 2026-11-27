@@ -52,6 +52,10 @@ vec3 spherical_fibonacci(float i, float n) {
 #undef madfrac
 }
 
+vec3 get_probe_ray_direction(int ray_index, int ray_count, mat3 rotation) {
+    return normalize(rotation * spherical_fibonacci(float(ray_index), float(ray_count)));
+}
+
 vec3 grid_coord_to_position(vec3 grid_coord, DDGISettings ddgi_settings) {
     return ddgi_settings.probe_step * grid_coord + ddgi_settings.probe_start_position;
 }

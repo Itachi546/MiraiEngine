@@ -74,10 +74,10 @@ const vec3 PROBE_COUNTS = vec3(32, 8, 16);
 const vec3 BOX_MIN = vec3(-15.75f, -1.5f, -10.0f);
 const vec3 BOX_MAX = vec3(14.75f, 11.5f, 9.0f);
 
-vec3 get_probe_grid_index(vec3 world_pos) {
+ivec3 get_probe_grid_index(vec3 world_pos) {
     vec3 spacing = (BOX_MAX - BOX_MIN) / (PROBE_COUNTS - 1.0f);
-    vec3 grid_index = round(world_pos - BOX_MIN) / spacing;
-    return grid_index;
+    vec3 grid_index = round((world_pos - BOX_MIN) / spacing);
+    return clamp(ivec3(grid_index), ivec3(0), ivec3(PROBE_COUNTS) - 1);
 }
 
 uint hash(uvec3 p) {
@@ -107,14 +107,14 @@ void main() {
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     velocity_buffer = velocity;
 
-    vec3 grid_index = get_probe_grid_index(fs_in.center);
+    ivec3 grid_index = get_probe_grid_index(fs_in.center);
     vec3 normal = normalize(fs_in.normal);
     vec2 oct = octahedral_encode(normal);
 
-    vec2 texel = vec2(get_tile_origin(ivec3(grid_index), int(PROBE_COUNTS.x))) + 1.0 + oct * 8.0;
+    vec2 texel = vec2(get_tile_origin(grid_index, int(PROBE_COUNTS.x))) + 1.0 + clamp(oct * 8.0, vec2(0.5), vec2(7.5));
     vec2 uv = texel / vec2(texture_size(ddgi_irradiance_texture_index, 0));
 
     vec3 col = sample_texture(ddgi_irradiance_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).rgb;
     // vec3 col = grid_index / (PROBE_COUNTS - 1);
-    frag_color = vec4(col / (1.0 + col), 1.0f);
+    frag_color = vec4(col, 1.0f);
 }

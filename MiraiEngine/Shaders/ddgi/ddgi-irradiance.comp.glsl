@@ -11,6 +11,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0, rgba16f) uniform image2D u_irradiance_texture;
 
 layout(push_constant) uniform DDGIIrradiancePushConstant {
+    mat4 random_orientation;
     ivec3 probe_counts;
     int ray_per_probe;
 
@@ -34,7 +35,7 @@ void main() {
         float ray_dist = sample_texel(ddgi_depth_texture, ivec2(ray_index, probe_index), 0).r;
         if (ray_dist <= 0.0f)
             continue;
-        vec3 ray_direction = normalize(spherical_fibonacci(ray_index, ray_per_probe));
+        vec3 ray_direction = get_probe_ray_direction(ray_index, ray_per_probe, mat3(random_orientation));
 
         float w = max(dot(ray_direction, dir), 0.0f);
 

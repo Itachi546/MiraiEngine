@@ -12,14 +12,29 @@
 #include "Graphics/RenderingDevice.hpp"
 namespace mirai {
 
+    constexpr bool K_DDGI_RANDOM_RAY_ROTATION = false;
+
+    static glm::mat4 GetDDGIRayRotation(uint64_t frame_id) {
+        if (!K_DDGI_RANDOM_RAY_ROTATION)
+            return glm::mat4(1.0f);
+
+        std::mt19937 rng(static_cast<uint32_t>(frame_id & UINT32_MAX));
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        float angle = dist(rng) * glm::pi<float>() * 2.0f;
+        glm::vec3 axis = glm::vec3(dist(rng), dist(rng), dist(rng)) * 2.0f - 1.0f;
+        if (glm::length(axis) < 1e-4f)
+            axis = glm::vec3(0.0f, 1.0f, 0.0f);
+        return glm::mat4_cast(glm::angleAxis(angle, glm::normalize(axis)));
+    }
+
     DDGIPass::DDGIPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<DDGIGenerateRadiancePassData>(
             "DDGI Generate Radiance",
             [&board](FrameGraph::Builder &builder, DDGIGenerateRadiancePassData &data) {
                 IrradianceFieldSettings irradiance_settings{glm::uvec3(32, 8, 16), AABB{
-                                                                                        glm::vec3(-15.75f, -1.5f, -10.0f),
-                                                                                        glm::vec3(14.75f, 11.5f, 9.0f),
-                                                                                    }};
+                                                                                       glm::vec3(-15.75f, -1.5f, -10.0f),
+                                                                                       glm::vec3(14.75f, 11.5f, 9.0f),
+                                                                                   }};
 
                 // For each probe, we add 1 pixel border, also we add one pixel border around the whole texture
                 glm::uvec3 probe_counts = irradiance_settings.probe_counts;
@@ -36,7 +51,7 @@ namespace mirai {
                                                                                       });
                 builder.write(data.radiance_texture, {
                                                          .access_flags = ACCESS_FLAG_SHADER_WRITE,
-                                                         .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                         .stage_mask = PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
                                                          .layout = IMAGE_LAYOUT_GENERAL,
                                                      });
 
@@ -54,7 +69,7 @@ namespace mirai {
 
                 builder.write(data.depth_texture, {
                                                       .access_flags = ACCESS_FLAG_SHADER_WRITE,
-                                                      .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                      .stage_mask = PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
                                                       .layout = IMAGE_LAYOUT_GENERAL,
                                                   });
 
@@ -150,15 +165,7 @@ namespace mirai {
                     float _padding1;
                 } push_data;
 
-#if 1
-                push_data.random_orientation = glm::mat4_cast(glm::angleAxis(
-                    random_float01() * (glm::pi<float>() * 2.0f),
-                    glm::normalize(glm::vec3(random_float01() * 2.0f - 1.0f,
-                                             random_float01() * 2.0f - 1.0f,
-                                             random_float01() * 2.0f - 1.0f))));
-#else
-                push_data.random_orientation = glm::mat4(1.0f);
-#endif
+                push_data.random_orientation = GetDDGIRayRotation(renderer->frame_id);
                 push_data.probe_counts = settings.probe_counts;
                 push_data.ray_per_probe = settings.rays_per_probe;
                 push_data.probe_start_position = settings.probe_start_position;
@@ -255,6 +262,7 @@ namespace mirai {
                 command_buffer->begin_gpu_debug_label("DDGGenerateIrradiancePass");
 
                 struct PushData {
+                    glm::mat4 random_orientation;
                     glm::ivec3 probe_counts;
                     int ray_per_probe;
 
@@ -265,6 +273,7 @@ namespace mirai {
 
                 const DDGIGenerateRadiancePassData &radiance_pass_data = board->get<DDGIGenerateRadiancePassData>();
 
+                push_data.random_orientation = GetDDGIRayRotation(renderer->frame_id);
                 push_data.probe_counts = glm::ivec3(settings.probe_counts);
                 push_data.ray_per_probe = settings.rays_per_probe;
                 push_data.ddgi_radiance_texture_index = pass_resource.get<FrameGraphTexture>(radiance_pass_data.radiance_texture).id.id;

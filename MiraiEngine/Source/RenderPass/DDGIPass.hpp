@@ -23,6 +23,7 @@ namespace mirai {
 
         IrradianceFieldSettings(const glm::uvec3 &probe_counts, const AABB &dimension) : probe_counts(probe_counts), probe_dimension(dimension) {
             ASSERT(probe_counts.x > 1 && probe_counts.y > 1 && probe_counts.z > 1);
+            ASSERT(glm::all(glm::isPowerOfTwo(probe_counts)));
             probe_start_position = probe_dimension.min;
             probe_step = (probe_dimension.max - probe_dimension.min) / glm::vec3(probe_counts - glm::uvec3(1));
         }

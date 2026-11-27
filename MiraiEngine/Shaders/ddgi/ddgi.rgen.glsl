@@ -25,7 +25,7 @@ void main() {
     const int ray_id = pixel_coord.x;
 
     vec3 ray_origin = probe_location(probe_index, ddgi_settings);
-    vec3 ray_direction = normalize(/*mat3(ddgi_settings.random_orientation) **/ spherical_fibonacci(pixel_coord.x, ddgi_settings.ray_per_probe));
+    vec3 ray_direction = get_probe_ray_direction(ray_id, int(ddgi_settings.ray_per_probe), mat3(ddgi_settings.random_orientation));
 
     uint ray_flags = gl_RayFlagsOpaqueEXT;
     uint cull_mask = 0xff;
@@ -34,7 +34,7 @@ void main() {
 
     p_payload.L = vec3(0.0f);
     p_payload.rng = rng_init(pixel_coord, ddgi_settings.frame_count);
-    p_payload.T = vec3(tmax);
+    p_payload.T = vec3(1.0f);
     p_payload.hit_distance = tmax;
 
     traceRayEXT(tlas, ray_flags, cull_mask,
