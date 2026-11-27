@@ -43,7 +43,7 @@ void initialize_forward_pass(FrameGraph *frame_graph, FrameGraphBlackBoard *boar
                                        });
 
             // @TODO temp
-            DDGIGenerateIrradiancePassData ddgi_pass_data = board->get<DDGIGenerateIrradiancePassData>();
+            DDGIGenerateRadiancePassData ddgi_pass_data = board->get<DDGIGenerateRadiancePassData>();
             builder.read(ddgi_pass_data.radiance_texture, {
                                                               .access_flags = ACCESS_FLAG_SHADER_READ,
                                                               .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,

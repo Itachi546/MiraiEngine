@@ -13,10 +13,15 @@ namespace mirai {
         FrameGraphResourceHandle output;
     };
 
-    struct DDGIGenerateIrradiancePassData {
+    struct DDGIGenerateRadiancePassData {
         FrameGraphResourceHandle radiance_texture;
         FrameGraphResourceHandle depth_texture;
         std::shared_ptr<RTShader> shader;
+    };
+
+    struct DDGIGenerateIrradiancePassData {
+        FrameGraphResourceHandle irradiance_texture;
+        std::shared_ptr<ComputeShader> shader;
     };
 
     struct RTGroundTruthPassData {

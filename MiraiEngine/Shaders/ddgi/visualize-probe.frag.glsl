@@ -15,7 +15,7 @@ layout(location = 0) in FS_IN {
     vec3 normal;
     vec3 tangent;
     vec3 bitangent;
-    vec3 world_pos;
+    vec3 center;
     vec2 uv;
     flat uint mat_id;
     vec4 current_clip_pos;
@@ -66,9 +66,43 @@ layout(push_constant) uniform PushConstants {
     uint _padding;
 };
 
+const vec3 PROBE_COUNTS = vec3(24, 11, 15);
+const vec3 BOX_MIN = vec3(-15.75f, -1.5f, -10.0f);
+const vec3 BOX_MAX = vec3(14.75f, 11.5f, 9.0f);
+
+vec3 get_probe_grid_index(vec3 world_pos) {
+    vec3 spacing = (BOX_MAX - BOX_MIN) / (PROBE_COUNTS - 1.0f);
+    vec3 grid_index = round(world_pos - BOX_MIN) / spacing;
+    return grid_index;
+}
+uint hash(uvec3 p) {
+    p = p * 1664525u + 1013904223u;
+
+    uint n = p.x ^ p.y ^ p.z;
+    n ^= n >> 16;
+    n *= 0x7feb352du;
+    n ^= n >> 15;
+    n *= 0x846ca68bu;
+    n ^= n >> 16;
+
+    return n;
+}
+
+vec3 grid_index_to_color(ivec3 index) {
+    uint h = hash(uvec3(index));
+
+    return vec3(
+        float((h >>  0) & 255u),
+        float((h >>  8) & 255u),
+        float((h >> 16) & 255u)
+    ) / 255.0;
+}
+
 void main() {
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     velocity_buffer = velocity;
 
-    frag_color = vec4(vec3(fs_in.draw_id / 1000.0f), 1.0f);
+    vec3 grid_index = get_probe_grid_index(fs_in.center);
+    vec3 color = grid_index_to_color(ivec3(grid_index));
+    frag_color = vec4(grid_index / (PROBE_COUNTS - 1), 1.0f);
 }

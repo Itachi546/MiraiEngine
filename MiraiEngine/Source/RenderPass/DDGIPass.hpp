@@ -5,6 +5,8 @@
 #include <vector>
 namespace mirai {
 
+    // 8x8 interior pixel + 1 pixel border
+    constexpr uint32_t IRRADIANCE_TEXTURE_DIM = 10;
     struct IrradianceFieldSettings {
         glm::uvec3 probe_counts = glm::uvec3(4, 4, 4);
         uint32_t irradiance_oct_resolution = 8;
