@@ -25,7 +25,7 @@ void main() {
     const int ray_id = pixel_coord.x;
 
     vec3 ray_origin = probe_location(probe_index, ddgi_settings);
-    vec3 ray_direction = normalize(mat3(ddgi_settings.random_orientation) * spherical_fibonacci(pixel_coord.x, ddgi_settings.ray_per_probe));
+    vec3 ray_direction = normalize(/*mat3(ddgi_settings.random_orientation) **/ spherical_fibonacci(pixel_coord.x, ddgi_settings.ray_per_probe));
 
     uint ray_flags = gl_RayFlagsOpaqueEXT;
     uint cull_mask = 0xff;

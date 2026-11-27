@@ -17,4 +17,6 @@ layout(set = 2, binding = 10) uniform textureCube u_bindless_texture_cube[];
 
 #define sample_texel(index, coord, lod) texelFetch(u_bindless_texture[nonuniformEXT(index)], coord, lod)
 
+#define texture_size(index, lod) textureSize(u_bindless_texture[nonuniformEXT(index)], lod)
+
 #endif

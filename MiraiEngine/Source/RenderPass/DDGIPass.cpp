@@ -9,13 +9,14 @@
 #include "Common/Profiler.hpp"
 #include "Common/Random.hpp"
 #include "Math/Math.hpp"
+#include "Graphics/RenderingDevice.hpp"
 namespace mirai {
 
     DDGIPass::DDGIPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
         frame_graph->add_callback_pass<DDGIGenerateRadiancePassData>(
             "DDGI Generate Radiance",
             [&board](FrameGraph::Builder &builder, DDGIGenerateRadiancePassData &data) {
-                IrradianceFieldSettings irradiance_settings{glm::uvec3(24, 11, 15), AABB{
+                IrradianceFieldSettings irradiance_settings{glm::uvec3(32, 8, 16), AABB{
                                                                                         glm::vec3(-15.75f, -1.5f, -10.0f),
                                                                                         glm::vec3(14.75f, 11.5f, 9.0f),
                                                                                     }};
@@ -70,7 +71,7 @@ namespace mirai {
                 Scene *scene = renderer->get_scene();
                 auto &component_manager = scene->ecs->component_manager;
                 Entity parent = scene->create_entity("Probes");
-                const glm::vec3 radius = irradiance_settings.probe_step;
+                const glm::vec3 radius = glm::vec3(0.2f);
 
                 uint32_t material_index = cast_u32(scene->materials.size());
                 {
@@ -202,8 +203,8 @@ namespace mirai {
 
                 const glm::uvec3 &probe_counts = irradiance_settings.probe_counts;
 
-                uint32_t width = IRRADIANCE_TEXTURE_DIM * IRRADIANCE_TEXTURE_DIM * 10 * probe_counts.x * probe_counts.y;
-                uint32_t height = probe_counts.z;
+                uint32_t width = IRRADIANCE_TEXTURE_DIM * probe_counts.x * probe_counts.y;
+                uint32_t height = probe_counts.z * IRRADIANCE_TEXTURE_DIM;
                 data.irradiance_texture = builder.create_texture("DDGIIrradianceTexture", {
                                                                                               .create_flags = 0,
                                                                                               // 8x8 interior + border
@@ -222,10 +223,19 @@ namespace mirai {
                                                            .layout = IMAGE_LAYOUT_GENERAL,
                                                        });
 
-                /*
-                data.shader = std::make_shared<ComputeShader>("DDGIGenerateIrradianceShader",
-                                                              "SPIRV/ddgi-irradiance.spv");
-                                                              */
+                const DDGIGenerateRadiancePassData &radiance_data = board->get<DDGIGenerateRadiancePassData>();
+                builder.read(radiance_data.radiance_texture, {
+                                                                 .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                 .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                                 .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                             });
+                builder.read(radiance_data.depth_texture, {
+                                                              .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                              .stage_mask = PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                              .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                          });
+
+                data.shader = std::make_shared<ComputeShader>("DDGIGenerateIrradianceShader", "SPIRV/ddgi-irradiance.comp.spv");
                 board->add<DDGIGenerateIrradiancePassData>(data);
             },
 
@@ -234,8 +244,47 @@ namespace mirai {
                 Renderer *renderer = ctx->renderer;
                 CommandBuffer *command_buffer = ctx->command_buffer;
 
+                if (!renderer->tlas.as.is_valid())
+                    return;
+
                 FrameGraphBlackBoard *board = renderer->get_frame_graph_blackboard();
                 const IrradianceFieldSettings &settings = board->get<IrradianceFieldSettings>();
+                const glm::uvec3 &probe_counts = settings.probe_counts;
+
+                ScopedGpuProfiling(command_buffer, "DDGIGenerateIrradiancePass");
+                command_buffer->begin_gpu_debug_label("DDGGenerateIrradiancePass");
+
+                struct PushData {
+                    glm::ivec3 probe_counts;
+                    int ray_per_probe;
+
+                    uint32_t ddgi_radiance_texture_index;
+                    uint32_t ddgi_depth_texture_index;
+                    uint32_t _padding[2];
+                } push_data;
+
+                const DDGIGenerateRadiancePassData &radiance_pass_data = board->get<DDGIGenerateRadiancePassData>();
+
+                push_data.probe_counts = glm::ivec3(settings.probe_counts);
+                push_data.ray_per_probe = settings.rays_per_probe;
+                push_data.ddgi_radiance_texture_index = pass_resource.get<FrameGraphTexture>(radiance_pass_data.radiance_texture).id.id;
+                push_data.ddgi_depth_texture_index = pass_resource.get<FrameGraphTexture>(radiance_pass_data.depth_texture).id.id;
+
+                DescriptorOffset descriptors[] = {
+                    renderer->get_or_create_descriptor(pass_resource.get<FrameGraphTexture>(data.irradiance_texture).id, DescriptorType::StorageImage),
+                };
+
+                data.shader->bind(command_buffer);
+
+                uint32_t push_data_size = cast_u32(sizeof(push_data));
+                command_buffer->set_push_data(0, &push_data, push_data_size);
+                command_buffer->set_push_data(push_data_size, descriptors, cast_u32(sizeof(descriptors)));
+
+                command_buffer->dispatch(probe_counts.x, probe_counts.y, probe_counts.z);
+
+                command_buffer->end_gpu_debug_label();
+
+                return;
             });
     }
 } // namespace mirai

@@ -65,8 +65,23 @@ ivec3 probe_index_to_grid_coord(int index, DDGISettings ddgi_settings) {
     return ipos;
 }
 
+int grid_coord_to_probe_index(ivec3 c, ivec3 probe_counts) {
+    int sx = findMSB(probe_counts.x);
+    int sxy = findMSB(probe_counts.x * probe_counts.y);
+    return c.x | (c.y << sx) | (c.z << sxy);
+}
+
 vec3 probe_location(int index, DDGISettings ddgi_settings) {
     return grid_coord_to_position(probe_index_to_grid_coord(index, ddgi_settings), ddgi_settings);
+}
+
+ivec2 get_tile_origin(ivec3 p, int probe_count_x) {
+    return ivec2(p.y * probe_count_x + p.x, p.z) * 10;
+}
+
+// t = vec2(0..7)
+ivec2 get_tile_uv(ivec3 p, ivec2 t, int probe_count_x) {
+    return get_tile_origin(p, probe_count_x) + t + 1;
 }
 
 #endif

@@ -26,7 +26,7 @@ namespace mirai {
         float mip_bias;
         uint32_t ssao_texture;
         uint32_t shadow_texture;
-        uint32_t padding;
+        uint32_t ddgi_irradiance_texture;
     };
 
     ForwardPass::ForwardPass(FrameGraph *frame_graph, FrameGraphBlackBoard *board) {
@@ -85,6 +85,13 @@ namespace mirai {
                                                         .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                     });
 
+                const DDGIGenerateIrradiancePassData &ddgi_irradiance_pass_data = board->get<DDGIGenerateIrradiancePassData>();
+                builder.read(ddgi_irradiance_pass_data.irradiance_texture, {
+                                                                   .access_flags = ACCESS_FLAG_SHADER_READ,
+                                                                   .stage_mask = PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                                                   .layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                               });
+
                 const CascadedShadowPassData &csm_data = board->get<CascadedShadowPassData>();
                 builder.read(csm_data.output, {
                                                   .access_flags = ACCESS_FLAG_SHADER_READ,
@@ -136,6 +143,7 @@ namespace mirai {
                 const SSAOPassData &ssao_pass_data = board->get<SSAOPassData>();
                 const CascadedShadowPassData &csm_data = board->get<CascadedShadowPassData>();
                 const TiledLightCullPassData &light_cull_data = board->get<TiledLightCullPassData>();
+                const DDGIGenerateIrradiancePassData &ddgi_pass_data = board->get<DDGIGenerateIrradiancePassData>();
 
                 DescriptorOffset cubemap_binding = renderer->get_or_create_descriptor(env_map->get_cubemap(), DescriptorType::SampledImage);
                 DescriptorOffset light_list_binding = renderer->get_or_create_descriptor(pass_resource.get<FrameGraphBuffer>(light_cull_data.light_list_buffer).id, DescriptorType::StorageBuffer);
@@ -155,6 +163,7 @@ namespace mirai {
                     AppSettings::enable_taa ? debug_data.mip_lod_bias : 0.0f,
                     pass_resource.get<FrameGraphTexture>(ssao_pass_data.output).id.id,
                     pass_resource.get<FrameGraphTexture>(csm_data.output).id.id,
+                    pass_resource.get<FrameGraphTexture>(ddgi_pass_data.irradiance_texture).id.id,
                 };
 
                 BatchPushData push_data = {
@@ -248,7 +257,7 @@ namespace mirai {
 
                 if (render_batches.size() > 0) {
                     renderer->upload_batch_data(render_batches);
-
+ 
                     draw_batch(render_batches, ALPHA_MODE_OPAQUE);
                     draw_batch(render_batches, ALPHA_MODE_MASK);
 

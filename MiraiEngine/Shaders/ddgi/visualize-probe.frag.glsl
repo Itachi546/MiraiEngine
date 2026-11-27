@@ -28,8 +28,10 @@ layout(set = 0, binding = 0) uniform PerFrameBinding {
     PerFrameData per_frame_data;
 };
 
+#include "../ddgi/ddgi.glsl"
 #include "../utils/light.glsl"
 #include "../pbr/pbr-lighting.glsl"
+#include "../utils/transform.glsl"
 
 layout(std430, set = 0, binding = 4) readonly buffer Materials {
     PBRMaterial materials[];
@@ -63,10 +65,12 @@ layout(push_constant) uniform PushConstants {
     float mip_bias;
     uint ssao_texture_index;
     uint shadow_texture_index;
-    uint _padding;
+    uint ddgi_irradiance_texture_index;
 };
 
-const vec3 PROBE_COUNTS = vec3(24, 11, 15);
+#extension GL_EXT_samplerless_texture_functions : enable
+
+const vec3 PROBE_COUNTS = vec3(32, 8, 16);
 const vec3 BOX_MIN = vec3(-15.75f, -1.5f, -10.0f);
 const vec3 BOX_MAX = vec3(14.75f, 11.5f, 9.0f);
 
@@ -75,6 +79,7 @@ vec3 get_probe_grid_index(vec3 world_pos) {
     vec3 grid_index = round(world_pos - BOX_MIN) / spacing;
     return grid_index;
 }
+
 uint hash(uvec3 p) {
     p = p * 1664525u + 1013904223u;
 
@@ -92,10 +97,10 @@ vec3 grid_index_to_color(ivec3 index) {
     uint h = hash(uvec3(index));
 
     return vec3(
-        float((h >>  0) & 255u),
-        float((h >>  8) & 255u),
-        float((h >> 16) & 255u)
-    ) / 255.0;
+               float((h >> 0) & 255u),
+               float((h >> 8) & 255u),
+               float((h >> 16) & 255u)) /
+           255.0;
 }
 
 void main() {
@@ -103,6 +108,13 @@ void main() {
     velocity_buffer = velocity;
 
     vec3 grid_index = get_probe_grid_index(fs_in.center);
-    vec3 color = grid_index_to_color(ivec3(grid_index));
-    frag_color = vec4(grid_index / (PROBE_COUNTS - 1), 1.0f);
+    vec3 normal = normalize(fs_in.normal);
+    vec2 oct = octahedral_encode(normal);
+
+    vec2 texel = vec2(get_tile_origin(ivec3(grid_index), int(PROBE_COUNTS.x))) + 1.0 + oct * 8.0;
+    vec2 uv = texel / vec2(texture_size(ddgi_irradiance_texture_index, 0));
+
+    vec3 col = sample_texture(ddgi_irradiance_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).rgb;
+    // vec3 col = grid_index / (PROBE_COUNTS - 1);
+    frag_color = vec4(col / (1.0 + col), 1.0f);
 }
