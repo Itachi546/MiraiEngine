@@ -21,7 +21,7 @@ namespace mirai {
         ecs->component_manager->add_component<LightComponent>(entity, LightComponent{
                                                                           .light_type = LIGHT_TYPE_DIRECTIONAL,
                                                                           .color = glm::vec3(1.0f),
-                                                                          .intensity = 1.0f,
+                                                                          .intensity = 5.0f,
                                                                           .radius = glm::radians(5.0f),
                                                                           .cast_shadow = true,
                                                                       });
@@ -52,7 +52,7 @@ namespace mirai {
         ecs->component_manager->add_component<HierarchyComponent>(root_entity, hierarchy_comp);
         entities.push_back(root_entity);
 
-        directional_light = create_directional_light("Sun", glm::quat(glm::radians(glm::vec3(110.0f, -71.0f, 0.0f))));
+        directional_light = create_directional_light("Sun", glm::quat(glm::radians(glm::vec3(110.0f, -39.0f, 0.0f))));
 
         per_frame_data.irradiance_map = K_INVALID_RESOURCE_HANDLE;
         per_frame_data.prefilter_map = K_INVALID_RESOURCE_HANDLE;

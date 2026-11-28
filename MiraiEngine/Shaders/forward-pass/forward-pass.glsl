@@ -64,7 +64,7 @@ layout(push_constant) uniform PushConstants {
     float mip_bias;
     uint ssao_texture_index;
     uint shadow_texture_index;
-    uint _padding;
+    uint ddgi_irradiance_texture_index;
 };
 
 void main() {
@@ -109,7 +109,7 @@ void main() {
     vec3 reflection = normalize(reflect(-view_dir, normal));
     float ndotv = clamp(dot(normal, view_dir), 0.001, 1.0);
     vec3 F0 = mix(vec3(0.04), pbr_params.albedo.rgb, pbr_params.metallic);
-    Lo += getIBLContribution(reflection, normal, ndotv, F0, pbr_params, ibl_intensity);
+    vec3 indirect = getDDGIContribution(fs_in.world_pos, normal, view_dir, F0, pbr_params, ibl_intensity, ddgi_irradiance_texture_index);
 
     ShadowParams shadow_params;
     shadow_params.world_pos = fs_in.world_pos;
@@ -133,7 +133,7 @@ void main() {
         if (light_type == LIGHT_TYPE_DIRECTIONAL) {
             if (cast_shadow(light.flag) && is_valid(shadow_texture_index)) {
                 dir_light_cast_shadow = true;
-                shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.05f);
+                shadow_factor = max(calculate_shadow_factor(shadow_params, cascade_index), 0.0f);
             }
             Lo += evaluateDirectionalLight(light, view_dir, normal, pbr_params, shadow_factor);
         } else if (light_type == LIGHT_TYPE_POINT && disable_punctual_light < 0.5f) {
@@ -144,6 +144,7 @@ void main() {
     }
 
     Lo += pbr_params.emissive * 5.0f;
+    Lo += indirect;
 
     vec2 velocity = get_pixel_velocity(fs_in.current_clip_pos, fs_in.prev_clip_pos, per_frame_data.current_frame_jitter, per_frame_data.prev_frame_jitter);
     // Debug Params

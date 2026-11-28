@@ -4,6 +4,66 @@
 #include "brdf.glsl"
 #include "../utils/material.glsl"
 #include "../utils/color.glsl"
+#include "../utils/transform.glsl"
+#include "../ddgi/ddgi.glsl"
+
+const ivec3 probe_counts = ivec3(32, 8, 16);
+const vec3 grid_start = vec3(-15.75f, -1.5f, -10.0f);
+const vec3 grid_end = vec3(14.75f, 11.5f, 9.0f);
+const int IRRADIANCE_INTERNAL_SIZE = 8;
+
+vec2 irradiance_uv(ivec3 probe, vec3 dir) {
+    vec2 oct = octahedral_encode(dir);                          // 0..1
+    vec2 texel = vec2(get_tile_origin(probe, probe_counts.x))   // tile corner
+                 + 1.0 + oct * float(IRRADIANCE_INTERNAL_SIZE); // skip border, span interior
+    return texel / vec2(probe_counts.x * probe_counts.y * 10, probe_counts.z * 10);
+}
+
+vec3 sample_ddgi(vec3 P, vec3 N, vec3 V, uint ddgi_irradiance_texture_index) {
+    // Push the sample point off the surface to reduce leaking.
+    const vec3 grid_step = (grid_end - grid_start) / (probe_counts - 1);
+    vec3 Pb = P + (N * 0.2 + V * 0.8) * (0.75 * min(min(grid_step.x, grid_step.y), grid_step.z));
+
+    ivec3 base = clamp(ivec3(floor((Pb - grid_start) / grid_step)), ivec3(0), probe_counts - 2);
+    vec3 alpha = clamp((Pb - (grid_start + vec3(base) * grid_step)) / grid_step, 0.0, 1.0);
+
+    vec3 sum = vec3(0.0);
+    float wsum = 0.0;
+
+    for (int i = 0; i < 8; ++i) {
+        ivec3 off = ivec3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
+        ivec3 pc = base + off;
+        vec3 probe_pos = grid_start + vec3(pc) * grid_step;
+
+        // trilinear weight
+        vec3 t = mix(1.0 - alpha, alpha, vec3(off));
+        float w = t.x * t.y * t.z;
+
+        // soft backface weight: ignore probes behind the surface
+        vec3 to_probe = normalize(probe_pos - P);
+        float b = (dot(to_probe, N) + 1.0) * 0.5;
+        w *= b * b + 0.2;
+
+        // visibility (Chebyshev) using the depth texture
+        vec3 probe_to_pt = Pb - probe_pos;
+        float dist = length(probe_to_pt);
+        /*
+        vec2 m = textureLod(s_Depth, depth_uv(pc, probe_to_pt / dist), 0).rg; // mean, mean^2
+        if (dist > m.x) {
+            float var = abs(m.x * m.x - m.y);
+            float c = var / (var + (dist - m.x) * (dist - m.x));
+            w *= max(pow(c, 3.0), 0.05);
+        }
+        */
+        w = max(w, 1e-6);
+        if (w < 0.2)
+            w *= w * w * (1.0 / 0.04); // crush tiny weights
+
+        sum += w * sample_texture_lod(ddgi_irradiance_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], irradiance_uv(pc, N), 0).rgb;
+        wsum += w;
+    }
+    return sum / max(wsum, 1e-6);
+}
 
 #ifdef ENABLE_INDIRECT_LIGHTING
 vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRParameter pbr_params, float ibl_contribution) {
@@ -24,6 +84,15 @@ vec3 getIBLContribution(vec3 reflection, vec3 normal, float ndotv, vec3 F0, PBRP
     return (kD * diffuse + specular) * pbr_params.ao * ibl_contribution;
 }
 #endif
+
+vec3 getDDGIContribution(vec3 P, vec3 N, vec3 V, vec3 F0, PBRParameter pbr_params, float ibl_contribution, uint ddgi_texture_index) {
+    float ndotv = max(dot(N, V), 0.0f);
+    vec3 F = FresnelSchlickRoughness(ndotv, F0, pbr_params.roughness);
+    vec3 kS = F;
+    vec3 kD = 1.0f - kS;
+    kD *= (1.0 - pbr_params.metallic);
+    return kD * pbr_params.albedo.rgb * sample_ddgi(P, N, V, ddgi_texture_index) * ibl_contribution;
+}
 
 vec3 evaluateSpecularBRDF(float roughness, vec3 F, float NdotH, float NdotL, float NdotV) {
     float alpha = roughness * roughness;
