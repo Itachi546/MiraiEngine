@@ -2,6 +2,7 @@
 
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_ray_query : require
 
 #include "ddgi.glsl"
 
@@ -32,12 +33,26 @@ layout(set = 0, binding = 7) readonly buffer LightBuffer {
     Light lights[];
 };
 
+layout(set = 0, binding = 8) uniform accelerationStructureEXT tlas;
+
 layout(location = 0) rayPayloadInEXT DDGIRayPayload p_payload;
 
 hitAttributeEXT vec2 bary_coord;
 
 vec3 direct_lighting(Light light, vec3 V, vec3 N, PBRParameter pbr, float shadow_factor) {
     return evaluateDirectionalLight(light, V, N, pbr, shadow_factor);
+}
+
+float get_shadow_factor(vec3 p, vec3 direction) {
+    rayQueryEXT ray_query;
+    uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsCullBackFacingTrianglesEXT;
+
+    rayQueryInitializeEXT(ray_query, tlas, ray_flags, 0xff, p, 0.0f, direction, 1000.0f);
+    rayQueryProceedEXT(ray_query);
+    if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+        return 0.0f;
+
+    return 1.0f;
 }
 
 void main() {
@@ -73,7 +88,8 @@ void main() {
     Light light = lights[0];
 
     // vec3 Lo = vec3(N * 0.5 + 0.5);
-    vec3 Lo = (direct_lighting(light, V, detail_normal, pbr, 1.0f) + pbr.emissive.rgb) * p_payload.T;
+    float shadow_factor = get_shadow_factor(world_pos + vertex.normal * 0.001, light.direction);
+    vec3 Lo = (direct_lighting(light, V, detail_normal, pbr, shadow_factor) + pbr.emissive.rgb) * p_payload.T;
 
     p_payload.L = Lo;
     p_payload.hit_distance = gl_HitTEXT;

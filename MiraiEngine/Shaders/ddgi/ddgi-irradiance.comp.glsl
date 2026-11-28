@@ -20,11 +20,13 @@ layout(push_constant) uniform DDGIIrradiancePushConstant {
     uint _padding[2];
 };
 
+#define IRRADIANCE_INTERNAL_SIZE 8
+
 void main() {
     ivec3 probe_grid_coord = ivec3(gl_WorkGroupID.xyz);
     ivec2 t = ivec2(gl_LocalInvocationID.xy);
 
-    vec2 texel_dir = (t + 0.5) / 8.0f;
+    vec2 texel_dir = (t + 0.5) / IRRADIANCE_INTERNAL_SIZE;
     vec3 dir = octahedral_decode(texel_dir);
 
     vec3 sum = vec3(0.0f);
@@ -47,6 +49,32 @@ void main() {
     vec3 irradiance = wsum > 0.0f ? (sum / wsum) : vec3(0.0f);
 
     ivec2 uv = get_tile_uv(probe_grid_coord, t, probe_counts.x);
-    // imageStore(u_irradiance_texture, uv, vec4(probe_grid_coord / (probe_counts - 1.0f), 1.0f));
-    imageStore(u_irradiance_texture, uv, vec4(irradiance, 1.0f));
+    vec4 result = vec4(irradiance, 1.0f);
+    imageStore(u_irradiance_texture, uv, result);
+
+    const int N = IRRADIANCE_INTERNAL_SIZE;
+    bool left = (t.x == 0);
+    bool right = (t.x == N - 1);
+    bool top = (t.y == 0);
+    bool bottom = (t.y == N - 1);
+
+    // edges (flipped)
+    if (left)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(-1, N - 1 - t.y), probe_counts.x), result);
+    if (right)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(N, N - 1 - t.y), probe_counts.x), result);
+    if (top)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(N - 1 - t.x, -1), probe_counts.x), result);
+    if (bottom)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(N - 1 - t.x, N), probe_counts.x), result);
+
+    // corners (diagonally opposite)
+    if (left && top)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(N, N), probe_counts.x), result);
+    if (right && top)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(-1, N), probe_counts.x), result);
+    if (left && bottom)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(N, -1), probe_counts.x), result);
+    if (right && bottom)
+        imageStore(u_irradiance_texture, get_tile_uv(probe_grid_coord, ivec2(-1, -1), probe_counts.x), result);
 }

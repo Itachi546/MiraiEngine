@@ -111,10 +111,10 @@ void main() {
     vec3 normal = normalize(fs_in.normal);
     vec2 oct = octahedral_encode(normal);
 
-    vec2 texel = vec2(get_tile_origin(grid_index, int(PROBE_COUNTS.x))) + 1.0 + clamp(oct * 8.0, vec2(0.5), vec2(7.5));
+    vec2 texel = vec2(get_tile_origin(grid_index, int(PROBE_COUNTS.x))) + 1.0 + oct * 8.0;
     vec2 uv = texel / vec2(texture_size(ddgi_irradiance_texture_index, 0));
 
-    vec3 col = sample_texture(ddgi_irradiance_texture_index, u_samplers[SAMPLER_POINT_CLAMP], uv).rgb;
-    // vec3 col = grid_index / (PROBE_COUNTS - 1);
+    vec3 col = sample_texture(ddgi_irradiance_texture_index, u_samplers[SAMPLER_LINEAR_REPEAT], uv).rgb;
+
     frag_color = vec4(col, 1.0f);
 }

@@ -184,7 +184,7 @@ namespace mirai {
                     renderer->rt_instance_data_descriptor,
                     renderer->material_descriptor,
                     renderer->light_descriptor,
-
+                    renderer->get_or_create_descriptor(renderer->tlas.as, DescriptorType::AccelerationStructure),
                 };
 
                 data.shader->bind(command_buffer);
